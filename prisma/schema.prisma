@@ -1,0 +1,646 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  sales
+  reviewer
+}
+
+enum ProspectType {
+  individual_owner
+  company_owner
+  family_office
+  broker_referral
+  aircraft_buyer
+  existing_client
+  other
+}
+
+enum OpportunityType {
+  aircraft_management
+  management_with_charter
+  part91_only
+  acquisition_support
+  transition
+  charter_optimization
+  shared_ownership
+  other
+}
+
+enum DataConfidence {
+  low
+  medium
+  high
+}
+
+enum AircraftCategory {
+  light_jet
+  midsize_jet
+  super_midsize_jet
+  large_cabin_jet
+  ultra_long_range_jet
+  turboprop
+  piston
+  helicopter
+  other
+}
+
+enum ValueSource {
+  owner_provided
+  broker_estimate
+  vref
+  aircraft_bluebook
+  jetnet
+  amstat
+  internal_estimate
+  appraisal
+  other
+}
+
+enum InteriorCondition {
+  excellent
+  good
+  fair
+  needs_refurb
+}
+
+enum PaintCondition {
+  excellent
+  good
+  fair
+  needs_repaint
+}
+
+enum CrewRole {
+  pic
+  sic
+  cabin_attendant
+}
+
+enum TrainingType {
+  initial
+  recurrent
+}
+
+enum ProgramType {
+  engine
+  apu
+  parts
+  airframe
+  avionics
+  other
+}
+
+enum FeatureCostType {
+  one_time
+  monthly
+  annual
+}
+
+enum ProposalStatus {
+  draft
+  internal_review
+  approved
+  published
+  viewed
+  revised
+  won
+  lost
+}
+
+enum AssumptionSourceType {
+  manual
+  reference_table
+  calculated
+  default
+}
+
+enum SectionType {
+  cover
+  executive_summary
+  aircraft_overview
+  management_approach
+  operating_assumptions
+  charter_strategy
+  pro_forma
+  cost_breakdown
+  transition_plan
+  team
+  next_steps
+  disclaimer
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  supabaseId   String?  @unique @map("supabase_id")
+  role         UserRole @default(sales)
+  active       Boolean  @default(true)
+  permissions  Json?    @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  prospectsCreated Prospect[]         @relation("ProspectCreatedBy")
+  proposalsPrepared Proposal[]        @relation("ProposalPreparedBy")
+  proposalsReviewed Proposal[]         @relation("ProposalReviewedBy")
+  proposalsApproved Proposal[]         @relation("ProposalApprovedBy")
+  snapshotsPublished ProposalSnapshot[] @relation("SnapshotPublishedBy")
+
+  @@map("users")
+}
+
+model Prospect {
+  id              String          @id @default(uuid()) @db.Uuid
+  prospectName    String          @map("prospect_name")
+  companyName     String?         @map("company_name")
+  contactName     String          @map("contact_name")
+  contactEmail    String          @map("contact_email")
+  contactPhone    String?         @map("contact_phone")
+  prospectType    ProspectType    @map("prospect_type")
+  currentManager  String?         @map("current_manager")
+  opportunityType OpportunityType @map("opportunity_type")
+  internalNotes   String?         @map("internal_notes") @db.Text
+  clientSummary   String?         @map("client_summary") @db.Text
+  createdById     String          @map("created_by") @db.Uuid
+  pipelineStatus  String?         @map("pipeline_status")
+  followUpDate    DateTime?       @map("follow_up_date") @db.Date
+  assignedToId    String?         @map("assigned_to") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  createdBy User              @relation("ProspectCreatedBy", fields: [createdById], references: [id])
+  aircraft  AircraftInstance[]
+  proposals Proposal[]
+
+  @@map("prospects")
+}
+
+model AircraftMaster {
+  id                         String           @id @default(uuid()) @db.Uuid
+  manufacturer               String
+  model                      String
+  variant                    String?
+  aircraftCategory           AircraftCategory @map("aircraft_category")
+  typicalCrewRequired        Int?             @map("typical_crew_required")
+  typicalFuelBurnGph         Decimal?         @map("typical_fuel_burn_gph") @db.Decimal(10, 2)
+  typicalCruiseSpeedKtas     Int?             @map("typical_cruise_speed_ktas")
+  typicalRangeNm             Int?             @map("typical_range_nm")
+  typicalPassengerCapacity   Int?             @map("typical_passenger_capacity")
+  typicalCharterRate         Decimal?         @map("typical_charter_rate") @db.Decimal(12, 2)
+  maxRecommendedUtilization  Int?             @map("max_recommended_utilization_hours")
+  defaultEngineModel         String?          @map("default_engine_model")
+  defaultApuModel            String?          @map("default_apu_model")
+  dataConfidence             DataConfidence   @default(medium) @map("data_confidence")
+  sourceNotes                String?          @map("source_notes") @db.Text
+  externalId                 String?          @map("external_id")
+  externalSource             String?          @map("external_source")
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
+
+  instances      AircraftInstance[]
+  crewRates      CrewRate[]
+  trainingCosts  TrainingCost[]
+  insurance      InsuranceAssumption[]
+  programCosts   ProgramCost[]
+  charterRates   CharterMarketRate[]
+  hangarCosts    HangarCost[]
+
+  @@map("aircraft_master")
+}
+
+model AircraftInstance {
+  id                          String            @id @default(uuid()) @db.Uuid
+  aircraftMasterId            String?           @map("aircraft_master_id") @db.Uuid
+  prospectId                  String            @map("prospect_id") @db.Uuid
+  tailNumber                  String?           @map("tail_number")
+  serialNumber                String?           @map("serial_number")
+  year                        Int?
+  estimatedValue              Decimal?          @map("estimated_value") @db.Decimal(14, 2)
+  valueSource                 ValueSource?      @map("value_source")
+  currentManager              String?           @map("current_manager")
+  currentOperator             String?           @map("current_operator")
+  currentHomeBaseIcao         String?           @map("current_home_base_icao")
+  proposedHomeBaseIcao        String?           @map("proposed_home_base_icao")
+  engineModel                 String?           @map("engine_model")
+  apuModel                    String?           @map("apu_model")
+  wifiSystem                  String?           @map("wifi_system")
+  maintenanceTrackingProvider String?           @map("maintenance_tracking_provider")
+  programStatus               String?           @map("program_status")
+  interiorCondition           InteriorCondition? @map("interior_condition")
+  paintCondition              PaintCondition?   @map("paint_condition")
+  knownInspections            String?           @map("known_inspections") @db.Text
+  deferredMaintenance         String?           @map("deferred_maintenance") @db.Text
+  internalNotes               String?           @map("internal_notes") @db.Text
+  clientSummary               String?           @map("client_summary") @db.Text
+  createdAt                   DateTime          @default(now()) @map("created_at")
+  updatedAt                   DateTime          @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster? @relation(fields: [aircraftMasterId], references: [id])
+  prospect       Prospect        @relation(fields: [prospectId], references: [id])
+  proposals      Proposal[]
+
+  @@map("aircraft_instances")
+}
+
+model Airport {
+  id              String   @id @default(uuid()) @db.Uuid
+  icao            String   @unique
+  iata            String?
+  airportName     String   @map("airport_name")
+  city            String?
+  state           String?
+  country         String?
+  timezone        String?
+  runwayLengthFt  Int?     @map("runway_length_ft")
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  fuelPrices    FuelPrice[]
+  hangarCosts   HangarCost[]
+  crewRates     CrewRate[]
+  charterRates  CharterMarketRate[]
+
+  @@map("airports")
+}
+
+model FuelPrice {
+  id                String         @id @default(uuid()) @db.Uuid
+  airportId         String         @map("airport_id") @db.Uuid
+  fuelType          String         @map("fuel_type")
+  homeFuelPrice     Decimal?       @map("home_fuel_price") @db.Decimal(10, 4)
+  contractFuelPrice Decimal?       @map("contract_fuel_price") @db.Decimal(10, 4)
+  retailFuelPrice   Decimal?       @map("retail_fuel_price") @db.Decimal(10, 4)
+  source            String?
+  confidence        DataConfidence @default(medium)
+  effectiveDate     DateTime?      @map("effective_date") @db.Date
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  airport Airport @relation(fields: [airportId], references: [id])
+
+  @@map("fuel_prices")
+}
+
+model HangarCost {
+  id                String           @id @default(uuid()) @db.Uuid
+  airportId         String           @map("airport_id") @db.Uuid
+  aircraftCategory  AircraftCategory @map("aircraft_category")
+  aircraftMasterId  String?          @map("aircraft_master_id") @db.Uuid
+  provider          String?
+  monthlyCostLow    Decimal?         @map("monthly_cost_low") @db.Decimal(12, 2)
+  monthlyCostBase   Decimal?         @map("monthly_cost_base") @db.Decimal(12, 2)
+  monthlyCostHigh   Decimal?         @map("monthly_cost_high") @db.Decimal(12, 2)
+  source            String?
+  confidence        DataConfidence   @default(medium)
+  effectiveDate     DateTime?        @map("effective_date") @db.Date
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  airport        Airport         @relation(fields: [airportId], references: [id])
+  aircraftMaster AircraftMaster? @relation(fields: [aircraftMasterId], references: [id])
+
+  @@map("hangar_costs")
+}
+
+model CrewRate {
+  id                String         @id @default(uuid()) @db.Uuid
+  aircraftMasterId  String         @map("aircraft_master_id") @db.Uuid
+  airportId         String?        @map("airport_id") @db.Uuid
+  region            String?
+  role              CrewRole
+  salaryLow         Decimal?       @map("salary_low") @db.Decimal(12, 2)
+  salaryBase        Decimal?       @map("salary_base") @db.Decimal(12, 2)
+  salaryHigh        Decimal?       @map("salary_high") @db.Decimal(12, 2)
+  benefitsPercent   Decimal?       @map("benefits_percent") @db.Decimal(5, 2)
+  payrollTaxPercent Decimal?       @map("payroll_tax_percent") @db.Decimal(5, 2)
+  bonusEstimate     Decimal?       @map("bonus_estimate") @db.Decimal(12, 2)
+  source            String?
+  confidence        DataConfidence @default(medium)
+  effectiveDate     DateTime?      @map("effective_date") @db.Date
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster @relation(fields: [aircraftMasterId], references: [id])
+  airport        Airport?       @relation(fields: [airportId], references: [id])
+
+  @@map("crew_rates")
+}
+
+model TrainingCost {
+  id               String         @id @default(uuid()) @db.Uuid
+  aircraftMasterId String         @map("aircraft_master_id") @db.Uuid
+  role             CrewRole
+  trainingType     TrainingType   @map("training_type")
+  provider         String?
+  annualCost       Decimal?       @map("annual_cost") @db.Decimal(12, 2)
+  travelCost       Decimal?       @map("travel_cost") @db.Decimal(12, 2)
+  daysRequired     Int?           @map("days_required")
+  source           String?
+  confidence       DataConfidence @default(medium)
+  effectiveDate    DateTime?      @map("effective_date") @db.Date
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster @relation(fields: [aircraftMasterId], references: [id])
+
+  @@map("training_costs")
+}
+
+model InsuranceAssumption {
+  id                     String         @id @default(uuid()) @db.Uuid
+  aircraftMasterId       String         @map("aircraft_master_id") @db.Uuid
+  state                  String?
+  operationType          String?        @map("operation_type")
+  hullValueLow           Decimal?       @map("hull_value_low") @db.Decimal(14, 2)
+  hullValueHigh          Decimal?       @map("hull_value_high") @db.Decimal(14, 2)
+  liabilityLimit         Decimal?       @map("liability_limit") @db.Decimal(14, 2)
+  estimatedPremiumPercent Decimal?      @map("estimated_premium_percent") @db.Decimal(6, 4)
+  annualPremiumEstimate  Decimal?       @map("annual_premium_estimate") @db.Decimal(12, 2)
+  source                 String?
+  confidence             DataConfidence @default(medium)
+  effectiveDate          DateTime?      @map("effective_date") @db.Date
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster @relation(fields: [aircraftMasterId], references: [id])
+
+  @@map("insurance_assumptions")
+}
+
+model StateCostFactor {
+  id                 String    @id @default(uuid()) @db.Uuid
+  state              String    @unique
+  registrationNotes  String?   @map("registration_notes") @db.Text
+  taxNotes           String?   @map("tax_notes") @db.Text
+  insuranceTaxNotes  String?   @map("insurance_tax_notes") @db.Text
+  propertyTaxNotes   String?   @map("property_tax_notes") @db.Text
+  salesUseTaxNotes   String?   @map("sales_use_tax_notes") @db.Text
+  source             String?
+  lastReviewed       DateTime? @map("last_reviewed") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("state_cost_factors")
+}
+
+model ProgramCost {
+  id                  String         @id @default(uuid()) @db.Uuid
+  aircraftMasterId    String         @map("aircraft_master_id") @db.Uuid
+  programType         ProgramType    @map("program_type")
+  provider            String?
+  hourlyRate          Decimal?       @map("hourly_rate") @db.Decimal(10, 2)
+  minimumAnnualHours  Int?           @map("minimum_annual_hours")
+  annualMinimumCost   Decimal?       @map("annual_minimum_cost") @db.Decimal(12, 2)
+  catchupCost         Decimal?       @map("catchup_cost") @db.Decimal(12, 2)
+  transferCost        Decimal?       @map("transfer_cost") @db.Decimal(12, 2)
+  source              String?
+  confidence          DataConfidence @default(medium)
+  effectiveDate       DateTime?      @map("effective_date") @db.Date
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster @relation(fields: [aircraftMasterId], references: [id])
+
+  @@map("program_costs")
+}
+
+model FeatureOption {
+  id                    String          @id @default(uuid()) @db.Uuid
+  featureName           String          @map("feature_name")
+  featureCategory       String?         @map("feature_category")
+  description           String?         @db.Text
+  defaultInstallCost    Decimal?        @map("default_install_cost") @db.Decimal(12, 2)
+  defaultMonthlyCost    Decimal?        @map("default_monthly_cost") @db.Decimal(12, 2)
+  defaultAnnualCost     Decimal?        @map("default_annual_cost") @db.Decimal(12, 2)
+  costType              FeatureCostType @map("cost_type")
+  clientVisibleDefault  Boolean         @default(true) @map("client_visible_default")
+  source                String?
+  confidence            DataConfidence  @default(medium)
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  @@map("feature_options")
+}
+
+model OperatingModel {
+  id                    String   @id @default(uuid()) @db.Uuid
+  name                  String
+  regulatoryModel       String?  @map("regulatory_model")
+  charterEnabled        Boolean  @default(false) @map("charter_enabled")
+  conformityRequired    Boolean  @default(false) @map("conformity_required")
+  crewRequired          Boolean  @default(true) @map("crew_required")
+  revenueShareApplies   Boolean  @default(false) @map("revenue_share_applies")
+  description           String?  @db.Text
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("operating_models")
+}
+
+model CharterMarketRate {
+  id                  String         @id @default(uuid()) @db.Uuid
+  aircraftMasterId    String         @map("aircraft_master_id") @db.Uuid
+  airportId           String?        @map("airport_id") @db.Uuid
+  region              String?
+  retailRateLow       Decimal?       @map("retail_rate_low") @db.Decimal(12, 2)
+  retailRateBase      Decimal?       @map("retail_rate_base") @db.Decimal(12, 2)
+  retailRateHigh      Decimal?       @map("retail_rate_high") @db.Decimal(12, 2)
+  wholesaleRate       Decimal?       @map("wholesale_rate") @db.Decimal(12, 2)
+  fuelSurcharge       Decimal?       @map("fuel_surcharge") @db.Decimal(10, 2)
+  ownerPaybackPercent Decimal?       @map("owner_payback_percent") @db.Decimal(5, 2)
+  source              String?
+  confidence          DataConfidence @default(medium)
+  effectiveDate       DateTime?      @map("effective_date") @db.Date
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  aircraftMaster AircraftMaster @relation(fields: [aircraftMasterId], references: [id])
+  airport        Airport?       @relation(fields: [airportId], references: [id])
+
+  @@map("charter_market_rates")
+}
+
+model Proposal {
+  id                 String         @id @default(uuid()) @db.Uuid
+  prospectId         String         @map("prospect_id") @db.Uuid
+  aircraftInstanceId String?        @map("aircraft_instance_id") @db.Uuid
+  proposalName       String         @map("proposal_name")
+  status             ProposalStatus @default(draft)
+  preparedById       String         @map("prepared_by") @db.Uuid
+  reviewedById       String?        @map("reviewed_by") @db.Uuid
+  approvedById       String?        @map("approved_by") @db.Uuid
+  preparedDate       DateTime?      @map("prepared_date") @db.Date
+  publishedDate      DateTime?      @map("published_date") @db.Date
+  expirationDate     DateTime?      @map("expiration_date") @db.Date
+  internalNotes      String?        @map("internal_notes") @db.Text
+  clientSummary      String?        @map("client_summary") @db.Text
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  deletedAt          DateTime?      @map("deleted_at")
+
+  prospect         Prospect            @relation(fields: [prospectId], references: [id])
+  aircraftInstance AircraftInstance?   @relation(fields: [aircraftInstanceId], references: [id])
+  preparedBy       User                @relation("ProposalPreparedBy", fields: [preparedById], references: [id])
+  reviewedBy       User?               @relation("ProposalReviewedBy", fields: [reviewedById], references: [id])
+  approvedBy       User?               @relation("ProposalApprovedBy", fields: [approvedById], references: [id])
+  assumptions      ProposalAssumption[]
+  scenarios        ProposalScenario[]
+  sections         ProposalSection[]
+  snapshots        ProposalSnapshot[]
+  clientPortal     ClientPortal?
+  clientScenarios  ClientScenario[]
+  tasks            ProposalTask[]
+
+  @@map("proposals")
+}
+
+model ProposalAssumption {
+  id                 String               @id @default(uuid()) @db.Uuid
+  proposalId         String               @map("proposal_id") @db.Uuid
+  category           String
+  assumptionName     String               @map("assumption_name")
+  value              String
+  unit               String?
+  sourceType         AssumptionSourceType @map("source_type")
+  sourceId           String?              @map("source_id") @db.Uuid
+  confidence         DataConfidence       @default(medium)
+  visibleToClient    Boolean              @default(true) @map("visible_to_client")
+  editableByClient   Boolean              @default(false) @map("editable_by_client")
+  internalNote       String?              @map("internal_note") @db.Text
+  clientExplanation  String?              @map("client_explanation") @db.Text
+  aiGenerated        Boolean              @default(false) @map("ai_generated")
+  aiModel            String?              @map("ai_model")
+  aiConfidence       Decimal?             @map("ai_confidence") @db.Decimal(5, 4)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, category, assumptionName])
+  @@map("proposal_assumptions")
+}
+
+model ProposalScenario {
+  id                    String   @id @default(uuid()) @db.Uuid
+  proposalId            String   @map("proposal_id") @db.Uuid
+  scenarioName          String   @map("scenario_name")
+  isBaseCase            Boolean  @default(true) @map("is_base_case")
+  aircraftValue         Decimal? @map("aircraft_value") @db.Decimal(14, 2)
+  ownerHours            Decimal? @map("owner_hours") @db.Decimal(10, 2)
+  charterBlockHours     Decimal? @map("charter_block_hours") @db.Decimal(10, 2)
+  charterFlightHours    Decimal? @map("charter_flight_hours") @db.Decimal(10, 2)
+  totalFixedCosts       Decimal? @map("total_fixed_costs") @db.Decimal(14, 2)
+  ownerVariableCosts    Decimal? @map("owner_variable_costs") @db.Decimal(14, 2)
+  charterVariableCosts  Decimal? @map("charter_variable_costs") @db.Decimal(14, 2)
+  totalRevenue          Decimal? @map("total_revenue") @db.Decimal(14, 2)
+  netAnnualCost         Decimal? @map("net_annual_cost") @db.Decimal(14, 2)
+  netMonthlyCost        Decimal? @map("net_monthly_cost") @db.Decimal(14, 2)
+  costPerOwnerHour      Decimal? @map("cost_per_owner_hour") @db.Decimal(14, 2)
+  notes                 String?  @db.Text
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_scenarios")
+}
+
+model ProposalSection {
+  id                  String      @id @default(uuid()) @db.Uuid
+  proposalId          String      @map("proposal_id") @db.Uuid
+  sectionType         SectionType @map("section_type")
+  title               String
+  bodyCopy            String?     @map("body_copy") @db.Text
+  visible             Boolean     @default(true)
+  sortOrder           Int         @map("sort_order")
+  imageUrl            String?     @map("image_url")
+  calloutMetricLabel  String?     @map("callout_metric_label")
+  calloutMetricValue  String?     @map("callout_metric_value")
+  internalNotes       String?     @map("internal_notes") @db.Text
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_sections")
+}
+
+model ProposalSnapshot {
+  id             String   @id @default(uuid()) @db.Uuid
+  proposalId     String   @map("proposal_id") @db.Uuid
+  versionNumber  Int      @map("version_number")
+  snapshotJson   Json     @map("snapshot_json") @db.JsonB
+  publishedById  String   @map("published_by") @db.Uuid
+  publishedAt    DateTime @default(now()) @map("published_at")
+  notes          String?  @db.Text
+
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  publishedBy User     @relation("SnapshotPublishedBy", fields: [publishedById], references: [id])
+
+  @@unique([proposalId, versionNumber])
+  @@map("proposal_snapshots")
+}
+
+model ClientPortal {
+  id                String    @id @default(uuid()) @db.Uuid
+  proposalId        String    @unique @map("proposal_id") @db.Uuid
+  slug              String    @unique
+  pinHash           String    @map("pin_hash")
+  active            Boolean   @default(true)
+  expiresAt         DateTime? @map("expires_at")
+  viewCount         Int       @default(0) @map("view_count")
+  lastViewedAt      DateTime? @map("last_viewed_at")
+  pdfDownloadCount  Int       @default(0) @map("pdf_download_count")
+  emailSentAt       DateTime? @map("email_sent_at")
+  emailOpenedAt     DateTime? @map("email_opened_at")
+  emailClickCount   Int       @default(0) @map("email_click_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  proposal        Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  clientScenarios ClientScenario[]
+
+  @@map("client_portals")
+}
+
+model ClientScenario {
+  id                         String   @id @default(uuid()) @db.Uuid
+  proposalId                 String   @map("proposal_id") @db.Uuid
+  portalId                   String   @map("portal_id") @db.Uuid
+  aircraftValue              Decimal? @map("aircraft_value") @db.Decimal(14, 2)
+  ownerHours                 Decimal? @map("owner_hours") @db.Decimal(10, 2)
+  calculatedNetAnnualCost    Decimal? @map("calculated_net_annual_cost") @db.Decimal(14, 2)
+  calculatedMonthlyCost      Decimal? @map("calculated_monthly_cost") @db.Decimal(14, 2)
+  calculatedCostPerOwnerHour Decimal? @map("calculated_cost_per_owner_hour") @db.Decimal(14, 2)
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  proposal Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  portal   ClientPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
+
+  @@map("client_scenarios")
+}
+
+model ProposalTask {
+  id          String    @id @default(uuid()) @db.Uuid
+  proposalId  String    @map("proposal_id") @db.Uuid
+  title       String
+  status      String    @default("open")
+  assignedTo  String?   @map("assigned_to") @db.Uuid
+  dueDate     DateTime? @map("due_date") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_tasks")
+}

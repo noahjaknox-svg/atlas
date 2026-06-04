@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --atlas-bg: #0a0d14;
+    --atlas-surface: #111827;
+    --atlas-accent: #c9a84c;
+    --atlas-accent-hover: #e2c46a;
+    --atlas-text: #f9fafb;
+    --atlas-muted: #9ca3af;
+    --atlas-border: #1f2937;
+  }
+
+  * {
+    @apply border-atlas-border;
+  }
+
+  body {
+    @apply bg-atlas-bg text-atlas-text font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break {
+    page-break-before: always;
+  }
+}
