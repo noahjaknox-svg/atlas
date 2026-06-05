@@ -15,6 +15,10 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Atlas by PrismJet",
   description: "Personalized aircraft management proposals and pro formas",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
