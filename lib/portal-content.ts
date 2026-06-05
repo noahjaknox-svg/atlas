@@ -22,7 +22,6 @@ export {
 };
 
 /** Until `npx prisma generate` runs after migration 007. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const portalDb = prisma as any;
 function parsePillars(raw: unknown): ServicePillar[] {
   if (!Array.isArray(raw)) return DEFAULT_SERVICES_PILLARS;

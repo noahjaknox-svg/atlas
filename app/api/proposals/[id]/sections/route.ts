@@ -37,7 +37,6 @@ export async function PATCH(
             item.calloutMetricLabel !== undefined ? item.calloutMetricLabel : undefined,
           calloutMetricValue:
             item.calloutMetricValue !== undefined ? item.calloutMetricValue : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       });
       results.push(result);
