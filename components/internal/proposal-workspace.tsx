@@ -8,7 +8,7 @@ import type { PortalPresentationState } from "@/components/internal/workspace/po
 import { PortalPresentationDialog } from "@/components/internal/workspace/portal-presentation-dialog";
 import { WorkspaceLayout } from "@/components/internal/workspace/workspace-layout";
 import { WorkspaceOwnerBar } from "@/components/internal/workspace/workspace-owner-bar";
-import { ExperienceManagerPanel } from "@/components/internal/workspace/experience-manager-panel";
+import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { WorkspaceProposalFooter } from "@/components/internal/workspace/workspace-proposal-footer";
 import type { ProposalComment } from "@/components/internal/workspace/proposal-comments-panel";
 import {
@@ -748,16 +748,6 @@ export function ProposalWorkspace({
         onProspectSave={handleProspectSave}
         prospectSaveState={prospectSaveState}
         saveLabel={saveLabel}
-        experienceManager={
-          <ExperienceManagerPanel
-            proposalId={data.id}
-            sections={sections}
-            onSectionsChange={setSections}
-            portalSlug={portalSlug}
-            needsRepublish={needsRepublish}
-            onSaved={() => setNeedsRepublish(true)}
-          />
-        }
         currentUserId={data.currentUserId}
         currentUserName={data.currentUserName}
         initialComments={data.initialComments}
@@ -831,6 +821,11 @@ export function ProposalWorkspace({
           aircraftId={selected.id}
           initial={portalPresentationFor(selected)}
           onSaved={(next) => handlePortalPresentationSaved(selected.id, next)}
+          sections={sections as ExperienceSectionRow[]}
+          onSectionsChange={setSections}
+          portalSlug={portalSlug}
+          needsRepublish={needsRepublish}
+          onExperienceSaved={() => setNeedsRepublish(true)}
         />
       ) : null}
     </div>

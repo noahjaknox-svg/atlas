@@ -202,7 +202,7 @@ function ReviewStep({
           Recalculate Pro Forma
         </Button>
         {proposal.clientPortal?.active && (
-          <Link href={`/${proposal.clientPortal.slug}/home`} target="_blank">
+          <Link href={`/${proposal.clientPortal.slug}/experience/welcome`} target="_blank">
             <Button variant="secondary">Client Preview</Button>
           </Link>
         )}

@@ -167,7 +167,7 @@ export function WorkspaceSidebar({
 
       <div className="space-y-2 border-t border-atlas-border p-5">
         {portalSlug && (
-          <Link href={`/${portalSlug}/home`} target="_blank" className="block">
+          <Link href={`/${portalSlug}/experience/welcome`} target="_blank" className="block">
             <Button variant="secondary" className="w-full">
               Preview proposal
             </Button>
@@ -184,7 +184,7 @@ export function WorkspaceSidebar({
           </Button>
         )}
         {portalUrl && portalSlug && (
-          <Link href={`/${portalSlug}/home`} target="_blank" className="block">
+          <Link href={`/${portalSlug}/experience/welcome`} target="_blank" className="block">
             <Button variant="ghost" className="w-full">
               Client portal
             </Button>

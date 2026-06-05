@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { EXPERIENCE_SECTION_TYPES, EXPERIENCE_TAB_LABELS, SECTION_TYPE_TO_SLUG } from "@/lib/experience-content";
-import type { ExperienceSectionType } from "@/lib/experience-content";
+import type { ExperienceContentBlocks, ExperienceSectionType } from "@/lib/experience-content";
 
 export type ExperienceSectionRow = {
   id: string;
@@ -19,9 +18,10 @@ export type ExperienceSectionRow = {
   posterUrl?: string | null;
   signatoryName?: string | null;
   signatoryTitle?: string | null;
+  contentBlocks?: ExperienceContentBlocks | null;
 };
 
-export function ExperienceManagerPanel({
+export function ExperienceManagerForm({
   proposalId,
   sections,
   onSectionsChange,
@@ -72,17 +72,17 @@ export function ExperienceManagerPanel({
   }
 
   return (
-    <CollapsibleSection title="Client experience" defaultOpen>
-      <p className="mb-2 text-[10px] leading-relaxed text-atlas-muted">
+    <div>
+      <p className="text-xs leading-relaxed text-atlas-muted">
         Toggle pages, edit copy and hero images. Clients see changes after publish.
       </p>
       {needsRepublish ? (
-        <p className="mb-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200/90">
+        <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-200/90">
           Unpublished changes — republish to update the live portal.
         </p>
       ) : null}
 
-      <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+      <div className="mt-3 space-y-2">
         {experienceSections.map((sec, index) => {
           const label =
             EXPERIENCE_TAB_LABELS[sec.sectionType as ExperienceSectionType] ?? sec.title;
@@ -94,12 +94,12 @@ export function ExperienceManagerPanel({
             >
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
                 onClick={() => setExpanded(isOpen ? null : sec.sectionType)}
               >
-                <span className="text-[10px] font-medium text-atlas-text">{label}</span>
+                <span className="text-xs font-medium text-atlas-text">{label}</span>
                 <label
-                  className="flex items-center gap-1 text-[9px]"
+                  className="flex items-center gap-1.5 text-[10px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <input
@@ -112,18 +112,18 @@ export function ExperienceManagerPanel({
                 </label>
               </button>
               {isOpen ? (
-                <div className="space-y-1.5 border-t border-atlas-border/40 p-2">
+                <div className="space-y-2 border-t border-atlas-border/40 p-3">
                   <Input
                     value={sec.title}
                     onChange={(e) => updateSection(index, { title: e.target.value })}
-                    className="h-7 text-xs"
+                    className="h-8 text-xs"
                     placeholder="Title"
                   />
                   <textarea
                     value={sec.bodyCopy ?? ""}
                     onChange={(e) => updateSection(index, { bodyCopy: e.target.value })}
-                    rows={3}
-                    className="w-full rounded border border-atlas-border/80 bg-atlas-bg px-2 py-1 text-xs"
+                    rows={4}
+                    className="w-full rounded border border-atlas-border/80 bg-atlas-bg px-2 py-1.5 text-xs"
                     placeholder="Body copy — use {contactName} on Welcome"
                   />
                   <Input
@@ -131,7 +131,7 @@ export function ExperienceManagerPanel({
                     onChange={(e) =>
                       updateSection(index, { imageUrl: e.target.value || null })
                     }
-                    className="h-7 text-xs"
+                    className="h-8 text-xs"
                     placeholder="Hero image URL"
                   />
                   {sec.sectionType === "welcome" ? (
@@ -141,7 +141,7 @@ export function ExperienceManagerPanel({
                         onChange={(e) =>
                           updateSection(index, { signatoryName: e.target.value || null })
                         }
-                        className="h-7 text-xs"
+                        className="h-8 text-xs"
                         placeholder="Signatory name"
                       />
                       <Input
@@ -149,7 +149,7 @@ export function ExperienceManagerPanel({
                         onChange={(e) =>
                           updateSection(index, { signatoryTitle: e.target.value || null })
                         }
-                        className="h-7 text-xs"
+                        className="h-8 text-xs"
                         placeholder="Signatory title"
                       />
                     </>
@@ -159,7 +159,7 @@ export function ExperienceManagerPanel({
                       href={`/${portalSlug}/experience/${SECTION_TYPE_TO_SLUG[sec.sectionType as ExperienceSectionType] ?? sec.sectionType}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-atlas-accent hover:underline"
+                      className="inline-block text-xs text-atlas-accent hover:underline"
                     >
                       Preview (published)
                     </a>
@@ -174,13 +174,13 @@ export function ExperienceManagerPanel({
       <Button
         type="button"
         size="sm"
-        className="mt-2 w-full text-xs"
+        className="mt-3 w-full text-xs"
         disabled={saving}
         onClick={() => void save()}
       >
         {saving ? "Saving…" : "Save experience pages"}
       </Button>
-      {message ? <p className="mt-1 text-[10px] text-atlas-muted">{message}</p> : null}
-    </CollapsibleSection>
+      {message ? <p className="mt-2 text-xs text-atlas-muted">{message}</p> : null}
+    </div>
   );
 }

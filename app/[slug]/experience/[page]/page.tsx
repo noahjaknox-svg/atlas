@@ -6,7 +6,11 @@ import {
   trackPortalView,
 } from "@/lib/client-portal-load";
 import { resolveExperienceSections, resolveExperienceSection } from "@/lib/experience-resolve";
-import { getSectionBySlug, SLUG_TO_SECTION_TYPE } from "@/lib/experience-content";
+import {
+  getFirstExperienceSlug,
+  getSectionBySlug,
+  SLUG_TO_SECTION_TYPE,
+} from "@/lib/experience-content";
 import { ExperienceShell } from "@/components/client/experience/experience-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
 
@@ -33,7 +37,14 @@ export default async function ExperiencePageRoute({
   const sections = resolveExperienceSections(payload);
   const section = getSectionBySlug(sections, page);
 
-  if (!section || !section.visible) notFound();
+  if (!section || !section.visible) {
+    const fallbackSlug = getFirstExperienceSlug(sections);
+    const qs = aircraftParam ? `?aircraft=${encodeURIComponent(aircraftParam)}` : "";
+    if (page !== fallbackSlug) {
+      redirect(`/${slug}/experience/${fallbackSlug}${qs}`);
+    }
+    notFound();
+  }
 
   const disclaimer = resolveExperienceSection(payload, "disclaimer")?.bodyCopy ?? null;
 

@@ -28,7 +28,9 @@ export function ExperienceHero({
   return (
     <div
       className={cn(
-        "relative min-h-[42vh] overflow-hidden lg:min-h-[52vh]",
+        "relative isolate overflow-hidden",
+        /* Pull cloud band under fixed nav; content clears nav once */
+        "-mt-[var(--portal-nav-height)] pt-[var(--portal-nav-height)]",
         className
       )}
     >
@@ -39,16 +41,11 @@ export function ExperienceHero({
         overlay="dark"
         fillContainer
         className={cn(
-          "absolute inset-0 h-full min-h-0",
+          "absolute inset-0 min-h-full",
           kenBurns && "experience-hero-kenburns overflow-hidden"
         )}
       />
-      <div
-        className={cn(
-          "relative z-10 flex min-h-[inherit] flex-col justify-end pb-10 pt-6",
-          experiencePageX
-        )}
-      >
+      <div className={cn("relative z-10 pb-8 pt-2 sm:pb-10 sm:pt-3", experiencePageX)}>
         {children}
       </div>
     </div>

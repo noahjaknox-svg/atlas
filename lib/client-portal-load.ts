@@ -1,15 +1,30 @@
 import { redirect } from "next/navigation";
-import { getPortalSession } from "@/lib/auth";
+import { getInternalUser, getPortalSession, type PortalSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPortalContent, getFleetShowcase } from "@/lib/portal-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
-export async function requirePortalSession(slug: string) {
+export async function requirePortalSession(slug: string): Promise<PortalSession> {
   const session = await getPortalSession();
-  if (!session || session.slug !== slug) {
-    redirect(`/${slug}`);
+  if (session?.slug === slug) return session;
+
+  // Staff preview from workspace/pipeline — no client PIN required.
+  const internal = await getInternalUser();
+  if (internal) {
+    const portal = await prisma.clientPortal.findUnique({
+      where: { slug },
+      select: { id: true, proposalId: true, active: true },
+    });
+    if (portal?.active) {
+      return {
+        portalId: portal.id,
+        proposalId: portal.proposalId,
+        slug,
+      };
+    }
   }
-  return session;
+
+  redirect(`/${slug}`);
 }
 
 export async function loadActivePortal(slug: string) {

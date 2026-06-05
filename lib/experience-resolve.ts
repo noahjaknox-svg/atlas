@@ -3,25 +3,37 @@ import { EXPERIENCE_SECTION_TYPES, mergeSectionWithDefaults } from "./experience
 import { getExperienceDefault } from "./experience-defaults";
 import type { ProposalSnapshotPayload } from "./snapshot";
 
+/** Tabs added with PrismJet Experience — legacy snapshots only had pro_forma/disclaimer. */
+const CORE_EXPERIENCE_SECTION_TYPES = EXPERIENCE_SECTION_TYPES.filter(
+  (t) => t !== "pro_forma" && t !== "disclaimer"
+);
+
+function synthesizeExperienceDefaults(): ExperienceSectionSnapshot[] {
+  return EXPERIENCE_SECTION_TYPES.map((sectionType, i) => {
+    const defaults = getExperienceDefault(sectionType);
+    if (!defaults) return null;
+    return {
+      ...defaults,
+      visible: sectionType !== "disclaimer",
+      sortOrder: i + 1,
+    };
+  }).filter((s): s is ExperienceSectionSnapshot => s !== null);
+}
+
 export function resolveExperienceSections(
   payload: ProposalSnapshotPayload | null
 ): ExperienceSectionSnapshot[] {
   const fromPayload = payload?.sections ?? [];
 
-  const hasExperienceSections = fromPayload.some((s) =>
-    EXPERIENCE_SECTION_TYPES.includes(s.sectionType as (typeof EXPERIENCE_SECTION_TYPES)[number])
+  const hasCoreExperienceSections = fromPayload.some((s) =>
+    CORE_EXPERIENCE_SECTION_TYPES.includes(
+      s.sectionType as (typeof CORE_EXPERIENCE_SECTION_TYPES)[number]
+    )
   );
 
-  if (!hasExperienceSections && fromPayload.length > 0) {
-    return EXPERIENCE_SECTION_TYPES.map((sectionType, i) => {
-      const defaults = getExperienceDefault(sectionType);
-      if (!defaults) return null;
-      return {
-        ...defaults,
-        visible: sectionType !== "disclaimer",
-        sortOrder: i + 1,
-      };
-    }).filter((s): s is ExperienceSectionSnapshot => s !== null);
+  // Pre-experience snapshots (cover, pro_forma, etc.) — render full experience defaults.
+  if (!hasCoreExperienceSections) {
+    return synthesizeExperienceDefaults();
   }
 
   return EXPERIENCE_SECTION_TYPES.map((sectionType) => {

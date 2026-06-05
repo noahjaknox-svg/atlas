@@ -7,6 +7,9 @@ import {
   clearPinAttempts,
 } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
+import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { resolveExperienceSections } from "@/lib/experience-resolve";
+import { getFirstExperienceSlug } from "@/lib/experience-content";
 
 export async function POST(
   request: Request,
@@ -25,7 +28,13 @@ export async function POST(
 
     const portal = await prisma.clientPortal.findUnique({
       where: { slug },
-      include: { proposal: true },
+      include: {
+        proposal: {
+          include: {
+            snapshots: { orderBy: { versionNumber: "desc" }, take: 1 },
+          },
+        },
+      },
     });
 
     if (!portal || !portal.active) {
@@ -49,7 +58,14 @@ export async function POST(
       slug,
     });
 
-    return jsonOk({ success: true, redirect: `/${slug}/experience/welcome` });
+    const snapshot = portal.proposal.snapshots[0];
+    const payload = snapshot
+      ? (snapshot.snapshotJson as unknown as ProposalSnapshotPayload)
+      : null;
+    const sections = resolveExperienceSections(payload);
+    const firstPage = getFirstExperienceSlug(sections);
+
+    return jsonOk({ success: true, redirect: `/${slug}/experience/${firstPage}` });
   } catch (e) {
     return handleApiError(e);
   }

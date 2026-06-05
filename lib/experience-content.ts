@@ -104,6 +104,9 @@ export type ExperienceContentBlocks = {
   contactPhone?: string;
   contactWebsite?: string;
   contactAddress?: string;
+  /** External link shown in portal header (Edit presentation → Portal links). */
+  aircraftMarketUrl?: string | null;
+  aircraftMarketButtonLabel?: string | null;
 };
 
 export type ExperienceSectionSnapshot = {

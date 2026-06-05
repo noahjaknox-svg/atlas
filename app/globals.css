@@ -11,12 +11,12 @@
     --atlas-text: #f9fafb;
     --atlas-muted: #9ca3af;
     --atlas-border: #1f2937;
-    --portal-nav-height: 3.5rem;
+    --portal-nav-height: 4.5rem;
   }
 
   @media (max-width: 639px) {
     :root {
-      --portal-nav-height: 4rem;
+      --portal-nav-height: 4.25rem;
     }
   }
 

@@ -22,7 +22,10 @@ It took over 100 years of combined experience to build the foundation of PrismJe
     layoutVariant: "welcome_letter",
     signatoryName: "Scott Casey",
     signatoryTitle: "Vice President",
-    contentBlocks: null,
+    contentBlocks: {
+      aircraftMarketUrl: null,
+      aircraftMarketButtonLabel: "Available aircraft",
+    },
   },
   {
     sectionType: "about_us",
