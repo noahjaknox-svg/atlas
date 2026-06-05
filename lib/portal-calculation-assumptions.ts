@@ -61,7 +61,7 @@ function mergeAssumptionRowsForEntry(
   categories.add("__legacy__");
 
   let merged: AssumptionMap = {};
-  for (const category of categories) {
+  for (const category of Array.from(categories)) {
     merged = { ...merged, ...mergeLegacyAssumptions(assumptionRows, category) };
   }
   return merged;
