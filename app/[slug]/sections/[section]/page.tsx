@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
-import { requirePortalSession } from "@/lib/client-portal-load";
 
-/** Legacy section URLs redirect into the presentation deck. */
-export default async function ClientSectionRedirectPage({
+export default async function LegacySectionPage({
   params,
 }: {
-  params: Promise<{ slug: string; section: string }>;
+  params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  await requirePortalSession(slug);
-  redirect(`/${slug}/deck`);
+  redirect(`/${slug}/experience/welcome`);
 }

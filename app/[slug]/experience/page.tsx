@@ -3,7 +3,7 @@ import { requirePortalSession, loadActivePortal } from "@/lib/client-portal-load
 import { resolveExperienceSections } from "@/lib/experience-resolve";
 import { getFirstExperienceSlug } from "@/lib/experience-content";
 
-export default async function LegacyHomePage({
+export default async function ExperienceIndexPage({
   params,
 }: {
   params: Promise<{ slug: string }>;

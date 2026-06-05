@@ -4,6 +4,7 @@ import { getPortalContent } from "./portal-content";
 import type { AssumptionMap } from "./assumptions";
 import { assumptionsToMap } from "./assumptions";
 import type { ProFormaResult } from "./proforma";
+import type { ExperienceContentBlocks } from "./experience-content";
 import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import { buildAircraftSnapshotList } from "./snapshot-aircraft";
 import { computeWorkspaceProFormaForClient } from "./workspace-proforma-client";
@@ -55,6 +56,10 @@ export interface ProposalSnapshotPayload {
     posterUrl: string | null;
     calloutMetricLabel: string | null;
     calloutMetricValue: string | null;
+    layoutVariant: string | null;
+    contentBlocks: ExperienceContentBlocks | null;
+    signatoryName: string | null;
+    signatoryTitle: string | null;
   }>;
   branding?: {
     heroCloudImageUrl: string | null;
@@ -171,19 +176,21 @@ export async function buildSnapshotPayload(
         primaryAircraft?.clientSummary ?? proposal.aircraftInstance?.clientSummary ?? null,
     },
     assumptions: clientAssumptions,
-    sections: proposal.sections
-      .filter((s) => s.visible)
-      .map((s) => ({
+    sections: proposal.sections.map((s) => ({
         sectionType: s.sectionType,
         title: s.title,
         bodyCopy: s.bodyCopy,
         visible: s.visible,
         sortOrder: s.sortOrder,
         imageUrl: s.imageUrl,
-        videoUrl: (s as { videoUrl?: string | null }).videoUrl ?? null,
-        posterUrl: (s as { posterUrl?: string | null }).posterUrl ?? null,
+        videoUrl: s.videoUrl ?? null,
+        posterUrl: s.posterUrl ?? null,
         calloutMetricLabel: s.calloutMetricLabel,
         calloutMetricValue: s.calloutMetricValue,
+        layoutVariant: s.layoutVariant ?? null,
+        contentBlocks: (s.contentBlocks as ExperienceContentBlocks | null) ?? null,
+        signatoryName: s.signatoryName ?? null,
+        signatoryTitle: s.signatoryTitle ?? null,
       })),
     branding: {
       heroCloudImageUrl: portalBranding.heroCloudImageUrl,

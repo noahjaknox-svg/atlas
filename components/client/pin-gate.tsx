@@ -47,7 +47,7 @@ export function PinGate({
 
     setEntered(true);
     setTimeout(() => {
-      router.push(data.redirect ?? `/${slug}/deck`);
+      router.push(data.redirect ?? `/${slug}/experience/welcome`);
       router.refresh();
     }, 700);
   }

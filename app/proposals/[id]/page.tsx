@@ -15,6 +15,7 @@ import { ProposalWorkspace } from "@/components/internal/proposal-workspace";
 import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
+import { ensureExperienceSections } from "@/lib/ensure-experience-sections";
 import { parseSpecHighlights } from "@/lib/portal-aircraft-types";
 
 export default async function ProposalWorkspacePage({
@@ -23,6 +24,8 @@ export default async function ProposalWorkspacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  await ensureExperienceSections(id);
 
   const [user, proposal, atlasUsers, comments] = await Promise.all([
     getInternalUser(),
@@ -159,9 +162,12 @@ export default async function ProposalWorkspacePage({
       title: s.title,
       bodyCopy: s.bodyCopy,
       visible: s.visible,
+      sortOrder: s.sortOrder,
       imageUrl: s.imageUrl,
-      videoUrl: (s as { videoUrl?: string | null }).videoUrl ?? null,
-      posterUrl: (s as { posterUrl?: string | null }).posterUrl ?? null,
+      videoUrl: s.videoUrl ?? null,
+      posterUrl: s.posterUrl ?? null,
+      signatoryName: s.signatoryName ?? null,
+      signatoryTitle: s.signatoryTitle ?? null,
     })),
     scenarios: proposal.scenarios.map((s) => ({
       aircraftInstanceId: s.aircraftInstanceId ?? null,

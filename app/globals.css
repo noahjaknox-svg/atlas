@@ -61,6 +61,36 @@
   }
 }
 
+@keyframes kenBurns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.experience-hero-kenburns video,
+.experience-hero-kenburns img {
+  animation: kenBurns 24s ease-out forwards;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .experience-hero-kenburns video,
+  .experience-hero-kenburns img {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-safe\:animate-\[fadeUp_0\.5s_ease-out\],
   .motion-safe\:animate-\[fadeUp_0\.6s_ease-out\],

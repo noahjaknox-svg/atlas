@@ -1,28 +1,12 @@
-import {
-  requirePortalSession,
-  loadActivePortal,
-  trackPortalView,
-} from "@/lib/client-portal-load";
-import { PortalGlobalPage } from "@/components/client/portal-global-page";
+import { redirect } from "next/navigation";
+import { requirePortalSession } from "@/lib/client-portal-load";
 
-export default async function ClientAboutPage({
+export default async function LegacyAboutPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
   await requirePortalSession(slug);
-  const { portal, content, branding, clientDisplayName } = await loadActivePortal(slug);
-  await trackPortalView(portal.id);
-
-  return (
-    <PortalGlobalPage
-      slug={slug}
-      clientDisplayName={clientDisplayName}
-      branding={branding}
-      title={content.aboutTitle}
-    >
-      <p className="whitespace-pre-wrap">{content.aboutBody}</p>
-    </PortalGlobalPage>
-  );
+  redirect(`/${slug}/experience/about-us`);
 }

@@ -1,7 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { DEFAULT_SECTIONS, SECTION_COPY } from "@/lib/assumptions";
+import { EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE } from "@/lib/experience-defaults";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 import type { SectionType } from "@prisma/client";
 
@@ -77,13 +77,22 @@ export async function POST(request: Request) {
     });
 
     await prisma.proposalSection.createMany({
-      data: DEFAULT_SECTIONS.map((s) => ({
+      data: EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE.map((s) => ({
         proposalId: proposal.id,
         sectionType: s.sectionType as SectionType,
         title: s.title,
         sortOrder: s.sortOrder,
-        visible: s.sectionType !== "charter_strategy",
-        bodyCopy: SECTION_COPY[s.sectionType] ?? null,
+        visible: s.visible,
+        bodyCopy: s.bodyCopy,
+        layoutVariant: s.layoutVariant,
+        contentBlocks: s.contentBlocks ?? undefined,
+        signatoryName: s.signatoryName,
+        signatoryTitle: s.signatoryTitle,
+        imageUrl: s.imageUrl,
+        videoUrl: s.videoUrl,
+        posterUrl: s.posterUrl,
+        calloutMetricLabel: s.calloutMetricLabel,
+        calloutMetricValue: s.calloutMetricValue,
       })),
     });
 

@@ -39,6 +39,7 @@ export function WorkspaceLayout({
   currentUserId,
   currentUserName,
   initialComments,
+  experienceManager,
   ownerBar,
   footer,
   children,
@@ -66,6 +67,7 @@ export function WorkspaceLayout({
   currentUserId: string;
   currentUserName: string;
   initialComments?: ProposalComment[];
+  experienceManager?: React.ReactNode;
   ownerBar?: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
@@ -121,6 +123,8 @@ export function WorkspaceLayout({
           onSave={onProspectSave}
           saveState={prospectSaveState}
         />
+
+        {experienceManager}
 
         <div className="flex min-h-0 flex-1 flex-col border-y border-atlas-border/80 bg-atlas-bg/30">
           <ProposalCommentsPanel

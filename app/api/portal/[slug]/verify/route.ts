@@ -49,7 +49,7 @@ export async function POST(
       slug,
     });
 
-    return jsonOk({ success: true, redirect: `/${slug}/deck` });
+    return jsonOk({ success: true, redirect: `/${slug}/experience/welcome` });
   } catch (e) {
     return handleApiError(e);
   }

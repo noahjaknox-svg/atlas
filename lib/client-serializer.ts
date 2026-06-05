@@ -84,3 +84,5 @@ export async function serializeClientSnapshot(
     statementRows: summary.statementRows,
   };
 }
+
+export type ClientSnapshotView = Awaited<ReturnType<typeof serializeClientSnapshot>>;

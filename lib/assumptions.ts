@@ -33,18 +33,15 @@ export const WIZARD_STEPS = [
 ] as const;
 
 export const DEFAULT_SECTIONS = [
-  { sectionType: "cover", title: "Cover", sortOrder: 1 },
-  { sectionType: "executive_summary", title: "Executive Summary", sortOrder: 2 },
-  { sectionType: "aircraft_overview", title: "Aircraft Overview", sortOrder: 3 },
-  { sectionType: "management_approach", title: "Management Approach", sortOrder: 4 },
-  { sectionType: "operating_assumptions", title: "Operating Assumptions", sortOrder: 5 },
-  { sectionType: "charter_strategy", title: "Charter Revenue Strategy", sortOrder: 6 },
-  { sectionType: "pro_forma", title: "Financial Pro Forma", sortOrder: 7 },
-  { sectionType: "cost_breakdown", title: "Cost Breakdown", sortOrder: 8 },
-  { sectionType: "transition_plan", title: "Transition Plan", sortOrder: 9 },
-  { sectionType: "team", title: "PrismJet Team", sortOrder: 10 },
-  { sectionType: "next_steps", title: "Next Steps", sortOrder: 11 },
-  { sectionType: "disclaimer", title: "Disclaimer", sortOrder: 12 },
+  { sectionType: "welcome", title: "Welcome", sortOrder: 1 },
+  { sectionType: "about_us", title: "About Us", sortOrder: 2 },
+  { sectionType: "aircraft_management", title: "Aircraft Management", sortOrder: 3 },
+  { sectionType: "aircraft_charter", title: "Aircraft Charter", sortOrder: 4 },
+  { sectionType: "maintenance", title: "Maintenance", sortOrder: 5 },
+  { sectionType: "sales_acquisitions", title: "Sales and Acquisitions", sortOrder: 6 },
+  { sectionType: "conformity_process", title: "Conformity Process", sortOrder: 7 },
+  { sectionType: "pro_forma", title: "Pro Forma", sortOrder: 8 },
+  { sectionType: "disclaimer", title: "Disclaimer", sortOrder: 9 },
 ] as const;
 
 export const SECTION_COPY: Record<string, string> = {

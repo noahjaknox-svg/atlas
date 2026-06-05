@@ -1,6 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import type { ExperienceContentBlocks } from "@/lib/experience-content";
 
 export async function PATCH(
   request: Request,
@@ -37,7 +38,14 @@ export async function PATCH(
             item.calloutMetricLabel !== undefined ? item.calloutMetricLabel : undefined,
           calloutMetricValue:
             item.calloutMetricValue !== undefined ? item.calloutMetricValue : undefined,
-        } as any,
+          layoutVariant: item.layoutVariant !== undefined ? item.layoutVariant : undefined,
+          contentBlocks:
+            item.contentBlocks !== undefined
+              ? (item.contentBlocks as ExperienceContentBlocks)
+              : undefined,
+          signatoryName: item.signatoryName !== undefined ? item.signatoryName : undefined,
+          signatoryTitle: item.signatoryTitle !== undefined ? item.signatoryTitle : undefined,
+        },
       });
       results.push(result);
     }

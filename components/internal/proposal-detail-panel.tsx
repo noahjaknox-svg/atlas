@@ -316,7 +316,8 @@ export function ProposalDetailPanel({
                   className="text-xs"
                   disabled={!portalActive}
                   onClick={() =>
-                    portalActive && window.open(`/${data.clientPortal!.slug}/deck`, "_blank")
+                    portalActive &&
+                      window.open(`/${data.clientPortal!.slug}/experience/welcome`, "_blank")
                   }
                 >
                   Preview

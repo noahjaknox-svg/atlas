@@ -7,11 +7,11 @@ import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "deck", label: "Your PrismJet Experience" },
-  { href: "about", label: "About us" },
+  { href: "experience/welcome", label: "Your PrismJet Experience" },
+  { href: "experience/about-us", label: "About us" },
   { href: "aircraft", label: "Your aircraft" },
-  { href: "services", label: "Services" },
-  { href: "contact", label: "Contact" },
+  { href: "experience/aircraft-management", label: "Services" },
+  { href: "experience/sales-acquisitions", label: "Contact" },
 ] as const;
 
 export function ClientShell({
@@ -68,7 +68,7 @@ export function ClientShell({
       >
         <div className="flex h-[var(--portal-nav-height)] items-center gap-2 px-3 sm:gap-3 sm:px-5">
           {/* Left: logo + client name */}
-          <Link href={`/${slug}/deck`} className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <Link href={`/${slug}/experience/welcome`} className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl ?? "/images/prismjet-logo.svg"}
@@ -134,10 +134,10 @@ export function ClientShell({
           {/* Right: Pro Forma CTA + overflow */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <Link
-              href={proFormaHref ?? `/${slug}/pro-forma`}
+              href={proFormaHref ?? `/${slug}/experience/pro-forma`}
               className={cn(
                 "rounded px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors sm:px-4 sm:py-2 sm:text-xs",
-                isActive("pro-forma")
+                pathname?.includes("/experience/pro-forma") || pathname?.includes("/pro-forma")
                   ? "bg-atlas-accent text-[#0a0d14] ring-2 ring-atlas-accent/50"
                   : "bg-atlas-accent text-[#0a0d14] hover:bg-atlas-accent-hover"
               )}

@@ -8,6 +8,7 @@ import type { PortalPresentationState } from "@/components/internal/workspace/po
 import { PortalPresentationDialog } from "@/components/internal/workspace/portal-presentation-dialog";
 import { WorkspaceLayout } from "@/components/internal/workspace/workspace-layout";
 import { WorkspaceOwnerBar } from "@/components/internal/workspace/workspace-owner-bar";
+import { ExperienceManagerPanel } from "@/components/internal/workspace/experience-manager-panel";
 import { WorkspaceProposalFooter } from "@/components/internal/workspace/workspace-proposal-footer";
 import type { ProposalComment } from "@/components/internal/workspace/proposal-comments-panel";
 import {
@@ -44,9 +45,12 @@ type SectionRow = {
   title: string;
   bodyCopy: string | null;
   visible: boolean;
+  sortOrder: number;
   imageUrl?: string | null;
   videoUrl?: string | null;
   posterUrl?: string | null;
+  signatoryName?: string | null;
+  signatoryTitle?: string | null;
 };
 
 export type ProposalWorkspaceData = {
@@ -125,6 +129,7 @@ export function ProposalWorkspace({
   const [allocationModeByAircraft, setAllocationModeByAircraft] = useState(
     data.allocationModeByAircraft
   );
+  const [sections, setSections] = useState(data.sections);
   const ownersSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipOwnersSave = useRef(true);
 
@@ -743,6 +748,16 @@ export function ProposalWorkspace({
         onProspectSave={handleProspectSave}
         prospectSaveState={prospectSaveState}
         saveLabel={saveLabel}
+        experienceManager={
+          <ExperienceManagerPanel
+            proposalId={data.id}
+            sections={sections}
+            onSectionsChange={setSections}
+            portalSlug={portalSlug}
+            needsRepublish={needsRepublish}
+            onSaved={() => setNeedsRepublish(true)}
+          />
+        }
         currentUserId={data.currentUserId}
         currentUserName={data.currentUserName}
         initialComments={data.initialComments}
@@ -769,7 +784,9 @@ export function ProposalWorkspace({
             needsRepublish={needsRepublish}
             isAdmin={isAdmin}
             hasSelectedAircraft={!!selected}
-            onPreview={() => portalSlug && window.open(`/${portalSlug}/deck`, "_blank")}
+            onPreview={() =>
+              portalSlug && window.open(`/${portalSlug}/experience/welcome`, "_blank")
+            }
             onPublish={() => void handlePublish(false)}
             onRepublish={() => void handlePublish(true)}
             onRegeneratePin={() => void handleRegeneratePin()}

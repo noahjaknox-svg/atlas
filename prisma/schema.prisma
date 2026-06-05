@@ -150,6 +150,13 @@ enum SectionType {
   team
   next_steps
   disclaimer
+  welcome
+  about_us
+  aircraft_management
+  aircraft_charter
+  maintenance
+  sales_acquisitions
+  conformity_process
 }
 
 model User {
@@ -766,6 +773,10 @@ model ProposalSection {
   posterUrl           String?     @map("poster_url")
   calloutMetricLabel  String?     @map("callout_metric_label")
   calloutMetricValue  String?     @map("callout_metric_value")
+  layoutVariant       String?     @map("layout_variant")
+  contentBlocks       Json?       @map("content_blocks") @db.JsonB
+  signatoryName       String?     @map("signatory_name")
+  signatoryTitle      String?     @map("signatory_title")
   internalNotes       String?     @map("internal_notes") @db.Text
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
