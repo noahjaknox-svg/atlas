@@ -33,7 +33,7 @@ export function WelcomePage({
         posterUrl={section.posterUrl}
         kenBurns
       >
-        <RevealOnScroll>
+        <RevealOnScroll immediate>
           <p className="text-xs uppercase tracking-[0.35em] text-atlas-accent">PrismJet</p>
           <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
             Aircraft Management &amp; Charter
@@ -43,7 +43,7 @@ export function WelcomePage({
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
-        <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_280px]">
+        <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
           <RevealOnScroll delayMs={100}>
             <div className="whitespace-pre-wrap text-base leading-relaxed text-white/85">{letter}</div>
             {(section.signatoryName || section.signatoryTitle) && (

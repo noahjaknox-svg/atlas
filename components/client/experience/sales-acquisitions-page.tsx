@@ -20,16 +20,16 @@ export function SalesAcquisitionsPage({
         posterUrl={section.posterUrl}
         kenBurns
       >
-        <RevealOnScroll>
+        <RevealOnScroll immediate>
           <SectionNumber n="05" />
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
         <RevealOnScroll>
-          <p className="mx-auto max-w-3xl text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
+          <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>
-        <div className="mx-auto mt-12 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((tile, i) => (
             <RevealOnScroll key={tile.title} delayMs={i * 60}>
               <div className="h-full rounded-xl border border-white/10 p-5 transition-colors hover:border-atlas-accent/30">
@@ -42,7 +42,7 @@ export function SalesAcquisitionsPage({
           ))}
         </div>
         <RevealOnScroll delayMs={200}>
-          <div className="mx-auto mt-14 flex max-w-3xl flex-wrap justify-center gap-8 border-t border-white/10 pt-10 text-center text-sm">
+          <div className="mt-14 flex flex-wrap justify-center gap-8 border-t border-white/10 pt-10 text-center text-sm">
             {blocks?.contactWebsite ? (
               <div>
                 <p className="text-xs uppercase tracking-wider text-white/45">Website</p>

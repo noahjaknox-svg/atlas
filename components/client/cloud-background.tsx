@@ -8,6 +8,7 @@ export function CloudBackground({
   videoUrl,
   posterUrl,
   overlay = "dark",
+  fillContainer = false,
   className,
   children,
 }: {
@@ -15,6 +16,8 @@ export function CloudBackground({
   videoUrl?: string | null;
   posterUrl?: string | null;
   overlay?: "dark" | "light" | "none";
+  /** When true, fill parent height instead of min-h-screen (hero bands). */
+  fillContainer?: boolean;
   className?: string;
   children?: React.ReactNode;
 }) {
@@ -22,7 +25,13 @@ export function CloudBackground({
   const poster = posterUrl || img;
 
   return (
-    <div className={cn("relative min-h-screen overflow-hidden", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden",
+        fillContainer ? "min-h-full h-full" : "min-h-screen",
+        className
+      )}
+    >
       <div className="pointer-events-none absolute inset-0 -z-10">
         {videoUrl ? (
           <video

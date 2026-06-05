@@ -98,7 +98,7 @@ export function AircraftPortalDetail({
 
       <div className="flex flex-wrap gap-4 pt-2">
         <Link
-          href={`/${slug}/pro-forma?aircraft=${aircraft.id}`}
+          href={`/${slug}/experience/pro-forma?aircraft=${aircraft.id}`}
           className="rounded-lg bg-atlas-accent px-8 py-3 text-sm font-semibold uppercase tracking-[0.1em] text-[#0a0d14] transition-colors hover:bg-atlas-accent-hover"
         >
           View pro forma

@@ -27,7 +27,7 @@ export function ConformityPage({
         posterUrl={section.posterUrl}
         kenBurns
       >
-        <RevealOnScroll>
+        <RevealOnScroll immediate>
           <SectionNumber n="06" />
           <h1 className="mt-3 max-w-3xl font-serif text-3xl sm:text-4xl lg:text-5xl">
             Transition &amp; Conformity Process Guide
@@ -37,9 +37,9 @@ export function ConformityPage({
       <ExperienceBody className="space-y-16">
         <RevealOnScroll>
           <h2 className="font-serif text-2xl">What to expect in the transition</h2>
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
+          <p className="mt-4 text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
           {introBullets.length > 0 ? (
-            <ul className="mt-6 max-w-2xl space-y-2">
+            <ul className="mt-6 space-y-2">
               {introBullets.map((b) => (
                 <li key={b} className="flex gap-3 text-sm text-white/75">
                   <span className="text-atlas-accent">•</span>
@@ -69,7 +69,7 @@ export function ConformityPage({
         {checklist.length > 0 ? (
           <RevealOnScroll>
             <h2 className="font-serif text-2xl">The conformity process</h2>
-            <p className="mt-3 max-w-3xl text-sm text-white/65">
+            <p className="mt-3 text-sm text-white/65">
               Conformity validates that the aircraft meets all operational and regulatory requirements
               for FAA Part 135 operations under the PrismJet certificate.
             </p>

@@ -24,7 +24,7 @@ export function ExperienceProFormaPage({
         videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
         posterUrl={section.posterUrl}
       >
-        <RevealOnScroll>
+        <RevealOnScroll immediate>
           <SectionNumber n="07" />
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
           {section.bodyCopy ? (
@@ -32,11 +32,13 @@ export function ExperienceProFormaPage({
           ) : null}
         </RevealOnScroll>
       </ExperienceHero>
-      <ExperienceBody className="!px-4 sm:!px-8">
+      <ExperienceBody fullWidth>
         <ProFormaClient
           slug={slug}
           initial={client}
           initialAircraftId={aircraftParam ?? client.aircraft.id}
+          embedded
+          experiencePath
         />
       </ExperienceBody>
     </>

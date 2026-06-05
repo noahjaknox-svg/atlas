@@ -82,7 +82,7 @@ export function AircraftCharterPage({
         posterUrl={section.posterUrl}
         kenBurns
       >
-        <RevealOnScroll>
+        <RevealOnScroll immediate>
           <SectionNumber n="03" />
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
         </RevealOnScroll>
@@ -90,17 +90,17 @@ export function AircraftCharterPage({
       <ExperienceBody>
         {quote ? (
           <RevealOnScroll>
-            <blockquote className="mx-auto max-w-3xl border-l-4 border-atlas-accent pl-6 font-serif text-2xl leading-snug text-white/90 sm:text-3xl">
+            <blockquote className="border-l-4 border-atlas-accent pl-6 font-serif text-2xl leading-snug text-white/90 sm:text-3xl">
               &ldquo;{quote.text}&rdquo;
             </blockquote>
           </RevealOnScroll>
         ) : null}
         <RevealOnScroll delayMs={100}>
-          <p className="mx-auto mt-8 max-w-3xl text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
+          <p className="mt-8 text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>
         {bullets.length > 0 ? (
           <RevealOnScroll delayMs={150}>
-            <ul className="mx-auto mt-8 max-w-2xl space-y-3">
+            <ul className="mt-8 space-y-3">
               {bullets.map((b) => (
                 <li key={b} className="flex gap-3 text-sm text-white/75">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-atlas-accent" />

@@ -7,15 +7,20 @@ export function RevealOnScroll({
   children,
   className,
   delayMs = 0,
+  immediate = false,
 }: {
   children: React.ReactNode;
   className?: string;
   delayMs?: number;
+  /** Show immediately (above-the-fold heroes) — no initial opacity-0. */
+  immediate?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(immediate);
 
   useEffect(() => {
+    if (immediate) return;
+
     const el = ref.current;
     if (!el) return;
 
@@ -36,7 +41,13 @@ export function RevealOnScroll({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [immediate]);
+
+  if (immediate) {
+    return (
+      <div className={cn("motion-safe:animate-[fadeUp_0.6s_ease-out]", className)}>{children}</div>
+    );
+  }
 
   return (
     <div

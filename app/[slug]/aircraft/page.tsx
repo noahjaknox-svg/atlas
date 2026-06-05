@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
-import {
-  requirePortalSession,
-  loadActivePortal,
-  trackPortalView,
-} from "@/lib/client-portal-load";
+import { loadExperiencePortalLayout } from "@/lib/experience-portal-layout";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
-import { ClientShell } from "@/components/client/client-shell";
+import { ExperienceShell } from "@/components/client/experience/experience-shell";
+import { experiencePageX } from "@/components/client/experience/experience-primitives";
 import { CloudBackground } from "@/components/client/cloud-background";
 import { AircraftPortalList } from "@/components/client/aircraft-portal-list";
 import { PrismJetFleetSection } from "@/components/client/prismjet-fleet-section";
+import { cn } from "@/lib/utils";
 
 export default async function ClientAircraftPage({
   params,
@@ -16,32 +14,22 @@ export default async function ClientAircraftPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  await requirePortalSession(slug);
-  const { portal, payload, content, fleet, branding, clientDisplayName } =
-    await loadActivePortal(slug);
+  const { payload, content, fleet, branding, clientDisplayName, sections, disclaimer } =
+    await loadExperiencePortalLayout(slug);
 
-  if (!payload) redirect(`/${slug}`);
-
-  const aircraftList = normalizeAircraftList(payload);
+  const aircraftList = normalizeAircraftList(payload!);
 
   if (aircraftList.length === 1) {
     redirect(`/${slug}/aircraft/${aircraftList[0]!.id}`);
   }
 
-  await trackPortalView(portal.id);
-
-  const proFormaHref =
-    aircraftList.length === 1
-      ? `/${slug}/pro-forma?aircraft=${aircraftList[0]!.id}`
-      : `/${slug}/pro-forma`;
-
   return (
-    <ClientShell
+    <ExperienceShell
       slug={slug}
-      clientDisplayName={clientDisplayName}
+      sections={sections}
       logoUrl={branding.logoUrl}
-      proFormaHref={proFormaHref}
-      variant="immersive"
+      clientDisplayName={clientDisplayName}
+      disclaimer={disclaimer}
     >
       <CloudBackground
         imageUrl={branding.heroCloudImageUrl}
@@ -49,7 +37,7 @@ export default async function ClientAircraftPage({
         overlay="dark"
         className="min-h-[calc(100vh-var(--portal-nav-height))]"
       >
-        <div className="px-6 py-12 sm:px-12 lg:px-16">
+        <div className={cn("py-12", experiencePageX)}>
           <AircraftPortalList slug={slug} aircraft={aircraftList} />
           <PrismJetFleetSection
             title={content.fleetTitle}
@@ -58,6 +46,6 @@ export default async function ClientAircraftPage({
           />
         </div>
       </CloudBackground>
-    </ClientShell>
+    </ExperienceShell>
   );
 }

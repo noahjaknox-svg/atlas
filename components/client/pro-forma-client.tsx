@@ -45,10 +45,16 @@ export function ProFormaClient({
   slug,
   initial,
   initialAircraftId,
+  embedded = false,
+  experiencePath = true,
 }: {
   slug: string;
   initial: ClientProFormaData;
   initialAircraftId?: string | null;
+  /** Hide duplicate page chrome when rendered inside Experience hero. */
+  embedded?: boolean;
+  /** Use /experience/pro-forma URLs for aircraft query updates. */
+  experiencePath?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -111,7 +117,10 @@ export function ProFormaClient({
     } else {
       params.delete("aircraft");
     }
-    router.replace(`/${slug}/pro-forma?${params.toString()}`, { scroll: false });
+    const base = experiencePath
+      ? `/${slug}/experience/pro-forma`
+      : `/${slug}/pro-forma`;
+    router.replace(`${base}?${params.toString()}`, { scroll: false });
   }
 
   function restore() {
@@ -123,13 +132,19 @@ export function ProFormaClient({
   return (
     <div className="space-y-10 text-white">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
-          <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
-          {data.aircraft?.label ? (
-            <p className="mt-2 text-white/60">{data.aircraft.label}</p>
-          ) : null}
-        </div>
+        {!embedded ? (
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
+            <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
+            {data.aircraft?.label ? (
+              <p className="mt-2 text-white/60">{data.aircraft.label}</p>
+            ) : null}
+          </div>
+        ) : data.aircraft?.label ? (
+          <p className="text-sm text-white/60">{data.aircraft.label}</p>
+        ) : (
+          <span />
+        )}
         <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
           {(["annual", "monthly"] as const).map((p) => (
             <button
@@ -172,10 +187,12 @@ export function ProFormaClient({
         </div>
       ) : null}
 
-      <p className="max-w-2xl text-white/70">
-        Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
-        model scenarios — updates live.
-      </p>
+      {!embedded ? (
+        <p className="max-w-2xl text-white/70">
+          Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
+          model scenarios — updates live.
+        </p>
+      ) : null}
 
       <div className="grid max-w-xl gap-6 sm:grid-cols-2">
         <label className="block text-sm text-white/70">
