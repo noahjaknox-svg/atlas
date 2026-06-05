@@ -1,6 +1,8 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { decryptPinFromStorage } from "@/lib/pin-vault";
+import { getPortalUrl } from "@/lib/portal-credentials";
 
 export async function GET(
   _request: Request,
@@ -14,6 +16,7 @@ export async function GET(
       where: { id },
       include: {
         prospect: true,
+        preparedBy: { select: { id: true, name: true, email: true } },
         aircraftInstance: { include: { aircraftMaster: true } },
         assumptions: true,
         sections: { orderBy: { sortOrder: "asc" } },
@@ -24,7 +27,19 @@ export async function GET(
     });
 
     if (!proposal) throw new Error("NOT_FOUND");
-    return jsonOk(proposal);
+
+    const serialized = JSON.parse(JSON.stringify(proposal)) as Record<string, unknown>;
+    if (proposal.clientPortal) {
+      const { pinCiphertext, ...portalRest } = proposal.clientPortal;
+      const pin = pinCiphertext ? decryptPinFromStorage(pinCiphertext) : null;
+      serialized.clientPortal = {
+        ...portalRest,
+        portalUrl: getPortalUrl(proposal.clientPortal.slug),
+        pin,
+      };
+    }
+
+    return jsonOk(serialized);
   } catch (e) {
     return handleApiError(e);
   }
@@ -44,6 +59,8 @@ export async function PATCH(
       data: {
         proposalName: body.proposalName,
         status: body.status,
+        isParked: typeof body.isParked === "boolean" ? body.isParked : undefined,
+        pipelineStage: body.pipelineStage,
         internalNotes: body.internalNotes,
         clientSummary: body.clientSummary,
         expirationDate: body.expirationDate ? new Date(body.expirationDate) : undefined,

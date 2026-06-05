@@ -19,6 +19,8 @@ export async function POST(
     const body = await request.json();
     const aircraftValue = body.aircraftValue ?? body.aircraft_value;
     const ownerHours = body.ownerHours ?? body.owner_annual_hours;
+    const aircraftInstanceId =
+      body.aircraftInstanceId ?? body.aircraft_instance_id ?? body.aircraft ?? null;
 
     const portal = await prisma.clientPortal.findUnique({
       where: { slug },
@@ -37,22 +39,29 @@ export async function POST(
     if (!snapshot) return jsonError("Proposal not published", 404);
 
     const payload = snapshot.snapshotJson as unknown as ProposalSnapshotPayload;
-    const clientView = serializeClientSnapshot(payload, {
+    const clientView = await serializeClientSnapshot(payload, {
       aircraftValue: aircraftValue != null ? Number(aircraftValue) : undefined,
       ownerHours: ownerHours != null ? Number(ownerHours) : undefined,
+      aircraftInstanceId:
+        aircraftInstanceId != null && aircraftInstanceId !== ""
+          ? String(aircraftInstanceId)
+          : undefined,
+      proposalId: portal.proposalId,
     });
 
-    await prisma.clientScenario.create({
-      data: {
-        proposalId: portal.proposalId,
-        portalId: portal.id,
-        aircraftValue: aircraftValue != null ? Number(aircraftValue) : null,
-        ownerHours: ownerHours != null ? Number(ownerHours) : null,
-        calculatedNetAnnualCost: clientView.proForma.netAnnualCost,
-        calculatedMonthlyCost: clientView.proForma.netMonthlyCost,
-        calculatedCostPerOwnerHour: clientView.proForma.costPerOwnerHour,
-      },
-    });
+    if (body.persistScenario === true) {
+      await prisma.clientScenario.create({
+        data: {
+          proposalId: portal.proposalId,
+          portalId: portal.id,
+          aircraftValue: aircraftValue != null ? Number(aircraftValue) : null,
+          ownerHours: ownerHours != null ? Number(ownerHours) : null,
+          calculatedNetAnnualCost: clientView.proForma.netAnnualCost,
+          calculatedMonthlyCost: clientView.proForma.netMonthlyCost,
+          calculatedCostPerOwnerHour: clientView.proForma.costPerOwnerHour,
+        },
+      });
+    }
 
     return jsonOk(clientView);
   } catch (e) {

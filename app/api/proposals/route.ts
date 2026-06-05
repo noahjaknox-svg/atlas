@@ -2,6 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { DEFAULT_SECTIONS, SECTION_COPY } from "@/lib/assumptions";
+import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 import type { SectionType } from "@prisma/client";
 
 export async function GET() {
@@ -25,46 +26,54 @@ export async function POST(request: Request) {
 
     const {
       prospectName,
-      companyName,
+      aircraftModel,
       contactName,
       contactEmail,
       contactPhone,
       prospectType,
-      opportunityType,
       proposalName,
     } = body;
 
-    if (!prospectName || !contactName || !contactEmail || !prospectType || !opportunityType) {
-      return jsonError("Missing required prospect fields");
+    if (!prospectName?.trim()) {
+      return jsonError("Prospect name is required");
     }
+
+    const resolvedContactName = contactName?.trim() || prospectName.trim();
+    const resolvedEmail =
+      contactEmail?.trim() || user.email || "pending@prismjet.internal";
 
     const prospect = await prisma.prospect.create({
       data: {
-        prospectName,
-        companyName,
-        contactName,
-        contactEmail,
-        contactPhone,
-        prospectType,
-        opportunityType,
+        prospectName: prospectName.trim(),
+        companyName: null,
+        contactName: resolvedContactName,
+        contactEmail: resolvedEmail,
+        contactPhone: contactPhone?.trim() || null,
+        prospectType: prospectType || "other",
+        opportunityType: "aircraft_management",
         createdById: user.id,
         internalNotes: body.internalNotes,
         clientSummary: body.clientSummary,
       },
     });
 
-    const aircraft = await prisma.aircraftInstance.create({
-      data: { prospectId: prospect.id },
-    });
-
     const proposal = await prisma.proposal.create({
       data: {
         prospectId: prospect.id,
-        aircraftInstanceId: aircraft.id,
+        aircraftInstanceId: null as string | null,
         proposalName: proposalName ?? `${prospectName} — Atlas Proposal`,
         preparedById: user.id,
         preparedDate: new Date(),
       },
+    });
+
+    const aircraft = await prisma.aircraftInstance.create({
+      data: { prospectId: prospect.id, proposalId: proposal.id },
+    });
+
+    await prisma.proposal.update({
+      where: { id: proposal.id },
+      data: { aircraftInstanceId: aircraft.id },
     });
 
     await prisma.proposalSection.createMany({
@@ -78,13 +87,27 @@ export async function POST(request: Request) {
       })),
     });
 
-    await prisma.proposalScenario.create({
-      data: {
-        proposalId: proposal.id,
-        scenarioName: "Base Case",
-        isBaseCase: true,
-      },
-    });
+    const { ensureThreeScenarios } = await import("@/lib/scenarios");
+    await ensureThreeScenarios(proposal.id, aircraft.id);
+
+    if (aircraftModel?.trim()) {
+      const acCategory = aircraftAssumptionCategory(aircraft.id);
+      const initialAssumptions = [
+        { assumptionName: "aircraft_model", value: aircraftModel.trim() },
+        { assumptionName: "opportunity_type", value: "aircraft_management" },
+      ];
+      for (const row of initialAssumptions) {
+        await prisma.proposalAssumption.create({
+          data: {
+            proposalId: proposal.id,
+            category: acCategory,
+            assumptionName: row.assumptionName,
+            value: row.value,
+            sourceType: "manual",
+          },
+        });
+      }
+    }
 
     return jsonOk({ proposal, prospect, aircraft }, 201);
   } catch (e) {

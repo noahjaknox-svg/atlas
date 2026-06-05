@@ -1,12 +1,25 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { formatCurrency } from "@/lib/utils";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
+import type { ProFormaStatementRow } from "@/lib/proforma-statement";
+
+interface AircraftListOption {
+  id: string;
+  label: string;
+  tailNumber: string | null;
+  year: number | null;
+  portalImageUrl: string | null;
+}
 
 interface ClientProFormaData {
+  aircraft: {
+    id: string;
+    label: string;
+  };
+  aircraftList: AircraftListOption[];
   editableFields: {
     aircraftValue: { value: number };
     ownerAnnualHours: { value: number };
@@ -22,67 +35,113 @@ interface ClientProFormaData {
     lineItems: Array<{ key: string; label: string; category: string; annual: number; monthly: number }>;
   };
   fixedCostBreakdown: Array<{ label: string; annual: number; monthly: number }>;
+  statementRows: ProFormaStatementRow[];
 }
 
-export function ProFormaClient({ slug, initial }: { slug: string; initial: ClientProFormaData }) {
+const inputClass =
+  "mt-1.5 w-full rounded border border-white/20 bg-white/10 px-3 py-2.5 font-mono text-sm text-white backdrop-blur focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/30";
+
+export function ProFormaClient({
+  slug,
+  initial,
+  initialAircraftId,
+}: {
+  slug: string;
+  initial: ClientProFormaData;
+  initialAircraftId?: string | null;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [period, setPeriod] = useState<"annual" | "monthly">("annual");
+  const [selectedAircraftId, setSelectedAircraftId] = useState(
+    initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? ""
+  );
   const [aircraftValue, setAircraftValue] = useState(initial.editableFields.aircraftValue.value);
   const [ownerHours, setOwnerHours] = useState(initial.editableFields.ownerAnnualHours.value);
   const [data, setData] = useState(initial);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [baseline, setBaseline] = useState({
+    aircraftValue: initial.baseMetrics.aircraftValue,
+    ownerHours: initial.baseMetrics.ownerHours,
+  });
 
-  const recalculate = useCallback(async () => {
-    const res = await fetch(`/api/portal/${slug}/scenario`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aircraftValue, ownerHours }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setData(updated);
-    }
-  }, [slug, aircraftValue, ownerHours]);
+  const showAircraftSelector = initial.aircraftList.length > 1;
+  const skipInitialRecalc = useRef(true);
+  const userEditedRef = useRef(false);
+
+  const recalculate = useCallback(
+    async (options?: { persist?: boolean }) => {
+      const res = await fetch(`/api/portal/${slug}/scenario`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          aircraftValue,
+          ownerHours,
+          aircraftInstanceId: selectedAircraftId || undefined,
+          persistScenario: options?.persist === true,
+        }),
+      });
+      if (res.ok) {
+        const updated = (await res.json()) as ClientProFormaData;
+        setData(updated);
+        setBaseline({
+          aircraftValue: updated.baseMetrics.aircraftValue,
+          ownerHours: updated.baseMetrics.ownerHours,
+        });
+      }
+    },
+    [slug, aircraftValue, ownerHours, selectedAircraftId]
+  );
 
   useEffect(() => {
-    const t = setTimeout(recalculate, 500);
+    if (skipInitialRecalc.current) {
+      skipInitialRecalc.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      void recalculate({ persist: userEditedRef.current });
+    }, 500);
     return () => clearTimeout(t);
   }, [recalculate]);
 
-  function restore() {
-    setAircraftValue(initial.baseMetrics.aircraftValue);
-    setOwnerHours(initial.baseMetrics.ownerHours);
+  function selectAircraft(id: string) {
+    setSelectedAircraftId(id);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id && id !== "legacy-primary") {
+      params.set("aircraft", id);
+    } else {
+      params.delete("aircraft");
+    }
+    router.replace(`/${slug}/pro-forma?${params.toString()}`, { scroll: false });
   }
 
-  const val = (annual: number, monthly: number) =>
-    period === "annual" ? annual : monthly;
-
-  const summaryRows = [
-    { key: "fixed", label: "Fixed Ownership Costs", annual: data.fixedCostBreakdown.reduce((s, i) => s + i.annual, 0) },
-    {
-      key: "owner",
-      label: "Owner Flight Costs",
-      annual: data.proForma.lineItems.find((l) => l.key === "owner_variable")?.annual ?? 0,
-    },
-    {
-      key: "charter_rev",
-      label: "Charter Revenue Offset",
-      annual: -(data.proForma.lineItems.find((l) => l.key === "total_revenue")?.annual ?? 0),
-    },
-  ];
+  function restore() {
+    userEditedRef.current = true;
+    setAircraftValue(baseline.aircraftValue);
+    setOwnerHours(baseline.ownerHours);
+  }
 
   return (
-    <div className="space-y-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-serif text-3xl">Atlas Pro Forma</h1>
-        <div className="flex rounded-lg border border-atlas-border p-1">
+    <div className="space-y-10 text-white">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
+          <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
+          {data.aircraft?.label ? (
+            <p className="mt-2 text-white/60">{data.aircraft.label}</p>
+          ) : null}
+        </div>
+        <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
           {(["annual", "monthly"] as const).map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => setPeriod(p)}
-              className={`rounded-md px-4 py-2 text-sm capitalize ${
-                period === p ? "bg-atlas-accent text-atlas-bg" : "text-atlas-muted"
-              }`}
+              className={cn(
+                "rounded-md px-4 py-2 text-sm capitalize transition-colors",
+                period === p
+                  ? "bg-atlas-accent text-[#0a0d14]"
+                  : "text-white/60 hover:text-white"
+              )}
             >
               {p}
             </button>
@@ -90,89 +149,70 @@ export function ProFormaClient({ slug, initial }: { slug: string; initial: Clien
         </div>
       </div>
 
-      <p className="max-w-2xl text-atlas-muted">
-        The pro forma below is designed to provide a practical estimate of annual and monthly aircraft
-        ownership economics. Adjust aircraft value and owner hours to explore scenarios.
+      {showAircraftSelector ? (
+        <div className="flex flex-wrap gap-2">
+          {initial.aircraftList.map((ac) => (
+            <button
+              key={ac.id}
+              type="button"
+              onClick={() => selectAircraft(ac.id)}
+              className={cn(
+                "rounded-lg border px-4 py-2 text-sm transition-colors",
+                selectedAircraftId === ac.id
+                  ? "border-atlas-accent bg-atlas-accent/15 text-atlas-accent"
+                  : "border-white/20 text-white/70 hover:border-white/40 hover:text-white"
+              )}
+            >
+              {ac.label}
+              {ac.tailNumber ? (
+                <span className="ml-2 text-white/45">{ac.tailNumber}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="max-w-2xl text-white/70">
+        Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
+        model scenarios — updates live.
       </p>
 
-      <div className="grid gap-6 sm:grid-cols-2 max-w-xl">
-        <div className="space-y-2">
-          <Label>Aircraft Value</Label>
-          <Input
+      <div className="grid max-w-xl gap-6 sm:grid-cols-2">
+        <label className="block text-sm text-white/70">
+          Aircraft value
+          <input
             type="number"
             value={aircraftValue}
-            onChange={(e) => setAircraftValue(Number(e.target.value))}
-            className="font-mono"
+            onChange={(e) => {
+              userEditedRef.current = true;
+              setAircraftValue(Number(e.target.value));
+            }}
+            className={inputClass}
           />
-        </div>
-        <div className="space-y-2">
-          <Label>Owner Annual Hours</Label>
-          <Input
+        </label>
+        <label className="block text-sm text-white/70">
+          Owner annual hours
+          <input
             type="number"
             value={ownerHours}
-            onChange={(e) => setOwnerHours(Number(e.target.value))}
-            className="font-mono"
+            onChange={(e) => {
+              userEditedRef.current = true;
+              setOwnerHours(Number(e.target.value));
+            }}
+            className={inputClass}
           />
-        </div>
+        </label>
       </div>
 
-      <Button variant="secondary" onClick={restore}>
-        Restore to PrismJet Assumptions
-      </Button>
+      <button
+        type="button"
+        onClick={restore}
+        className="text-sm text-atlas-accent hover:underline"
+      >
+        Restore to PrismJet assumptions
+      </button>
 
-      <div className="rounded-lg border border-atlas-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-atlas-surface text-atlas-muted">
-            <tr>
-              <th className="px-4 py-3 text-left">Category</th>
-              <th className="px-4 py-3 text-right">{period === "annual" ? "Annual" : "Monthly"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summaryRows.map((row) => (
-              <Fragment key={row.key}>
-                <tr
-                  className="border-t border-atlas-border cursor-pointer hover:bg-atlas-surface/50"
-                  onClick={() => setExpanded(expanded === row.key ? null : row.key)}
-                >
-                  <td className="px-4 py-3">{row.label}</td>
-                  <td
-                    className={`px-4 py-3 text-right font-mono tabular-nums ${
-                      row.annual < 0 ? "text-atlas-success" : ""
-                    }`}
-                  >
-                    {row.annual < 0 ? "(" : ""}
-                    {formatCurrency(Math.abs(val(row.annual, row.annual / 12)))}
-                    {row.annual < 0 ? ")" : ""}
-                  </td>
-                </tr>
-                {expanded === "fixed" && row.key === "fixed" && (
-                  <tr>
-                    <td colSpan={2} className="bg-atlas-surface/30 px-6 py-3">
-                      <ul className="space-y-1 text-atlas-muted">
-                        {data.fixedCostBreakdown.map((item) => (
-                          <li key={item.label} className="flex justify-between font-mono text-xs">
-                            <span>{item.label}</span>
-                            <span>{formatCurrency(val(item.annual, item.monthly))}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-            <tr className="border-t border-atlas-border bg-atlas-surface/50 font-semibold">
-              <td className="px-4 py-4">Net {period === "annual" ? "Annual" : "Monthly"} Cost</td>
-              <td className="px-4 py-4 text-right font-mono text-lg text-atlas-accent tabular-nums">
-                {formatCurrency(
-                  val(data.proForma.netAnnualCost, data.proForma.netMonthlyCost)
-                )}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ClientProFormaStatement rows={data.statementRows} period={period} />
     </div>
   );
 }

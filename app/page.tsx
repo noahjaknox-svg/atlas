@@ -3,5 +3,5 @@ import { getInternalUser } from "@/lib/auth";
 
 export default async function HomePage() {
   const user = await getInternalUser();
-  redirect(user ? "/dashboard" : "/login");
+  redirect(user ? "/pipeline" : "/login");
 }

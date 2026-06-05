@@ -1,3 +1,4 @@
+import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
@@ -49,6 +50,14 @@ export async function requireInternalUser() {
   const user = await getInternalUser();
   if (!user) {
     throw new Error("UNAUTHORIZED");
+  }
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireInternalUser();
+  if (user.role !== "admin") {
+    throw new Error("FORBIDDEN");
   }
   return user;
 }

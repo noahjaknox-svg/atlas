@@ -1,32 +1,25 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { AppHeader } from "@/components/internal/app-header";
 
 export function InternalShell({
   children,
   userName,
+  isAdmin,
+  workspace,
 }: {
   children: React.ReactNode;
   userName?: string;
+  isAdmin?: boolean;
+  /** Full-height layout for proposal workspace (no page scroll). */
+  workspace?: boolean;
 }) {
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-atlas-border bg-atlas-bg/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/dashboard" className="font-serif text-2xl tracking-wide text-atlas-accent">
-            Atlas
-          </Link>
-          <nav className="flex items-center gap-6 text-sm text-atlas-muted">
-            <Link href="/dashboard" className="hover:text-atlas-text">
-              Dashboard
-            </Link>
-            <Link href="/proposals/new">
-              <Button size="sm">+ New Proposal</Button>
-            </Link>
-            {userName && <span className="text-atlas-muted">{userName}</span>}
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
+    <div className="min-h-screen bg-atlas-bg pt-14">
+      <AppHeader userName={userName} isAdmin={isAdmin} />
+      {workspace ? (
+        <div className="h-[calc(100vh-3.5rem)] overflow-hidden">{children}</div>
+      ) : (
+        <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6">{children}</main>
+      )}
     </div>
   );
 }

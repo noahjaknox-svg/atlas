@@ -1,7 +1,18 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const INTERNAL_PREFIXES = ["/dashboard", "/proposals", "/api/proposals", "/api/prospects", "/api/aircraft"];
+const INTERNAL_PREFIXES = [
+  "/dashboard",
+  "/pipeline",
+  "/proposals",
+  "/settings",
+  "/data",
+  "/api/proposals",
+  "/api/prospects",
+  "/api/aircraft",
+  "/api/users",
+  "/api/data",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,7 +25,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
 
@@ -51,5 +62,17 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/proposals/:path*", "/api/proposals/:path*", "/api/prospects/:path*", "/api/aircraft-instances/:path*", "/api/aircraft-master/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/pipeline/:path*",
+    "/proposals/:path*",
+    "/api/proposals/:path*",
+    "/api/prospects/:path*",
+    "/api/aircraft-instances/:path*",
+    "/api/aircraft-master/:path*",
+    "/settings/:path*",
+    "/data/:path*",
+    "/api/users/:path*",
+    "/api/data/:path*",
+  ],
 };

@@ -293,7 +293,8 @@ export function ProposalWizardStep({
       { category: "crew", name: "pic_salary", label: "PIC salary", type: "number" },
       { category: "crew", name: "sic_salary", label: "SIC salary", type: "number" },
       { category: "crew", name: "crew_total", label: "Total crew cost (annual)", type: "number" },
-      { category: "crew", name: "crew_training", label: "Crew training (annual)", type: "number" },
+      { category: "crew", name: "pic_training", label: "PIC training (annual)", type: "number" },
+      { category: "crew", name: "sic_training", label: "SIC training (annual)", type: "number" },
     ],
     6: [
       { category: "costs", name: "management_fee", label: "Management fee", type: "number" },

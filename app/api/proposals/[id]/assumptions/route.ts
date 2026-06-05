@@ -30,47 +30,63 @@ export async function POST(
     const body = await request.json();
     const items = Array.isArray(body) ? body : body.assumptions ?? [body];
 
-    const results = [];
     for (const item of items) {
       if (!item.category || !item.assumptionName) {
         return jsonError("Each assumption requires category and assumptionName");
       }
+    }
 
-      const result = await prisma.proposalAssumption.upsert({
-        where: {
-          proposalId_category_assumptionName: {
+    type AssumptionItem = {
+      category: string;
+      assumptionName: string;
+      value?: unknown;
+      unit?: string;
+      sourceType?: AssumptionSourceType;
+      sourceId?: string;
+      confidence?: DataConfidence;
+      visibleToClient?: boolean;
+      editableByClient?: boolean;
+      internalNote?: string;
+      clientExplanation?: string;
+    };
+
+    const results = await prisma.$transaction(
+      (items as AssumptionItem[]).map((item) =>
+        prisma.proposalAssumption.upsert({
+          where: {
+            proposalId_category_assumptionName: {
+              proposalId,
+              category: item.category,
+              assumptionName: item.assumptionName,
+            },
+          },
+          create: {
             proposalId,
             category: item.category,
             assumptionName: item.assumptionName,
+            value: String(item.value ?? ""),
+            unit: item.unit,
+            sourceType: (item.sourceType as AssumptionSourceType) ?? "manual",
+            sourceId: item.sourceId,
+            confidence: (item.confidence as DataConfidence) ?? "medium",
+            visibleToClient: item.visibleToClient ?? true,
+            editableByClient: item.editableByClient ?? false,
+            internalNote: item.internalNote,
+            clientExplanation: item.clientExplanation,
           },
-        },
-        create: {
-          proposalId,
-          category: item.category,
-          assumptionName: item.assumptionName,
-          value: String(item.value ?? ""),
-          unit: item.unit,
-          sourceType: (item.sourceType as AssumptionSourceType) ?? "manual",
-          sourceId: item.sourceId,
-          confidence: (item.confidence as DataConfidence) ?? "medium",
-          visibleToClient: item.visibleToClient ?? true,
-          editableByClient: item.editableByClient ?? false,
-          internalNote: item.internalNote,
-          clientExplanation: item.clientExplanation,
-        },
-        update: {
-          value: String(item.value ?? ""),
-          unit: item.unit,
-          sourceType: item.sourceType,
-          confidence: item.confidence,
-          visibleToClient: item.visibleToClient,
-          editableByClient: item.editableByClient,
-          internalNote: item.internalNote,
-          clientExplanation: item.clientExplanation,
-        },
-      });
-      results.push(result);
-    }
+          update: {
+            value: String(item.value ?? ""),
+            unit: item.unit,
+            sourceType: item.sourceType,
+            confidence: item.confidence,
+            visibleToClient: item.visibleToClient,
+            editableByClient: item.editableByClient,
+            internalNote: item.internalNote,
+            clientExplanation: item.clientExplanation,
+          },
+        })
+      )
+    );
 
     return jsonOk(results);
   } catch (e) {

@@ -1,3 +1,4 @@
+import "./seed-env";
 import { PrismaClient, AircraftCategory, DataConfidence, FeatureCostType } from "@prisma/client";
 
 const prisma = new PrismaClient();

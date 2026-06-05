@@ -7,6 +7,23 @@ Internal web application for personalized aircraft management proposals and fina
 - **Next.js 14** (App Router) · TypeScript · Tailwind CSS
 - **Supabase** (Auth + Postgres) · **Prisma ORM** · Vercel-ready
 
+## V1.1 features (summary)
+
+- **Pipeline:** Centered proposal modal, assignee/status/category/date filters with URL persistence, missing-info count badges
+- **Workspace:** 240px sidebar navigation, model-specific economics, model comparison view
+- **Pro forma:** Three-scenario P&amp;L at `/proposals/[id]/pro-forma`
+- **Client deck:** Full-screen pitch deck at `/[slug]/deck`
+- **Admin:** User management (`/settings/users`), Data Hub (`/data`)
+
+After pulling V1.1 schema changes, stop the dev server and run:
+
+```bash
+npm run db:push
+npx prisma generate
+```
+
+Apply `supabase/migrations/003_scenario_index.sql` if you use SQL migrations directly.
+
 ## Quick start
 
 1. **Clone and install**

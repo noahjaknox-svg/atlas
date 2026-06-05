@@ -23,8 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} h-full`}>
+      <body className="min-h-full bg-atlas-bg font-sans text-atlas-text antialiased">
+        {children}
+      </body>
     </html>
   );
 }

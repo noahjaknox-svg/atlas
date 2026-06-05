@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { PinGate } from "@/components/client/pin-gate";
+import { getPortalContent } from "@/lib/portal-content";
 
 export default async function ClientPortalPinPage({
   params,
@@ -32,5 +33,15 @@ export default async function ClientPortalPinPage({
     );
   }
 
-  return <PinGate slug={slug} title={title} />;
+  const content = await getPortalContent();
+
+  return (
+    <PinGate
+      slug={slug}
+      title={title}
+      heroCloudImageUrl={content.heroCloudImageUrl}
+      heroCloudVideoUrl={content.heroCloudVideoUrl}
+      logoUrl={content.logoUrl}
+    />
+  );
 }

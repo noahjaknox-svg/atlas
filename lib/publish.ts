@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { createProposalSnapshot } from "./snapshot";
 import { hashPin } from "./auth";
+import { encryptPinForStorage } from "./pin-vault";
 import { generatePin, generatePortalSlug } from "./utils";
 
 export interface PublishResult {
@@ -26,6 +27,7 @@ export async function publishProposal(
   const snapshot = await createProposalSnapshot(proposalId, publishedById);
   const pin = generatePin();
   const pinHash = await hashPin(pin);
+  const pinCiphertext = encryptPinForStorage(pin);
   const slug = generatePortalSlug(proposal.prospect.prospectName);
 
   const portal = await prisma.$transaction(async (tx) => {
@@ -33,6 +35,7 @@ export async function publishProposal(
       where: { id: proposalId },
       data: {
         status: "published",
+        pipelineStage: "client_review",
         publishedDate: new Date(),
         approvedById: publishedById,
       },
@@ -44,11 +47,13 @@ export async function publishProposal(
         proposalId,
         slug,
         pinHash,
+        pinCiphertext,
         active: true,
       },
       update: {
         slug,
         pinHash,
+        pinCiphertext,
         active: true,
       },
     });
@@ -58,6 +63,33 @@ export async function publishProposal(
     slug: portal.slug,
     pin,
     portalId: portal.id,
+    snapshotId: snapshot.id,
+  };
+}
+
+/** Refresh client snapshot after proposal data changes; keeps portal slug and PIN. */
+export async function republishProposal(
+  proposalId: string,
+  publishedById: string
+): Promise<{ slug: string; snapshotId: string }> {
+  const proposal = await prisma.proposal.findUniqueOrThrow({
+    where: { id: proposalId },
+    include: { clientPortal: true },
+  });
+
+  if (!proposal.clientPortal?.active) {
+    throw new Error("Proposal must be published before republishing");
+  }
+
+  const snapshot = await createProposalSnapshot(proposalId, publishedById);
+
+  await prisma.proposal.update({
+    where: { id: proposalId },
+    data: { publishedDate: new Date() },
+  });
+
+  return {
+    slug: proposal.clientPortal.slug,
     snapshotId: snapshot.id,
   };
 }

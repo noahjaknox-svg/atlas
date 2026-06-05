@@ -47,5 +47,5 @@ export function generatePortalSlug(prospectName: string): string {
 }
 
 export function generatePin(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
 }

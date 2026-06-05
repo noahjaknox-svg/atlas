@@ -16,7 +16,7 @@ export function handleApiError(error: unknown) {
     if (error.message === "FORBIDDEN") {
       return jsonError("Forbidden", 403);
     }
-    if (error.message === "NOT_FOUND") {
+    if (error.message === "NOT_FOUND" || error.message === "NO_AIRCRAFT") {
       return jsonError("Not found", 404);
     }
     return jsonError(error.message, 400);

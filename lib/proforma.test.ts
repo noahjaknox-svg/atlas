@@ -29,6 +29,8 @@ describe("proforma engine", () => {
       tripExpensePerHour: 150,
       totalFixedCosts: 850000,
       charterRate: 5500,
+      charterRevenueHours: 350,
+      availableCharterFlightHours: 320,
       charterBlockHours: 350,
       charterFlightHours: 320,
       charterPaybackPct: 85,

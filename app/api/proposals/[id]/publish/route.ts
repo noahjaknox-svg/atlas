@@ -1,9 +1,9 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
-import { publishProposal } from "@/lib/publish";
+import { publishProposal, republishProposal } from "@/lib/publish";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -13,6 +13,19 @@ export async function POST(
     }
 
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const isRepublish = Boolean((body as { republish?: boolean }).republish);
+
+    if (isRepublish) {
+      const result = await republishProposal(id, user.id);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      return jsonOk({
+        ...result,
+        portalUrl: `${baseUrl}/${result.slug}`,
+        message: "Proposal republished with latest data.",
+      });
+    }
+
     const result = await publishProposal(id, user.id);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

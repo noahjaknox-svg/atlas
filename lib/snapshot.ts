@@ -1,11 +1,12 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { getPortalContent } from "./portal-content";
+import type { AssumptionMap } from "./assumptions";
 import { assumptionsToMap } from "./assumptions";
-import {
-  assumptionsToProFormaInputs,
-  calculateProForma,
-  type ProFormaResult,
-} from "./proforma";
+import type { ProFormaResult } from "./proforma";
+import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
+import { buildAircraftSnapshotList } from "./snapshot-aircraft";
+import { computeWorkspaceProFormaForClient } from "./workspace-proforma-client";
 
 export interface ProposalSnapshotPayload {
   version: number;
@@ -50,9 +51,16 @@ export interface ProposalSnapshotPayload {
     visible: boolean;
     sortOrder: number;
     imageUrl: string | null;
+    videoUrl: string | null;
+    posterUrl: string | null;
     calloutMetricLabel: string | null;
     calloutMetricValue: string | null;
   }>;
+  branding?: {
+    heroCloudImageUrl: string | null;
+    heroCloudVideoUrl: string | null;
+    logoUrl: string | null;
+  };
   proForma: ProFormaResult;
   metrics: {
     netAnnualCost: number;
@@ -62,6 +70,7 @@ export interface ProposalSnapshotPayload {
     costPerOwnerHour: number;
     aircraftValue: number;
   };
+  aircraftList?: AircraftSnapshotEntry[];
 }
 
 export async function buildSnapshotPayload(
@@ -72,14 +81,50 @@ export async function buildSnapshotPayload(
     include: {
       prospect: true,
       aircraftInstance: { include: { aircraftMaster: true } },
+      aircraft: {
+        where: { includedOnProposal: true },
+        include: { aircraftMaster: true },
+        orderBy: { createdAt: "asc" },
+      },
       assumptions: true,
       sections: { orderBy: { sortOrder: "asc" } },
       scenarios: { where: { isBaseCase: true }, take: 1 },
     },
   });
 
-  const map = assumptionsToMap(proposal.assumptions);
-  const proForma = calculateProForma(assumptionsToProFormaInputs(map));
+  const assumptionRows = proposal.assumptions.map((a) => ({
+    category: a.category,
+    assumptionName: a.assumptionName,
+    value: a.value,
+  }));
+
+  const includedAircraft =
+    proposal.aircraft.length > 0
+      ? proposal.aircraft
+      : proposal.aircraftInstance
+        ? [proposal.aircraftInstance]
+        : [];
+
+  const aircraftList = buildAircraftSnapshotList({
+    includedAircraft,
+    primaryAircraftInstanceId: proposal.aircraftInstanceId,
+    assumptionRows,
+    allAssumptions: proposal.assumptions,
+    prospectOpportunityType: proposal.prospect.opportunityType,
+  });
+
+  const primaryEntry =
+    aircraftList.find((a) => a.id === proposal.aircraftInstanceId) ?? aircraftList[0];
+
+  const map = primaryEntry
+    ? Object.fromEntries(
+        Object.entries(primaryEntry.assumptions).map(([k, v]) => [k, v.value])
+      )
+    : assumptionsToMap(proposal.assumptions);
+  const proForma =
+    primaryEntry?.proForma ??
+    computeWorkspaceProFormaForClient(assumptionsToMap(proposal.assumptions) as AssumptionMap)
+      .proForma;
 
   const clientAssumptions: ProposalSnapshotPayload["assumptions"] = {};
   for (const a of proposal.assumptions) {
@@ -95,6 +140,8 @@ export async function buildSnapshotPayload(
   }
 
   const master = proposal.aircraftInstance?.aircraftMaster;
+  const portalBranding = await getPortalContent();
+  const primaryAircraft = primaryEntry ?? null;
 
   return {
     version: 1,
@@ -113,13 +160,15 @@ export async function buildSnapshotPayload(
       contactEmail: proposal.prospect.contactEmail,
     },
     aircraft: {
-      manufacturer: master?.manufacturer ?? null,
-      model: master?.model ?? map.aircraft_model ?? null,
-      tailNumber: proposal.aircraftInstance?.tailNumber ?? null,
-      year: proposal.aircraftInstance?.year ?? null,
-      category: master?.aircraftCategory ?? map.aircraft_category ?? null,
-      proposedHomeBase: proposal.aircraftInstance?.proposedHomeBaseIcao ?? null,
-      clientSummary: proposal.aircraftInstance?.clientSummary ?? null,
+      manufacturer: primaryAircraft?.manufacturer ?? master?.manufacturer ?? null,
+      model: primaryAircraft?.model ?? master?.model ?? map.aircraft_model ?? null,
+      tailNumber: primaryAircraft?.tailNumber ?? proposal.aircraftInstance?.tailNumber ?? null,
+      year: primaryAircraft?.year ?? proposal.aircraftInstance?.year ?? null,
+      category: primaryAircraft?.category ?? master?.aircraftCategory ?? map.aircraft_category ?? null,
+      proposedHomeBase:
+        primaryAircraft?.proposedHomeBase ?? proposal.aircraftInstance?.proposedHomeBaseIcao ?? null,
+      clientSummary:
+        primaryAircraft?.clientSummary ?? proposal.aircraftInstance?.clientSummary ?? null,
     },
     assumptions: clientAssumptions,
     sections: proposal.sections
@@ -131,11 +180,18 @@ export async function buildSnapshotPayload(
         visible: s.visible,
         sortOrder: s.sortOrder,
         imageUrl: s.imageUrl,
+        videoUrl: (s as { videoUrl?: string | null }).videoUrl ?? null,
+        posterUrl: (s as { posterUrl?: string | null }).posterUrl ?? null,
         calloutMetricLabel: s.calloutMetricLabel,
         calloutMetricValue: s.calloutMetricValue,
       })),
+    branding: {
+      heroCloudImageUrl: portalBranding.heroCloudImageUrl,
+      heroCloudVideoUrl: portalBranding.heroCloudVideoUrl,
+      logoUrl: portalBranding.logoUrl,
+    },
     proForma,
-    metrics: {
+    metrics: primaryAircraft?.metrics ?? {
       netAnnualCost: proForma.netAnnualCost,
       netMonthlyCost: proForma.netMonthlyCost,
       ownerHours: parseFloat(map.owner_annual_hours ?? "0") || 0,
@@ -143,6 +199,7 @@ export async function buildSnapshotPayload(
       costPerOwnerHour: proForma.costPerOwnerHour,
       aircraftValue: parseFloat(map.aircraft_value ?? "0") || 0,
     },
+    aircraftList: aircraftList.length > 0 ? aircraftList : undefined,
   };
 }
 

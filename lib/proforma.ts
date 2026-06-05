@@ -2,6 +2,13 @@
  * Pure pro forma calculation engine — all formulas from spec Section 5.
  */
 
+import type { AssumptionMap } from "@/lib/assumptions";
+import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
+import {
+  computeUtilizationProfile,
+  syncUtilizationHours,
+} from "@/lib/proforma-utilization";
+
 export interface ProFormaInputs {
   fuelBurnGph: number;
   homeFuelPrice: number;
@@ -15,7 +22,13 @@ export interface ProFormaInputs {
   tripExpensePerHour: number;
   totalFixedCosts: number;
   charterRate: number;
+  /** Charter Revenue Hours (block / revenue basis) */
+  charterRevenueHours: number;
+  /** Available Charter Flight Hours (charter variable cost basis) */
+  availableCharterFlightHours: number;
+  /** @deprecated Use charterRevenueHours */
   charterBlockHours: number;
+  /** @deprecated Use availableCharterFlightHours */
   charterFlightHours: number;
   charterPaybackPct: number;
   fuelSurcharge: number;
@@ -113,12 +126,16 @@ export function calculateProForma(inputs: ProFormaInputs): ProFormaResult {
     tripExpensePerHour: inputs.tripExpensePerHour,
   });
 
+  const revenueHours = inputs.charterRevenueHours || inputs.charterBlockHours;
+  const availableHours =
+    inputs.availableCharterFlightHours || inputs.charterFlightHours;
+
   const charterRevenue =
-    inputs.charterRate * inputs.charterBlockHours * (inputs.charterPaybackPct / 100);
-  const fuelSurchargeRevenue = inputs.fuelSurcharge * inputs.charterBlockHours;
+    inputs.charterRate * revenueHours * (inputs.charterPaybackPct / 100);
+  const fuelSurchargeRevenue = inputs.fuelSurcharge * revenueHours;
   const totalRevenue = charterRevenue + fuelSurchargeRevenue;
 
-  const charterVariableCost = inputs.charterFlightHours * varPerHour;
+  const charterVariableCost = availableHours * varPerHour;
   const ownerVariableCost = inputs.ownerFlightHours * varPerHour;
 
   const insurance =
@@ -171,21 +188,21 @@ export function calculateProForma(inputs: ProFormaInputs): ProFormaResult {
     },
     {
       key: "charter_variable",
-      label: "Charter Flight Costs",
+      label: "Charter Variable Costs",
       category: "variable",
       annual: charterVariableCost,
       monthly: charterVariableCost / 12,
     },
     {
       key: "owner_variable",
-      label: "Owner Flight Costs",
+      label: "Owner Variable Costs",
       category: "variable",
       annual: ownerVariableCost,
       monthly: ownerVariableCost / 12,
     },
     {
       key: "net_operating",
-      label: "Net Aircraft Operating Profit/Loss",
+      label: "Net Aircraft Operating Profit / (Loss) Before Owner Use",
       category: "subtotal",
       annual: netBeforeOwner,
       monthly: netBeforeOwner / 12,
@@ -241,6 +258,9 @@ export function assumptionsToProFormaInputs(
     return typeof v === "number" ? v : parseFloat(String(v)) || fallback;
   };
 
+  const synced = syncUtilizationHours(assumptions as AssumptionMap);
+  const utilization = computeUtilizationProfile(synced);
+
   return {
     fuelBurnGph: get("fuel_burn_gph"),
     homeFuelPrice: get("home_fuel_price"),
@@ -254,14 +274,130 @@ export function assumptionsToProFormaInputs(
     tripExpensePerHour: get("trip_expense_per_hour"),
     totalFixedCosts: get("total_fixed_costs"),
     charterRate: get("charter_rate"),
-    charterBlockHours: get("charter_block_hours"),
-    charterFlightHours: get("charter_flight_hours"),
-    charterPaybackPct: get("charter_payback_pct", 85),
+    charterRevenueHours: utilization.charterRevenueHours,
+    availableCharterFlightHours: utilization.availableCharterFlightHours,
+    charterBlockHours: utilization.charterRevenueHours,
+    charterFlightHours: utilization.availableCharterFlightHours,
+    charterPaybackPct: (() => {
+      const p = get("charter_payback_pct");
+      return p > 0 ? p : 75;
+    })(),
     fuelSurcharge: get("fuel_surcharge"),
-    ownerFlightHours: get("owner_annual_hours"),
+    ownerFlightHours: utilization.ownerHours,
     aircraftValue: get("aircraft_value"),
     insurancePremiumPercent: get("insurance_premium_percent"),
-    insuranceBasis: (assumptions.insurance_basis as "hull_value" | "fixed") ?? "hull_value",
+    insuranceBasis:
+      assumptions.insurance_mode === "percent_hull" ||
+      (assumptions.insurance_basis as string) === "hull_value"
+        ? "hull_value"
+        : "fixed",
     fixedInsuranceAnnual: get("insurance_annual"),
   };
+}
+
+/** Sum fixed ownership line items from assumptions (P&L-aligned). */
+export function computeTotalFixedFromAssumptions(
+  assumptions: Record<string, string | number>
+): number {
+  const get = (key: string) => {
+    const v = assumptions[key];
+    if (v == null || v === "") return 0;
+    return typeof v === "number" ? v : parseFloat(String(v)) || 0;
+  };
+  const mode = String(assumptions.insurance_mode ?? "annual");
+  let insurance = get("insurance_annual");
+  if (mode === "percent_hull") {
+    const val = get("aircraft_value");
+    insurance = val * (get("insurance_premium_percent") / 100);
+  }
+  const picTraining = get("pic_training");
+  const sicTraining = get("sic_training");
+  const trainingTotal =
+    picTraining > 0 || sicTraining > 0
+      ? picTraining + sicTraining
+      : get("crew_training");
+
+  const synced = syncUtilizationHours(assumptions as AssumptionMap);
+  const availableHours = computeUtilizationProfile(synced).availableCharterFlightHours;
+  const pilotIncentive = computePilotCharterIncentiveAnnual(synced, availableHours);
+
+  return (
+    get("crew_total") +
+    trainingTotal +
+    pilotIncentive +
+    get("management_fee") +
+    (get("maintenance_management_fee") || get("maintenance_mgmt_fee")) +
+    (get("hangar_annual") || get("hangar_monthly") * 12) +
+    get("registration_annual") +
+    insurance +
+    (get("wifi_annual") || get("wifi_subscription")) +
+    get("subscriptions_annual") +
+    get("cleaning_annual") +
+    get("supplies_annual") +
+    get("airport_fees_annual")
+  );
+}
+
+export interface ScenarioInput {
+  scenarioIndex: number;
+  charterBlockHours: number;
+  charterFlightHours: number;
+  ownerFlightHours: number;
+}
+
+export const DEFAULT_SCENARIO_INPUTS: ScenarioInput[] = [
+  { scenarioIndex: 0, charterBlockHours: 350, charterFlightHours: 395.5, ownerFlightHours: 100 },
+  { scenarioIndex: 1, charterBlockHours: 325, charterFlightHours: 367.25, ownerFlightHours: 125 },
+  { scenarioIndex: 2, charterBlockHours: 300, charterFlightHours: 339, ownerFlightHours: 150 },
+];
+
+export function breakEvenCharterHours(inputs: ProFormaInputs): number | null {
+  const rate = inputs.charterRate * (inputs.charterPaybackPct / 100);
+  const blended = blendedFuelPrice(
+    inputs.homeFuelPrice,
+    inputs.awayFuelPrice,
+    inputs.homeFuelPct
+  );
+  const varHr = variableCostPerHour({
+    fuelCostPerHour: fuelCostPerHour(inputs.fuelBurnGph, blended),
+    engineProgramRate: inputs.engineProgramRate,
+    apuProgramRate: inputs.apuProgramRate,
+    partsProgramRate: inputs.partsProgramRate,
+    inspectionReserveRate: inputs.inspectionReserveRate,
+    maintenanceReserveRate: inputs.maintenanceReserveRate,
+    tripExpensePerHour: inputs.tripExpensePerHour,
+  });
+  const denom = rate - varHr;
+  if (denom <= 0) return null;
+  return Math.ceil(inputs.totalFixedCosts / denom);
+}
+
+export type ScenarioProFormaResult = ProFormaResult & {
+  scenarioIndex: number;
+  charterBlockHours: number;
+  charterFlightHours: number;
+  ownerFlightHours: number;
+  breakEvenCharterHours: number | null;
+};
+
+export function calculateProFormaScenarios(
+  baseInputs: ProFormaInputs,
+  scenarios: ScenarioInput[]
+): ScenarioProFormaResult[] {
+  return scenarios.map((s) => {
+    const inputs: ProFormaInputs = {
+      ...baseInputs,
+      charterBlockHours: s.charterBlockHours,
+      charterFlightHours: s.charterFlightHours,
+      ownerFlightHours: s.ownerFlightHours,
+    };
+    return {
+      scenarioIndex: s.scenarioIndex,
+      charterBlockHours: s.charterBlockHours,
+      charterFlightHours: s.charterFlightHours,
+      ownerFlightHours: s.ownerFlightHours,
+      breakEvenCharterHours: breakEvenCharterHours(inputs),
+      ...calculateProForma(inputs),
+    };
+  });
 }

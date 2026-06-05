@@ -2,6 +2,7 @@
  * Sync a Supabase Auth user into the Atlas users table.
  * Usage: npx tsx scripts/sync-user.ts email@prismjet.com "Jane Admin" admin
  */
+import "../lib/load-env";
 import { PrismaClient, UserRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
