@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
 
 export function AboutUsPage({
   section,
@@ -42,6 +43,7 @@ export function AboutUsPage({
             </RevealOnScroll>
           ))}
         </div>
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

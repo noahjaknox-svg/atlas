@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
 
 export function MaintenancePage({
   section,
@@ -88,6 +89,7 @@ export function MaintenancePage({
             </RevealOnScroll>
           </>
         ) : null}
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

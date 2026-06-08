@@ -7,6 +7,7 @@ import { interpolateWelcomeCopy } from "@/lib/experience-defaults";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
 
 export function WelcomePage({
   section,
@@ -75,6 +76,7 @@ export function WelcomePage({
             </div>
           </RevealOnScroll>
         </div>
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

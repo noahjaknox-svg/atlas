@@ -757,6 +757,7 @@ export function ProposalWorkspace({
         ownerBar={null}
         footer={
           <WorkspaceProposalFooter
+            proposalId={data.id}
             portalSlug={portalSlug}
             portalUrl={portal?.portalUrl ?? null}
             portalPin={portalPin}

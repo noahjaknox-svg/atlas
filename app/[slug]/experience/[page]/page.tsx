@@ -5,7 +5,10 @@ import {
   loadActivePortal,
   trackPortalView,
 } from "@/lib/client-portal-load";
-import { resolveExperienceSections, resolveExperienceSection } from "@/lib/experience-resolve";
+import {
+  resolvePortalExperienceSection,
+  resolvePortalExperienceSections,
+} from "@/lib/experience-portal-layout";
 import {
   getFirstExperienceSlug,
   getSectionBySlug,
@@ -34,7 +37,7 @@ export default async function ExperiencePageRoute({
 
   await trackPortalView(portal.id);
 
-  const sections = resolveExperienceSections(payload);
+  const sections = await resolvePortalExperienceSections(payload);
   const section = getSectionBySlug(sections, page);
 
   if (!section || !section.visible) {
@@ -46,7 +49,8 @@ export default async function ExperiencePageRoute({
     notFound();
   }
 
-  const disclaimer = resolveExperienceSection(payload, "disclaimer")?.bodyCopy ?? null;
+  const disclaimer =
+    (await resolvePortalExperienceSection(payload, "disclaimer"))?.bodyCopy ?? null;
 
   let client;
   if (page === "pro-forma") {

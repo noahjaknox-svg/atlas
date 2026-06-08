@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "./experience-content";
 import { EXPERIENCE_SECTION_TYPES, mergeSectionWithDefaults } from "./experience-content";
-import { getExperienceDefault } from "./experience-defaults";
+import { getExperienceDefaultFromMaster } from "./experience-master";
+import type { ExperienceMasterTemplate } from "./experience-master";
 import type { ProposalSnapshotPayload } from "./snapshot";
 
 /** Tabs added with PrismJet Experience — legacy snapshots only had pro_forma/disclaimer. */
@@ -8,9 +9,11 @@ const CORE_EXPERIENCE_SECTION_TYPES = EXPERIENCE_SECTION_TYPES.filter(
   (t) => t !== "pro_forma" && t !== "disclaimer"
 );
 
-function synthesizeExperienceDefaults(): ExperienceSectionSnapshot[] {
+function synthesizeExperienceDefaults(
+  masterTemplates?: ExperienceMasterTemplate[] | null
+): ExperienceSectionSnapshot[] {
   return EXPERIENCE_SECTION_TYPES.map((sectionType, i) => {
-    const defaults = getExperienceDefault(sectionType);
+    const defaults = getExperienceDefaultFromMaster(sectionType, masterTemplates);
     if (!defaults) return null;
     return {
       ...defaults,
@@ -21,7 +24,8 @@ function synthesizeExperienceDefaults(): ExperienceSectionSnapshot[] {
 }
 
 export function resolveExperienceSections(
-  payload: ProposalSnapshotPayload | null
+  payload: ProposalSnapshotPayload | null,
+  masterTemplates?: ExperienceMasterTemplate[] | null
 ): ExperienceSectionSnapshot[] {
   const fromPayload = payload?.sections ?? [];
 
@@ -33,11 +37,11 @@ export function resolveExperienceSections(
 
   // Pre-experience snapshots (cover, pro_forma, etc.) — render full experience defaults.
   if (!hasCoreExperienceSections) {
-    return synthesizeExperienceDefaults();
+    return synthesizeExperienceDefaults(masterTemplates);
   }
 
   return EXPERIENCE_SECTION_TYPES.map((sectionType) => {
-    const defaults = getExperienceDefault(sectionType);
+    const defaults = getExperienceDefaultFromMaster(sectionType, masterTemplates);
     if (!defaults) return null;
 
     const existing = fromPayload.find((s) => s.sectionType === sectionType);
@@ -51,8 +55,9 @@ export function resolveExperienceSections(
 
 export function resolveExperienceSection(
   payload: ProposalSnapshotPayload | null,
-  sectionType: string
+  sectionType: string,
+  masterTemplates?: ExperienceMasterTemplate[] | null
 ): ExperienceSectionSnapshot | null {
-  const sections = resolveExperienceSections(payload);
+  const sections = resolveExperienceSections(payload, masterTemplates);
   return sections.find((s) => s.sectionType === sectionType) ?? null;
 }

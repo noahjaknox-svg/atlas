@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
 
 export function ConformityPage({
   section,
@@ -208,6 +209,7 @@ export function ConformityPage({
             operational success.
           </p>
         </RevealOnScroll>
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

@@ -1,78 +1,37 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
+import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
 
-function PaybackDiagram() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [animate, setAnimate] = useState(false);
+const BLOCK_TO_FLIGHT_FACTOR = 1.13;
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
-      setAnimate(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e?.isIntersecting) {
-          setAnimate(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-      <p className="text-center text-xs uppercase tracking-wider text-white/50">Charter payback</p>
-      <div className="mt-8 grid gap-8 sm:grid-cols-2">
-        <div>
-          <p className="text-sm font-medium text-white/70">Other companies pay</p>
-          <p className="mt-1 text-xs text-white/45">Wheels up → wheels down (flight time)</p>
-          <div className="mt-4 h-8 rounded bg-white/10">
-            <div
-              className="h-full rounded bg-white/25 transition-all duration-1000 ease-out"
-              style={{ width: animate ? "72%" : "0%" }}
-            />
-          </div>
-          <p className="mt-2 font-mono text-sm text-white/60">200h flight time</p>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-atlas-accent">PrismJet pays</p>
-          <p className="mt-1 text-xs text-white/45">Taxi to taxi (block time)</p>
-          <div className="mt-4 h-8 rounded bg-atlas-accent/20">
-            <div
-              className="h-full rounded bg-atlas-accent transition-all duration-1000 ease-out delay-300"
-              style={{ width: animate ? "100%" : "0%" }}
-            />
-          </div>
-          <p className="mt-2 font-mono text-sm text-atlas-accent">230h block time paid out</p>
-        </div>
-      </div>
-      <p className="mt-6 text-center text-[11px] text-white/40">
-        Example: 200h flight time = 230h block time paid out. Exact numbers are estimates.
-      </p>
-    </div>
-  );
+function numOrNull(value: string | undefined): number | null {
+  if (!value) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export function AircraftCharterPage({
   section,
   branding,
+  payload,
 }: {
   section: ExperienceSectionSnapshot;
   branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null };
+  payload?: ProposalSnapshotPayload;
 }) {
   const quote = section.contentBlocks?.quote;
   const bullets = section.contentBlocks?.introBullets ?? [];
+
+  // Charter hours come from the full calculation assumptions on the primary aircraft.
+  const calc = payload ? (normalizeAircraftList(payload)[0]?.calculationAssumptions ?? {}) : {};
+  const blockHours = numOrNull(calc.charter_block_hours);
+  const flightHours =
+    numOrNull(calc.charter_flight_hours) ??
+    (blockHours ? Math.round(blockHours / BLOCK_TO_FLIGHT_FACTOR) : null);
 
   return (
     <>
@@ -111,8 +70,9 @@ export function AircraftCharterPage({
           </RevealOnScroll>
         ) : null}
         <RevealOnScroll delayMs={200}>
-          <PaybackDiagram />
+          <BlockVsFlightAnimation flightHours={flightHours} blockHours={blockHours} />
         </RevealOnScroll>
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

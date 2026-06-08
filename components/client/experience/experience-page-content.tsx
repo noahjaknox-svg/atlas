@@ -51,7 +51,7 @@ export function ExperiencePageContent({
     case "aircraft_management":
       return <AircraftManagementPage section={section} branding={branding} />;
     case "aircraft_charter":
-      return <AircraftCharterPage section={section} branding={branding} />;
+      return <AircraftCharterPage section={section} branding={branding} payload={payload} />;
     case "maintenance":
       return <MaintenancePage section={section} branding={branding} />;
     case "sales_acquisitions":

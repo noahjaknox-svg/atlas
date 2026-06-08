@@ -11,6 +11,11 @@ import {
   type SectionMediaDefaults,
   type ServicePillar,
 } from "@/lib/portal-constants";
+import {
+  codeDefaultsAsMasterTemplates,
+  parseExperienceMasterTemplates,
+  type ExperienceMasterTemplate,
+} from "@/lib/experience-master";
 
 export type { FleetShowcaseItem, PortalContentData, SectionMediaDefaults, ServicePillar };
 export {
@@ -56,6 +61,7 @@ function rowToContent(row: {
   fleetTitle: string;
   fleetBody: string | null;
   sectionDefaults: unknown;
+  experienceTemplates?: unknown;
 }): PortalContentData {
   return {
     id: row.id,
@@ -74,7 +80,14 @@ function rowToContent(row: {
     fleetTitle: row.fleetTitle,
     fleetBody: row.fleetBody,
     sectionDefaults: parseSectionDefaults(row.sectionDefaults),
+    experienceTemplates:
+      parseExperienceMasterTemplates(row.experienceTemplates) ?? codeDefaultsAsMasterTemplates(),
   };
+}
+
+export async function getExperienceMasterTemplates(): Promise<ExperienceMasterTemplate[]> {
+  const content = await getPortalContent();
+  return content.experienceTemplates ?? codeDefaultsAsMasterTemplates();
 }
 
 export async function getPortalContent(): Promise<PortalContentData> {
@@ -89,11 +102,17 @@ export async function getPortalContent(): Promise<PortalContentData> {
           sectionDefaults: DEFAULT_PORTAL_CONTENT.sectionDefaults,
         },
       });
-      return DEFAULT_PORTAL_CONTENT;
+      return {
+        ...DEFAULT_PORTAL_CONTENT,
+        experienceTemplates: codeDefaultsAsMasterTemplates(),
+      };
     }
     return rowToContent(row);
   } catch {
-    return DEFAULT_PORTAL_CONTENT;
+    return {
+      ...DEFAULT_PORTAL_CONTENT,
+      experienceTemplates: codeDefaultsAsMasterTemplates(),
+    };
   }
 }
 
@@ -154,6 +173,10 @@ export async function upsertPortalContent(
       fleetTitle: data.fleetTitle ?? DEFAULT_PORTAL_CONTENT.fleetTitle,
       fleetBody: data.fleetBody,
       sectionDefaults: data.sectionDefaults ?? DEFAULT_PORTAL_CONTENT.sectionDefaults,
+      experienceTemplates:
+        data.experienceTemplates !== undefined
+          ? data.experienceTemplates
+          : codeDefaultsAsMasterTemplates(),
     },
     update: {
       heroCloudImageUrl: data.heroCloudImageUrl,
@@ -171,6 +194,7 @@ export async function upsertPortalContent(
       fleetTitle: data.fleetTitle,
       fleetBody: data.fleetBody,
       sectionDefaults: data.sectionDefaults,
+      experienceTemplates: data.experienceTemplates,
     },
   });
 }

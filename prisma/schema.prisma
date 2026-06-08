@@ -819,6 +819,7 @@ model PortalContent {
   fleetTitle         String   @default("Our Aircraft") @map("fleet_title")
   fleetBody          String?  @map("fleet_body") @db.Text
   sectionDefaults    Json?    @map("section_defaults") @db.JsonB
+  experienceTemplates Json?   @map("experience_templates") @db.JsonB
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("portal_content")

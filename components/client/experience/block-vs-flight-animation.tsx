@@ -1,0 +1,155 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+/** Default block-to-flight factor (mirrors lib/proforma-utilization DEFAULT_BLOCK_TO_FLIGHT_FACTOR). */
+const DEFAULT_FACTOR = 1.13;
+
+function useReveal<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) {
+      setShown(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e?.isIntersecting) {
+          setShown(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, shown };
+}
+
+function useCountUp(target: number, run: boolean, durationMs = 1100) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!run) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    function tick(now: number) {
+      const t = Math.min(1, (now - start) / durationMs);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(target * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, run, durationMs]);
+  return value;
+}
+
+/**
+ * Premium animation contrasting flight time (what others pay) with block time
+ * (what PrismJet pays). Uses the proposal's charter hours when available, and
+ * falls back to a representative example.
+ */
+export function BlockVsFlightAnimation({
+  flightHours,
+  blockHours,
+}: {
+  flightHours?: number | null;
+  blockHours?: number | null;
+}) {
+  const { ref, shown } = useReveal<HTMLDivElement>();
+
+  const hasData = !!flightHours && flightHours > 0;
+  const flight = hasData ? Math.round(flightHours!) : 200;
+  const block =
+    hasData && blockHours && blockHours > 0
+      ? Math.round(blockHours!)
+      : Math.round(flight * DEFAULT_FACTOR);
+
+  const deltaHours = Math.max(0, block - flight);
+  const deltaPct = flight > 0 ? Math.round((deltaHours / flight) * 100) : 0;
+
+  // Bars are sized relative to block time (the larger figure).
+  const flightPct = block > 0 ? Math.round((flight / block) * 100) : 72;
+
+  const flightCount = useCountUp(flight, shown);
+  const blockCount = useCountUp(block, shown);
+
+  return (
+    <div
+      ref={ref}
+      className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-6 sm:p-10"
+    >
+      <p className="text-center text-xs uppercase tracking-[0.35em] text-white/50">
+        Charter payback
+      </p>
+      <p className="mx-auto mt-3 max-w-xl text-center text-sm text-white/60">
+        Most operators compensate owners only for wheels-up flight time. PrismJet pays on block
+        time — taxi to taxi — so more of every trip is paid back to you.
+      </p>
+
+      <div className="mt-10 space-y-8">
+        {/* Flight time (others) */}
+        <div>
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-medium text-white/70">Other companies pay</p>
+            <p className="font-mono text-sm text-white/55">
+              {Math.round(flightCount).toLocaleString()}h
+            </p>
+          </div>
+          <p className="mt-0.5 text-xs text-white/40">Wheels up → wheels down (flight time)</p>
+          <div className="mt-3 h-9 overflow-hidden rounded-lg bg-white/[0.06]">
+            <div
+              className="h-full rounded-lg bg-white/20 transition-[width] duration-1000 ease-out"
+              style={{ width: shown ? `${flightPct}%` : "0%" }}
+            />
+          </div>
+        </div>
+
+        {/* Block time (PrismJet) */}
+        <div>
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-medium text-atlas-accent">PrismJet pays</p>
+            <p className="font-mono text-sm text-atlas-accent">
+              {Math.round(blockCount).toLocaleString()}h
+            </p>
+          </div>
+          <p className="mt-0.5 text-xs text-white/40">Taxi to taxi (block time)</p>
+          <div className="mt-3 h-9 overflow-hidden rounded-lg bg-atlas-accent/15">
+            <div
+              className="h-full rounded-lg bg-gradient-to-r from-atlas-accent/80 to-atlas-accent transition-[width] duration-1000 ease-out"
+              style={{ width: shown ? "100%" : "0%", transitionDelay: "250ms" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {deltaHours > 0 ? (
+        <div className="mt-10 flex flex-col items-center gap-1 border-t border-white/10 pt-6 text-center">
+          <p className="font-serif text-3xl text-atlas-accent">
+            +{deltaHours.toLocaleString()} hours
+          </p>
+          <p className="text-sm text-white/60">
+            paid back to you{deltaPct > 0 ? ` — about ${deltaPct}% more than flight-time models` : ""}
+          </p>
+        </div>
+      ) : null}
+
+      <p className="mt-6 text-center text-[11px] text-white/40">
+        {hasData
+          ? "Based on this proposal's estimated charter utilization. Exact figures vary with demand."
+          : "Illustrative example. Actual block vs flight time varies with routing and demand."}
+      </p>
+    </div>
+  );
+}

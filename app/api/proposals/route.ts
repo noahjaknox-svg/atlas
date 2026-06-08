@@ -1,7 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE } from "@/lib/experience-defaults";
+import { getExperienceMasterTemplates } from "@/lib/portal-content";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 import type { SectionType } from "@prisma/client";
 
@@ -76,8 +76,10 @@ export async function POST(request: Request) {
       data: { aircraftInstanceId: aircraft.id },
     });
 
+    const masterTemplates = await getExperienceMasterTemplates();
+
     await prisma.proposalSection.createMany({
-      data: EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE.map((s) => ({
+      data: masterTemplates.map((s) => ({
         proposalId: proposal.id,
         sectionType: s.sectionType as SectionType,
         title: s.title,

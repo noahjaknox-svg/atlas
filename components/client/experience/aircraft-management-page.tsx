@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceGallery } from "./experience-gallery";
 
 export function AircraftManagementPage({
   section,
@@ -50,6 +51,7 @@ export function AircraftManagementPage({
             </div>
           </RevealOnScroll>
         ) : null}
+        <ExperienceGallery items={section.contentBlocks?.gallery} />
       </ExperienceBody>
     </>
   );

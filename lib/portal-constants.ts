@@ -1,5 +1,8 @@
 /** Client-safe portal defaults — no database imports. */
 
+import type { ExperienceMasterTemplate } from "./experience-master";
+import { PRISMJET_MEDIA } from "./prismjet-media";
+
 export type ServicePillar = {
   title: string;
   description: string;
@@ -28,6 +31,8 @@ export type PortalContentData = {
   fleetTitle: string;
   fleetBody: string | null;
   sectionDefaults: SectionMediaDefaults;
+  /** Master copy for experience report pages — seeds new proposals. */
+  experienceTemplates: ExperienceMasterTemplate[] | null;
 };
 
 export type FleetShowcaseItem = {
@@ -91,34 +96,37 @@ export const DEFAULT_PORTAL_CONTENT: PortalContentData = {
     cover: { imageUrl: DEFAULT_CLOUD_IMAGE },
     aircraft_overview: { imageUrl: "/images/fleet-jet-placeholder.svg" },
   },
+  experienceTemplates: null,
 };
 
 export const DEFAULT_FLEET_ITEMS: FleetShowcaseItem[] = [
   {
-    id: "default-1",
+    id: "default-ch350",
     sortOrder: 0,
-    title: "Super-Midsize Cabin",
-    subtitle: "Coast-to-coast nonstop",
-    imageUrl: "/images/fleet-jet-placeholder.svg",
+    title: "Challenger 350",
+    subtitle: "Super-midsize — coast-to-coast nonstop",
+    imageUrl: PRISMJET_MEDIA.challenger350,
     videoUrl: null,
-    posterUrl: null,
+    posterUrl: PRISMJET_MEDIA.challenger350Cabin,
     specs: [
-      { label: "Range", value: "3,200+ nm" },
-      { label: "Cruise", value: "Mach 0.84" },
+      { label: "Range", value: "3,200 nm" },
+      { label: "Passengers", value: "8–9" },
+      { label: "Cruise", value: "Mach 0.82" },
     ],
     active: true,
   },
   {
-    id: "default-2",
+    id: "default-global5000",
     sortOrder: 1,
-    title: "Large Cabin",
-    subtitle: "Global missions",
-    imageUrl: "/images/fleet-jet-placeholder.svg",
+    title: "Global 5000",
+    subtitle: "Ultra-long-range global missions",
+    imageUrl: PRISMJET_MEDIA.global5000,
     videoUrl: null,
-    posterUrl: null,
+    posterUrl: PRISMJET_MEDIA.sales,
     specs: [
-      { label: "Range", value: "6,000+ nm" },
-      { label: "Passengers", value: "12–16" },
+      { label: "Range", value: "5,200 nm" },
+      { label: "Passengers", value: "13–16" },
+      { label: "Cruise", value: "Mach 0.88" },
     ],
     active: true,
   },

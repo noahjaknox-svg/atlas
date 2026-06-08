@@ -25,6 +25,9 @@ export async function PATCH(request: Request) {
     if (body.content) {
       await upsertPortalContent(body.content);
     }
+    if (Array.isArray(body.experienceTemplates)) {
+      await upsertPortalContent({ experienceTemplates: body.experienceTemplates });
+    }
     if (Array.isArray(body.fleet)) {
       await replaceFleetShowcase(body.fleet as FleetShowcaseItem[]);
     }

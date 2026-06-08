@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
-import { resolveExperienceSections } from "@/lib/experience-resolve";
+import { resolvePortalExperienceSections } from "@/lib/experience-portal-layout";
 import { getFirstExperienceSlug } from "@/lib/experience-content";
 
 export async function POST(
@@ -62,7 +62,7 @@ export async function POST(
     const payload = snapshot
       ? (snapshot.snapshotJson as unknown as ProposalSnapshotPayload)
       : null;
-    const sections = resolveExperienceSections(payload);
+    const sections = await resolvePortalExperienceSections(payload);
     const firstPage = getFirstExperienceSlug(sections);
 
     return jsonOk({ success: true, redirect: `/${slug}/experience/${firstPage}` });

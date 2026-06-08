@@ -1,17 +1,17 @@
 import { prisma } from "@/lib/db";
-import { EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE } from "@/lib/experience-defaults";
+import { getExperienceMasterTemplates } from "@/lib/portal-content";
 import type { SectionType } from "@prisma/client";
+/** Ensure new experience sections exist on legacy proposals (seeded from master copy). */
+export async function ensureExperienceSections(proposalId: string) {  const [existing, masterTemplates] = await Promise.all([
+    prisma.proposalSection.findMany({
+      where: { proposalId },
+      select: { sectionType: true },
+    }),
+    getExperienceMasterTemplates(),
+  ]);
 
-/** Ensure new experience sections exist on legacy proposals. */
-export async function ensureExperienceSections(proposalId: string) {
-  const existing = await prisma.proposalSection.findMany({
-    where: { proposalId },
-    select: { sectionType: true },
-  });
   const types = new Set(existing.map((s) => s.sectionType));
-  const missing = EXPERIENCE_DEFAULT_SECTIONS_FOR_CREATE.filter(
-    (s) => !types.has(s.sectionType as SectionType)
-  );
+  const missing = masterTemplates.filter((s) => !types.has(s.sectionType as SectionType));
   if (missing.length === 0) return;
 
   await prisma.proposalSection.createMany({

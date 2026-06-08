@@ -86,6 +86,11 @@ export type ExperienceExplainerCard = {
   body: string;
 };
 
+export type ExperienceGalleryItem = {
+  url: string;
+  caption?: string;
+};
+
 export type ExperienceContentBlocks = {
   pillars?: ExperiencePillar[];
   timeline?: ExperienceTimelinePhase[];
@@ -100,6 +105,8 @@ export type ExperienceContentBlocks = {
   downtimeStrategies?: string[];
   explainerCards?: ExperienceExplainerCard[];
   serviceTiles?: ExperienceServiceTile[];
+  /** Photo gallery rendered on the page body (uploaded via the design editor). */
+  gallery?: ExperienceGalleryItem[];
   contactEmail?: string;
   contactPhone?: string;
   contactWebsite?: string;
