@@ -6,6 +6,13 @@ import { syncUtilizationHours } from "@/lib/proforma-utilization";
 import { computeTotalFixedFromAssumptions } from "@/lib/proforma";
 import { proFormaLineAmount } from "@/lib/proforma-line-amounts";
 import { calculatedAssumptionAmount } from "@/lib/resolve-effective-assumptions";
+import { formatTrainingCalculationHint } from "@/lib/aircraft-calculated-fields";
+
+const TRAINING_ROLLUP_ROLES: Record<string, "pic" | "sic" | "total"> = {
+  pic_training_total: "pic",
+  sic_training_total: "sic",
+  crew_training_total: "total",
+};
 
 function num(v: string | undefined, fallback = 0): number {
   const n = parseFloat(v ?? "");
@@ -96,10 +103,15 @@ export function computeSectionProFormaTotal(
   if (rollup.type === "calculated" && rollup.valueKey) {
     const amount = calculatedAssumptionAmount(effective, rollup.valueKey);
     if (amount == null || !Number.isFinite(amount)) return null;
+    const trainingRole = TRAINING_ROLLUP_ROLES[rollup.valueKey];
+    const calcHint = trainingRole
+      ? formatTrainingCalculationHint(effective, trainingRole)
+      : undefined;
+    const hintParts = [calcHint, rollup.proFormaHint].filter(Boolean);
     return {
       label: rollup.label,
       formatted: formatRollupValue(String(amount), rollup.format),
-      proFormaHint: rollup.proFormaHint,
+      proFormaHint: hintParts.length > 0 ? hintParts.join(" · ") : undefined,
     };
   }
 

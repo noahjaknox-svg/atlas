@@ -3,7 +3,7 @@ import { CLIENT_EDITABLE_ASSUMPTIONS } from "./aircraft-workspace";
 
 export { CLIENT_EDITABLE_ASSUMPTIONS };
 
-export type FieldType = "text" | "number" | "textarea" | "select";
+export type FieldType = "text" | "number" | "textarea" | "select" | "currency";
 
 export type WorkspaceField = {
   key: string;
@@ -150,8 +150,15 @@ export const WORKSPACE_SECTIONS: WorkspaceSectionDef[] = [
         type: "number",
         required: true,
       }),
-      assumptionField("base", "hangar_monthly", "Monthly hangar cost", { type: "number" }),
-      assumptionField("base", "hangar_annual", "Annual hangar cost", { type: "number" }),
+      assumptionField("base", "hangar_pricing_mode", "Hangar price input", {
+        type: "select",
+        options: [
+          { value: "monthly", label: "Per month" },
+          { value: "annual", label: "Total annual price" },
+        ],
+      }),
+      assumptionField("base", "hangar_monthly", "Monthly hangar cost", { type: "currency" }),
+      assumptionField("base", "hangar_annual", "Annual hangar cost", { type: "currency" }),
     ],
   },
   {

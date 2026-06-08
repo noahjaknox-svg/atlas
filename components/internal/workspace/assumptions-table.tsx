@@ -70,7 +70,7 @@ function resolvedDisplayValue(
     if (d) return name.includes("hour") ? formatScenarioHours(d) : d;
     return "—";
   }
-  if (isCalculatedField(name)) return formatCalculatedDisplay(name, effective);
+  if (isCalculatedField(name, effective)) return formatCalculatedDisplay(name, effective);
   return undefined;
 }
 
@@ -78,38 +78,44 @@ function ConfigTableFooter({
   total,
   prominent,
 }: {
-  total: { label: string; formatted: string };
+  total: { label: string; formatted: string; proFormaHint?: string };
   prominent?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "atlas-config-row border-t font-medium",
+        "border-t font-medium",
         prominent
           ? "border-atlas-accent/35 bg-atlas-accent/10"
           : "border-atlas-accent/20 bg-atlas-accent/[0.06]"
       )}
-      role="row"
     >
-      <span
-        className={cn(
-          "min-w-0 truncate uppercase tracking-wide text-atlas-accent",
-          prominent ? "text-[11px]" : "text-[10px]"
-        )}
-      >
-        {total.label}
-      </span>
-      <span aria-hidden />
-      <div className="atlas-config-col-value">
+      <div className="atlas-config-row" role="row">
         <span
           className={cn(
-            "atlas-config-calc-pill border-atlas-accent/40",
-            prominent ? "text-sm" : "text-[13px]"
+            "min-w-0 truncate uppercase tracking-wide text-atlas-accent",
+            prominent ? "text-[11px]" : "text-[10px]"
           )}
         >
-          {total.formatted}
+          {total.label}
         </span>
+        <span aria-hidden />
+        <div className="atlas-config-col-value">
+          <span
+            className={cn(
+              "atlas-config-calc-pill border-atlas-accent/40",
+              prominent ? "text-sm" : "text-[13px]"
+            )}
+          >
+            {total.formatted}
+          </span>
+        </div>
       </div>
+      {total.proFormaHint ? (
+        <p className="border-t border-atlas-border/10 px-3 py-1.5 text-right text-[10px] leading-snug text-atlas-muted">
+          {total.proFormaHint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -134,7 +140,7 @@ function renderFieldRow(
   const scenarioVal = resolvedDisplayValue(field, effective, defaults);
   const calcVal =
     scenarioVal ??
-    (isCalculatedField(name) ? formatCalculatedDisplay(name, effective) : undefined);
+    (isCalculatedField(name, effective) ? formatCalculatedDisplay(name, effective) : undefined);
   const readOnlyScenario = field.proformaSource;
 
   return (
@@ -142,7 +148,7 @@ function renderFieldRow(
       key={name}
       field={{
         ...field,
-        readOnly: field.readOnly || readOnlyScenario,
+        readOnly: field.readOnly || readOnlyScenario || isCalculatedField(name, effective),
         proformaSource: field.proformaSource || readOnlyScenario,
       }}
       defaultValue={def}

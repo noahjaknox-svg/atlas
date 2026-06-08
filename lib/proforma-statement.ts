@@ -9,6 +9,7 @@ import {
   type ProFormaInputs,
 } from "@/lib/proforma";
 import { computeCrewTotal, resolveCrewTrainingTotal } from "@/lib/aircraft-calculated-fields";
+import { resolveHangarAnnual } from "@/lib/hangar-assumptions";
 import {
   computeUtilizationProfile,
   syncUtilizationHours,
@@ -207,7 +208,7 @@ function sumFixedOwnership(a: AssumptionMap, availableCharterFlightHours: number
   const management = num(a.management_fee);
   const maintMgmt =
     num(a.maintenance_management_fee) || num(a.maintenance_mgmt_fee as string);
-  const hangar = num(a.hangar_annual) || num(a.hangar_monthly) * 12;
+  const hangar = resolveHangarAnnual(a);
   const registration = computeRegistrationAnnual(a);
   const insurance = resolveInsuranceAnnual(a);
   const wifi = num(a.wifi_annual) || num(a.wifi_subscription as string);
@@ -333,7 +334,8 @@ function formatRate(n: number): string {
 
 function computeCharterRevenueAmounts(
   synced: AssumptionMap,
-  revenueHours: number
+  revenueHours: number,
+  fuelSurchargeHours: number
 ): {
   charterRate: number;
   paybackPct: number;
@@ -349,7 +351,7 @@ function computeCharterRevenueAmounts(
     charterRate > 0 && revenueHours > 0
       ? charterRate * revenueHours * (paybackPct / 100)
       : 0;
-  const fuelSurchargeRevenue = num(synced.fuel_surcharge) * revenueHours;
+  const fuelSurchargeRevenue = num(synced.fuel_surcharge) * fuelSurchargeHours;
   return {
     charterRate,
     paybackPct,
@@ -365,7 +367,11 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
   const u = computeUtilizationProfile(synced);
   const charterEnabled = isCharterUsageEnabled(synced);
 
-  const revenueCalc = computeCharterRevenueAmounts(synced, u.charterRevenueHours);
+  const revenueCalc = computeCharterRevenueAmounts(
+    synced,
+    u.charterRevenueHours,
+    u.availableCharterFlightHours
+  );
 
   const inputs: ProFormaInputs = {
     ...assumptionsToProFormaInputs(synced),
@@ -451,7 +457,7 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
         "fuel_surcharge",
         "Fuel Surcharge",
         num(synced.fuel_surcharge),
-        revenueHours,
+        charterFlightHours,
         fuelSurchargeRevenue
       ),
       revenueLine(

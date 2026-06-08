@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, parseFormattedNumber } from "@/lib/utils";
+import { MoneyInput } from "@/components/ui/money-input";
 import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 
@@ -62,7 +63,9 @@ export function ProFormaClient({
   const [selectedAircraftId, setSelectedAircraftId] = useState(
     initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? ""
   );
-  const [aircraftValue, setAircraftValue] = useState(initial.editableFields.aircraftValue.value);
+  const [aircraftValue, setAircraftValue] = useState(
+    String(initial.editableFields.aircraftValue.value)
+  );
   const [ownerHours, setOwnerHours] = useState(initial.editableFields.ownerAnnualHours.value);
   const [data, setData] = useState(initial);
   const [baseline, setBaseline] = useState({
@@ -80,7 +83,7 @@ export function ProFormaClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          aircraftValue,
+          aircraftValue: parseFloat(parseFormattedNumber(String(aircraftValue))) || 0,
           ownerHours,
           aircraftInstanceId: selectedAircraftId || undefined,
           persistScenario: options?.persist === true,
@@ -125,7 +128,7 @@ export function ProFormaClient({
 
   function restore() {
     userEditedRef.current = true;
-    setAircraftValue(baseline.aircraftValue);
+    setAircraftValue(String(baseline.aircraftValue));
     setOwnerHours(baseline.ownerHours);
   }
 
@@ -197,12 +200,11 @@ export function ProFormaClient({
       <div className="grid max-w-xl gap-6 sm:grid-cols-2">
         <label className="block text-sm text-white/70">
           Aircraft value
-          <input
-            type="number"
+          <MoneyInput
             value={aircraftValue}
-            onChange={(e) => {
+            onChange={(v) => {
               userEditedRef.current = true;
-              setAircraftValue(Number(e.target.value));
+              setAircraftValue(v);
             }}
             className={inputClass}
           />

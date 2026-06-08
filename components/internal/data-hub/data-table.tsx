@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export type DataTableColumn<T> = {
   key: keyof T | string;
@@ -15,6 +16,7 @@ export function DataTable<T extends { id?: string }>({
   onEdit,
   onDelete,
   emptyMessage = "No records yet.",
+  fillHeight = false,
 }: {
   title: string;
   rows: T[];
@@ -22,13 +24,19 @@ export function DataTable<T extends { id?: string }>({
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
   emptyMessage?: string;
+  fillHeight?: boolean;
 }) {
   return (
-    <div>
-      <h2 className="mb-4 font-medium">{title}</h2>
-      <div className="overflow-x-auto rounded-lg border border-atlas-border">
-        <table className="w-full text-sm">
-          <thead>
+    <div className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      {title ? <h2 className="mb-4 font-medium">{title}</h2> : null}
+      <div
+        className={cn(
+          "overflow-x-auto rounded-lg border border-atlas-border",
+          fillHeight && "min-h-0 flex-1 overflow-y-auto"
+        )}
+      >
+        <table className={cn("w-full text-sm", fillHeight && "min-w-full")}>
+          <thead className={fillHeight ? "sticky top-0 z-10 bg-atlas-surface" : undefined}>
             <tr className="border-b border-atlas-border bg-atlas-surface text-left text-xs uppercase text-atlas-muted">
               {columns.map((c) => (
                 <th key={String(c.key)} className="px-3 py-2">

@@ -2,14 +2,19 @@
 
 import { memo } from "react";
 import { cn } from "@/lib/utils";
+import { formatFormattedNumber, parseFormattedNumber } from "@/lib/utils";
+import { MoneyInput, moneyInputClassName } from "@/components/ui/money-input";
 import { getAssumptionRowState } from "@/lib/assumption-row-state";
 import type { WorkspaceField } from "@/lib/workspace-sections";
 
 function formatDefaultDisplay(field: WorkspaceField, raw: string): string {
   const v = raw.trim();
   if (!v) return "—";
+  if (field.type === "currency") {
+    return formatFormattedNumber(v) || "—";
+  }
   if (field.type === "number") {
-    const n = parseFloat(v.replace(/,/g, ""));
+    const n = parseFloat(parseFormattedNumber(v));
     if (Number.isFinite(n)) {
       return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
     }
@@ -116,6 +121,13 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
               </option>
             ))}
           </select>
+        ) : field.type === "currency" ? (
+          <MoneyInput
+            className={moneyInputClassName(hasOverride)}
+            value={value}
+            placeholder="Use default."
+            onChange={onChange}
+          />
         ) : (
           <input
             type={field.type === "number" ? "number" : "text"}
@@ -131,7 +143,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
 });
 
 export function effectiveFieldValue(defaultValue: string, override: string): string {
-  const o = override.trim();
+  const o = parseFormattedNumber(override.trim());
   if (o) return o;
   return defaultValue.trim();
 }

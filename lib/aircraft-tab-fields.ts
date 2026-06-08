@@ -6,12 +6,14 @@ import {
   FET_TREATMENT_OPTIONS,
   FUEL_SOURCE_OPTIONS,
   HANGAR_SOURCE_OPTIONS,
+  HANGAR_PRICING_MODE_OPTIONS,
   INSURANCE_MODE_OPTIONS,
 } from "@/lib/aircraft-constants";
 import { CALCULATED_ASSUMPTION_KEYS } from "@/lib/aircraft-calculated-fields";
 
 export type AircraftWorkspaceTab =
   | "aircraft"
+  | "owners"
   | "crew_training"
   | "base_hangar"
   | "utilization_costs"
@@ -70,7 +72,7 @@ function field(
     label,
     type: "text",
     ...rest,
-    ...(calculated || CALCULATED_ASSUMPTION_KEYS.has(name) ? { readOnly: true } : {}),
+    ...(calculated || CALCULATED_ASSUMPTION_KEYS?.has(name) ? { readOnly: true } : {}),
   };
 }
 
@@ -87,6 +89,15 @@ function lineRollup(
     proFormaHint: hint,
     proformaLineOwner: ownerLine,
   };
+}
+
+/** Currency / large-value assumption field. */
+function currency(
+  name: string,
+  label: string,
+  opts?: Partial<WorkspaceField> & { calculated?: boolean }
+): WorkspaceField {
+  return field(name, label, { type: "currency", ...opts });
 }
 
 /** Sum hourly rate fields for workspace footer (P&L applies hours separately). */
@@ -158,6 +169,22 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
       ],
     },
   ],
+  owners: [
+    {
+      title: "Owner Defaults",
+      groups: [
+        {
+          title: "Default hours",
+          fields: [
+            field("default_owner_hours", "Default owner flight hours", {
+              type: "number",
+              reference: true,
+            }),
+          ],
+        },
+      ],
+    },
+  ],
   crew_training: [
     {
       title: "Crew Salaries & Benefits",
@@ -170,7 +197,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "PIC",
           fields: [
             field("pic_count", "PIC count", { type: "number" }),
-            field("pic_salary", "PIC salary (annual, per pilot)", { type: "number" }),
+            currency("pic_salary", "PIC salary (annual, per pilot)"),
           ],
           proFormaRollup: {
             label: "PIC total",
@@ -184,7 +211,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "SIC",
           fields: [
             field("sic_count", "SIC count", { type: "number" }),
-            field("sic_salary", "SIC salary (annual, per pilot)", { type: "number" }),
+            currency("sic_salary", "SIC salary (annual, per pilot)"),
           ],
           proFormaRollup: {
             label: "SIC total",
@@ -198,9 +225,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "Cabin",
           fields: [
             field("cabin_attendant_count", "Cabin attendant count", { type: "number" }),
-            field("cabin_attendant_annual_cost", "Cabin attendant annual cost", {
-              type: "number",
-            }),
+            currency("cabin_attendant_annual_cost", "Cabin attendant annual cost"),
           ],
           proFormaRollup: {
             label: "Cabin total",
@@ -228,15 +253,32 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
       groups: [
         {
           title: "PIC Training",
-          fields: [field("pic_training", "PIC training (annual)", { type: "number" })],
-          proFormaRollup: lineRollup("PIC Training", "pic_training_pl"),
+          fields: [currency("pic_training", "PIC training (annual, per pilot)")],
+          proFormaRollup: {
+            label: "PIC training total",
+            type: "calculated",
+            valueKey: "pic_training_total",
+            format: "currency",
+          },
         },
         {
           title: "SIC Training",
-          fields: [field("sic_training", "SIC training (annual)", { type: "number" })],
-          proFormaRollup: lineRollup("SIC Training", "sic_training_pl"),
+          fields: [currency("sic_training", "SIC training (annual, per pilot)")],
+          proFormaRollup: {
+            label: "SIC training total",
+            type: "calculated",
+            valueKey: "sic_training_total",
+            format: "currency",
+          },
         },
       ],
+      proFormaRollup: {
+        label: "Total crew training",
+        type: "calculated",
+        valueKey: "crew_training_total",
+        format: "currency",
+        proFormaHint: "Included in P&L: Crew Training",
+      },
     },
     {
       title: "Notes",
@@ -267,8 +309,12 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         {
           title: "Hangar",
           fields: [
-            field("hangar_monthly", "Monthly hangar", { type: "number" }),
-            field("hangar_annual", "Annual hangar", { type: "number", calculated: true }),
+            field("hangar_pricing_mode", "Hangar price input", {
+              type: "select",
+              options: HANGAR_PRICING_MODE_OPTIONS,
+            }),
+            currency("hangar_monthly", "Monthly hangar"),
+            currency("hangar_annual", "Annual hangar"),
           ],
           proFormaRollup: lineRollup("Hangar", "hangar_pl"),
         },
@@ -314,8 +360,8 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         {
           title: "Fuel",
           fields: [
-            field("home_fuel_price", "Home fuel ($/gal)", { type: "number", required: true }),
-            field("away_fuel_price", "Away fuel ($/gal)", { type: "number", required: true }),
+            currency("home_fuel_price", "Home fuel ($/gal)", { required: true }),
+            currency("away_fuel_price", "Away fuel ($/gal)", { required: true }),
             field("home_fuel_pct", "% fuel at home", { type: "number", required: true }),
             field("blended_fuel_price", "Blended fuel price ($/gal)", {
               type: "number",
@@ -336,50 +382,44 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         },
         {
           title: "Parts Programs",
-          fields: [field("parts_program_rate", "Parts program hourly rate", { type: "number" })],
+          fields: [currency("parts_program_rate", "Parts program hourly rate")],
           proFormaRollup: hourlyRateRollup("Parts Programs", "parts_program_rate"),
         },
         {
           title: "Engine Programs",
-          fields: [field("engine_program_rate", "Engine program hourly rate", { type: "number" })],
+          fields: [currency("engine_program_rate", "Engine program hourly rate")],
           proFormaRollup: hourlyRateRollup("Engine Programs", "engine_program_rate"),
         },
         {
           title: "APU Programs",
-          fields: [field("apu_program_rate", "APU program hourly rate", { type: "number" })],
+          fields: [currency("apu_program_rate", "APU program hourly rate")],
           proFormaRollup: hourlyRateRollup("APU Programs", "apu_program_rate"),
         },
         {
           title: "Airframe Programs",
           fields: [
-            field("airframe_program_rate", "Airframe program hourly rate", { type: "number" }),
+            currency("airframe_program_rate", "Airframe program hourly rate"),
           ],
           proFormaRollup: hourlyRateRollup("Airframe Programs", "airframe_program_rate"),
         },
         {
           title: "Inspection Reserve",
           fields: [
-            field("inspection_reserve_rate", "Inspection reserve hourly rate", {
-              type: "number",
-            }),
+            currency("inspection_reserve_rate", "Inspection reserve hourly rate"),
           ],
           proFormaRollup: hourlyRateRollup("Inspection Reserve", "inspection_reserve_rate"),
         },
         {
           title: "Maintenance Reserve",
           fields: [
-            field("maintenance_reserve_rate", "Maintenance reserve hourly rate", {
-              type: "number",
-            }),
+            currency("maintenance_reserve_rate", "Maintenance reserve hourly rate"),
           ],
           proFormaRollup: hourlyRateRollup("Maintenance Reserve", "maintenance_reserve_rate"),
         },
         {
           title: "Owner trip expense",
           fields: [
-            field("trip_expense_per_hour", "Trip expense hourly rate (owner)", {
-              type: "number",
-            }),
+            currency("trip_expense_per_hour", "Trip expense hourly rate (owner)"),
           ],
           proFormaRollup: hourlyRateRollup("Owner trip expense", "trip_expense_per_hour"),
         },
@@ -411,7 +451,8 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "Charter rate",
           charterOnly: true,
           fields: [
-            field("charter_rate", "Charter rate ($/block hr)", {
+            currency("charter_rate", "Charter rate ($/block hr)", { charterOnly: true }),
+            field("charter_payback_pct", "Charter payback %", {
               type: "number",
               charterOnly: true,
             }),
@@ -422,10 +463,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "Fuel surcharge",
           charterOnly: true,
           fields: [
-            field("fuel_surcharge", "Fuel surcharge ($/block hr)", {
-              type: "number",
-              charterOnly: true,
-            }),
+            currency("fuel_surcharge", "Fuel surcharge ($/flight hr)", { charterOnly: true }),
           ],
           proFormaRollup: lineRollup("Fuel Surcharge", "fuel_surcharge"),
         },
@@ -433,8 +471,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "Jet fuel tax differential",
           charterOnly: true,
           fields: [
-            field("jet_fuel_tax_differential_per_gal", "Jet fuel tax differential ($/gal)", {
-              type: "number",
+            currency("jet_fuel_tax_differential_per_gal", "Jet fuel tax differential ($/gal)", {
               charterOnly: true,
             }),
             field("jet_fuel_tax_credit_per_hour", "Jet fuel tax credit ($/hr)", {
@@ -459,10 +496,10 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           title: "Pilot charter incentive",
           charterOnly: true,
           fields: [
-            field(
+            currency(
               "pilot_charter_incentive_per_hour",
               "Pilot charter incentive ($/charter flight hr)",
-              { type: "number", charterOnly: true }
+              { charterOnly: true }
             ),
           ],
           proFormaRollup: lineRollup("Pilot Charter Incentive", "pilot_charter_incentive_pl"),
@@ -478,7 +515,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         {
           title: "Hull value",
           fields: [
-            field("aircraft_value", "Estimated value", { type: "number", required: true }),
+            currency("aircraft_value", "Estimated value", { required: true }),
             field("value_source", "Value source", {
               type: "select",
               options: VALUE_SOURCE_OPTIONS,
@@ -492,15 +529,13 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
       groups: [
         {
           title: "Management Fee",
-          fields: [field("management_fee", "Management fee (annual)", { type: "number" })],
+          fields: [currency("management_fee", "Management fee (annual)")],
           proFormaRollup: lineRollup("Management Fee", "management_fee_pl"),
         },
         {
           title: "Maintenance Management Fee",
           fields: [
-            field("maintenance_management_fee", "Maintenance management fee (annual)", {
-              type: "number",
-            }),
+            currency("maintenance_management_fee", "Maintenance management fee (annual)"),
           ],
           proFormaRollup: lineRollup(
             "Maintenance Management Fee",
@@ -514,7 +549,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
               type: "select",
               options: INSURANCE_MODE_OPTIONS,
             }),
-            field("insurance_annual", "Insurance annual", { type: "number" }),
+            currency("insurance_annual", "Insurance annual"),
             field("insurance_premium_percent", "Insurance percent of hull", { type: "number" }),
           ],
           proFormaRollup: lineRollup("Insurance (Hull & Liability)", "insurance_pl"),
@@ -534,27 +569,27 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         },
         {
           title: "In-Flight Wi-Fi",
-          fields: [field("wifi_annual", "In-flight Wi-Fi (annual)", { type: "number" })],
+          fields: [currency("wifi_annual", "In-flight Wi-Fi (annual)")],
           proFormaRollup: lineRollup("In-Flight Wi-Fi", "wifi_pl"),
         },
         {
           title: "Subscriptions",
-          fields: [field("subscriptions_annual", "Subscriptions (annual)", { type: "number" })],
+          fields: [currency("subscriptions_annual", "Subscriptions (annual)")],
           proFormaRollup: lineRollup("Subscriptions", "subscriptions_pl"),
         },
         {
           title: "Cleaning",
-          fields: [field("cleaning_annual", "Cleaning (annual)", { type: "number" })],
+          fields: [currency("cleaning_annual", "Cleaning (annual)")],
           proFormaRollup: lineRollup("Cleaning", "cleaning_pl"),
         },
         {
           title: "Supplies",
-          fields: [field("supplies_annual", "Supplies (annual)", { type: "number" })],
+          fields: [currency("supplies_annual", "Supplies (annual)")],
           proFormaRollup: lineRollup("Supplies", "supplies_pl"),
         },
         {
           title: "Airport Fees",
-          fields: [field("airport_fees_annual", "Airport fees (annual)", { type: "number" })],
+          fields: [currency("airport_fees_annual", "Airport fees (annual)")],
           proFormaRollup: lineRollup("Airport Fees", "airport_fees_pl"),
         },
       ],
@@ -570,11 +605,11 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
               type: "select",
               options: YES_NO_OPTIONS,
             }),
-            field("loan_amount", "Loan amount", { type: "number" }),
-            field("down_payment", "Down payment", { type: "number" }),
+            currency("loan_amount", "Loan amount"),
+            currency("down_payment", "Down payment"),
             field("interest_rate", "Interest rate", { type: "number" }),
             field("term_months", "Term (months)", { type: "number" }),
-            field("balloon_payment", "Balloon payment", { type: "number" }),
+            currency("balloon_payment", "Balloon payment"),
             field("monthly_debt_service", "Monthly debt service", {
               type: "number",
               calculated: true,
@@ -609,6 +644,7 @@ export const AIRCRAFT_TAB_FIELDS: Record<
 
 export const AIRCRAFT_TAB_ORDER: AircraftWorkspaceTab[] = [
   "aircraft",
+  "owners",
   "crew_training",
   "base_hangar",
   "utilization_costs",
@@ -631,6 +667,7 @@ export function editorTabsForAssumptions(assumptions: {
 
 export const TAB_LABELS: Record<AircraftWorkspaceTab, string> = {
   aircraft: "Aircraft",
+  owners: "Owners",
   crew_training: "Crew & Training",
   base_hangar: "Base & Hangar",
   utilization_costs: "Utilization & Operating Costs",
@@ -645,6 +682,7 @@ export const TAB_STRIP_LABELS: Record<
   string
 > = {
   aircraft: "Aircraft",
+  owners: "Owners",
   crew_training: "Crew",
   base_hangar: "Base",
   utilization_costs: "Util. & Costs",
@@ -671,6 +709,8 @@ export function sectionsForTab(
 ): AircraftTabSection[] {
   return AIRCRAFT_TAB_SECTIONS[tab];
 }
+
+export { hangarFieldActive } from "@/lib/hangar-assumptions";
 
 export function insuranceFieldActive(
   mode: string | undefined,

@@ -25,7 +25,8 @@ export function totalOwnerFlightHours(profiles: ProposalOwnerProfile[]): number 
 
 export function normalizeProfilesForCount(
   count: number,
-  existing: ProposalOwnerProfile[]
+  existing: ProposalOwnerProfile[],
+  defaultHours = 400
 ): ProposalOwnerProfile[] {
   const n = Math.max(1, Math.min(MAX_OWNER_COUNT, Math.round(count)));
   const out: ProposalOwnerProfile[] = [];
@@ -35,7 +36,7 @@ export function normalizeProfilesForCount(
       id: prev?.id,
       sortOrder: i,
       displayName: prev?.displayName?.trim() || `Owner ${i + 1}`,
-      annualFlightHours: prev?.annualFlightHours ?? (i === 0 ? 400 : 0),
+      annualFlightHours: prev?.annualFlightHours ?? (i === 0 ? defaultHours : 0),
       ownershipPercent:
         n === 1 ? 100 : (prev?.ownershipPercent ?? Math.round((100 / n) * 100) / 100),
     });

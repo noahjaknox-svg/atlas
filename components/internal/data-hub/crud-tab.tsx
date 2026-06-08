@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/internal/data-hub/data-table";
 import { EntityDialog, type FormField } from "@/components/internal/data-hub/entity-dialog";
-import { FilterBar } from "@/components/internal/data-hub/filter-bar";
-import { buildDataHubQuery, parseDataHubFilters, type FilterField } from "@/lib/data-hub-filters";
+import { buildDataHubQuery, parseDataHubFilters } from "@/lib/data-hub-filters";
 
 type Row = Record<string, unknown> & { id?: string };
 
@@ -28,19 +27,19 @@ function isListPayload(data: unknown): data is ListPayload {
 export function CrudTab({
   title,
   apiPath,
-  tab,
   columns,
   fields,
-  filterFields,
   emptyMessage,
+  fillHeight = false,
 }: {
   title: string;
   apiPath: string;
-  tab: string;
+  tab?: string;
   columns: DataTableColumn<Row>[];
   fields: FormField[];
-  filterFields?: FilterField[];
   emptyMessage?: string;
+  /** When true, table scrolls within available vertical space. */
+  fillHeight?: boolean;
 }) {
   const searchParams = useSearchParams();
   const filterKey = useMemo(() => {
@@ -137,20 +136,21 @@ export function CrudTab({
     void load();
   }
 
+  const showCount = totalCount > 0 && filteredCount !== totalCount;
+
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-medium">{title}</h2>
+    <div className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      <div className="mb-3 flex shrink-0 items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-medium">{title}</h2>
+          {showCount && (
+            <p className="mt-0.5 text-xs text-atlas-muted">
+              Showing {filteredCount} of {totalCount}
+            </p>
+          )}
+        </div>
         <Button onClick={openCreate}>+ Add</Button>
       </div>
-      {filterFields && filterFields.length > 0 && (
-        <FilterBar
-          tab={tab}
-          fields={filterFields}
-          filteredCount={filteredCount}
-          totalCount={totalCount}
-        />
-      )}
       <DataTable
         title=""
         rows={rows}
@@ -158,6 +158,7 @@ export function CrudTab({
         onEdit={openEdit}
         onDelete={remove}
         emptyMessage={emptyMessage}
+        fillHeight={fillHeight}
       />
       <EntityDialog
         open={open}

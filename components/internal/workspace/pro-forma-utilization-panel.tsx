@@ -27,7 +27,7 @@ export function ProFormaScenarioPanel({
           <div>
             <p className="atlas-label">Owner flight hours</p>
             <p className="atlas-caption mt-1">
-              Set per owner in the setup bar above ({profile.ownerFlightHours} total)
+              Set per owner in the Owners tab ({profile.ownerFlightHours} total)
             </p>
             <ul className="mt-3 space-y-1 text-sm">
               {ownerProfiles.map((p) => (
@@ -45,7 +45,7 @@ export function ProFormaScenarioPanel({
           <label className="block">
             <span className="atlas-label">Owner flight hours</span>
             <span className="atlas-caption mt-1 block">
-              Also editable in setup bar — drives P&L below
+              Also editable in the Owners tab — drives P&L below
             </span>
             <input
               type="number"

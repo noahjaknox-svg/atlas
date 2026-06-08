@@ -2,8 +2,11 @@ import type { AssumptionMap } from "@/lib/assumptions";
 import {
   computeCabinCrewTotal,
   computeCrewTotal,
+  computeCrewTrainingTotalAmount,
   computePicCrewTotal,
+  computePicTrainingTotal,
   computeSicCrewTotal,
+  computeSicTrainingTotal,
   mergeWithDerived,
 } from "@/lib/aircraft-calculated-fields";
 import { isCharterUsageEnabled } from "@/lib/usage-type";
@@ -70,6 +73,9 @@ const CALCULATED_DISPLAY: Record<string, (a: AssumptionMap) => number> = {
   sic_crew_total: computeSicCrewTotal,
   cabin_crew_total: computeCabinCrewTotal,
   crew_total: computeCrewTotal,
+  pic_training_total: computePicTrainingTotal,
+  sic_training_total: computeSicTrainingTotal,
+  crew_training_total: computeCrewTrainingTotalAmount,
 };
 
 /** Numeric value for a derived key (always recomputed from resolved inputs). */

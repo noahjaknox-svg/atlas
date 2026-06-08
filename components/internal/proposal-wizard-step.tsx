@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
+import { parseFormattedNumber } from "@/lib/utils";
 import type { Proposal, Prospect, AircraftInstance, AircraftMaster, ProposalAssumption, ProposalScenario, ClientPortal } from "@prisma/client";
+import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 
 type ProposalWithRelations = Proposal & {
   prospect: Prospect;
@@ -41,15 +44,49 @@ async function saveAssumptions(
   }
 }
 
+function resolveWizardFieldValue(
+  assumptions: ProposalAssumption[],
+  aircraftInstanceId: string | null,
+  category: string,
+  name: string
+): string {
+  const exact = assumptions.find(
+    (a) => a.category === category && a.assumptionName === name
+  );
+  if (exact?.value.trim()) return exact.value;
+
+  if (aircraftInstanceId) {
+    const acCategory = aircraftAssumptionCategory(aircraftInstanceId);
+    const onAircraft = assumptions.find(
+      (a) => a.category === acCategory && a.assumptionName === name
+    );
+    if (onAircraft?.value.trim()) return onAircraft.value;
+  }
+
+  const byName = assumptions.find((a) => a.assumptionName === name);
+  return byName?.value.trim() ? byName.value : "";
+}
+
 function AssumptionForm({
   proposalId,
   step,
   fields,
+  assumptions,
+  aircraftInstanceId,
   onSuccess,
 }: {
   proposalId: string;
   step: number;
-  fields: Array<{ category: string; name: string; label: string; type?: string; required?: boolean }>;
+  assumptions: ProposalAssumption[];
+  aircraftInstanceId: string | null;
+  fields: Array<{
+    category: string;
+    name: string;
+    label: string;
+    type?: string;
+    required?: boolean;
+    options?: Array<{ value: string; label: string }>;
+  }>;
   onSuccess: () => void;
 }) {
   const [loading, setLoading] = useState(false);
@@ -60,12 +97,15 @@ function AssumptionForm({
     setLoading(true);
     setError("");
     const fd = new FormData(e.currentTarget);
-    const items = fields.map((f) => ({
-      category: f.category,
-      assumptionName: f.name,
-      value: fd.get(f.name)?.toString() ?? "",
-      sourceType: "manual",
-    }));
+    const items = fields.map((f) => {
+      const raw = fd.get(f.name)?.toString() ?? "";
+      return {
+        category: f.category,
+        assumptionName: f.name,
+        value: f.type === "currency" ? parseFormattedNumber(raw) : raw,
+        sourceType: "manual",
+      };
+    });
 
     try {
       await saveAssumptions(proposalId, items);
@@ -81,7 +121,14 @@ function AssumptionForm({
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        {fields.map((f) => (
+        {fields.map((f) => {
+          const initialValue = resolveWizardFieldValue(
+            assumptions,
+            aircraftInstanceId,
+            f.category,
+            f.name
+          );
+          return (
           <div key={f.name} className={`space-y-2 ${f.type === "textarea" ? "sm:col-span-2" : ""}`}>
             <Label htmlFor={f.name}>
               {f.label}
@@ -93,13 +140,42 @@ function AssumptionForm({
                 name={f.name}
                 rows={3}
                 required={f.required}
+                defaultValue={initialValue}
                 className="w-full rounded-md border border-atlas-border bg-atlas-surface px-3 py-2 text-sm"
               />
+            ) : f.type === "select" && f.options ? (
+              <select
+                id={f.name}
+                name={f.name}
+                required={f.required}
+                defaultValue={initialValue || f.options[0]?.value}
+                className="w-full rounded-md border border-atlas-border bg-atlas-surface px-3 py-2 text-sm"
+              >
+                {f.options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            ) : f.type === "currency" ? (
+              <WizardMoneyField
+                id={f.name}
+                name={f.name}
+                required={f.required}
+                defaultValue={initialValue}
+              />
             ) : (
-              <Input id={f.name} name={f.name} type={f.type ?? "text"} required={f.required} />
+              <Input
+                id={f.name}
+                name={f.name}
+                type={f.type ?? "text"}
+                required={f.required}
+                defaultValue={initialValue}
+              />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
       {error && <p className="text-sm text-atlas-danger">{error}</p>}
       <div className="flex gap-3">
@@ -115,6 +191,30 @@ function AssumptionForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function WizardMoneyField({
+  id,
+  name,
+  required,
+  defaultValue = "",
+}: {
+  id: string;
+  name: string;
+  required?: boolean;
+  defaultValue?: string;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  return (
+    <MoneyInput
+      id={id}
+      name={name}
+      required={required}
+      value={value}
+      onChange={setValue}
+      className="w-full rounded-md border border-atlas-border bg-atlas-surface px-3 py-2 text-sm"
+    />
   );
 }
 
@@ -266,11 +366,27 @@ export function ProposalWizardStep({
     return <ReviewStep proposal={proposal} proposalId={proposalId} isAdmin={isAdmin} />;
   }
 
-  const fieldSets: Record<number, Array<{ category: string; name: string; label: string; type?: string; required?: boolean }>> = {
+  const fieldSets: Record<
+    number,
+    Array<{
+      category: string;
+      name: string;
+      label: string;
+      type?: string;
+      required?: boolean;
+      options?: Array<{ value: string; label: string }>;
+    }>
+  > = {
     2: [
       { category: "aircraft", name: "aircraft_model", label: "Aircraft model", required: true },
       { category: "aircraft", name: "aircraft_year", label: "Year", type: "number", required: true },
-      { category: "aircraft", name: "aircraft_value", label: "Estimated value ($)", type: "number", required: true },
+      {
+        category: "aircraft",
+        name: "aircraft_value",
+        label: "Estimated value ($)",
+        type: "currency",
+        required: true,
+      },
       { category: "aircraft", name: "proposed_home_base", label: "Proposed home base (ICAO)", required: true },
       { category: "aircraft", name: "fuel_burn_gph", label: "Fuel burn (GPH)", type: "number" },
       { category: "aircraft", name: "aircraft_summary", label: "Client aircraft summary", type: "textarea" },
@@ -280,8 +396,18 @@ export function ProposalWizardStep({
       { category: "base", name: "home_fuel_price", label: "Home fuel ($/gal)", type: "number", required: true },
       { category: "base", name: "away_fuel_price", label: "Away fuel ($/gal)", type: "number", required: true },
       { category: "base", name: "home_fuel_pct", label: "% fuel at home", type: "number", required: true },
-      { category: "base", name: "hangar_monthly", label: "Monthly hangar cost", type: "number" },
-      { category: "base", name: "hangar_annual", label: "Annual hangar cost", type: "number" },
+      {
+        category: "base",
+        name: "hangar_pricing_mode",
+        label: "Hangar price input",
+        type: "select",
+        options: [
+          { value: "monthly", label: "Per month" },
+          { value: "annual", label: "Total annual price" },
+        ],
+      },
+      { category: "base", name: "hangar_monthly", label: "Monthly hangar cost", type: "currency" },
+      { category: "base", name: "hangar_annual", label: "Annual hangar cost", type: "currency" },
     ],
     4: [
       { category: "operating", name: "operating_model", label: "Operating model", required: true },
@@ -290,25 +416,40 @@ export function ProposalWizardStep({
       { category: "operating", name: "charter_flight_hours", label: "Charter flight hours", type: "number" },
     ],
     5: [
-      { category: "crew", name: "pic_salary", label: "PIC salary", type: "number" },
-      { category: "crew", name: "sic_salary", label: "SIC salary", type: "number" },
-      { category: "crew", name: "crew_total", label: "Total crew cost (annual)", type: "number" },
-      { category: "crew", name: "pic_training", label: "PIC training (annual)", type: "number" },
-      { category: "crew", name: "sic_training", label: "SIC training (annual)", type: "number" },
+      { category: "crew", name: "pic_salary", label: "PIC salary", type: "currency" },
+      { category: "crew", name: "sic_salary", label: "SIC salary", type: "currency" },
+      { category: "crew", name: "crew_total", label: "Total crew cost (annual)", type: "currency" },
+      {
+        category: "crew",
+        name: "pic_training",
+        label: "PIC training (annual, per pilot)",
+        type: "currency",
+      },
+      {
+        category: "crew",
+        name: "sic_training",
+        label: "SIC training (annual, per pilot)",
+        type: "currency",
+      },
     ],
     6: [
-      { category: "costs", name: "management_fee", label: "Management fee", type: "number" },
-      { category: "costs", name: "insurance_annual", label: "Insurance (annual)", type: "number" },
+      { category: "costs", name: "management_fee", label: "Management fee", type: "currency" },
+      { category: "costs", name: "insurance_annual", label: "Insurance (annual)", type: "currency" },
       { category: "costs", name: "insurance_premium_percent", label: "Insurance % of hull", type: "number" },
-      { category: "costs", name: "total_fixed_costs", label: "Total fixed costs", type: "number" },
-      { category: "costs", name: "engine_program_rate", label: "Engine program ($/hr)", type: "number" },
+      { category: "costs", name: "total_fixed_costs", label: "Total fixed costs", type: "currency" },
+      { category: "costs", name: "engine_program_rate", label: "Engine program ($/hr)", type: "currency" },
       { category: "costs", name: "fuel_burn_gph", label: "Fuel burn GPH", type: "number" },
-      { category: "costs", name: "trip_expense_per_hour", label: "Trip expense ($/hr)", type: "number" },
+      { category: "costs", name: "trip_expense_per_hour", label: "Trip expense ($/hr)", type: "currency" },
     ],
     8: [
-      { category: "charter", name: "charter_rate", label: "Charter rate", type: "number" },
+      { category: "charter", name: "charter_rate", label: "Charter rate", type: "currency" },
       { category: "charter", name: "charter_payback_pct", label: "Charter payback %", type: "number" },
-      { category: "charter", name: "fuel_surcharge", label: "Fuel surcharge", type: "number" },
+      {
+        category: "charter",
+        name: "fuel_surcharge",
+        label: "Fuel surcharge ($/flight hr)",
+        type: "currency",
+      },
     ],
   };
 
@@ -350,7 +491,14 @@ export function ProposalWizardStep({
   return (
     <div>
       <h2 className="mb-6 font-serif text-2xl">{titles[step]}</h2>
-      <AssumptionForm proposalId={proposalId} step={step} fields={fields} onSuccess={next} />
+      <AssumptionForm
+        proposalId={proposalId}
+        step={step}
+        fields={fields}
+        assumptions={proposal.assumptions}
+        aircraftInstanceId={proposal.aircraftInstanceId}
+        onSuccess={next}
+      />
     </div>
   );
 }

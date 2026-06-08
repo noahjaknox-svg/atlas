@@ -134,6 +134,7 @@ export function ProFormaDeckChapter({
         rows={summary.statementRows}
         period="annual"
         compact
+        collapsible
       />
 
       <Link

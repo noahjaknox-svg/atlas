@@ -38,7 +38,9 @@ export const ESTIMATED_DEFAULTS: Record<string, string> = {
   home_fuel_pct: "70",
   fuel_source: "fbo_retail",
   hangar_source: "data_hub",
+  hangar_pricing_mode: "monthly",
 
+  default_owner_hours: "400",
   owner_annual_hours: "400",
   max_annual_utilization: "500",
   charter_block_to_flight_ratio: String(DEFAULT_BLOCK_TO_FLIGHT_FACTOR),

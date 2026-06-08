@@ -4,11 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { AircraftSetupBar } from "@/components/internal/workspace/aircraft-setup-panel";
-import { OwnerSplitsTable } from "@/components/internal/workspace/owner-splits-panel";
+import {
+  OwnerControlsStrip,
+  OwnerSplitsTable,
+} from "@/components/internal/workspace/owner-splits-panel";
 import { AssumptionsSectionTable } from "@/components/internal/workspace/assumptions-table";
 import { effectiveFieldValue } from "@/components/internal/workspace/default-override-field";
 import { AircraftProFormaColumn } from "@/components/internal/workspace/aircraft-pro-forma-tab";
 import { isCalculatedField } from "@/lib/aircraft-calculated-fields";
+import { hangarFieldActive } from "@/lib/hangar-assumptions";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 import { OwnerFinancingSplitPanel } from "@/components/internal/workspace/owner-financing-split-panel";
@@ -45,6 +49,7 @@ export function AircraftTabsPanel({
   ownerProfiles,
   allocationMode,
   onOwnerProfilesChange,
+  onAllocationModeChange,
 }: {
   proposalId: string;
   aircraftId: string;
@@ -57,6 +62,7 @@ export function AircraftTabsPanel({
   ownerProfiles: ProposalOwnerProfile[];
   allocationMode: OwnerExpenseAllocationMode;
   onOwnerProfilesChange: (profiles: ProposalOwnerProfile[]) => void;
+  onAllocationModeChange: (mode: OwnerExpenseAllocationMode) => void;
 }) {
   const tabs = useMemo(() => editorTabsForAssumptions(assumptions), [assumptions]);
   type EditorTab = (typeof tabs)[number];
@@ -98,7 +104,7 @@ export function AircraftTabsPanel({
 
   const handleOverride = useCallback(
     (name: string, overrideRaw: string) => {
-      if (isCalculatedField(name)) return;
+      if (isCalculatedField(name, assumptions)) return;
       const def = defaults[name] ?? "";
       let next = { ...assumptions, [name]: effectiveFieldValue(def, overrideRaw) };
       if (UTILIZATION_SYNC_KEYS.has(name)) {
@@ -124,12 +130,65 @@ export function AircraftTabsPanel({
       if (name === "insurance_annual" || name === "insurance_premium_percent") {
         return !insuranceFieldActive(assumptions.insurance_mode, name);
       }
+      if (name === "hangar_monthly" || name === "hangar_annual") {
+        return !hangarFieldActive(assumptions.hangar_pricing_mode, name);
+      }
       return false;
     },
     [assumptions]
   );
 
   function renderTabContent(tab: EditorTab) {
+    if (tab === "owners") {
+      const defaultHours =
+        parseFloat(assumptions.default_owner_hours ?? "400") || 400;
+      return (
+        <div className="flex flex-col gap-6">
+          <section className="rounded-lg border border-atlas-border/80 bg-atlas-surface/10 p-4">
+            <h3 className="mb-4 font-serif text-base tracking-tight text-atlas-accent">
+              Ownership structure
+            </h3>
+            <OwnerControlsStrip
+              profiles={ownerProfiles}
+              allocationMode={allocationMode}
+              onProfilesChange={onOwnerProfilesChange}
+              onAllocationModeChange={onAllocationModeChange}
+              defaultHours={defaultHours}
+            />
+          </section>
+          <section className="rounded-lg border border-atlas-border/80 bg-atlas-surface/10 p-4">
+            <h3 className="mb-4 font-serif text-base tracking-tight text-atlas-accent">
+              Owner flight hours & equity
+            </h3>
+            <OwnerSplitsTable
+              profiles={ownerProfiles}
+              maxAnnualUtilization={
+                parseFloat(assumptions.max_annual_utilization ?? "0") || 0
+              }
+              defaultHours={defaultHours}
+              onProfilesChange={onOwnerProfilesChange}
+              fullWidth
+            />
+          </section>
+          {loadingDefaults && Object.keys(defaults).length === 0 ? (
+            <p className="atlas-caption py-2 text-center">Loading defaults…</p>
+          ) : (
+            sectionsForTab("owners").map((section) => (
+              <AssumptionsSectionTable
+                key={section.title}
+                section={section}
+                defaults={defaults}
+                assumptions={assumptions}
+                effective={effective}
+                fieldHidden={fieldHidden}
+                onOverride={handleOverride}
+              />
+            ))
+          )}
+        </div>
+      );
+    }
+
     const sections = sectionsForTab(tab);
     const visibleSections = sections.filter((s) =>
       sectionVisibleForUsage(s, assumptions, fieldHidden)
@@ -173,15 +232,6 @@ export function AircraftTabsPanel({
         assumptions={assumptions}
         onApplyDefaults={onApplySetupDefaults}
       />
-
-      <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/40 px-4 py-3">
-        <OwnerSplitsTable
-          profiles={ownerProfiles}
-          maxAnnualUtilization={parseFloat(assumptions.max_annual_utilization ?? "0") || 0}
-          onProfilesChange={onOwnerProfilesChange}
-          fullWidth
-        />
-      </div>
 
       <div className="atlas-workspace grid min-h-0 flex-1 grid-cols-2">
       {/* Configurator — equal width */}

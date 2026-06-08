@@ -32,6 +32,8 @@ export interface ProFormaInputs {
   charterFlightHours: number;
   charterPaybackPct: number;
   fuelSurcharge: number;
+  /** Charter flight hours basis for fuel surcharge (not block/revenue hours). */
+  fuelSurchargeFlightHours?: number;
   ownerFlightHours: number;
   aircraftValue?: number;
   insurancePremiumPercent?: number;
@@ -129,10 +131,12 @@ export function calculateProForma(inputs: ProFormaInputs): ProFormaResult {
   const revenueHours = inputs.charterRevenueHours || inputs.charterBlockHours;
   const availableHours =
     inputs.availableCharterFlightHours || inputs.charterFlightHours;
+  const fuelSurchargeHours =
+    inputs.fuelSurchargeFlightHours ?? availableHours ?? revenueHours;
 
   const charterRevenue =
     inputs.charterRate * revenueHours * (inputs.charterPaybackPct / 100);
-  const fuelSurchargeRevenue = inputs.fuelSurcharge * revenueHours;
+  const fuelSurchargeRevenue = inputs.fuelSurcharge * fuelSurchargeHours;
   const totalRevenue = charterRevenue + fuelSurchargeRevenue;
 
   const charterVariableCost = availableHours * varPerHour;
@@ -283,6 +287,7 @@ export function assumptionsToProFormaInputs(
       return p > 0 ? p : 75;
     })(),
     fuelSurcharge: get("fuel_surcharge"),
+    fuelSurchargeFlightHours: utilization.availableCharterFlightHours,
     ownerFlightHours: utilization.ownerHours,
     aircraftValue: get("aircraft_value"),
     insurancePremiumPercent: get("insurance_premium_percent"),
@@ -296,6 +301,28 @@ export function assumptionsToProFormaInputs(
 }
 
 /** Sum fixed ownership line items from assumptions (P&L-aligned). */
+function resolveCrewTrainingTotalFromAssumptions(
+  assumptions: AssumptionMap
+): { total: number } {
+  const get = (key: string, fallback = 0) => {
+    const v = assumptions[key];
+    if (v == null || v === "") return fallback;
+    return typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, "")) || fallback;
+  };
+  const picPer = get("pic_training");
+  const sicPer = get("sic_training");
+  const picHeads = Math.max(0, Math.round(get("pic_count", 1)));
+  const sicHeads = Math.max(0, Math.round(get("sic_count", 1)));
+  let pic = picPer > 0 && picHeads > 0 ? Math.round(picPer * picHeads) : 0;
+  let sic = sicPer > 0 && sicHeads > 0 ? Math.round(sicPer * sicHeads) : 0;
+  const legacy = get("crew_training");
+  if (pic === 0 && sic === 0 && legacy > 0) {
+    pic = Math.round(legacy / 2);
+    sic = legacy - pic;
+  }
+  return { total: pic + sic };
+}
+
 export function computeTotalFixedFromAssumptions(
   assumptions: Record<string, string | number>
 ): number {
@@ -310,12 +337,7 @@ export function computeTotalFixedFromAssumptions(
     const val = get("aircraft_value");
     insurance = val * (get("insurance_premium_percent") / 100);
   }
-  const picTraining = get("pic_training");
-  const sicTraining = get("sic_training");
-  const trainingTotal =
-    picTraining > 0 || sicTraining > 0
-      ? picTraining + sicTraining
-      : get("crew_training");
+  const picTraining = resolveCrewTrainingTotalFromAssumptions(assumptions as AssumptionMap);
 
   const synced = syncUtilizationHours(assumptions as AssumptionMap);
   const availableHours = computeUtilizationProfile(synced).availableCharterFlightHours;
@@ -323,7 +345,7 @@ export function computeTotalFixedFromAssumptions(
 
   return (
     get("crew_total") +
-    trainingTotal +
+    picTraining.total +
     pilotIncentive +
     get("management_fee") +
     (get("maintenance_management_fee") || get("maintenance_mgmt_fee")) +

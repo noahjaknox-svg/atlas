@@ -82,12 +82,6 @@ export async function DELETE(
     await requireInternalUser();
     const { id: proposalId, aircraftId } = await params;
 
-    const count = await prisma.aircraftInstance.count({
-      where: {
-        OR: [{ proposalId }, { id: aircraftId }],
-      },
-    });
-
     const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },
       select: { aircraftInstanceId: true, prospectId: true },

@@ -4,20 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CrudTab } from "@/components/internal/data-hub/crud-tab";
-import {
-  AIRCRAFT_FILTERS,
-  AIRPORT_FILTERS,
-  CHARTER_FILTERS,
-  CREW_FILTERS,
-  FBO_FILTERS,
-  HANGAR_FILTERS,
-  INSURANCE_FILTERS,
-  OPERATING_FILTERS,
-  PROGRAM_FILTERS,
-  SCENARIO_FILTERS,
-  TAX_FILTERS,
-  TRAINING_FILTERS,
-} from "@/components/internal/data-hub/filter-configs";
+import { filtersForTab } from "@/components/internal/data-hub/filter-configs";
 import {
   AIRCRAFT_CATEGORIES,
   CREW_ROLES,
@@ -28,6 +15,10 @@ import {
   TRAINING_TYPES,
 } from "@/components/internal/data-hub/field-options";
 import { clearDataHubFilters } from "@/lib/data-hub-filters";
+import {
+  DataHubFilterSidebar,
+  DataHubSearchBar,
+} from "@/components/internal/data-hub/filter-bar";
 
 const TABS = [
   { id: "airports", label: "Airports & FBOs" },
@@ -79,39 +70,52 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
     setImportMsg(res.ok ? (json.message ?? "Import complete") : (json.error ?? "Import failed"));
   }
 
-  return (
-    <div className="flex gap-6">
-      <aside className="w-48 shrink-0 space-y-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`block w-full rounded px-3 py-2 text-left text-sm ${
-              tab === t.id
-                ? "bg-atlas-accent/15 text-atlas-accent"
-                : "text-atlas-muted hover:bg-atlas-border/30"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-        <div className="mt-4 border-t border-atlas-border pt-4">
-          <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
-            Import CSV
-          </Button>
-          {importMsg && <p className="mt-2 text-xs text-atlas-muted">{importMsg}</p>}
-        </div>
-      </aside>
+  const sidebarFilters = filtersForTab(tab);
+  const singleTableTab = tab !== "airports" && tab !== "fuel";
 
-      <div className="min-w-0 flex-1">
+  return (
+    <div className="flex h-full min-h-0">
+      <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-atlas-border bg-atlas-surface/20">
+        <nav className="space-y-0.5 p-3">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`block w-full rounded px-3 py-2 text-left text-sm ${
+                tab === t.id
+                  ? "bg-atlas-accent/15 text-atlas-accent"
+                  : "text-atlas-muted hover:bg-atlas-border/30"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="space-y-3 border-t border-atlas-border px-3 py-3">
+          <DataHubSearchBar tab={tab} />
+          <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
+        </div>
+
+        <div className="mt-auto border-t border-atlas-border p-3">
+            <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
+              Import CSV
+            </Button>
+            {importMsg && <p className="mt-2 text-xs text-atlas-muted">{importMsg}</p>}
+          </div>
+        </aside>
+
+        <div
+          className={`min-w-0 flex-1 p-4 ${
+            singleTableTab ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
         {tab === "airports" && (
           <div className="space-y-8">
             <CrudTab
               title="Airports"
-              tab="airports"
               apiPath="/api/data/airports"
-              filterFields={AIRPORT_FILTERS}
               columns={[
                 { key: "icao", label: "ICAO" },
                 { key: "airportName", label: "Name" },
@@ -130,9 +134,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             />
             <CrudTab
               title="FBO Locations"
-              tab="airports"
               apiPath="/api/data/fbos"
-              filterFields={FBO_FILTERS}
               columns={[
                 { key: "airportIcao", label: "Airport" },
                 { key: "fboName", label: "FBO" },
@@ -172,9 +174,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "aircraft" && (
           <CrudTab
             title="Aircraft master"
-            tab="aircraft"
             apiPath="/api/data/aircraft-master"
-            filterFields={AIRCRAFT_FILTERS}
+            fillHeight
             columns={[
               { key: "manufacturer", label: "Manufacturer" },
               { key: "model", label: "Model" },
@@ -212,9 +213,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "operating" && (
           <CrudTab
             title="Operating defaults"
-            tab="operating"
             apiPath="/api/data/operating-defaults"
-            filterFields={OPERATING_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "costKey", label: "Cost key" },
@@ -240,9 +240,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "crew" && (
           <CrudTab
             title="Crew rates"
-            tab="crew"
             apiPath="/api/data/crew-rates"
-            filterFields={CREW_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "role", label: "Role" },
@@ -262,9 +261,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "programs" && (
           <CrudTab
             title="Program costs"
-            tab="programs"
             apiPath="/api/data/program-costs"
-            filterFields={PROGRAM_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "programType", label: "Type" },
@@ -290,9 +288,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "training" && (
           <CrudTab
             title="Training costs"
-            tab="training"
             apiPath="/api/data/training-costs"
-            filterFields={TRAINING_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "role", label: "Role" },
@@ -318,9 +315,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "insurance" && (
           <CrudTab
             title="Insurance assumptions"
-            tab="insurance"
             apiPath="/api/data/insurance-assumptions"
-            filterFields={INSURANCE_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "state", label: "State" },
@@ -338,9 +334,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "hangar" && (
           <CrudTab
             title="Hangar costs"
-            tab="hangar"
             apiPath="/api/data/hangar-costs"
-            filterFields={HANGAR_FILTERS}
+            fillHeight
             columns={[
               { key: "airportIcao", label: "Airport" },
               { key: "aircraft", label: "Aircraft" },
@@ -377,9 +372,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "taxes" && (
           <CrudTab
             title="State cost factors"
-            tab="taxes"
             apiPath="/api/data/state-cost-factors"
-            filterFields={TAX_FILTERS}
+            fillHeight
             columns={[
               { key: "state", label: "State" },
               { key: "registrationTaxRatePct", label: "Registration tax %" },
@@ -398,9 +392,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "charter" && (
           <CrudTab
             title="Charter market rates"
-            tab="charter"
             apiPath="/api/data/charter-rates"
-            filterFields={CHARTER_FILTERS}
+            fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
               { key: "airportIcao", label: "Airport" },
@@ -422,9 +415,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         {tab === "scenarios" && (
           <CrudTab
             title="Scenario templates"
-            tab="scenarios"
             apiPath="/api/data/scenario-templates"
-            filterFields={SCENARIO_FILTERS}
+            fillHeight
             columns={[
               { key: "name", label: "Name" },
               { key: "aircraft", label: "Aircraft" },

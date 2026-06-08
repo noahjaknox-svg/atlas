@@ -12,6 +12,7 @@ export type ResolvedHangarCost = {
   hangar_monthly: string;
   hangar_annual: string;
   hangar_source: string;
+  hangar_pricing_mode: string;
 };
 
 /** Resolve monthly hangar from a single hangar cost row + aircraft sqft. */
@@ -52,6 +53,7 @@ export function toHangarAssumptions(
     hangar_monthly: String(monthly),
     hangar_annual: String(annual),
     hangar_source: source,
+    hangar_pricing_mode: "monthly",
   };
 }
 

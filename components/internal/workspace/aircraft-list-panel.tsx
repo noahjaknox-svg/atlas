@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AssumptionMap } from "@/lib/assumptions";
@@ -11,6 +10,7 @@ import {
   type AircraftCardMeta,
   type AircraftBadge,
 } from "@/lib/aircraft-workspace";
+import { AircraftChipActionsMenu } from "@/components/internal/workspace/aircraft-chip-actions-menu";
 
 export type AircraftListItem = AircraftCardMeta & {
   assumptions: AssumptionMap;
@@ -67,7 +67,6 @@ export function AircraftListPanel({
             key={ac.id}
             ac={ac}
             isSelected={ac.id === selectedId}
-            canRemove={aircraft.length > 1}
             onSelect={() => onSelect(ac.id)}
             onDuplicate={() => onDuplicate(ac.id)}
             onRemove={() => onRemove(ac.id)}
@@ -81,19 +80,16 @@ export function AircraftListPanel({
 function AircraftCard({
   ac,
   isSelected,
-  canRemove,
   onSelect,
   onDuplicate,
   onRemove,
 }: {
   ac: AircraftListItem;
   isSelected: boolean;
-  canRemove: boolean;
   onSelect: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const badge = getAircraftBadge(ac.assumptions);
   const name = getAircraftDisplayName(ac.assumptions, ac);
   const subtitle = getAircraftCardSubtitle(ac.assumptions, ac);
@@ -124,51 +120,11 @@ function AircraftCard({
             </span>
           )}
         </button>
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            aria-label="Aircraft actions"
-            className="rounded px-1 py-0.5 text-atlas-muted opacity-0 transition-opacity hover:bg-atlas-border/40 hover:text-atlas-text group-hover:opacity-100 data-[open]:opacity-100"
-            data-open={menuOpen || undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen((o) => !o);
-            }}
-          >
-            ⋮
-          </button>
-          {menuOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="absolute right-0 top-6 z-20 min-w-[120px] rounded border border-atlas-border bg-atlas-surface py-1 text-xs shadow-lg">
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left hover:bg-atlas-accent/10"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDuplicate();
-                  }}
-                >
-                  Duplicate
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left text-atlas-danger hover:bg-atlas-danger/10 disabled:opacity-40"
-                  disabled={!canRemove}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onRemove();
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <AircraftChipActionsMenu
+          onDuplicate={onDuplicate}
+          onRemove={onRemove}
+          triggerClassName="opacity-0 group-hover:opacity-100 data-[open]:opacity-100"
+        />
       </div>
     </div>
   );

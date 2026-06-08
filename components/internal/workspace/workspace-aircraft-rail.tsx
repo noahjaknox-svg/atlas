@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { getAircraftDisplayName, type AircraftCardMeta } from "@/lib/aircraft-workspace";
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { AircraftListItem } from "./aircraft-list-panel";
+import { AircraftChipActionsMenu } from "./aircraft-chip-actions-menu";
 
 export function WorkspaceAircraftRail({
   aircraft,
@@ -12,6 +13,8 @@ export function WorkspaceAircraftRail({
   onSelect,
   onAdd,
   onToggleIncluded,
+  onRemove,
+  onDuplicate,
 }: {
   aircraft: AircraftListItem[];
   selectedId: string | null;
@@ -24,7 +27,7 @@ export function WorkspaceAircraftRail({
 }) {
   return (
     <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/60">
-      <div className="flex min-h-[3.25rem] items-stretch gap-2 overflow-x-auto px-3 py-2">
+      <div className="flex min-h-[3.25rem] items-stretch gap-2 px-3 py-2">
         <button
           type="button"
           onClick={onAdd}
@@ -40,7 +43,7 @@ export function WorkspaceAircraftRail({
           </p>
         ) : null}
 
-        <ul className="flex min-w-0 items-stretch gap-2">
+        <ul className="flex min-w-0 flex-1 items-stretch gap-2 overflow-x-auto pb-0.5">
           {aircraft.map((ac) => {
             const map = assumptionsByAircraft[ac.id] ?? ac.assumptions;
             const type = getAircraftDisplayName(map, ac as AircraftCardMeta);
@@ -52,14 +55,14 @@ export function WorkspaceAircraftRail({
               <li
                 key={ac.id}
                 className={cn(
-                  "flex shrink-0 rounded-md border transition-colors",
+                  "group/chip flex shrink-0 rounded-md border transition-colors",
                   selected
                     ? "border-atlas-accent bg-atlas-accent/5 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.3)]"
                     : "border-atlas-border/40 hover:border-atlas-border",
                   !included && "opacity-50"
                 )}
               >
-                <div className="flex items-center gap-2 px-3 py-1.5">
+                <div className="flex items-center gap-1 px-2 py-1.5 sm:gap-2 sm:px-3">
                   <button
                     type="button"
                     onClick={() => onSelect(ac.id)}
@@ -80,6 +83,11 @@ export function WorkspaceAircraftRail({
                     />
                     <span className="atlas-caption text-[10px]">Show</span>
                   </label>
+                  <AircraftChipActionsMenu
+                    onDuplicate={onDuplicate ? () => onDuplicate(ac.id) : undefined}
+                    onRemove={onRemove ? () => onRemove(ac.id) : undefined}
+                    triggerClassName="opacity-70 group-hover/chip:opacity-100 data-[open]:opacity-100"
+                  />
                 </div>
               </li>
             );

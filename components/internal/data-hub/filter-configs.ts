@@ -77,3 +77,33 @@ export const CHARTER_FILTERS: FilterField[] = [
 export const SCENARIO_FILTERS: FilterField[] = [
   { key: "aircraftId", label: "Aircraft", type: "searchable", searchKind: "aircraft" },
 ];
+
+/** Filter fields shown in the sidebar for each Data Hub tab. */
+export function filtersForTab(tab: string): FilterField[] {
+  switch (tab) {
+    case "airports":
+      return [...AIRPORT_FILTERS, ...FBO_FILTERS];
+    case "aircraft":
+      return AIRCRAFT_FILTERS;
+    case "operating":
+      return OPERATING_FILTERS;
+    case "crew":
+      return CREW_FILTERS;
+    case "programs":
+      return PROGRAM_FILTERS;
+    case "training":
+      return TRAINING_FILTERS;
+    case "insurance":
+      return INSURANCE_FILTERS;
+    case "hangar":
+      return HANGAR_FILTERS;
+    case "taxes":
+      return TAX_FILTERS;
+    case "charter":
+      return CHARTER_FILTERS;
+    case "scenarios":
+      return SCENARIO_FILTERS;
+    default:
+      return [];
+  }
+}

@@ -53,3 +53,8 @@ export const INSURANCE_MODE_OPTIONS = [
   { value: "annual", label: "Flat annual quote" },
   { value: "percent_hull", label: "Percent of hull value" },
 ];
+
+export const HANGAR_PRICING_MODE_OPTIONS = [
+  { value: "monthly", label: "Per month" },
+  { value: "annual", label: "Total annual price" },
+];

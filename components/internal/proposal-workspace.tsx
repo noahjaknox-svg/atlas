@@ -7,7 +7,6 @@ import { AircraftTabsPanel } from "@/components/internal/workspace/aircraft-tabs
 import type { PortalPresentationState } from "@/components/internal/workspace/portal-presentation-panel";
 import { PortalPresentationDialog } from "@/components/internal/workspace/portal-presentation-dialog";
 import { WorkspaceLayout } from "@/components/internal/workspace/workspace-layout";
-import { WorkspaceOwnerBar } from "@/components/internal/workspace/workspace-owner-bar";
 import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { WorkspaceProposalFooter } from "@/components/internal/workspace/workspace-proposal-footer";
 import type { ProposalComment } from "@/components/internal/workspace/proposal-comments-panel";
@@ -631,7 +630,10 @@ export function ProposalWorkspace({
       method: "DELETE",
     });
     const json = await res.json();
-    if (!res.ok) return;
+    if (!res.ok) {
+      alert(json.error ?? "Could not remove aircraft");
+      return;
+    }
     setAircraft((list) => list.filter((a) => a.id !== id));
     setAssumptionsByAircraft((m) => {
       const next = { ...m };
@@ -649,6 +651,7 @@ export function ProposalWorkspace({
       return next;
     });
     setSelectedId(json.selectedAircraftId ?? aircraft.find((a) => a.id !== id)?.id ?? null);
+    if (portal?.active) setNeedsRepublish(true);
   }
 
   async function handlePublish(republishing = false) {
@@ -751,20 +754,7 @@ export function ProposalWorkspace({
         currentUserId={data.currentUserId}
         currentUserName={data.currentUserName}
         initialComments={data.initialComments}
-        ownerBar={
-          selected ? (
-            <WorkspaceOwnerBar
-              profiles={selectedOwners}
-              allocationMode={selectedAllocationMode}
-              onProfilesChange={(profiles) =>
-                applyOwnerChanges(selected.id, profiles, selectedAllocationMode)
-              }
-              onAllocationModeChange={(mode) =>
-                applyOwnerChanges(selected.id, selectedOwners, mode)
-              }
-            />
-          ) : null
-        }
+        ownerBar={null}
         footer={
           <WorkspaceProposalFooter
             portalSlug={portalSlug}
@@ -795,6 +785,9 @@ export function ProposalWorkspace({
             allocationMode={selectedAllocationMode}
             onOwnerProfilesChange={(profiles) =>
               applyOwnerChanges(selected.id, profiles, selectedAllocationMode)
+            }
+            onAllocationModeChange={(mode) =>
+              applyOwnerChanges(selected.id, selectedOwners, mode)
             }
             onApplySetupDefaults={(patch, instancePatch) =>
               applySetupDefaults(selected.id, patch, instancePatch)

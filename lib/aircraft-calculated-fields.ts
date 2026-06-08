@@ -15,6 +15,8 @@ import {
   computeUtilizationProfile,
   syncUtilizationHours,
 } from "@/lib/proforma-utilization";
+import { resolveHangarAnnual, resolveHangarPricingMode } from "@/lib/hangar-assumptions";
+import { formatCurrency } from "@/lib/utils";
 
 function num(v: string | undefined, fallback = 0): number {
   const n = parseFloat(v ?? "");
@@ -27,18 +29,25 @@ function count(v: string | undefined, fallback = 1): number {
 }
 
 /** Fields auto-computed in the workspace (shown read-only). */
-export function isCalculatedField(name: string): boolean {
-  return CALCULATED_ASSUMPTION_KEYS.has(name);
+export function isCalculatedField(name: string, assumptions?: AssumptionMap): boolean {
+  if (CALCULATED_ASSUMPTION_KEYS.has(name)) return true;
+  if (!assumptions) return false;
+  const hangarMode = resolveHangarPricingMode(assumptions.hangar_pricing_mode);
+  if (name === "hangar_annual") return hangarMode === "monthly";
+  if (name === "hangar_monthly") return hangarMode === "annual";
+  return false;
 }
 
 export const CALCULATED_ASSUMPTION_KEYS = new Set([
-  "hangar_annual",
   "blended_fuel_price",
   "fuel_cost_per_hour",
   "pic_crew_total",
   "sic_crew_total",
   "cabin_crew_total",
   "crew_total",
+  "pic_training_total",
+  "sic_training_total",
+  "crew_training_total",
   "variable_cost_per_hour",
   "monthly_debt_service",
   "registration_annual",
@@ -69,7 +78,6 @@ export const HIDDEN_LEGACY_ASSUMPTION_KEYS = new Set([
   "contract_pilot_allowance",
   "crew_travel_per_diem",
   "payroll_burden_pct",
-  "charter_payback_pct",
   "broker_commission_allowance",
   "empty_leg_allowance",
   "charter_demand_confidence",
@@ -78,20 +86,67 @@ export const HIDDEN_LEGACY_ASSUMPTION_KEYS = new Set([
   "charter_flight_hours",
 ]);
 
-/** PIC + SIC training annual; falls back to legacy crew_training if unset. */
+/** Per-pilot training annual × headcount; falls back to legacy crew_training if unset. */
 export function resolveCrewTrainingTotal(a: AssumptionMap): {
   pic: number;
   sic: number;
   total: number;
 } {
-  let pic = num(a.pic_training);
-  let sic = num(a.sic_training);
+  const picPerPilot = num(a.pic_training);
+  const sicPerPilot = num(a.sic_training);
+  const picHeads = count(a.pic_count, 1);
+  const sicHeads = count(a.sic_count, 1);
+  let pic = picPerPilot > 0 && picHeads > 0 ? Math.round(picPerPilot * picHeads) : 0;
+  let sic = sicPerPilot > 0 && sicHeads > 0 ? Math.round(sicPerPilot * sicHeads) : 0;
   const legacy = num(a.crew_training);
   if (pic === 0 && sic === 0 && legacy > 0) {
     pic = Math.round(legacy / 2);
     sic = legacy - pic;
   }
   return { pic, sic, total: pic + sic };
+}
+
+export function computePicTrainingTotal(a: AssumptionMap): number {
+  return resolveCrewTrainingTotal(a).pic;
+}
+
+export function computeSicTrainingTotal(a: AssumptionMap): number {
+  return resolveCrewTrainingTotal(a).sic;
+}
+
+export function computeCrewTrainingTotalAmount(a: AssumptionMap): number {
+  return resolveCrewTrainingTotal(a).total;
+}
+
+/** Human-readable multiplier breakdown for workspace training footers. */
+export function formatTrainingCalculationHint(
+  a: AssumptionMap,
+  role: "pic" | "sic" | "total"
+): string | undefined {
+  const perPic = num(a.pic_training);
+  const perSic = num(a.sic_training);
+  const picHeads = count(a.pic_count, 1);
+  const sicHeads = count(a.sic_count, 1);
+  const { pic, sic } = resolveCrewTrainingTotal(a);
+
+  if (role === "pic") {
+    if (perPic <= 0 || picHeads <= 0) return undefined;
+    return `${formatCurrency(perPic)} × ${picHeads} PIC = ${formatCurrency(pic)}`;
+  }
+  if (role === "sic") {
+    if (perSic <= 0 || sicHeads <= 0) return undefined;
+    return `${formatCurrency(perSic)} × ${sicHeads} SIC = ${formatCurrency(sic)}`;
+  }
+
+  const parts: string[] = [];
+  if (pic > 0 && perPic > 0 && picHeads > 0) {
+    parts.push(`${formatCurrency(perPic)} × ${picHeads} PIC`);
+  }
+  if (sic > 0 && perSic > 0 && sicHeads > 0) {
+    parts.push(`${formatCurrency(perSic)} × ${sicHeads} SIC`);
+  }
+  if (parts.length === 0) return undefined;
+  return parts.join(" + ");
 }
 
 export function computePicCrewTotal(a: AssumptionMap): number {
@@ -149,9 +204,17 @@ export function computeMonthlyDebtService(a: AssumptionMap): number | null {
 export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<AssumptionMap> {
   const derived: Partial<AssumptionMap> = {};
 
-  const hangarMonthly = num(assumptions.hangar_monthly);
-  if (hangarMonthly > 0) {
-    derived.hangar_annual = String(Math.round(hangarMonthly * 12));
+  const hangarMode = resolveHangarPricingMode(assumptions.hangar_pricing_mode);
+  if (hangarMode === "monthly") {
+    const hangarMonthly = num(assumptions.hangar_monthly);
+    if (hangarMonthly > 0) {
+      derived.hangar_annual = String(Math.round(hangarMonthly * 12));
+    }
+  } else {
+    const hangarAnnual = num(assumptions.hangar_annual);
+    if (hangarAnnual > 0) {
+      derived.hangar_monthly = String(Math.round(hangarAnnual / 12));
+    }
   }
 
   const homeFuel = num(assumptions.home_fuel_price);
@@ -190,6 +253,11 @@ export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<A
   derived.sic_crew_total = String(sicTotal);
   derived.cabin_crew_total = String(cabinTotal);
   derived.crew_total = String(picTotal + sicTotal + cabinTotal);
+
+  const training = resolveCrewTrainingTotal(assumptions);
+  derived.pic_training_total = String(training.pic);
+  derived.sic_training_total = String(training.sic);
+  derived.crew_training_total = String(training.total);
 
   const debt = computeMonthlyDebtService(assumptions);
   if (debt != null) {
