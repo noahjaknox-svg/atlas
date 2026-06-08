@@ -82,6 +82,8 @@ export async function serializeClientSnapshot(
     proForma: summary.proForma,
     fixedCostBreakdown: summary.fixedCostBreakdown,
     statementRows: summary.statementRows,
+    /** Full assumption map for instant client-side pro forma recalculation. */
+    calculationAssumptions: calculationMap ?? entry.calculationAssumptions ?? {},
   };
 }
 

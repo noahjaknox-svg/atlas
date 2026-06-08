@@ -1,6 +1,7 @@
 "use client";
 
 import type { UtilizationProfile } from "@/lib/proforma-utilization";
+import { HoursInput } from "@/components/ui/hours-input";
 import { cn } from "@/lib/utils";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 
@@ -47,13 +48,12 @@ export function ProFormaScenarioPanel({
             <span className="atlas-caption mt-1 block">
               Also editable in the Owners tab — drives P&L below
             </span>
-            <input
-              type="number"
+            <HoursInput
               min={0}
               step={1}
               className="atlas-input mt-3 w-full max-w-[8rem] text-center sm:text-left"
-              value={Number.isFinite(profile.ownerFlightHours) ? profile.ownerFlightHours : ""}
-              onChange={(e) => onOwnerHoursChange(parseFloat(e.target.value) || 0)}
+              value={Number.isFinite(profile.ownerFlightHours) ? profile.ownerFlightHours : 0}
+              onChange={onOwnerHoursChange}
             />
           </label>
         )}

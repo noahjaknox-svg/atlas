@@ -1,11 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn, parseFormattedNumber } from "@/lib/utils";
 import { MoneyInput } from "@/components/ui/money-input";
+import { HoursInput } from "@/components/ui/hours-input";
 import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
+import {
+  computeWorkspaceProFormaForClient,
+  stringsToAssumptionMap,
+} from "@/lib/workspace-proforma-client";
 
 interface AircraftListOption {
   id: string;
@@ -37,6 +42,7 @@ interface ClientProFormaData {
   };
   fixedCostBreakdown: Array<{ label: string; annual: number; monthly: number }>;
   statementRows: ProFormaStatementRow[];
+  calculationAssumptions?: Record<string, string>;
 }
 
 const inputClass =
@@ -52,9 +58,7 @@ export function ProFormaClient({
   slug: string;
   initial: ClientProFormaData;
   initialAircraftId?: string | null;
-  /** Hide duplicate page chrome when rendered inside Experience hero. */
   embedded?: boolean;
-  /** Use /experience/pro-forma URLs for aircraft query updates. */
   experiencePath?: boolean;
 }) {
   const router = useRouter();
@@ -67,50 +71,82 @@ export function ProFormaClient({
     String(initial.editableFields.aircraftValue.value)
   );
   const [ownerHours, setOwnerHours] = useState(initial.editableFields.ownerAnnualHours.value);
-  const [data, setData] = useState(initial);
   const [baseline, setBaseline] = useState({
     aircraftValue: initial.baseMetrics.aircraftValue,
     ownerHours: initial.baseMetrics.ownerHours,
   });
 
+  const calculationAssumptions = initial.calculationAssumptions ?? {};
+  const canComputeLocally = Object.keys(calculationAssumptions).length > 0;
+
   const showAircraftSelector = initial.aircraftList.length > 1;
-  const skipInitialRecalc = useRef(true);
   const userEditedRef = useRef(false);
 
-  const recalculate = useCallback(
-    async (options?: { persist?: boolean }) => {
-      const res = await fetch(`/api/portal/${slug}/scenario`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          aircraftValue: parseFloat(parseFormattedNumber(String(aircraftValue))) || 0,
-          ownerHours,
-          aircraftInstanceId: selectedAircraftId || undefined,
-          persistScenario: options?.persist === true,
-        }),
-      });
-      if (res.ok) {
-        const updated = (await res.json()) as ClientProFormaData;
-        setData(updated);
-        setBaseline({
-          aircraftValue: updated.baseMetrics.aircraftValue,
-          ownerHours: updated.baseMetrics.ownerHours,
-        });
-      }
-    },
-    [slug, aircraftValue, ownerHours, selectedAircraftId]
+  const parsedAircraftValue = useMemo(
+    () => parseFloat(parseFormattedNumber(aircraftValue)) || 0,
+    [aircraftValue]
   );
 
-  useEffect(() => {
-    if (skipInitialRecalc.current) {
-      skipInitialRecalc.current = false;
-      return;
+  const statementRows = useMemo(() => {
+    if (!canComputeLocally) return initial.statementRows;
+    const calc = computeWorkspaceProFormaForClient(
+      stringsToAssumptionMap(calculationAssumptions),
+      { aircraftValue: parsedAircraftValue, ownerHours }
+    );
+    return calc.statementRows;
+  }, [
+    canComputeLocally,
+    calculationAssumptions,
+    parsedAircraftValue,
+    ownerHours,
+    initial.statementRows,
+  ]);
+
+  const persistScenario = useCallback(async () => {
+    await fetch(`/api/portal/${slug}/scenario`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aircraftValue: parsedAircraftValue,
+        ownerHours,
+        aircraftInstanceId: selectedAircraftId || undefined,
+        persistScenario: true,
+      }),
+    });
+  }, [slug, parsedAircraftValue, ownerHours, selectedAircraftId]);
+
+  // Fallback server recalc when snapshot lacks calculation assumptions (legacy publishes).
+  const fetchFromServer = useCallback(async () => {
+    const res = await fetch(`/api/portal/${slug}/scenario`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        aircraftValue: parsedAircraftValue,
+        ownerHours,
+        aircraftInstanceId: selectedAircraftId || undefined,
+        persistScenario: userEditedRef.current,
+      }),
+    });
+    if (res.ok) {
+      const updated = (await res.json()) as ClientProFormaData;
+      setBaseline({
+        aircraftValue: updated.baseMetrics.aircraftValue,
+        ownerHours: updated.baseMetrics.ownerHours,
+      });
     }
-    const t = setTimeout(() => {
-      void recalculate({ persist: userEditedRef.current });
-    }, 500);
+  }, [slug, parsedAircraftValue, ownerHours, selectedAircraftId]);
+
+  useEffect(() => {
+    if (canComputeLocally) return;
+    const t = setTimeout(() => void fetchFromServer(), 200);
     return () => clearTimeout(t);
-  }, [recalculate]);
+  }, [canComputeLocally, fetchFromServer]);
+
+  useEffect(() => {
+    if (!userEditedRef.current) return;
+    const t = setTimeout(() => void persistScenario(), 800);
+    return () => clearTimeout(t);
+  }, [persistScenario]);
 
   function selectAircraft(id: string) {
     setSelectedAircraftId(id);
@@ -139,12 +175,12 @@ export function ProFormaClient({
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
             <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
-            {data.aircraft?.label ? (
-              <p className="mt-2 text-white/60">{data.aircraft.label}</p>
+            {initial.aircraft?.label ? (
+              <p className="mt-2 text-white/60">{initial.aircraft.label}</p>
             ) : null}
           </div>
-        ) : data.aircraft?.label ? (
-          <p className="text-sm text-white/60">{data.aircraft.label}</p>
+        ) : initial.aircraft?.label ? (
+          <p className="text-sm text-white/60">{initial.aircraft.label}</p>
         ) : (
           <span />
         )}
@@ -211,12 +247,11 @@ export function ProFormaClient({
         </label>
         <label className="block text-sm text-white/70">
           Owner annual hours
-          <input
-            type="number"
+          <HoursInput
             value={ownerHours}
-            onChange={(e) => {
+            onChange={(hours) => {
               userEditedRef.current = true;
-              setOwnerHours(Number(e.target.value));
+              setOwnerHours(hours);
             }}
             className={inputClass}
           />
@@ -231,7 +266,7 @@ export function ProFormaClient({
         Restore to PrismJet assumptions
       </button>
 
-      <ClientProFormaStatement rows={data.statementRows} period={period} />
+      <ClientProFormaStatement rows={statementRows} period={period} />
     </div>
   );
 }

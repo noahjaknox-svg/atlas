@@ -19,6 +19,68 @@ import {
   DataHubFilterSidebar,
   DataHubSearchBar,
 } from "@/components/internal/data-hub/filter-bar";
+import type { FormField } from "@/components/internal/data-hub/entity-dialog";
+import { ScenarioTemplatesTab } from "@/components/internal/data-hub/scenario-templates-tab";
+import { CsvImportPanel } from "@/components/internal/data-hub/csv-import-panel";
+import type { DataTableColumn } from "@/components/internal/data-hub/data-table";
+import { formatHubLabel } from "@/lib/data-hub-labels";
+
+type HubRow = Record<string, unknown>;
+
+function hubLabelColumn(key: string, label: string): DataTableColumn<HubRow> {
+  return {
+    key,
+    label,
+    render: (row) => formatHubLabel(String(row[key] ?? "")),
+  };
+}
+
+const EFFECTIVE_DATE_FIELD: FormField = {
+  key: "effectiveDate",
+  label: "Effective date",
+  type: "date",
+  placeholder: "YYYY-MM-DD",
+};
+
+const AIRPORT_FIELD: FormField = {
+  key: "airportId",
+  label: "Airport",
+  type: "searchable",
+  searchKind: "airport",
+  displayFromRow: "airportIcao",
+  required: true,
+  placeholder: "Search ICAO or city…",
+};
+
+const AIRPORT_FIELD_OPTIONAL: FormField = {
+  ...AIRPORT_FIELD,
+  required: false,
+};
+
+const AIRCRAFT_FIELD: FormField = {
+  key: "aircraftMasterId",
+  label: "Aircraft",
+  type: "searchable",
+  searchKind: "aircraft",
+  displayFromRow: "aircraft",
+  required: true,
+  placeholder: "Search manufacturer or model…",
+};
+
+const AIRCRAFT_FIELD_OPTIONAL: FormField = {
+  ...AIRCRAFT_FIELD,
+  required: false,
+};
+
+const FBO_FIELD: FormField = {
+  key: "fboLocationId",
+  label: "FBO",
+  type: "searchable",
+  searchKind: "fbo",
+  searchDependsOn: "airportId",
+  displayFromRow: "fboName",
+  placeholder: "Search FBO name…",
+};
 
 const TABS = [
   { id: "airports", label: "Airports & FBOs" },
@@ -57,21 +119,45 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
   }, [tab]);
 
   async function syncFuel() {
+    setSyncMsg("Syncing…");
     const res = await fetch("/api/data/fuel/sync", { method: "POST" });
     const json = await res.json();
-    setSyncMsg(json.message ?? "Sync complete");
+    setSyncMsg(json.message ?? (res.ok ? "Sync complete" : "Sync failed"));
+    if (res.ok) {
+      const idx = await fetch("/api/data/fuel-index");
+      if (idx.ok) setFuelIndex(await idx.json());
+    }
   }
 
   async function importCsv() {
-    if (!confirm("Re-import aircraft data from CSV? This upserts reference records.")) return;
+    if (
+      !confirm(
+        "Re-import reference data from the bundled seed CSV (data/seeds/aircraft-master-proforma.csv)? Existing records will be upserted."
+      )
+    ) {
+      return;
+    }
     setImportMsg("Importing…");
-    const res = await fetch("/api/data/import-aircraft-csv", { method: "POST" });
-    const json = await res.json();
-    setImportMsg(res.ok ? (json.message ?? "Import complete") : (json.error ?? "Import failed"));
+    try {
+      const res = await fetch("/api/data/import-aircraft-csv", { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setImportMsg(json.message ?? "Seed CSV import complete.");
+      } else {
+        setImportMsg(
+          typeof json.error === "string"
+            ? json.error
+            : "Import failed. Check server logs or run npm run db:import locally."
+        );
+      }
+    } catch {
+      setImportMsg("Import failed — could not reach the server.");
+    }
   }
 
   const sidebarFilters = filtersForTab(tab);
   const singleTableTab = tab !== "airports" && tab !== "fuel";
+  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   return (
     <div className="flex h-full min-h-0">
@@ -98,11 +184,20 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
         </div>
 
-        <div className="mt-auto border-t border-atlas-border p-3">
+        <div className="mt-auto border-t border-atlas-border p-3 space-y-0">
             <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
-              Import CSV
+              Re-import seed CSV
             </Button>
-            {importMsg && <p className="mt-2 text-xs text-atlas-muted">{importMsg}</p>}
+            {importMsg && (
+              <p
+                className={`mt-2 text-xs ${importMsg.includes("failed") || importMsg.includes("Failed") ? "text-atlas-danger" : "text-atlas-muted"}`}
+              >
+                {importMsg}
+              </p>
+            )}
+            {tab === "aircraft" ? (
+              <CsvImportPanel onImported={() => router.refresh()} />
+            ) : null}
           </div>
         </aside>
 
@@ -111,6 +206,10 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             singleTableTab ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto"
           }`}
         >
+        <header className="mb-4 shrink-0">
+          <h1 className="font-serif text-2xl">{activeTab.label}</h1>
+          <p className="mt-0.5 text-sm text-atlas-muted">Reference data for proposals and pro forma</p>
+        </header>
         {tab === "airports" && (
           <div className="space-y-8">
             <CrudTab
@@ -124,12 +223,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 { key: "fboCount", label: "FBOs" },
               ]}
               fields={[
-                { key: "icao", label: "ICAO", required: true },
-                { key: "airportName", label: "Airport name", required: true },
-                { key: "city", label: "City" },
-                { key: "state", label: "State" },
-                { key: "country", label: "Country" },
-                { key: "iata", label: "IATA" },
+                { key: "icao", label: "ICAO", required: true, placeholder: "e.g. KSDL" },
+                { key: "airportName", label: "Airport name", required: true, placeholder: "Full airport name" },
+                { key: "city", label: "City", placeholder: "City" },
+                { key: "state", label: "State", placeholder: "2-letter code" },
+                { key: "country", label: "Country", placeholder: "US" },
+                { key: "iata", label: "IATA", placeholder: "3-letter code" },
               ]}
             />
             <CrudTab
@@ -142,8 +241,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 { key: "jetAContractPrice", label: "Jet-A contract" },
               ]}
               fields={[
-                { key: "airportId", label: "Airport ID (UUID)", required: true },
-                { key: "fboName", label: "FBO name", required: true },
+                AIRPORT_FIELD,
+                { key: "fboName", label: "FBO name", required: true, placeholder: "e.g. Ross Aviation" },
                 { key: "jetARetailPrice", label: "Jet-A retail ($/gal)", type: "number" },
                 { key: "jetAContractPrice", label: "Jet-A contract ($/gal)", type: "number" },
                 { key: "phone", label: "Phone" },
@@ -160,13 +259,13 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               <p className="mt-1 font-mono text-xl text-atlas-accent">
                 {fuelIndex
                   ? `$${fuelIndex.pricePerGallon.toFixed(2)}/gal — ${fuelIndex.effectiveDate}`
-                  : "Not loaded — set EIA_API_KEY and refresh"}
+                  : "Not loaded — sync from EIA below (requires EIA_API_KEY)"}
               </p>
             </div>
             <p className="mb-4 text-sm text-atlas-muted">
               Edit per-FBO fuel prices in Airports &amp; FBOs → FBO Locations.
             </p>
-            <Button onClick={() => void syncFuel()}>Sync FBO fuel prices (stub)</Button>
+            <Button onClick={() => void syncFuel()}>Sync fuel from EIA</Button>
             {syncMsg && <p className="mt-2 text-sm text-atlas-muted">{syncMsg}</p>}
           </div>
         )}
@@ -179,14 +278,14 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             columns={[
               { key: "manufacturer", label: "Manufacturer" },
               { key: "model", label: "Model" },
-              { key: "aircraftCategory", label: "Category" },
+              hubLabelColumn("aircraftCategory", "Category"),
               { key: "typicalFuelBurnGph", label: "Fuel burn GPH" },
               { key: "cabinSqft", label: "Sqft" },
               { key: "typicalHullValue", label: "Hull value" },
             ]}
             fields={[
-              { key: "manufacturer", label: "Manufacturer", required: true },
-              { key: "model", label: "Model", required: true },
+              { key: "manufacturer", label: "Manufacturer", required: true, placeholder: "e.g. Bombardier" },
+              { key: "model", label: "Model", required: true, placeholder: "e.g. Challenger 350" },
               {
                 key: "aircraftCategory",
                 label: "Category",
@@ -194,12 +293,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 options: AIRCRAFT_CATEGORIES,
                 required: true,
               },
-              { key: "typicalFuelBurnGph", label: "Fuel burn GPH", type: "number" },
-              { key: "typicalCharterRate", label: "Charter rate", type: "number" },
-              { key: "maxRecommendedUtilization", label: "Max utilization (hrs)", type: "number" },
+              { key: "typicalFuelBurnGph", label: "Fuel burn GPH", type: "number", placeholder: "e.g. 250" },
+              { key: "typicalCharterRate", label: "Charter rate", type: "number", placeholder: "USD/hr" },
+              { key: "maxRecommendedUtilization", label: "Max utilization (hrs)", type: "number", placeholder: "e.g. 400" },
               { key: "cabinSqft", label: "Cabin sqft", type: "number" },
               { key: "typicalHullValue", label: "Typical hull value", type: "number" },
-              { key: "typicalCrewRequired", label: "Crew required", type: "number" },
+              { key: "typicalCrewRequired", label: "Crew required", type: "number", placeholder: "2" },
               {
                 key: "dataConfidence",
                 label: "Confidence",
@@ -217,12 +316,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
-              { key: "costKey", label: "Cost key" },
+              hubLabelColumn("costKey", "Cost key"),
               { key: "annualAmount", label: "Annual amount" },
               { key: "effectiveDate", label: "Effective" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
+              AIRCRAFT_FIELD,
               {
                 key: "costKey",
                 label: "Cost key",
@@ -230,9 +329,9 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 options: OPERATING_COST_KEYS,
                 required: true,
               },
-              { key: "annualAmount", label: "Annual amount", type: "number", required: true },
-              { key: "effectiveDate", label: "Effective date (YYYY-MM-DD)" },
-              { key: "source", label: "Source" },
+              { key: "annualAmount", label: "Annual amount", type: "number", required: true, placeholder: "USD" },
+              EFFECTIVE_DATE_FIELD,
+              { key: "source", label: "Source", placeholder: "Data source" },
             ]}
           />
         )}
@@ -244,16 +343,16 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
-              { key: "role", label: "Role" },
+              hubLabelColumn("role", "Role"),
               { key: "salaryBase", label: "Salary" },
               { key: "benefitsPercent", label: "Benefits %" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
+              AIRCRAFT_FIELD,
               { key: "role", label: "Role", type: "select", options: CREW_ROLES, required: true },
-              { key: "salaryBase", label: "Salary base", type: "number" },
-              { key: "benefitsPercent", label: "Benefits %", type: "number" },
-              { key: "effectiveDate", label: "Effective date" },
+              { key: "salaryBase", label: "Salary base", type: "number", placeholder: "USD" },
+              { key: "benefitsPercent", label: "Benefits %", type: "number", placeholder: "0–100" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
@@ -265,12 +364,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
-              { key: "programType", label: "Type" },
+              hubLabelColumn("programType", "Type"),
               { key: "provider", label: "Provider" },
               { key: "hourlyRate", label: "Hourly rate" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
+              AIRCRAFT_FIELD,
               {
                 key: "programType",
                 label: "Program type",
@@ -279,8 +378,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 required: true,
               },
               { key: "provider", label: "Provider" },
-              { key: "hourlyRate", label: "Hourly rate", type: "number" },
-              { key: "effectiveDate", label: "Effective date" },
+              { key: "hourlyRate", label: "Hourly rate", type: "number", placeholder: "USD/hr" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
@@ -292,12 +391,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
-              { key: "role", label: "Role" },
-              { key: "trainingType", label: "Type" },
+              hubLabelColumn("role", "Role"),
+              hubLabelColumn("trainingType", "Type"),
               { key: "annualCost", label: "Annual cost" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
+              AIRCRAFT_FIELD,
               { key: "role", label: "Role", type: "select", options: CREW_ROLES, required: true },
               {
                 key: "trainingType",
@@ -305,9 +404,9 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 type: "select",
                 options: TRAINING_TYPES,
               },
-              { key: "annualCost", label: "Annual cost", type: "number" },
+              { key: "annualCost", label: "Annual cost", type: "number", placeholder: "USD" },
               { key: "provider", label: "Provider" },
-              { key: "effectiveDate", label: "Effective date" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
@@ -323,10 +422,10 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               { key: "annualPremiumEstimate", label: "Annual premium" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
+              AIRCRAFT_FIELD,
               { key: "state", label: "State" },
-              { key: "annualPremiumEstimate", label: "Annual premium", type: "number" },
-              { key: "effectiveDate", label: "Effective date" },
+              { key: "annualPremiumEstimate", label: "Annual premium", type: "number", placeholder: "USD" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
@@ -344,7 +443,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               { key: "ratePerSqftAnnual", label: "$/sqft/yr" },
             ]}
             fields={[
-              { key: "airportId", label: "Airport ID", required: true },
+              AIRPORT_FIELD,
               {
                 key: "aircraftCategory",
                 label: "Category",
@@ -352,8 +451,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
                 options: AIRCRAFT_CATEGORIES,
                 required: true,
               },
-              { key: "aircraftMasterId", label: "Aircraft master ID" },
-              { key: "fboLocationId", label: "FBO location ID" },
+              AIRCRAFT_FIELD_OPTIONAL,
+              FBO_FIELD,
               { key: "provider", label: "Provider" },
               {
                 key: "pricingMethod",
@@ -364,7 +463,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               { key: "quotedAnnual", label: "Quoted annual", type: "number" },
               { key: "ratePerSqftAnnual", label: "Rate per sqft (annual)", type: "number" },
               { key: "monthlyCostBase", label: "Monthly base", type: "number" },
-              { key: "effectiveDate", label: "Effective date" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
@@ -402,40 +501,17 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               { key: "ownerPaybackPercent", label: "Payback %" },
             ]}
             fields={[
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
-              { key: "airportId", label: "Airport ID (optional)" },
+              AIRCRAFT_FIELD,
+              AIRPORT_FIELD_OPTIONAL,
               { key: "retailRateBase", label: "Retail rate base", type: "number" },
               { key: "fuelSurcharge", label: "Fuel surcharge", type: "number" },
-              { key: "ownerPaybackPercent", label: "Owner payback %", type: "number" },
-              { key: "effectiveDate", label: "Effective date" },
+              { key: "ownerPaybackPercent", label: "Owner payback %", type: "number", placeholder: "0–100" },
+              EFFECTIVE_DATE_FIELD,
             ]}
           />
         )}
 
-        {tab === "scenarios" && (
-          <CrudTab
-            title="Scenario templates"
-            apiPath="/api/data/scenario-templates"
-            fillHeight
-            columns={[
-              { key: "name", label: "Name" },
-              { key: "aircraft", label: "Aircraft" },
-              {
-                key: "assumptions",
-                label: "Overrides",
-                render: (row) => {
-                  const a = row.assumptions as Array<{ assumptionKey: string; value: string }> | undefined;
-                  return a?.map((x) => `${x.assumptionKey}=${x.value}`).join(", ") ?? "";
-                },
-              },
-            ]}
-            fields={[
-              { key: "name", label: "Template name", required: true },
-              { key: "aircraftMasterId", label: "Aircraft master ID", required: true },
-              { key: "description", label: "Description", type: "textarea" },
-            ]}
-          />
-        )}
+        {tab === "scenarios" && <ScenarioTemplatesTab />}
       </div>
     </div>
   );

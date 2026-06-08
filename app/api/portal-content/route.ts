@@ -10,6 +10,7 @@ import {
 
 export async function GET() {
   try {
+    await requireInternalUser();
     const [content, fleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
     return jsonOk({ content, fleet });
   } catch (e) {

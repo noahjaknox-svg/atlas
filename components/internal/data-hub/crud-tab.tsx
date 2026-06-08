@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/internal/data-hub/data-table";
 import { EntityDialog, type FormField } from "@/components/internal/data-hub/entity-dialog";
+import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
 import { buildDataHubQuery, parseDataHubFilters } from "@/lib/data-hub-filters";
+import { validateEntityField, validateEntityFields } from "@/lib/entity-field-validation";
 
 type Row = Record<string, unknown> & { id?: string };
 
@@ -24,6 +26,24 @@ function isListPayload(data: unknown): data is ListPayload {
   );
 }
 
+function resolveDisplayLabels(row: Row | null, fields: FormField[]): Record<string, string> {
+  const labels: Record<string, string> = {};
+  if (!row) return labels;
+  for (const f of fields) {
+    if (f.displayFromRow && row[f.displayFromRow] != null) {
+      labels[f.key] = String(row[f.displayFromRow]);
+    } else if (f.type === "searchable" && f.searchKind === "aircraft" && row.aircraft) {
+      labels[f.key] = String(row.aircraft);
+    } else if (f.type === "searchable" && f.searchKind === "airport" && row.airportIcao) {
+      labels[f.key] = String(row.airportIcao);
+    } else if (f.type === "searchable" && f.searchKind === "fbo" && row.fboName) {
+      const icao = row.airportIcao ? `${row.airportIcao} — ` : "";
+      labels[f.key] = `${icao}${row.fboName}`;
+    }
+  }
+  return labels;
+}
+
 export function CrudTab({
   title,
   apiPath,
@@ -31,6 +51,7 @@ export function CrudTab({
   fields,
   emptyMessage,
   fillHeight = false,
+  extraBody,
 }: {
   title: string;
   apiPath: string;
@@ -38,8 +59,9 @@ export function CrudTab({
   columns: DataTableColumn<Row>[];
   fields: FormField[];
   emptyMessage?: string;
-  /** When true, table scrolls within available vertical space. */
   fillHeight?: boolean;
+  /** Extra fields merged into save body (e.g. assumptions JSON). */
+  extraBody?: Record<string, unknown>;
 }) {
   const searchParams = useSearchParams();
   const filterKey = useMemo(() => {
@@ -53,7 +75,12 @@ export function CrudTab({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [displayLabels, setDisplayLabels] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     const f = parseDataHubFilters(searchParams);
@@ -82,6 +109,9 @@ export function CrudTab({
     const init: Record<string, string> = {};
     for (const f of fields) init[f.key] = "";
     setValues(init);
+    setDisplayLabels({});
+    setSaveError(null);
+    setFieldErrors({});
     setOpen(true);
   }
 
@@ -93,16 +123,41 @@ export function CrudTab({
       init[f.key] = v != null ? String(v) : "";
     }
     setValues(init);
+    setDisplayLabels(resolveDisplayLabels(row, fields));
+    setSaveError(null);
+    setFieldErrors({});
     setOpen(true);
   }
 
+  function blurField(key: string) {
+    const field = fields.find((f) => f.key === key);
+    if (!field) return;
+    const err = validateEntityField(field, values[key] ?? "");
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (err) next[key] = err;
+      else delete next[key];
+      return next;
+    });
+  }
+
   async function save() {
+    const errors = validateEntityFields(fields, values);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setSaveError("Fix the highlighted fields before saving.");
+      return;
+    }
     setSaving(true);
+    setSaveError(null);
     try {
-      const body: Record<string, unknown> = {};
+      const body: Record<string, unknown> = { ...extraBody };
       for (const f of fields) {
         const v = values[f.key]?.trim();
-        if (!v && f.required) return;
+        if (!v && f.required) {
+          setSaveError(`${f.label} is required.`);
+          return;
+        }
         if (f.type === "number" && v) body[f.key] = parseFloat(v);
         else if (v) body[f.key] = v;
       }
@@ -115,7 +170,7 @@ export function CrudTab({
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(json.error ?? "Save failed");
+        setSaveError(typeof json.error === "string" ? json.error : "Save failed");
         return;
       }
       setOpen(false);
@@ -126,14 +181,25 @@ export function CrudTab({
   }
 
   async function remove(row: Row) {
-    if (!row.id || !confirm("Delete this record?")) return;
-    const res = await fetch(`${apiPath}/${row.id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const json = await res.json();
-      alert(json.error ?? "Delete failed");
-      return;
+    if (!row.id) return;
+    setDeleteTarget(row);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget?.id) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${apiPath}/${deleteTarget.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json();
+        alert(json.error ?? "Delete failed");
+        return;
+      }
+      setDeleteTarget(null);
+      void load();
+    } finally {
+      setDeleting(false);
     }
-    void load();
   }
 
   const showCount = totalCount > 0 && filteredCount !== totalCount;
@@ -165,10 +231,23 @@ export function CrudTab({
         title={editing ? `Edit ${title}` : `Add ${title}`}
         fields={fields}
         values={values}
+        displayLabels={displayLabels}
         onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))}
+        onDisplayLabelChange={(k, label) =>
+          setDisplayLabels((prev) => ({ ...prev, [k]: label }))
+        }
         onClose={() => setOpen(false)}
         onSave={() => void save()}
         saving={saving}
+        saveError={saveError}
+        fieldErrors={fieldErrors}
+        onBlurField={blurField}
+      />
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+        confirming={deleting}
       />
     </div>
   );

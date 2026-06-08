@@ -76,6 +76,8 @@ function mockAircraft(id: string, tail: string) {
       typicalPassengerCapacity: null,
       typicalCharterRate: null,
       maxRecommendedUtilization: null,
+      cabinSqft: null,
+      typicalHullValue: null,
       defaultEngineModel: null,
       defaultApuModel: null,
       dataConfidence: "medium" as const,

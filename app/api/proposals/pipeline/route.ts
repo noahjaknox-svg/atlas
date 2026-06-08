@@ -2,6 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { getCardSubtitle, getPipelineBadges } from "@/lib/pipeline";
+import { getMissingRequiredFields } from "@/lib/required-fields";
 
 export async function GET() {
   try {
@@ -53,6 +54,7 @@ export async function GET() {
         assumptions: p.assumptions,
         clientPortal: p.clientPortal,
       }),
+      missingFieldLabels: getMissingRequiredFields(p.assumptions),
     }));
 
     return jsonOk(cards);

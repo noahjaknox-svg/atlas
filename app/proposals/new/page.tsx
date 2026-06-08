@@ -1,10 +1,15 @@
+import { redirect } from "next/navigation";
+import { getInternalUser } from "@/lib/auth";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 import { Button } from "@/components/ui/button";
 
-export default function NewProposalPage() {
+export default async function NewProposalPage() {
+  const user = await getInternalUser();
+  if (!user) redirect("/login");
+
   return (
-    <InternalShell>
+    <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
       <div className="mx-auto max-w-lg py-16 text-center">
         <h1 className="font-serif text-3xl">New Proposal</h1>
         <p className="mt-2 text-atlas-muted">

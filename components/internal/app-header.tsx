@@ -77,16 +77,30 @@ export function AppHeader({
           <div className="relative group">
             <button
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-atlas-border bg-atlas-surface text-xs font-medium text-atlas-text"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-atlas-border bg-atlas-surface text-xs font-medium text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
               aria-label="Account menu"
             >
-              {userName?.slice(0, 2).toUpperCase() ?? "?"}
+              {userName?.slice(0, 2).toUpperCase() ?? "—"}
             </button>
             <div className="absolute right-0 top-full z-50 hidden min-w-[168px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg group-hover:block group-focus-within:block">
               {userName && (
                 <p className="border-b border-atlas-border px-3 py-2 text-xs text-atlas-muted">
                   {userName}
                 </p>
+              )}
+              <Link
+                href="/settings"
+                className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+              >
+                Settings
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/settings/integrations"
+                  className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+                >
+                  Integrations
+                </Link>
               )}
               {isAdmin && (
                 <Link
@@ -96,6 +110,12 @@ export function AppHeader({
                   Manage users
                 </Link>
               )}
+              <Link
+                href="/help"
+                className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+              >
+                Help
+              </Link>
               <button
                 type="button"
                 onClick={() => void logout()}

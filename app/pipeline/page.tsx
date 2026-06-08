@@ -1,13 +1,16 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getCardSubtitle, getPipelineBadges } from "@/lib/pipeline";
+import { getMissingRequiredFields } from "@/lib/required-fields";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { PipelineBoard } from "@/components/internal/pipeline-board";
 import type { PipelineCardData } from "@/components/internal/pipeline-card";
 
 export default async function PipelinePage() {
   const user = await getInternalUser();
+  if (!user) redirect("/login");
 
   const [proposals, atlasUsers] = await Promise.all([
     prisma.proposal.findMany({
@@ -52,10 +55,11 @@ export default async function PipelinePage() {
       assumptions: p.assumptions,
       clientPortal: p.clientPortal,
     }),
+    missingFieldLabels: getMissingRequiredFields(p.assumptions),
   }));
 
   return (
-    <InternalShell userName={user?.name} isAdmin={user?.role === "admin"}>
+    <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
       <h1 className="font-serif text-2xl">Pipeline</h1>
       <p className="mt-1 text-sm text-atlas-muted">Sales workflow</p>
 
@@ -63,7 +67,7 @@ export default async function PipelinePage() {
         <PipelineBoard
           initialCards={initialCards}
           atlasUsers={atlasUsers}
-          isAdmin={user?.role === "admin"}
+          isAdmin={user.role === "admin"}
         />
       </Suspense>
     </InternalShell>

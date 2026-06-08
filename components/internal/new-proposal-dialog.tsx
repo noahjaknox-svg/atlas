@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 
 export function NewProposalDialog({
   trigger,
@@ -18,16 +19,36 @@ export function NewProposalDialog({
   const [open, setOpen] = useState(defaultOpen ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [prospectName, setProspectName] = useState("");
+  const [aircraftId, setAircraftId] = useState("");
+  const [aircraftLabel, setAircraftLabel] = useState("");
+  const [aircraftOptions, setAircraftOptions] = useState<SearchableOption[]>([]);
+  const [aircraftLoading, setAircraftLoading] = useState(false);
+
+  const searchAircraft = useCallback(async (query: string) => {
+    setAircraftLoading(true);
+    try {
+      const res = await fetch(`/api/aircraft-master/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) return;
+      const rows = (await res.json()) as Array<{ id: string; label: string }>;
+      setAircraftOptions(rows.map((r) => ({ id: r.id, label: r.label })));
+    } finally {
+      setAircraftLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) void searchAircraft("");
+  }, [open, searchAircraft]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const fd = new FormData(e.currentTarget);
     const payload = {
-      prospectName: fd.get("prospectName")?.toString().trim(),
-      aircraftModel: fd.get("aircraftModel")?.toString().trim() || undefined,
+      prospectName: prospectName.trim(),
+      aircraftModel: aircraftLabel.trim() || undefined,
     };
 
     try {
@@ -62,17 +83,31 @@ export function NewProposalDialog({
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-prospectName">Prospect name *</Label>
-              <Input id="new-prospectName" name="prospectName" required autoFocus />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-aircraftModel">Aircraft</Label>
+              <Label htmlFor="new-prospectName">
+                Prospect name <span className="text-atlas-danger">*</span>
+              </Label>
               <Input
-                id="new-aircraftModel"
-                name="aircraftModel"
-                placeholder="e.g. Citation Latitude"
+                id="new-prospectName"
+                name="prospectName"
+                value={prospectName}
+                onChange={(e) => setProspectName(e.target.value)}
+                required
+                autoFocus
               />
             </div>
+            <SearchableSelect
+              label="Aircraft"
+              placeholder="Search manufacturer or model…"
+              value={aircraftId}
+              displayValue={aircraftLabel}
+              options={aircraftOptions}
+              loading={aircraftLoading}
+              onSearch={(q) => void searchAircraft(q)}
+              onSelect={(opt) => {
+                setAircraftId(opt?.id ?? "");
+                setAircraftLabel(opt?.label ?? "");
+              }}
+            />
             {error && <p className="text-sm text-atlas-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <Dialog.Close asChild>

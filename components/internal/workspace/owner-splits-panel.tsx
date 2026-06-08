@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { HoursInput } from "@/components/ui/hours-input";
 import {
   ALLOCATION_MODE_OPTIONS,
   type OwnerExpenseAllocationMode,
@@ -127,15 +128,14 @@ export function OwnerSplitsTable({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
-                    type="number"
+                  <HoursInput
                     min={0}
                     step={1}
                     className="atlas-input w-full text-right"
-                    value={Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : ""}
-                    onChange={(e) =>
+                    value={Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0}
+                    onChange={(hours) =>
                       patchProfile(i, {
-                        annualFlightHours: parseFloat(e.target.value) || 0,
+                        annualFlightHours: hours,
                       })
                     }
                     aria-label={`${p.displayName} flight hours`}

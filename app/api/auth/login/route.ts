@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { provisionInternalUserFromAuth } from "@/lib/provision-internal-user";
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
@@ -67,6 +68,21 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const atlasUser = await provisionInternalUserFromAuth(
+    email,
+    tokenData.user?.user_metadata?.name ?? tokenData.user?.email
+  );
+  if (!atlasUser) {
+    await supabase.auth.signOut();
+    return NextResponse.json(
+      {
+        error:
+          "Your account is not provisioned in Atlas yet. Ask an admin to send an invite or run sync-user.",
+      },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json({ success: true });

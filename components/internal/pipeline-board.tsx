@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
@@ -67,6 +67,18 @@ export function PipelineBoard({
   const panelOpen = !!selectedId;
 
   const [searchInput, setSearchInput] = useState(query);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     setSearchInput(query);
@@ -224,16 +236,29 @@ export function PipelineBoard({
     if (!open) updateParams({ id: null });
   }
 
+  function resetFilters() {
+    setSearchInput("");
+    router.replace("/pipeline", { scroll: false });
+  }
+
+  const hasActiveFilters =
+    !!query ||
+    assigneeSet.size > 0 ||
+    statusFilter !== "all" ||
+    categoryFilter !== "all" ||
+    rangeFilter !== "all";
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <input
+            ref={searchRef}
             type="search"
             placeholder="Search prospects, aircraft, assignee…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="h-10 min-w-[200px] flex-1 rounded-md border border-atlas-border bg-atlas-surface px-3 text-sm max-w-md"
+            className="h-10 min-w-[200px] flex-1 rounded-md border border-atlas-border bg-atlas-surface px-3 text-sm max-w-md focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
           />
           <select
             value={statusFilter}
@@ -268,7 +293,20 @@ export function PipelineBoard({
               </option>
             ))}
           </select>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="h-10 rounded-md border border-atlas-border px-3 text-sm text-atlas-muted hover:text-atlas-text"
+            >
+              Reset filters
+            </button>
+          ) : null}
         </div>
+        <p className="text-xs text-atlas-muted">
+          Tip: press{" "}
+          <kbd className="rounded border border-atlas-border px-1 font-mono">⌘K</kbd> to focus search
+        </p>
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs uppercase tracking-wider text-atlas-muted">Assigned to</span>

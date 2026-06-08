@@ -1,18 +1,26 @@
 import { requireAdmin } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
-import { execSync } from "child_process";
-import path from "path";
+import { prisma } from "@/lib/db";
+import {
+  importAircraftCsvFromContent,
+  importAircraftCsvFromFile,
+} from "@/lib/run-aircraft-csv-import";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     await requireAdmin();
-    const script = path.join(process.cwd(), "scripts", "import-aircraft-csv.ts");
-    const output = execSync(`npx tsx "${script}"`, {
-      encoding: "utf-8",
-      cwd: process.cwd(),
-      env: process.env,
+    const body = await request.json().catch(() => ({}));
+    const csvContent =
+      typeof body === "object" && body !== null && "csvContent" in body
+        ? String((body as { csvContent?: string }).csvContent ?? "")
+        : "";
+    const result = csvContent.trim()
+      ? await importAircraftCsvFromContent(prisma, csvContent)
+      : await importAircraftCsvFromFile(prisma);
+    return jsonOk({
+      message: result.message,
+      aircraftTypes: result.aircraftTypes,
     });
-    return jsonOk({ message: "Import complete", output: output.trim() });
   } catch (e) {
     return handleApiError(e);
   }

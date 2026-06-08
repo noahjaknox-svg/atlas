@@ -198,6 +198,7 @@ export function AircraftConfigPanel({
     value: String(value),
   }));
   const missingRequired = getMissingInfoCount(assumptionRows);
+  const homeFuelPrice = parseFloat(String(assumptions.home_fuel_price ?? "0"));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-atlas-bg">
@@ -248,6 +249,12 @@ export function AircraftConfigPanel({
                   </li>
                 ))}
               </ul>
+            )}
+            {homeFuelPrice <= 0 && (
+              <p className="rounded border border-amber-700/40 bg-amber-900/20 px-2 py-1.5 text-xs text-amber-200">
+                Home fuel price is $0 — fuel line items will be empty until you set home fuel in
+                Economics or sync FBO prices in Data Hub.
+              </p>
             )}
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="secondary" className="text-xs" onClick={onRecalculate}>

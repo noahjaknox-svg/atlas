@@ -1,13 +1,17 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type DataTableColumn<T> = {
   key: keyof T | string;
   label: string;
+  sortable?: boolean;
   render?: (row: T) => React.ReactNode;
 };
+
+const PAGE_SIZE = 25;
 
 export function DataTable<T extends { id?: string }>({
   title,
@@ -26,6 +30,35 @@ export function DataTable<T extends { id?: string }>({
   emptyMessage?: string;
   fillHeight?: boolean;
 }) {
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(0);
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return rows;
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      const av = String((a as Record<string, unknown>)[sortKey] ?? "");
+      const bv = String((b as Record<string, unknown>)[sortKey] ?? "");
+      const cmp = av.localeCompare(bv, undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sortKey, sortDir]);
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+    setPage(0);
+  }
+
   return (
     <div className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
       {title ? <h2 className="mb-4 font-medium">{title}</h2> : null}
@@ -37,17 +70,28 @@ export function DataTable<T extends { id?: string }>({
       >
         <table className={cn("w-full text-sm", fillHeight && "min-w-full")}>
           <thead className={fillHeight ? "sticky top-0 z-10 bg-atlas-surface" : undefined}>
-            <tr className="border-b border-atlas-border bg-atlas-surface text-left text-xs uppercase text-atlas-muted">
+            <tr className="border-b border-atlas-border bg-atlas-surface text-left text-xs text-atlas-muted">
               {columns.map((c) => (
                 <th key={String(c.key)} className="px-3 py-2">
-                  {c.label}
+                  {c.sortable !== false ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 hover:text-atlas-text"
+                      onClick={() => toggleSort(String(c.key))}
+                    >
+                      {c.label}
+                      {sortKey === c.key ? (sortDir === "asc" ? " ↑" : " ↓") : null}
+                    </button>
+                  ) : (
+                    c.label
+                  )}
                 </th>
               ))}
               {(onEdit || onDelete) && <th className="px-3 py-2">Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {pageRows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
@@ -57,7 +101,7 @@ export function DataTable<T extends { id?: string }>({
                 </td>
               </tr>
             ) : (
-              rows.map((row, i) => (
+              pageRows.map((row, i) => (
                 <tr key={row.id ?? i} className="border-b border-atlas-border/50">
                   {columns.map((c) => (
                     <td key={String(c.key)} className="px-3 py-2">
@@ -67,17 +111,22 @@ export function DataTable<T extends { id?: string }>({
                     </td>
                   ))}
                   {(onEdit || onDelete) && (
-                    <td className="px-3 py-2 space-x-2">
-                      {onEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => onEdit(row)}>
+                    <td className="space-x-2 px-3 py-2">
+                      {onEdit ? (
+                        <Button variant="secondary" size="sm" onClick={() => onEdit(row)}>
                           Edit
                         </Button>
-                      )}
-                      {onDelete && row.id && (
-                        <Button variant="danger" size="sm" onClick={() => onDelete(row)}>
+                      ) : null}
+                      {onDelete && row.id ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-atlas-muted hover:text-atlas-danger"
+                          onClick={() => onDelete(row)}
+                        >
                           Delete
                         </Button>
-                      )}
+                      ) : null}
                     </td>
                   )}
                 </tr>
@@ -86,6 +135,34 @@ export function DataTable<T extends { id?: string }>({
           </tbody>
         </table>
       </div>
+      {sorted.length > PAGE_SIZE ? (
+        <div className="mt-2 flex items-center justify-between text-xs text-atlas-muted">
+          <span>
+            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of{" "}
+            {sorted.length}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={page >= pageCount - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

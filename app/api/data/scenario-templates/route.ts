@@ -25,7 +25,9 @@ export async function GET(request: Request) {
           id: r.id,
           name: r.name,
           aircraftMasterId: r.aircraftMasterId,
-          aircraft: `${r.aircraftMaster.manufacturer} ${r.aircraftMaster.model}`,
+          aircraft: r.aircraftMaster
+            ? `${r.aircraftMaster.manufacturer} ${r.aircraftMaster.model}`
+            : "—",
           description: r.description,
           assumptions: r.assumptions.map((a) => ({
             id: a.id,

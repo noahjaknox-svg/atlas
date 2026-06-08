@@ -27,9 +27,7 @@ export function PipelineColumn({
       }`}
     >
       <div className="flex items-center justify-between border-b border-atlas-border/60 px-3 py-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-atlas-muted">
-          {label}
-        </h2>
+        <h2 className="text-sm font-medium tracking-tight text-atlas-text">{label}</h2>
         <span className="rounded-full bg-atlas-border/80 px-2 py-0.5 text-xs text-atlas-muted">
           {cards.length}
         </span>
