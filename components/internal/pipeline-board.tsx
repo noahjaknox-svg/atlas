@@ -127,6 +127,11 @@ export function PipelineBoard({
 
   const assigneeSet = useMemo(() => parseAssigneeFilter(assigneeRaw), [assigneeRaw]);
 
+  const uniqueAtlasUsers = useMemo(
+    () => Array.from(new Map(atlasUsers.map((u) => [u.id, u])).values()),
+    [atlasUsers]
+  );
+
   const filtered = useMemo(() => {
     let list = cards;
 
@@ -332,7 +337,7 @@ export function PipelineBoard({
           >
             Unassigned
           </button>
-          {atlasUsers.map((u) => (
+          {uniqueAtlasUsers.map((u) => (
             <button
               key={u.id}
               type="button"

@@ -71,7 +71,7 @@ export function ProposalDesignEditor({
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
         <h2 className="atlas-section-title">Branding & clouds</h2>
         <p className="atlas-caption mt-1">
-          PIN gate, deck cover, and global portal pages use these assets.
+          Experience pages, aircraft portal, PIN gate, and global portal pages use these assets.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <Field

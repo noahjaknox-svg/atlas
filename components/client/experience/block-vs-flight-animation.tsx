@@ -39,7 +39,7 @@ export function BlockVsFlightAnimation({
   return (
     <div
       ref={ref}
-      className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-6 sm:p-10"
+      className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-6 sm:p-10"
     >
       <p className="text-center text-xs uppercase tracking-[0.35em] text-white/50">
         Charter payback

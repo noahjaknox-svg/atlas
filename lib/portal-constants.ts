@@ -47,7 +47,7 @@ export type FleetShowcaseItem = {
   active: boolean;
 };
 
-export const DEFAULT_CLOUD_IMAGE = "/images/portal-clouds.svg";
+export const DEFAULT_CLOUD_IMAGE = PRISMJET_MEDIA.clouds;
 export const DEFAULT_LOGO = "/images/prismjet-logo.svg";
 
 export const DEFAULT_SERVICES_PILLARS: ServicePillar[] = [

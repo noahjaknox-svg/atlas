@@ -23,9 +23,11 @@ export interface PipelineCardData {
 
 function assigneeInitials(name: string | null): string {
   if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
+  }
+  return parts[0]!.slice(0, 1).toUpperCase();
 }
 
 export function PipelineCard({
@@ -80,6 +82,7 @@ export function PipelineCard({
             <span
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-atlas-border text-[10px] font-medium text-atlas-muted"
               title={card.assigneeName ?? "Unassigned"}
+              aria-hidden
             >
               {assigneeInitials(card.assigneeName)}
             </span>
@@ -93,10 +96,11 @@ export function PipelineCard({
         </div>
 
         {card.badges.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-1" role="list" aria-label="Status badges">
             {card.badges.map((badge) => (
               <span
                 key={badge.id}
+                role="listitem"
                 title={
                   badge.id === "missing_info" && card.missingFieldLabels?.length
                     ? `Missing: ${card.missingFieldLabels.join(", ")}`

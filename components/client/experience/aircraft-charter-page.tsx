@@ -1,8 +1,9 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { cn } from "@/lib/utils";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceSectionGap, experienceSectionGapTight, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
 import { PullQuote } from "./pull-quote";
@@ -36,25 +37,20 @@ export function AircraftCharterPage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="03" />
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
+          <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
         {quote ? <PullQuote text={quote.text} attribution={quote.attribution} /> : null}
         <RevealOnScroll delayMs={100}>
-          <p className="mt-8 text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
+          <p className={cn(experienceSectionGapTight, "text-base leading-relaxed text-white/80")}>{section.bodyCopy}</p>
         </RevealOnScroll>
         {bullets.length > 0 ? (
           <RevealOnScroll delayMs={150}>
-            <ul className="mt-8 space-y-3">
+            <ul className={cn(experienceSectionGapTight, "space-y-3")}>
               {bullets.map((b) => (
                 <li key={b} className="flex gap-3 text-sm text-white/75">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-atlas-accent" />
@@ -65,9 +61,15 @@ export function AircraftCharterPage({
           </RevealOnScroll>
         ) : null}
         <RevealOnScroll delayMs={200}>
-          <BlockVsFlightAnimation flightHours={flightHours} blockHours={blockHours} />
+          <div className={experienceSectionGap}>
+            <BlockVsFlightAnimation flightHours={flightHours} blockHours={blockHours} />
+          </div>
         </RevealOnScroll>
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery
+          items={section.contentBlocks?.gallery}
+          layout="editorialPair"
+          className="mt-6 sm:mt-8"
+        />
       </ExperienceBody>
     </>
   );

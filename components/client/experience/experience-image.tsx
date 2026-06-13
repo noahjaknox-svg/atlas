@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { isLocalProposalImage } from "@/lib/proposal-images";
+import type { ProposalImageFit } from "@/lib/experience-image-system";
 import { cn } from "@/lib/utils";
 
 export function ExperienceImage({
@@ -11,6 +12,8 @@ export function ExperienceImage({
   fill,
   priority,
   sizes,
+  objectFit = "cover",
+  objectPosition = "center",
 }: {
   src: string;
   alt?: string;
@@ -18,7 +21,11 @@ export function ExperienceImage({
   fill?: boolean;
   priority?: boolean;
   sizes?: string;
+  objectFit?: ProposalImageFit;
+  objectPosition?: string;
 }) {
+  const fitClass = objectFit === "contain" ? "object-contain" : "object-cover";
+
   if (isLocalProposalImage(src) || src.startsWith("/images/")) {
     if (fill) {
       return (
@@ -26,7 +33,8 @@ export function ExperienceImage({
           src={src}
           alt={alt}
           fill
-          className={cn("object-cover", className)}
+          className={cn(fitClass, className)}
+          style={{ objectPosition }}
           priority={priority}
           sizes={sizes ?? "100vw"}
         />
@@ -38,7 +46,8 @@ export function ExperienceImage({
         alt={alt}
         width={1920}
         height={1080}
-        className={cn("h-full w-full object-cover", className)}
+        className={cn("h-full w-full", fitClass, className)}
+        style={{ objectPosition }}
         priority={priority}
         sizes={sizes ?? "100vw"}
       />
@@ -47,6 +56,11 @@ export function ExperienceImage({
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className={cn("h-full w-full object-cover", className)} />
+    <img
+      src={src}
+      alt={alt}
+      className={cn("h-full w-full", fitClass, className)}
+      style={{ objectPosition }}
+    />
   );
 }

@@ -12,7 +12,7 @@ export default async function PipelinePage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
 
-  const [proposals, atlasUsers] = await Promise.all([
+  const [proposals, rawAtlasUsers] = await Promise.all([
     prisma.proposal.findMany({
       where: { deletedAt: null },
       include: {
@@ -31,6 +31,10 @@ export default async function PipelinePage() {
       orderBy: { name: "asc" },
     }),
   ]);
+
+  const atlasUsers = Array.from(
+    new Map(rawAtlasUsers.map((u) => [u.id, u])).values()
+  );
 
   const initialCards: PipelineCardData[] = proposals.map((p) => ({
     id: p.id,

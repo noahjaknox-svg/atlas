@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, experienceGlass, experienceSectionGapTight, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 
 export function WelcomePage({
@@ -29,15 +30,10 @@ export function WelcomePage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero large>
         <RevealOnScroll immediate>
           <p className="text-xs uppercase tracking-[0.35em] text-atlas-accent">PrismJet</p>
-          <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.65)] sm:text-5xl lg:text-6xl">
             {section.title}
           </h1>
           <p className="mt-4 text-lg text-white/70">
@@ -48,7 +44,7 @@ export function WelcomePage({
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
-        <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
           <RevealOnScroll delayMs={100}>
             <div className="whitespace-pre-wrap text-base leading-relaxed text-white/85">{letter}</div>
             {(section.signatoryName || section.signatoryTitle) && (
@@ -64,7 +60,7 @@ export function WelcomePage({
             )}
           </RevealOnScroll>
           <RevealOnScroll delayMs={200}>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-6">
+            <div className={cn(experienceGlass, "p-6")}>
               <SectionNumber n="Your proposal" />
               <p className="mt-3 text-sm text-white/70">
                 {aircraftList.length > 1
@@ -80,7 +76,11 @@ export function WelcomePage({
             </div>
           </RevealOnScroll>
         </div>
-        <ExperienceGallery items={section.contentBlocks?.gallery} variant="fullBleed" />
+        <ExperienceGallery
+          items={section.contentBlocks?.gallery}
+          layout="welcome"
+          className={experienceSectionGapTight}
+        />
       </ExperienceBody>
     </>
   );

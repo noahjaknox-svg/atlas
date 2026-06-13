@@ -29,11 +29,6 @@ export function InternalNav({
           Data
         </Link>
       )}
-      {isAdmin && (
-        <Link href="/performance-data" className="hover:text-atlas-text">
-          Performance Data
-        </Link>
-      )}
       <Link href="/settings" className="hover:text-atlas-text">
         Settings
       </Link>

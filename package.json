@@ -13,6 +13,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:import": "tsx scripts/import-aircraft-csv.ts",
     "db:seed-experience": "dotenv -e .env.local -- tsx scripts/seed-experience-templates.ts",
+    "db:crew-seed": "dotenv -e .env.local -- tsx scripts/crew-seed.ts",
+    "db:crew-export-sample": "dotenv -e .env.local -- tsx scripts/export-crew-sync-sample.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest"

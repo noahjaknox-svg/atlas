@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 import { PullQuote } from "./pull-quote";
 
@@ -16,15 +17,10 @@ export function MaintenancePage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="04" />
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
+          <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
@@ -35,10 +31,10 @@ export function MaintenancePage({
         {rows.length > 0 ? (
           <>
             {/* Mobile: stacked cards */}
-            <div className="mt-12 space-y-3 md:hidden">
+            <div className={cn(experienceSectionGap, "space-y-3 md:hidden")}>
               {rows.map((row) => (
                 <RevealOnScroll key={row.item} delayMs={60}>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className={cn(experienceGlass, "p-4")}>
                     <p className="font-medium text-white/90">{row.item}</p>
                     <div className="mt-3 flex justify-between gap-4 text-sm">
                       <div>
@@ -58,7 +54,7 @@ export function MaintenancePage({
             </div>
             {/* Desktop: table */}
             <RevealOnScroll delayMs={120}>
-              <div className="mt-12 hidden overflow-x-auto rounded-xl border border-white/10 md:block">
+              <div className={cn(experienceSectionGap, "hidden overflow-x-auto rounded-xl border border-white/10 md:block")}>
                 <div className="min-w-[640px]">
                   <div className="grid grid-cols-[1fr_auto_auto] gap-px bg-white/10 text-xs uppercase tracking-wider text-white/50">
                     <div className="bg-[#0f131c] px-4 py-3">Labor cost examples</div>
@@ -86,7 +82,11 @@ export function MaintenancePage({
             </RevealOnScroll>
           </>
         ) : null}
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery
+          items={section.contentBlocks?.gallery}
+          layout="single"
+          variant="landscape-wide"
+        />
       </ExperienceBody>
     </>
   );

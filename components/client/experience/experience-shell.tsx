@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CloudBackground } from "@/components/client/cloud-background";
 import {
   EXPERIENCE_TAB_LABELS,
   SECTION_TYPE_TO_SLUG,
@@ -29,6 +30,7 @@ export function ExperienceShell({
   logoUrl,
   clientDisplayName,
   disclaimer,
+  branding,
 }: {
   slug: string;
   sections: ExperienceSectionSnapshot[];
@@ -36,6 +38,7 @@ export function ExperienceShell({
   logoUrl?: string;
   clientDisplayName?: string;
   disclaimer?: string | null;
+  branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null };
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -128,8 +131,15 @@ export function ExperienceShell({
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0F1A] text-white">
-      <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0B0F1A]/85 backdrop-blur-md">
+    <div className="relative min-h-screen text-white">
+      <CloudBackground
+        imageUrl={branding.heroCloudImageUrl}
+        videoUrl={branding.heroCloudVideoUrl}
+        overlay="dark"
+        fixed
+        kenBurns={!branding.heroCloudVideoUrl}
+      />
+      <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0a0d14]/75 backdrop-blur-md">
         <div
           className="pointer-events-none absolute bottom-0 left-0 h-0.5 bg-atlas-accent transition-[width] duration-150 ease-out"
           style={{ width: `${scrollProgress * 100}%` }}
@@ -246,9 +256,9 @@ export function ExperienceShell({
         </div>
       </header>
 
-      <main className="pt-[var(--portal-nav-height)]">{children}</main>
+      <main className="relative z-10 pt-[var(--portal-nav-height)]">{children}</main>
       {disclaimer ? (
-        <footer className="border-t border-white/10 px-6 py-4 text-center text-[11px] leading-relaxed text-white/35 sm:px-12">
+        <footer className="relative z-10 border-t border-white/10 bg-[#0B0F1A]/40 px-6 py-4 text-center text-[11px] leading-relaxed text-white/35 backdrop-blur-sm sm:px-12">
           <p className="mx-auto max-w-3xl">{disclaimer}</p>
         </footer>
       ) : null}

@@ -65,6 +65,7 @@ export function ProFormaClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [period, setPeriod] = useState<"annual" | "monthly">("annual");
+  const [snapshot, setSnapshot] = useState(initial);
   const [selectedAircraftId, setSelectedAircraftId] = useState(
     initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? ""
   );
@@ -76,12 +77,57 @@ export function ProFormaClient({
     aircraftValue: initial.baseMetrics.aircraftValue,
     ownerHours: initial.baseMetrics.ownerHours,
   });
+  const [aircraftLoading, setAircraftLoading] = useState(false);
 
-  const calculationAssumptions = initial.calculationAssumptions ?? {};
+  const calculationAssumptions = snapshot.calculationAssumptions ?? {};
   const canComputeLocally = Object.keys(calculationAssumptions).length > 0;
 
-  const showAircraftSelector = initial.aircraftList.length > 1;
+  const showAircraftSelector = snapshot.aircraftList.length > 1;
   const userEditedRef = useRef(false);
+
+  const applySnapshot = useCallback((next: ClientProFormaData, resetEdits = true) => {
+    setSnapshot(next);
+    setAircraftValue(String(next.editableFields.aircraftValue.value));
+    setOwnerHours(next.editableFields.ownerAnnualHours.value);
+    setBaseline({
+      aircraftValue: next.baseMetrics.aircraftValue,
+      ownerHours: next.baseMetrics.ownerHours,
+    });
+    if (resetEdits) userEditedRef.current = false;
+  }, []);
+
+  const loadAircraftData = useCallback(
+    async (aircraftId: string) => {
+      setAircraftLoading(true);
+      try {
+        const res = await fetch(`/api/portal/${slug}/scenario`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            aircraftInstanceId: aircraftId,
+            persistScenario: false,
+          }),
+        });
+        if (res.ok) {
+          applySnapshot((await res.json()) as ClientProFormaData);
+        }
+      } finally {
+        setAircraftLoading(false);
+      }
+    },
+    [slug, applySnapshot]
+  );
+
+  const prevInitialAircraftIdRef = useRef(initialAircraftId);
+
+  useEffect(() => {
+    if (initialAircraftId === prevInitialAircraftIdRef.current) return;
+    prevInitialAircraftIdRef.current = initialAircraftId;
+    const id =
+      initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? "";
+    setSelectedAircraftId(id);
+    applySnapshot(initial);
+  }, [initialAircraftId, initial, applySnapshot]);
 
   const parsedAircraftValue = useMemo(
     () => parseFloat(parseFormattedNumber(aircraftValue)) || 0,
@@ -89,7 +135,7 @@ export function ProFormaClient({
   );
 
   const statementRows = useMemo(() => {
-    if (!canComputeLocally) return initial.statementRows;
+    if (!canComputeLocally) return snapshot.statementRows;
     const calc = computeWorkspaceProFormaForClient(
       stringsToAssumptionMap(calculationAssumptions),
       { aircraftValue: parsedAircraftValue, ownerHours }
@@ -100,7 +146,7 @@ export function ProFormaClient({
     calculationAssumptions,
     parsedAircraftValue,
     ownerHours,
-    initial.statementRows,
+    snapshot.statementRows,
   ]);
 
   const lineItemsForViz = useMemo(() => {
@@ -118,8 +164,8 @@ export function ProFormaClient({
         annual: Math.abs(r.annual!),
         monthly: Math.abs(r.annual!) / 12,
       }));
-    return fromRows.length > 0 ? fromRows : initial.proForma.lineItems;
-  }, [statementRows, initial.proForma.lineItems]);
+    return fromRows.length > 0 ? fromRows : snapshot.proForma.lineItems;
+  }, [statementRows, snapshot.proForma.lineItems]);
 
   const persistScenario = useCallback(async () => {
     await fetch(`/api/portal/${slug}/scenario`, {
@@ -148,12 +194,9 @@ export function ProFormaClient({
     });
     if (res.ok) {
       const updated = (await res.json()) as ClientProFormaData;
-      setBaseline({
-        aircraftValue: updated.baseMetrics.aircraftValue,
-        ownerHours: updated.baseMetrics.ownerHours,
-      });
+      applySnapshot(updated, false);
     }
-  }, [slug, parsedAircraftValue, ownerHours, selectedAircraftId]);
+  }, [slug, parsedAircraftValue, ownerHours, selectedAircraftId, applySnapshot]);
 
   useEffect(() => {
     if (canComputeLocally) return;
@@ -168,6 +211,7 @@ export function ProFormaClient({
   }, [persistScenario]);
 
   function selectAircraft(id: string) {
+    if (id === selectedAircraftId) return;
     setSelectedAircraftId(id);
     const params = new URLSearchParams(searchParams.toString());
     if (id && id !== "legacy-primary") {
@@ -179,6 +223,7 @@ export function ProFormaClient({
       ? `/${slug}/experience/pro-forma`
       : `/${slug}/pro-forma`;
     router.replace(`${base}?${params.toString()}`, { scroll: false });
+    void loadAircraftData(id);
   }
 
   function restore() {
@@ -187,74 +232,43 @@ export function ProFormaClient({
     setOwnerHours(baseline.ownerHours);
   }
 
-  return (
-    <div className="space-y-10 text-white">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        {!embedded ? (
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
-            <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
-            {initial.aircraft?.label ? (
-              <p className="mt-2 text-white/60">{initial.aircraft.label}</p>
-            ) : null}
-          </div>
-        ) : initial.aircraft?.label ? (
-          <p className="text-sm text-white/60">{initial.aircraft.label}</p>
-        ) : (
-          <span />
+  const aircraftSelector = showAircraftSelector ? (
+    <div className="flex flex-wrap gap-2">
+      {snapshot.aircraftList.map((ac) => (
+        <button
+          key={ac.id}
+          type="button"
+          onClick={() => selectAircraft(ac.id)}
+          disabled={aircraftLoading}
+          className={cn(
+            "rounded-lg border px-4 py-2 text-sm transition-colors",
+            selectedAircraftId === ac.id
+              ? "border-atlas-accent bg-atlas-accent/15 text-atlas-accent"
+              : "border-white/20 text-white/70 hover:border-white/40 hover:text-white",
+            aircraftLoading && "pointer-events-none opacity-60"
+          )}
+        >
+          {ac.label}
+          {ac.tailNumber ? (
+            <span className="ml-2 text-white/45">{ac.tailNumber}</span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const inputsPanel = (
+    <div className="space-y-6">
+      {embedded ? (
+        <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
+      ) : null}
+      {aircraftSelector}
+      <div
+        className={cn(
+          "grid gap-6",
+          embedded ? "grid-cols-1" : "max-w-xl sm:grid-cols-2"
         )}
-        {!embedded ? (
-          <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
-            {(["annual", "monthly"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "rounded-md px-4 py-2 text-sm capitalize transition-colors",
-                  period === p
-                    ? "bg-atlas-accent text-[#0B0F1A]"
-                    : "text-white/60 hover:text-white"
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {showAircraftSelector ? (
-        <div className="flex flex-wrap gap-2">
-          {initial.aircraftList.map((ac) => (
-            <button
-              key={ac.id}
-              type="button"
-              onClick={() => selectAircraft(ac.id)}
-              className={cn(
-                "rounded-lg border px-4 py-2 text-sm transition-colors",
-                selectedAircraftId === ac.id
-                  ? "border-atlas-accent bg-atlas-accent/15 text-atlas-accent"
-                  : "border-white/20 text-white/70 hover:border-white/40 hover:text-white"
-              )}
-            >
-              {ac.label}
-              {ac.tailNumber ? (
-                <span className="ml-2 text-white/45">{ac.tailNumber}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {!embedded ? (
-        <p className="max-w-2xl text-white/70">
-          Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
-          model scenarios — updates live.
-        </p>
-      ) : null}
-
-      <div className="grid max-w-xl gap-6 sm:grid-cols-2">
+      >
         <label className="block text-sm text-white/70">
           Aircraft value
           <MoneyInput
@@ -278,7 +292,6 @@ export function ProFormaClient({
           />
         </label>
       </div>
-
       <button
         type="button"
         onClick={restore}
@@ -286,14 +299,73 @@ export function ProFormaClient({
       >
         Restore to PrismJet assumptions
       </button>
+    </div>
+  );
 
+  const proFormaPanel = (
+    <div className="space-y-6">
       <ProFormaVisualSummary
         lineItems={lineItemsForViz}
         period={period}
         onPeriodChange={setPeriod}
       />
-
       <ClientProFormaStatement rows={statementRows} period={period} />
+    </div>
+  );
+
+  return (
+    <div className={cn("text-white", embedded ? "space-y-8" : "space-y-10")}>
+      {!embedded ? (
+        <>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
+              <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
+              {snapshot.aircraft?.label ? (
+                <p className="mt-2 text-white/60">{snapshot.aircraft.label}</p>
+              ) : null}
+            </div>
+            <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
+              {(["annual", "monthly"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    "rounded-md px-4 py-2 text-sm capitalize transition-colors",
+                    period === p
+                      ? "bg-atlas-accent text-[#0B0F1A]"
+                      : "text-white/60 hover:text-white"
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="max-w-2xl text-white/70">
+            Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
+            model scenarios — updates live.
+          </p>
+        </>
+      ) : null}
+
+      {embedded ? (
+        <div
+          className={cn(
+            "grid items-start gap-10 lg:grid-cols-[minmax(280px,380px)_1fr] lg:gap-12 xl:gap-16",
+            aircraftLoading && "opacity-70 transition-opacity"
+          )}
+        >
+          {inputsPanel}
+          {proFormaPanel}
+        </div>
+      ) : (
+        <>
+          {inputsPanel}
+          {proFormaPanel}
+        </>
+      )}
     </div>
   );
 }

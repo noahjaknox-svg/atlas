@@ -3,7 +3,7 @@ import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { ProFormaClient } from "@/components/client/pro-forma-client";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, SectionNumber } from "./experience-primitives";
 
 export function ExperienceProFormaPage({
   slug,
@@ -27,20 +27,20 @@ export function ExperienceProFormaPage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="07" />
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
-          {bodyCopy ? (
-            <p className="mt-4 max-w-2xl text-base text-white/75">{bodyCopy}</p>
-          ) : null}
+          <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
-      <ExperienceBody fullWidth>
+      <ExperienceBody fullWidth className="!pt-6">
+        {bodyCopy ? (
+          <RevealOnScroll>
+            <p className="mb-8 max-w-3xl text-sm leading-relaxed text-white/65 sm:mb-10">
+              {bodyCopy}
+            </p>
+          </RevealOnScroll>
+        ) : null}
         <ProFormaClient
           slug={slug}
           initial={client}

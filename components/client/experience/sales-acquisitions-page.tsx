@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, experienceSectionGapTight, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 
 export function SalesAcquisitionsPage({
@@ -15,25 +16,20 @@ export function SalesAcquisitionsPage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="05" />
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
+          <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
         <RevealOnScroll>
           <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={cn(experienceSectionGap, "grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
           {tiles.map((tile, i) => (
             <RevealOnScroll key={tile.title} delayMs={i * 60}>
-              <div className="h-full rounded-xl border border-white/10 p-5 transition-colors hover:border-atlas-accent/30">
+              <div className={cn(experienceGlass, "h-full p-5 transition-colors hover:border-atlas-accent/30")}>
                 <h3 className="font-serif text-lg text-atlas-accent">{tile.title}</h3>
                 {tile.description ? (
                   <p className="mt-2 text-sm text-white/65">{tile.description}</p>
@@ -44,7 +40,7 @@ export function SalesAcquisitionsPage({
         </div>
         {(blocks?.contactEmail || blocks?.contactPhone || blocks?.contactWebsite) ? (
           <RevealOnScroll delayMs={200}>
-            <div className="mt-14 rounded-xl border border-atlas-accent/30 bg-gradient-to-r from-atlas-accent/15 via-atlas-accent/5 to-transparent px-6 py-8 text-center sm:px-10">
+            <div className={cn(experienceSectionGapTight, "rounded-xl border border-atlas-accent/30 bg-gradient-to-r from-atlas-accent/15 via-atlas-accent/5 to-transparent px-6 py-8 text-center sm:px-10")}>
               <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Get in touch</p>
               <div className="mt-6 flex flex-wrap justify-center gap-x-10 gap-y-4 text-sm">
                 {blocks?.contactEmail ? (
@@ -78,7 +74,12 @@ export function SalesAcquisitionsPage({
             </div>
           </RevealOnScroll>
         ) : null}
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery
+          items={section.contentBlocks?.gallery}
+          layout="single"
+          variant="landscape-wide"
+          className="mt-6 sm:mt-8"
+        />
       </ExperienceBody>
     </>
   );

@@ -9,18 +9,27 @@ export async function GET(request: Request) {
 
     if (adminList) {
       await requireAdmin();
-      const users = await prisma.user.findMany({
-        orderBy: { name: "asc" },
-        include: {
-          _count: {
-            select: {
-              prospectsAssigned: true,
+      const [users, pendingInvites] = await Promise.all([
+        prisma.user.findMany({
+          orderBy: { name: "asc" },
+          include: {
+            _count: {
+              select: {
+                prospectsAssigned: true,
+              },
             },
           },
-        },
-      });
-      return jsonOk(
-        users.map((u) => ({
+        }),
+        prisma.userInvite.findMany({
+          where: { status: "pending" },
+          orderBy: { invitedAt: "desc" },
+          include: {
+            inviter: { select: { name: true } },
+          },
+        }),
+      ]);
+      return jsonOk({
+        users: users.map((u) => ({
           id: u.id,
           name: u.name,
           email: u.email,
@@ -28,8 +37,15 @@ export async function GET(request: Request) {
           active: u.active,
           createdAt: u.createdAt.toISOString(),
           proposalsAssigned: u._count.prospectsAssigned,
-        }))
-      );
+        })),
+        pendingInvites: pendingInvites.map((i) => ({
+          id: i.id,
+          email: i.email,
+          role: i.role,
+          invitedAt: i.invitedAt.toISOString(),
+          invitedBy: i.inviter.name,
+        })),
+      });
     }
 
     await requireInternalUser();

@@ -67,6 +67,7 @@ export default async function ExperiencePageRoute({
       logoUrl={branding.logoUrl}
       clientDisplayName={clientDisplayName}
       disclaimer={disclaimer}
+      branding={branding}
     >
       <ExperiencePageContent
         pageSlug={page}

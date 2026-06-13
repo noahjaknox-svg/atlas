@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: PrismJet Crew API
+  version: 1.0.0
+  description: Read-only sync API for PrismJet Crew iOS app.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /api/v1/crew/sync:
+    get:
+      summary: Full offline sync payload
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ifModifiedSince
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Optional ISO timestamp; returns unchanged=true if no data newer.
+      responses:
+        "200":
+          description: Sync payload or unchanged marker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResponse"
+        "401":
+          description: Invalid or missing API key
+        "503":
+          description: CREW_API_KEY not configured on server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    SyncResponse:
+      type: object
+      required: [syncedAt, aircraftTypes, fleet, performance]
+      properties:
+        syncedAt:
+          type: string
+          format: date-time
+        unchanged:
+          type: boolean
+        aircraftTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AircraftType"
+        fleet:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetAircraft"
+        performance:
+          type: array
+          items:
+            $ref: "#/components/schemas/PerformanceGrid"
+    AircraftType:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, example: B300 }
+        manufacturer: { type: string }
+        model: { type: string }
+        updatedAt: { type: string, format: date-time }
+    FleetAircraft:
+      type: object
+      properties:
+        tailNumber: { type: string, example: N1213P }
+        aircraftTypeId: { type: string, format: uuid }
+        aircraftTypeCode: { type: string }
+        status: { type: string, enum: [active, retired] }
+        homeBase: { type: string, nullable: true }
+        serialNumber: { type: string, nullable: true }
+        operating:
+          $ref: "#/components/schemas/Operating"
+        updatedAt: { type: string, format: date-time }
+    Operating:
+      type: object
+      description: Per-tail operating block (see docs/prismjet-crew-api-v1.md)
+      properties:
+        basicEmptyWeightLb: { type: number }
+        mtowLb: { type: number }
+        mzfwLb: { type: number }
+        fullFuelLb: { type: number }
+        crewWeightLb: { type: number }
+        paxWeightSummer: { type: number }
+        paxWeightWinter: { type: number }
+        taxiFuelLb: { type: number }
+        reserveFuelLb: { type: number }
+        burnRateLbPerHr: { type: number }
+        cruiseTasKts: { type: number }
+        cruiseAltitudeFt: { type: number }
+        routePercent: { type: number }
+        seatCount: { type: number }
+        maxBagWeightLb: { type: number }
+        landingRunwayPercent: { type: number }
+        alternateRunwayPercent: { type: number }
+        wetRunwayPercent: { type: number }
+        singleRunwayAlternate: { type: boolean }
+    PerformanceGrid:
+      type: object
+      properties:
+        aircraftTypeId: { type: string, format: uuid }
+        aircraftTypeCode: { type: string }
+        metric:
+          type: string
+          enum: [takeoffFieldLength, landingDistance]
+        unit: { type: string, example: ft }
+        axes:
+          type: object
+          properties:
+            pressureAltitudeFt:
+              type: array
+              items: { type: integer }
+            weightLb:
+              type: array
+              items: { type: integer }
+            oatC:
+              type: array
+              items: { type: integer }
+        values:
+          type: array
+          description: "3D grid values[paIdx][weightIdx][oatIdx], null outside envelope"
+        updatedAt: { type: string, format: date-time }

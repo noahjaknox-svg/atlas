@@ -21,6 +21,7 @@ import {
 } from "@/components/internal/data-hub/filter-bar";
 import type { FormField } from "@/components/internal/data-hub/entity-dialog";
 import { ScenarioTemplatesTab } from "@/components/internal/data-hub/scenario-templates-tab";
+import { CrewDataHubPanel } from "@/components/internal/data-hub/crew-data-hub-panel";
 import { CsvImportPanel } from "@/components/internal/data-hub/csv-import-panel";
 import type { DataTableColumn } from "@/components/internal/data-hub/data-table";
 import { formatHubLabel } from "@/lib/data-hub-labels";
@@ -95,6 +96,7 @@ const TABS = [
   { id: "taxes", label: "State Taxes" },
   { id: "charter", label: "Charter Rates" },
   { id: "scenarios", label: "Scenario Templates" },
+  { id: "performance-data", label: "Performance Data" },
 ] as const;
 
 export function DataHubClient({ initialTab }: { initialTab: string }) {
@@ -156,7 +158,9 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
   }
 
   const sidebarFilters = filtersForTab(tab);
-  const singleTableTab = tab !== "airports" && tab !== "fuel";
+  const singleTableTab =
+    tab !== "airports" && tab !== "fuel" && tab !== "performance-data";
+  const showSidebarTools = tab !== "performance-data";
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
 
   return (
@@ -179,12 +183,15 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           ))}
         </nav>
 
-        <div className="space-y-3 border-t border-atlas-border px-3 py-3">
-          <DataHubSearchBar tab={tab} />
-          <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
-        </div>
+        {showSidebarTools ? (
+          <div className="space-y-3 border-t border-atlas-border px-3 py-3">
+            <DataHubSearchBar tab={tab} />
+            <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
+          </div>
+        ) : null}
 
-        <div className="mt-auto border-t border-atlas-border p-3 space-y-0">
+        {showSidebarTools ? (
+          <div className="mt-auto border-t border-atlas-border p-3 space-y-0">
             <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
               Re-import seed CSV
             </Button>
@@ -199,6 +206,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
               <CsvImportPanel onImported={() => router.refresh()} />
             ) : null}
           </div>
+        ) : null}
         </aside>
 
         <div
@@ -208,8 +216,18 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         >
         <header className="mb-4 shrink-0">
           <h1 className="font-serif text-2xl">{activeTab.label}</h1>
-          <p className="mt-0.5 text-sm text-atlas-muted">Reference data for proposals and pro forma</p>
+          {tab !== "performance-data" && (
+            <p className="mt-0.5 text-sm text-atlas-muted">
+              Reference data for proposals and pro forma
+            </p>
+          )}
+          {tab === "performance-data" && (
+            <p className="mt-0.5 text-sm text-atlas-muted">
+              Operational fleet and performance tables for PrismJet Crew
+            </p>
+          )}
         </header>
+        {tab === "performance-data" && <CrewDataHubPanel />}
         {tab === "airports" && (
           <div className="space-y-8">
             <CrudTab

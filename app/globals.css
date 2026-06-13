@@ -28,6 +28,10 @@
     @apply bg-atlas-bg text-atlas-text font-sans text-sm leading-relaxed antialiased;
   }
 
+  html {
+    scroll-padding-top: calc(var(--portal-nav-height) + 1.25rem);
+  }
+
   :focus-visible {
     outline: 2px solid rgb(201 168 76 / 0.55);
     outline-offset: 2px;

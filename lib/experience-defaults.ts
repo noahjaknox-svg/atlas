@@ -82,10 +82,10 @@ From our base in Scottsdale, Arizona, we manage and operate aircraft for discern
         },
       ],
       gallery: [
+        { url: IMG.casey, caption: "Scott Casey — Vice President" },
         { url: IMG.bianco, caption: "Leadership — PrismJet" },
         { url: IMG.pixley, caption: "Leadership — PrismJet" },
         { url: IMG.turcott, caption: "Leadership — PrismJet" },
-        { url: IMG.casey, caption: "Scott Casey — Vice President" },
       ],
     },
   },

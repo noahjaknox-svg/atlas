@@ -895,3 +895,67 @@ model ProposalTask {
 
   @@map("proposal_tasks")
 }
+
+// ——— PrismJet Crew (operational fleet + performance tables) ———
+
+enum CrewFleetStatus {
+  active
+  retired
+}
+
+enum CrewPerformanceMetric {
+  takeoffFieldLength
+  landingDistance
+}
+
+/// Aircraft type catalog for Crew (e.g. B300 / King Air 350).
+model CrewAircraftType {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  manufacturer String
+  model        String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  fleet        CrewFleetAircraft[]
+  performance  CrewPerformanceGrid[]
+
+  @@map("crew_aircraft_types")
+}
+
+/// Operational charter tail — independent of sales proposals.
+model CrewFleetAircraft {
+  id              String          @id @default(uuid()) @db.Uuid
+  tailNumber      String          @unique @map("tail_number")
+  aircraftTypeId  String          @map("aircraft_type_id") @db.Uuid
+  status          CrewFleetStatus @default(active)
+  homeBase        String?         @map("home_base")
+  serialNumber    String?         @map("serial_number")
+  operating       Json            @db.JsonB
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  aircraftType CrewAircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
+
+  @@index([aircraftTypeId])
+  @@map("crew_fleet_aircraft")
+}
+
+/// Type-level performance grid (pressure altitude × weight × OAT → length ft).
+model CrewPerformanceGrid {
+  id             String                @id @default(uuid()) @db.Uuid
+  aircraftTypeId String                @map("aircraft_type_id") @db.Uuid
+  metric         CrewPerformanceMetric
+  unit           String                @default("ft")
+  pressureAltitudeFt Int[]             @map("pressure_altitude_ft")
+  weightLb       Int[]                 @map("weight_lb")
+  oatC           Int[]                 @map("oat_c")
+  values         Json                  @db.JsonB
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  aircraftType CrewAircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([aircraftTypeId, metric])
+  @@map("crew_performance_grids")
+}

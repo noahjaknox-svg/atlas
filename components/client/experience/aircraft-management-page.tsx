@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 
 export function AircraftManagementPage({
@@ -15,25 +16,20 @@ export function AircraftManagementPage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="02" />
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
+          <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
         <RevealOnScroll>
           <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>
-        <div className="mt-12 grid gap-8 md:grid-cols-2">
+        <div className={cn(experienceSectionGap, "grid gap-6 md:grid-cols-2 md:gap-8")}>
           {pillars.map((pillar, i) => (
             <RevealOnScroll key={pillar.title} delayMs={i * 100}>
-              <div className="rounded-xl border border-white/10 p-6">
+              <div className={cn(experienceGlass, "p-6")}>
                 <span className="font-mono text-2xl text-atlas-accent/80">
                   {String(i + 1).padStart(2, "0")}
                 </span>
@@ -45,13 +41,17 @@ export function AircraftManagementPage({
         </div>
         {callout ? (
           <RevealOnScroll delayMs={200}>
-            <div className="mt-12 max-w-3xl rounded-xl border border-atlas-accent/40 bg-atlas-accent/10 px-8 py-6 text-center">
+            <div className={cn(experienceSectionGap, "max-w-3xl rounded-xl border border-atlas-accent/40 bg-atlas-accent/10 px-8 py-6 text-center")}>
               <p className="text-xs uppercase tracking-wider text-white/60">{callout.label}</p>
               <p className="mt-2 font-serif text-xl text-atlas-accent">{callout.value}</p>
             </div>
           </RevealOnScroll>
         ) : null}
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery
+          items={section.contentBlocks?.gallery}
+          layout="single"
+          variant="landscape-wide"
+        />
       </ExperienceBody>
     </>
   );

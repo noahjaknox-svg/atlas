@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
+import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, experienceScrollAnchor, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 
 export function ConformityPage({
@@ -22,22 +23,19 @@ export function ConformityPage({
 
   return (
     <>
-      <ExperienceHero
-        imageUrl={section.imageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={section.videoUrl ?? branding.heroCloudVideoUrl}
-        posterUrl={section.posterUrl}
-        kenBurns
-      >
+      <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="06" />
-          <h1 className="mt-3 max-w-3xl font-serif text-3xl sm:text-4xl lg:text-5xl">
+          <ExperienceHeroTitle className="max-w-3xl">
             Transition &amp; Conformity Process Guide
-          </h1>
+          </ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
-      <ExperienceBody className="space-y-16">
+      <ExperienceBody className="space-y-10 sm:space-y-12">
         <RevealOnScroll>
-          <h2 className="font-serif text-2xl">What to expect in the transition</h2>
+          <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>
+            What to expect in the transition
+          </h2>
           <p className="mt-4 text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
           {introBullets.length > 0 ? (
             <ul className="mt-6 space-y-2">
@@ -53,12 +51,14 @@ export function ConformityPage({
 
         {goalBullets.length > 0 ? (
           <RevealOnScroll>
-            <h2 className="font-serif text-2xl">PrismJet&apos;s goal in the transition</h2>
+            <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>
+              PrismJet&apos;s goal in the transition
+            </h2>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {goalBullets.map((b) => (
                 <li
                   key={b}
-                  className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/75"
+                  className={cn(experienceGlass, "px-4 py-3 text-sm text-white/75")}
                 >
                   {b}
                 </li>
@@ -69,7 +69,7 @@ export function ConformityPage({
 
         {checklist.length > 0 ? (
           <RevealOnScroll>
-            <h2 className="font-serif text-2xl">The conformity process</h2>
+            <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>The conformity process</h2>
             <p className="mt-3 text-sm text-white/65">
               Conformity validates that the aircraft meets all operational and regulatory requirements
               for FAA Part 135 operations under the PrismJet certificate.
@@ -106,8 +106,10 @@ export function ConformityPage({
 
         {timeline.length > 0 ? (
           <RevealOnScroll>
-            <h2 className="font-serif text-2xl">Recommended transition timeline</h2>
-            <div className="mt-8 space-y-6">
+            <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>
+              Recommended transition timeline
+            </h2>
+            <div className="mt-6 space-y-6">
               {timeline.map((phase, i) => (
                 <RevealOnScroll key={phase.phase} delayMs={i * 80}>
                   <div className="relative border-l-2 border-atlas-accent/40 pl-6 sm:pl-8">
@@ -152,7 +154,7 @@ export function ConformityPage({
         ) : null}
 
         <RevealOnScroll>
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
+          <div className={cn(experienceGlass, "p-6")}>
             <h2 className="font-serif text-xl">FAA approvals — setting expectations</h2>
             <p className="mt-3 text-sm leading-relaxed text-white/70">
               Even with strong preparation, approval timing can vary depending on local FAA workload,
@@ -164,7 +166,7 @@ export function ConformityPage({
 
         {ownerRecommendations.length > 0 ? (
           <RevealOnScroll>
-            <h2 className="font-serif text-2xl">Owner recommendations</h2>
+            <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>Owner recommendations</h2>
             <ul className="mt-4 space-y-2">
               {ownerRecommendations.map((r) => (
                 <li key={r} className="text-sm text-white/75">
@@ -177,7 +179,9 @@ export function ConformityPage({
 
         {downtimeStrategies.length > 0 ? (
           <RevealOnScroll>
-            <h2 className="font-serif text-2xl">Strategies to reduce downtime</h2>
+            <h2 className={cn("font-serif text-2xl", experienceScrollAnchor)}>
+              Strategies to reduce downtime
+            </h2>
             <ul className="mt-4 space-y-3">
               {downtimeStrategies.map((s) => (
                 <li key={s} className="text-sm leading-relaxed text-white/75">
@@ -192,7 +196,7 @@ export function ConformityPage({
           <div className="grid gap-6 md:grid-cols-3">
             {explainerCards.map((card, i) => (
               <RevealOnScroll key={card.title} delayMs={i * 80}>
-                <div className="h-full rounded-xl border border-white/10 p-5">
+                <div className={cn(experienceGlass, "h-full p-5")}>
                   <h3 className="font-serif text-lg text-atlas-accent">{card.title}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-white/70">{card.body}</p>
                 </div>
@@ -209,7 +213,7 @@ export function ConformityPage({
             operational success.
           </p>
         </RevealOnScroll>
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery items={section.contentBlocks?.gallery} layout="compact" />
       </ExperienceBody>
     </>
   );

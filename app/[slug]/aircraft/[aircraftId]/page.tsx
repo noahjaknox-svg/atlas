@@ -1,9 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { loadExperiencePortalLayout } from "@/lib/experience-portal-layout";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { ExperienceShell } from "@/components/client/experience/experience-shell";
 import { experiencePageX } from "@/components/client/experience/experience-primitives";
-import { CloudBackground } from "@/components/client/cloud-background";
 import { AircraftPortalDetail } from "@/components/client/aircraft-portal-detail";
 import { PrismJetFleetSection } from "@/components/client/prismjet-fleet-section";
 import { cn } from "@/lib/utils";
@@ -28,26 +27,20 @@ export default async function ClientAircraftDetailPage({
       logoUrl={branding.logoUrl}
       clientDisplayName={clientDisplayName}
       disclaimer={disclaimer}
+      branding={branding}
     >
-      <CloudBackground
-        imageUrl={aircraft.portalImageUrl ?? branding.heroCloudImageUrl}
-        videoUrl={aircraft.portalVideoUrl ?? branding.heroCloudVideoUrl}
-        overlay="dark"
-        className="min-h-[calc(100vh-var(--portal-nav-height))]"
-      >
-        <div className={cn("py-12", experiencePageX)}>
-          <AircraftPortalDetail
-            slug={slug}
-            aircraft={aircraft}
-            showBackToList={aircraftList.length > 1}
-          />
-          <PrismJetFleetSection
-            title={content.fleetTitle}
-            body={content.fleetBody}
-            items={fleet}
-          />
-        </div>
-      </CloudBackground>
+      <div className={cn("py-12", experiencePageX)}>
+        <AircraftPortalDetail
+          slug={slug}
+          aircraft={aircraft}
+          showBackToList={aircraftList.length > 1}
+        />
+        <PrismJetFleetSection
+          title={content.fleetTitle}
+          body={content.fleetBody}
+          items={fleet}
+        />
+      </div>
     </ExperienceShell>
   );
 }
