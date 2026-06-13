@@ -1,12 +1,12 @@
 {
-  "syncedAt": "2026-06-13T06:10:13.988Z",
+  "_about": "PrismJet Crew initial data export for Atlas first-load. Generated from the live app. values[paIndex][weightIndex][oatIndex]; null = beyond certified envelope. Matches crew_data_sample.json conventions.",
+  "syncedAt": "2026-06-13T05:51:55Z",
   "aircraftTypes": [
     {
-      "id": "6b04c0ac-16c9-4d81-a7a3-119a97a9505e",
       "code": "B300",
       "manufacturer": "Beechcraft",
       "model": "King Air 350",
-      "updatedAt": "2026-06-13T06:10:02.862Z"
+      "region": "UNITED STATES"
     }
   ],
   "fleet": [
@@ -36,8 +36,7 @@
         "alternateRunwayPercent": 70,
         "wetRunwayPercent": 15,
         "requireAltSingleRunway": true
-      },
-      "updatedAt": "2026-06-13T06:10:02.981Z"
+      }
     }
   ],
   "performance": [
@@ -45,6 +44,7 @@
       "aircraftTypeId": "B300",
       "metric": "takeoff_field_length",
       "unit": "ft",
+      "source": "King Air 350 B300 POH Section 5, flaps up, A/C & bleed ON",
       "axes": {
         "pressureAltitudeFt": [
           0,
@@ -1317,12 +1317,13 @@
           ]
         ]
       ],
-      "updatedAt": "2026-06-13T06:10:03.101Z"
+      "updatedAt": "2026-06-12T00:00:00Z"
     },
     {
       "aircraftTypeId": "B300",
       "metric": "landing_distance",
       "unit": "ft",
+      "source": "Crew calibrated normal-landing model (density-altitude based), evaluated onto the same axes as takeoff. Replace with POH grid if/when transcribed.",
       "axes": {
         "pressureAltitudeFt": [
           0,
@@ -2595,7 +2596,15 @@
           ]
         ]
       ],
-      "updatedAt": "2026-06-13T06:10:03.222Z"
+      "updatedAt": "2026-06-12T00:00:00Z"
     }
-  ]
+  ],
+  "_units": {
+    "weight": "lb",
+    "length": "ft",
+    "pressureAltitude": "ft",
+    "temperature": "C",
+    "speed": "kt"
+  },
+  "_notes": "operating{} carries the per-tail numbers the app's W&B + go/no-go math needs \u2014 see reply about where these should live in Atlas's schema. Airport data + gradient/wind/GOM corrections stay in the app."
 }

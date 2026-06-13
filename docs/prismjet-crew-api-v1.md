@@ -141,7 +141,18 @@ Standard HTTP status codes (401, 404, etc.).
 2. 2–3 real `/sync` sample responses
 3. OpenAPI when stable
 
+## Wire format (Crew app)
+
+`/sync` matches the live app export (`atlas_initial_data.json`):
+
+- **Fleet** `aircraftTypeId` = type code (e.g. `B300`), not UUID
+- **Operating** app field names: `basicEmptyWeight`, `maxTakeoffWeight`, `requireAltSingleRunway`, etc.
+- **Performance** metrics: `takeoff_field_length`, `landing_distance` (snake_case)
+- **Types** array still includes Atlas UUID `id` per type for bookkeeping
+
+Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Load bundled seed.
+
 ## References
 
-- `crew_data_sample.json` — canonical wire format (from Crew team)
-- `atlas_initial_data.json` — first-load seed (N1213P + B300 grids)
+- `data/seeds/atlas_initial_data.json` — POH takeoff + calibrated landing (from Crew)
+- `data/seeds/crew-sync-sample.json` — example `/sync` response for Swift parser validation

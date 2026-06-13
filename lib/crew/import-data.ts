@@ -1,6 +1,7 @@
 import type { PrismaClient, CrewFleetStatus, CrewPerformanceMetric } from "@prisma/client";
 import type { CrewGridValues, CrewInitialDataFile } from "@/lib/crew/types";
-import { parseOperatingJson } from "@/lib/crew/types";
+import { parseOperatingFromWire } from "@/lib/crew/normalize-initial-data";
+import { metricFromWire } from "@/lib/crew/wire-format";
 
 export async function importCrewInitialData(
   db: PrismaClient,
@@ -37,14 +38,14 @@ export async function importCrewInitialData(
         status: (ac.status ?? "active") as CrewFleetStatus,
         homeBase: ac.homeBase ?? null,
         serialNumber: ac.serialNumber ?? null,
-        operating: parseOperatingJson(ac.operating),
+        operating: parseOperatingFromWire(ac.operating),
       },
       update: {
         aircraftTypeId: typeId,
         status: (ac.status ?? "active") as CrewFleetStatus,
         homeBase: ac.homeBase ?? null,
         serialNumber: ac.serialNumber ?? null,
-        operating: parseOperatingJson(ac.operating),
+        operating: parseOperatingFromWire(ac.operating),
       },
     });
   }
@@ -54,16 +55,20 @@ export async function importCrewInitialData(
     if (!typeId) {
       throw new Error(`Unknown aircraft type code: ${grid.aircraftTypeCode}`);
     }
+    const metric =
+      typeof grid.metric === "string"
+        ? metricFromWire(grid.metric)
+        : grid.metric;
     await db.crewPerformanceGrid.upsert({
       where: {
         aircraftTypeId_metric: {
           aircraftTypeId: typeId,
-          metric: grid.metric as CrewPerformanceMetric,
+          metric,
         },
       },
       create: {
         aircraftTypeId: typeId,
-        metric: grid.metric as CrewPerformanceMetric,
+        metric,
         unit: grid.unit ?? "ft",
         pressureAltitudeFt: grid.axes.pressureAltitudeFt,
         weightLb: grid.axes.weightLb,

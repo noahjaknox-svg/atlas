@@ -1,6 +1,7 @@
 /**
  * Crew operating block — wire keys match crew_data_sample.json / PrismJet Crew app.
  */
+import { parseOperatingFromWire } from "@/lib/crew/normalize-initial-data";
 export type CrewOperatingData = {
   basicEmptyWeightLb: number;
   mtowLb: number;
@@ -72,34 +73,7 @@ export const CREW_OPERATING_FIELD_META: Array<{
 ];
 
 export function parseOperatingJson(raw: unknown): CrewOperatingData {
-  const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const d = CREW_OPERATING_DEFAULTS;
-  return {
-    basicEmptyWeightLb: num(o.basicEmptyWeightLb, d.basicEmptyWeightLb),
-    mtowLb: num(o.mtowLb, d.mtowLb),
-    mzfwLb: num(o.mzfwLb, d.mzfwLb),
-    fullFuelLb: num(o.fullFuelLb, d.fullFuelLb),
-    crewWeightLb: num(o.crewWeightLb, d.crewWeightLb),
-    paxWeightSummer: num(o.paxWeightSummer, d.paxWeightSummer),
-    paxWeightWinter: num(o.paxWeightWinter, d.paxWeightWinter),
-    taxiFuelLb: num(o.taxiFuelLb, d.taxiFuelLb),
-    reserveFuelLb: num(o.reserveFuelLb, d.reserveFuelLb),
-    burnRateLbPerHr: num(o.burnRateLbPerHr, d.burnRateLbPerHr),
-    cruiseTasKts: num(o.cruiseTasKts, d.cruiseTasKts),
-    cruiseAltitudeFt: num(o.cruiseAltitudeFt, d.cruiseAltitudeFt),
-    routePercent: num(o.routePercent, d.routePercent),
-    seatCount: num(o.seatCount, d.seatCount),
-    maxBagWeightLb: num(o.maxBagWeightLb, d.maxBagWeightLb),
-    landingRunwayPercent: num(o.landingRunwayPercent, d.landingRunwayPercent),
-    alternateRunwayPercent: num(o.alternateRunwayPercent, d.alternateRunwayPercent),
-    wetRunwayPercent: num(o.wetRunwayPercent, d.wetRunwayPercent),
-    singleRunwayAlternate: Boolean(o.singleRunwayAlternate ?? d.singleRunwayAlternate),
-  };
-}
-
-function num(v: unknown, fallback: number): number {
-  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-  return Number.isFinite(n) ? n : fallback;
+  return parseOperatingFromWire(raw);
 }
 
 export type CrewPerformanceAxes = {

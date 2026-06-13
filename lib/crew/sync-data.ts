@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CrewGridValues, CrewOperatingData } from "@/lib/crew/types";
+import type { CrewOperatingWire } from "@/lib/crew/wire-format";
+import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
 
 export type CrewSyncPayload = {
   syncedAt: string;
@@ -13,17 +15,17 @@ export type CrewSyncPayload = {
   }>;
   fleet: Array<{
     tailNumber: string;
+    /** Type code on the wire (e.g. B300) — matches Crew app export. */
     aircraftTypeId: string;
-    aircraftTypeCode: string;
     status: string;
     homeBase: string | null;
     serialNumber: string | null;
-    operating: CrewOperatingData;
+    operating: CrewOperatingWire;
     updatedAt: string;
   }>;
   performance: Array<{
+    /** Type code on the wire (e.g. B300). */
     aircraftTypeId: string;
-    aircraftTypeCode: string;
     metric: string;
     unit: string;
     axes: {
@@ -79,18 +81,16 @@ export async function buildCrewSyncPayloadFromDb(
     })),
     fleet: fleet.map((f) => ({
       tailNumber: f.tailNumber,
-      aircraftTypeId: f.aircraftTypeId,
-      aircraftTypeCode: f.aircraftType.code,
+      aircraftTypeId: f.aircraftType.code,
       status: f.status,
       homeBase: f.homeBase,
       serialNumber: f.serialNumber,
-      operating: f.operating as CrewOperatingData,
+      operating: operatingToWire(f.operating as CrewOperatingData),
       updatedAt: f.updatedAt.toISOString(),
     })),
     performance: grids.map((g) => ({
-      aircraftTypeId: g.aircraftTypeId,
-      aircraftTypeCode: g.aircraftType.code,
-      metric: g.metric,
+      aircraftTypeId: g.aircraftType.code,
+      metric: metricToWire(g.metric),
       unit: g.unit,
       axes: {
         pressureAltitudeFt: g.pressureAltitudeFt,
