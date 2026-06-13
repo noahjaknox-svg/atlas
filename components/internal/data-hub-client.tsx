@@ -83,7 +83,8 @@ const FBO_FIELD: FormField = {
   placeholder: "Search FBO name…",
 };
 
-const TABS = [
+/** Pro forma / proposal reference data — top of Data hub nav. */
+const REFERENCE_TABS = [
   { id: "airports", label: "Airports & FBOs" },
   { id: "fuel", label: "Fuel Prices" },
   { id: "aircraft", label: "Aircraft Performance" },
@@ -96,8 +97,10 @@ const TABS = [
   { id: "taxes", label: "State Taxes" },
   { id: "charter", label: "Charter Rates" },
   { id: "scenarios", label: "Scenario Templates" },
-  { id: "performance-data", label: "Performance Data" },
 ] as const;
+
+/** Operational fleet + POH grids for the PrismJet Crew iOS app — pinned separately. */
+const CREW_TAB = { id: "performance-data", label: "PrismJet Crew Data" } as const;
 
 export function DataHubClient({ initialTab }: { initialTab: string }) {
   const router = useRouter();
@@ -157,57 +160,84 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
     }
   }
 
+  const isCrewTab = tab === CREW_TAB.id;
   const sidebarFilters = filtersForTab(tab);
-  const singleTableTab =
-    tab !== "airports" && tab !== "fuel" && tab !== "performance-data";
-  const showSidebarTools = tab !== "performance-data";
-  const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0];
+  const singleTableTab = tab !== "airports" && tab !== "fuel" && !isCrewTab;
+  const showSidebarTools = !isCrewTab;
+  const activeTab = isCrewTab
+    ? CREW_TAB
+    : (REFERENCE_TABS.find((t) => t.id === tab) ?? REFERENCE_TABS[0]);
+
+  const navButtonClass = (active: boolean, pinned = false) =>
+    `block w-full rounded px-3 py-2 text-left text-sm ${
+      active
+        ? pinned
+          ? "bg-atlas-accent/20 font-medium text-atlas-accent ring-1 ring-atlas-accent/30"
+          : "bg-atlas-accent/15 text-atlas-accent"
+        : pinned
+          ? "text-atlas-text hover:bg-atlas-border/30"
+          : "text-atlas-muted hover:bg-atlas-border/30"
+    }`;
 
   return (
     <div className="flex h-full min-h-0">
-      <aside className="flex w-56 shrink-0 flex-col overflow-y-auto border-r border-atlas-border bg-atlas-surface/20">
-        <nav className="space-y-0.5 p-3">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`block w-full rounded px-3 py-2 text-left text-sm ${
-                tab === t.id
-                  ? "bg-atlas-accent/15 text-atlas-accent"
-                  : "text-atlas-muted hover:bg-atlas-border/30"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
-        {showSidebarTools ? (
-          <div className="space-y-3 border-t border-atlas-border px-3 py-3">
-            <DataHubSearchBar tab={tab} />
-            <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
-          </div>
-        ) : null}
-
-        {showSidebarTools ? (
-          <div className="mt-auto border-t border-atlas-border p-3 space-y-0">
-            <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
-              Re-import seed CSV
-            </Button>
-            {importMsg && (
-              <p
-                className={`mt-2 text-xs ${importMsg.includes("failed") || importMsg.includes("Failed") ? "text-atlas-danger" : "text-atlas-muted"}`}
+      <aside className="flex min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-atlas-muted/80">
+            Pro forma reference
+          </p>
+          <nav className="space-y-0.5 px-3 pb-3">
+            {REFERENCE_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={navButtonClass(tab === t.id)}
               >
-                {importMsg}
-              </p>
-            )}
-            {tab === "aircraft" ? (
-              <CsvImportPanel onImported={() => router.refresh()} />
-            ) : null}
-          </div>
-        ) : null}
-        </aside>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+
+          {showSidebarTools ? (
+            <div className="space-y-3 border-t border-atlas-border px-3 py-3">
+              <DataHubSearchBar tab={tab} />
+              <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
+            </div>
+          ) : null}
+
+          {showSidebarTools ? (
+            <div className="border-t border-atlas-border p-3 space-y-0">
+              <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
+                Re-import seed CSV
+              </Button>
+              {importMsg && (
+                <p
+                  className={`mt-2 text-xs ${importMsg.includes("failed") || importMsg.includes("Failed") ? "text-atlas-danger" : "text-atlas-muted"}`}
+                >
+                  {importMsg}
+                </p>
+              )}
+              {tab === "aircraft" ? (
+                <CsvImportPanel onImported={() => router.refresh()} />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-auto shrink-0 border-t border-atlas-accent/25 bg-atlas-surface/60 p-3">
+          <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-atlas-accent/80">
+            PrismJet Crew
+          </p>
+          <button
+            type="button"
+            onClick={() => setTab(CREW_TAB.id)}
+            className={navButtonClass(isCrewTab, true)}
+          >
+            {CREW_TAB.label}
+          </button>
+        </div>
+      </aside>
 
         <div
           className={`min-w-0 flex-1 p-4 ${
@@ -216,18 +246,18 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         >
         <header className="mb-4 shrink-0">
           <h1 className="font-serif text-2xl">{activeTab.label}</h1>
-          {tab !== "performance-data" && (
+          {!isCrewTab && (
             <p className="mt-0.5 text-sm text-atlas-muted">
               Reference data for proposals and pro forma
             </p>
           )}
-          {tab === "performance-data" && (
+          {isCrewTab && (
             <p className="mt-0.5 text-sm text-atlas-muted">
-              Operational fleet and performance tables for PrismJet Crew
+              Operational charter fleet and POH performance grids — synced to the PrismJet Crew iOS app
             </p>
           )}
         </header>
-        {tab === "performance-data" && <CrewDataHubPanel />}
+        {isCrewTab && <CrewDataHubPanel />}
         {tab === "airports" && (
           <div className="space-y-8">
             <CrudTab

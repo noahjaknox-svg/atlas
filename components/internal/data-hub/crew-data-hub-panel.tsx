@@ -140,9 +140,31 @@ export function CrewDataHubPanel() {
     <div className="space-y-10">
       <div className="rounded-lg border border-atlas-border bg-atlas-surface/40 p-4">
         <p className="text-sm text-atlas-muted">
-          Operational fleet and performance tables for the PrismJet Crew iOS app. Crew pulls{" "}
-          <code className="text-atlas-accent">GET /api/v1/crew/sync</code> with a read-only API key.
+          Operational charter fleet and POH performance tables for the PrismJet Crew iOS app.
+          Crew pulls <code className="text-atlas-accent">GET /api/v1/crew/sync</code> with a
+          read-only API key — no direct Supabase edits needed.
         </p>
+        <div className="mt-4 rounded-md border border-atlas-accent/20 bg-atlas-accent/5 p-4">
+          <h3 className="text-sm font-medium text-atlas-text">Adding a new aircraft type</h3>
+          <p className="mt-1 text-sm text-atlas-muted">
+            Create all three in this order so the type flows through <code>/sync</code>:
+          </p>
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-atlas-muted">
+            <li>
+              <span className="text-atlas-text">Aircraft type</span> — code (e.g. C25B),
+              manufacturer, model
+            </li>
+            <li>
+              <span className="text-atlas-text">Performance grids</span> for that type — takeoff
+              field length and landing distance, each a grid over pressure altitude × weight × OAT
+              (same structure as the King Air B300)
+            </li>
+            <li>
+              <span className="text-atlas-text">One or more tails</span> referencing that type,
+              each with its full operating block (BEW, MTOW, pax weights, GOM factors, etc.)
+            </li>
+          </ol>
+        </div>
         <div className="mt-4 flex flex-wrap gap-3">
           <Button onClick={() => void runImport()}>Load bundled seed (N1213P + B300)</Button>
         </div>
@@ -150,7 +172,7 @@ export function CrewDataHubPanel() {
       </div>
 
       <CrudTab
-        title="Crew aircraft types"
+        title="1. Aircraft types"
         apiPath="/api/data/crew-types"
         columns={[
           { key: "code", label: "Code" },
@@ -165,8 +187,50 @@ export function CrewDataHubPanel() {
       />
 
       <div>
+        <h2 className="mb-1 font-serif text-xl">2. Performance grids</h2>
+        <p className="mb-3 text-sm text-atlas-muted">
+          Type-level takeoff and landing tables (pressure altitude × weight × OAT). Each type needs
+          both <code className="text-atlas-accent">takeoffFieldLength</code> and{" "}
+          <code className="text-atlas-accent">landingDistance</code>. Import from Crew&apos;s export
+          JSON (bundled seed or <code>/api/data/crew-import</code>) or POST grid JSON to{" "}
+          <code>/api/data/crew-performance</code>.
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-atlas-border">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-atlas-border bg-atlas-surface/50 text-atlas-muted">
+              <tr>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Metric</th>
+                <th className="px-3 py-2">Grid</th>
+                <th className="px-3 py-2">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {perf.map((row) => (
+                <tr key={row.id} className="border-b border-atlas-border/60">
+                  <td className="px-3 py-2">{row.aircraftTypeCode}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{row.metric}</td>
+                  <td className="px-3 py-2">{row.gridSize}</td>
+                  <td className="px-3 py-2 text-atlas-muted">
+                    {new Date(row.updatedAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {perf.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-atlas-muted">
+                    No grids — add a type, then import or POST performance data.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-serif text-xl">Charter fleet (tails)</h2>
+          <h2 className="font-serif text-xl">3. Charter fleet (tails)</h2>
           <Button onClick={openFleetCreate} disabled={types.length === 0}>
             Add tail
           </Button>
@@ -221,45 +285,6 @@ export function CrewDataHubPanel() {
             </table>
           </div>
         )}
-      </div>
-
-      <div>
-        <h2 className="mb-3 font-serif text-xl">Performance grids</h2>
-        <p className="mb-3 text-sm text-atlas-muted">
-          Type-level takeoff and landing tables (pressure altitude × weight × OAT). Re-import bundled
-          seed or POST JSON to <code>/api/data/crew-performance</code> to replace grids.
-        </p>
-        <div className="overflow-x-auto rounded-lg border border-atlas-border">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-atlas-border bg-atlas-surface/50 text-atlas-muted">
-              <tr>
-                <th className="px-3 py-2">Type</th>
-                <th className="px-3 py-2">Metric</th>
-                <th className="px-3 py-2">Grid</th>
-                <th className="px-3 py-2">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {perf.map((row) => (
-                <tr key={row.id} className="border-b border-atlas-border/60">
-                  <td className="px-3 py-2">{row.aircraftTypeCode}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{row.metric}</td>
-                  <td className="px-3 py-2">{row.gridSize}</td>
-                  <td className="px-3 py-2 text-atlas-muted">
-                    {new Date(row.updatedAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {perf.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-atlas-muted">
-                    No grids — run bundled seed import.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       <Dialog.Root open={fleetOpen} onOpenChange={setFleetOpen}>

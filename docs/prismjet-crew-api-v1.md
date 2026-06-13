@@ -28,11 +28,24 @@ Internal reference for the read-only Crew integration. **Wire field names match 
 
 ## Admin UI
 
-Data Hub → **Performance Data** tab (`/data?tab=performance-data`):
+Data Hub → **PrismJet Crew Data** (`/data?tab=performance-data`):
 
-- Manage aircraft types, charter fleet tails, and performance grids
-- **Load bundled seed** imports N1213P + B300 sample data
-- Per-tail **basic empty weight** and full `operating` block editable in UI
+Atlas owns the database — add types, grids, and tails here (not by editing Supabase directly).
+
+### Adding a new aircraft type
+
+Create all three so the type flows through `GET /api/v1/crew/sync`:
+
+1. **Aircraft type** — code (e.g. `C25B`), manufacturer, model
+2. **Performance grids** for that type — `takeoffFieldLength` and `landingDistance`, each a grid over pressure altitude × weight × OAT (same structure as the King Air B300)
+3. **One or more tails** referencing that type, each with its full `operating` block
+
+**In the UI today:**
+
+- Step 1 and 3: create/edit in Data Hub (types table + Add tail dialog)
+- Step 2: import from Crew export JSON (bundled seed or **Load bundled seed** / `POST /api/data/crew-import`), or POST grid JSON to `/api/data/crew-performance`
+
+Per-tail **basic empty weight** and full `operating` block are editable in the Add/Edit tail dialog.
 
 ## Local setup
 
@@ -132,8 +145,7 @@ Standard HTTP status codes (401, 404, etc.).
 
 | Env | URL |
 |-----|-----|
-| Staging | TBD |
-| Production | TBD |
+| Staging / Production | `https://www.prismjet.space` |
 
 ## Deliverables to Crew
 
@@ -150,7 +162,7 @@ Standard HTTP status codes (401, 404, etc.).
 - **Performance** metrics: `takeoff_field_length`, `landing_distance` (snake_case)
 - **Types** array still includes Atlas UUID `id` per type for bookkeeping
 
-Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Load bundled seed.
+Import accepts the same shapes via `npm run db:crew-import` or Data Hub → PrismJet Crew Data → Load bundled seed.
 
 ## References
 
