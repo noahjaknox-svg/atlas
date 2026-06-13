@@ -211,8 +211,8 @@ export function CrudTab({
 
   return (
     <div className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
-      <div className="mb-3 flex shrink-0 items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <h2 className="font-medium">{title}</h2>
           {showCount && (
             <p className="mt-0.5 text-xs text-atlas-muted">

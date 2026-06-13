@@ -215,8 +215,8 @@ export function CrewDataHubPanel() {
           JSON (bundled seed or <code>/api/data/crew-import</code>) or POST grid JSON to{" "}
           <code>/api/data/crew-performance</code>.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-atlas-border">
-          <table className="w-full text-left text-sm">
+        <div className="atlas-scroll overflow-x-auto rounded-lg border border-atlas-border">
+          <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="border-b border-atlas-border bg-atlas-surface/50 text-atlas-muted">
               <tr>
                 <th className="px-3 py-2">Type</th>
@@ -249,8 +249,8 @@ export function CrewDataHubPanel() {
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-serif text-xl">3. Charter fleet (tails)</h2>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-serif text-lg sm:text-xl">3. Charter fleet (tails)</h2>
           <Button type="button" onClick={() => void openFleetCreate()} disabled={types.length === 0}>
             Add tail
           </Button>
@@ -258,8 +258,8 @@ export function CrewDataHubPanel() {
         {types.length === 0 ? (
           <p className="text-sm text-atlas-muted">Add an aircraft type first.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-atlas-border">
-            <table className="w-full text-left text-sm">
+          <div className="atlas-scroll overflow-x-auto rounded-lg border border-atlas-border">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-atlas-border bg-atlas-surface/50 text-atlas-muted">
                 <tr>
                   <th className="px-3 py-2">Tail</th>
@@ -316,13 +316,13 @@ export function CrewDataHubPanel() {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,calc(100dvh-2rem))] w-[min(640px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-atlas-border bg-atlas-bg shadow-xl">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,calc(100dvh-2rem))] w-[min(640px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-atlas-border bg-atlas-bg shadow-xl sm:w-[min(640px,94vw)]">
             <div className="shrink-0 border-b border-atlas-border px-6 py-4">
               <Dialog.Title className="font-serif text-xl">
                 {editingFleet ? `Edit ${editingFleet.tailNumber}` : "Add tail"}
               </Dialog.Title>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
               <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>Tail number</Label>

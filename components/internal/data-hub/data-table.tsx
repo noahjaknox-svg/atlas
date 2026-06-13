@@ -64,15 +64,15 @@ export function DataTable<T extends { id?: string }>({
       {title ? <h2 className="mb-4 font-medium">{title}</h2> : null}
       <div
         className={cn(
-          "overflow-x-auto rounded-lg border border-atlas-border",
+          "atlas-scroll overflow-x-auto rounded-lg border border-atlas-border",
           fillHeight && "min-h-0 flex-1 overflow-y-auto"
         )}
       >
-        <table className={cn("w-full text-sm", fillHeight && "min-w-full")}>
-          <thead className={fillHeight ? "sticky top-0 z-10 bg-atlas-surface" : undefined}>
+        <table className={cn("w-full min-w-[640px] text-sm", fillHeight && "min-w-full")}>
+          <thead className={fillHeight ? "sticky top-0 z-10 bg-atlas-surface shadow-[0_1px_0_var(--atlas-border)]" : undefined}>
             <tr className="border-b border-atlas-border bg-atlas-surface text-left text-xs text-atlas-muted">
               {columns.map((c) => (
-                <th key={String(c.key)} className="px-3 py-2">
+                <th key={String(c.key)} className="whitespace-nowrap px-3 py-2">
                   {c.sortable !== false ? (
                     <button
                       type="button"
@@ -111,22 +111,24 @@ export function DataTable<T extends { id?: string }>({
                     </td>
                   ))}
                   {(onEdit || onDelete) && (
-                    <td className="space-x-2 px-3 py-2">
-                      {onEdit ? (
-                        <Button variant="secondary" size="sm" onClick={() => onEdit(row)}>
-                          Edit
-                        </Button>
-                      ) : null}
-                      {onDelete && row.id ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-atlas-muted hover:text-atlas-danger"
-                          onClick={() => onDelete(row)}
-                        >
-                          Delete
-                        </Button>
-                      ) : null}
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {onEdit ? (
+                          <Button variant="secondary" size="sm" onClick={() => onEdit(row)}>
+                            Edit
+                          </Button>
+                        ) : null}
+                        {onDelete && row.id ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-atlas-muted hover:text-atlas-danger"
+                            onClick={() => onDelete(row)}
+                          >
+                            Delete
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -136,8 +138,8 @@ export function DataTable<T extends { id?: string }>({
         </table>
       </div>
       {sorted.length > PAGE_SIZE ? (
-        <div className="mt-2 flex items-center justify-between text-xs text-atlas-muted">
-          <span>
+        <div className="mt-2 flex shrink-0 flex-col gap-2 text-xs text-atlas-muted sm:flex-row sm:items-center sm:justify-between">
+          <span className="tabular-nums">
             Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of{" "}
             {sorted.length}
           </span>

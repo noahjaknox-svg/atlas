@@ -169,8 +169,10 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
     ? CREW_TAB
     : (REFERENCE_TABS.find((t) => t.id === tab) ?? REFERENCE_TABS[0]);
 
-  const navButtonClass = (active: boolean, pinned = false) =>
-    `block w-full rounded px-3 py-2 text-left text-sm ${
+  const navButtonClass = (active: boolean, pinned = false, compact = false) =>
+    `rounded text-left text-sm transition-colors ${
+      compact ? "shrink-0 whitespace-nowrap px-3 py-1.5" : "block w-full px-3 py-2"
+    } ${
       active
         ? pinned
           ? "bg-atlas-accent/20 font-medium text-atlas-accent ring-1 ring-atlas-accent/30"
@@ -180,10 +182,74 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           : "text-atlas-muted hover:bg-atlas-border/30"
     }`;
 
+  const sidebarTools = showSidebarTools ? (
+    <>
+      <div className="space-y-3 border-t border-atlas-border px-3 py-3">
+        <DataHubSearchBar tab={tab} />
+        <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
+      </div>
+      <div className="space-y-0 border-t border-atlas-border p-3">
+        <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
+          Re-import seed CSV
+        </Button>
+        {importMsg && (
+          <p
+            className={`mt-2 text-xs ${importMsg.includes("failed") || importMsg.includes("Failed") ? "text-atlas-danger" : "text-atlas-muted"}`}
+          >
+            {importMsg}
+          </p>
+        )}
+        {tab === "aircraft" ? <CsvImportPanel onImported={() => router.refresh()} /> : null}
+      </div>
+    </>
+  ) : null;
+
+  const allTabs = [...REFERENCE_TABS, CREW_TAB];
+
   return (
-    <div className="flex h-full min-h-0">
-      <aside className="flex min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-col lg:flex-row">
+      {/* Mobile / tablet: horizontal tab strip + collapsible tools */}
+      <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/30 lg:hidden">
+        <nav
+          className="atlas-scroll-x flex gap-1 overflow-x-auto px-3 py-2"
+          aria-label="Data sections"
+        >
+          {allTabs.map((t) => {
+            const active = tab === t.id;
+            const pinned = t.id === CREW_TAB.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={navButtonClass(active, pinned, true)}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+        {sidebarTools ? (
+          <details className="group border-t border-atlas-border">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-medium text-atlas-muted marker:content-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center justify-between gap-2">
+                Search, filters &amp; tools
+                <span className="text-[10px] uppercase tracking-wide text-atlas-accent/80 group-open:hidden">
+                  Show
+                </span>
+                <span className="hidden text-[10px] uppercase tracking-wide text-atlas-accent/80 group-open:inline">
+                  Hide
+                </span>
+              </span>
+            </summary>
+            <div className="border-t border-atlas-border/60">{sidebarTools}</div>
+          </details>
+        ) : null}
+      </div>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20 lg:flex xl:w-60">
+        <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto">
           <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-atlas-muted/80">
             Pro forma reference
           </p>
@@ -200,30 +266,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             ))}
           </nav>
 
-          {showSidebarTools ? (
-            <div className="space-y-3 border-t border-atlas-border px-3 py-3">
-              <DataHubSearchBar tab={tab} />
-              <DataHubFilterSidebar tab={tab} fields={sidebarFilters} />
-            </div>
-          ) : null}
-
-          {showSidebarTools ? (
-            <div className="border-t border-atlas-border p-3 space-y-0">
-              <Button variant="secondary" className="w-full text-xs" onClick={() => void importCsv()}>
-                Re-import seed CSV
-              </Button>
-              {importMsg && (
-                <p
-                  className={`mt-2 text-xs ${importMsg.includes("failed") || importMsg.includes("Failed") ? "text-atlas-danger" : "text-atlas-muted"}`}
-                >
-                  {importMsg}
-                </p>
-              )}
-              {tab === "aircraft" ? (
-                <CsvImportPanel onImported={() => router.refresh()} />
-              ) : null}
-            </div>
-          ) : null}
+          {sidebarTools}
         </div>
 
         <div className="mt-auto shrink-0 border-t border-atlas-accent/25 bg-atlas-surface/60 p-3">
@@ -240,13 +283,15 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         </div>
       </aside>
 
-        <div
-          className={`min-w-0 flex-1 p-4 ${
-            scrollContainedTab ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto"
-          }`}
-        >
-        <header className="mb-4 shrink-0">
-          <h1 className="font-serif text-2xl">{activeTab.label}</h1>
+      <div
+        className={`min-w-0 flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 ${
+          scrollContainedTab
+            ? "flex min-h-0 flex-col overflow-hidden"
+            : "atlas-scroll overflow-y-auto"
+        }`}
+      >
+        <header className="mb-3 shrink-0 sm:mb-4">
+          <h1 className="font-serif text-xl sm:text-2xl">{activeTab.label}</h1>
           {!isCrewTab && (
             <p className="mt-0.5 text-sm text-atlas-muted">
               Reference data for proposals and pro forma
@@ -259,12 +304,12 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           )}
         </header>
         {isCrewTab ? (
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto pr-0.5 sm:pr-1">
             <CrewDataHubPanel />
           </div>
         ) : null}
         {tab === "airports" && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <CrudTab
               title="Airports"
               apiPath="/api/data/airports"
@@ -306,8 +351,8 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
         )}
 
         {tab === "fuel" && (
-          <div>
-            <div className="mb-4 rounded-lg border border-atlas-border bg-atlas-surface p-4">
+          <div className="max-w-2xl">
+            <div className="mb-4 rounded-lg border border-atlas-border bg-atlas-surface p-4 sm:p-5">
               <p className="text-sm text-atlas-muted">EIA Jet-A reference index</p>
               <p className="mt-1 font-mono text-xl text-atlas-accent">
                 {fuelIndex
