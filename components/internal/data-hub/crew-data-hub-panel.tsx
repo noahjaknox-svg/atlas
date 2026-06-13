@@ -48,6 +48,7 @@ export function CrewDataHubPanel() {
     operating: { ...CREW_OPERATING_DEFAULTS },
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const load = useCallback(async () => {
     const [t, f, p] = await Promise.all([
@@ -58,6 +59,7 @@ export function CrewDataHubPanel() {
     if (t.rows) setTypes(t.rows);
     if (f.rows) setFleet(f.rows);
     if (p.rows) setPerf(p.rows);
+    return t.rows as TypeRow[] | undefined;
   }, []);
 
   useEffect(() => {
@@ -76,11 +78,13 @@ export function CrewDataHubPanel() {
     if (res.ok) void load();
   }
 
-  function openFleetCreate() {
+  async function openFleetCreate() {
+    setSaveError("");
+    const latestTypes = (await load()) ?? types;
     setEditingFleet(null);
     setFleetForm({
       tailNumber: "",
-      aircraftTypeId: types[0]?.id ?? "",
+      aircraftTypeId: latestTypes[0]?.id ?? "",
       status: "active",
       homeBase: "",
       serialNumber: "",
@@ -90,6 +94,7 @@ export function CrewDataHubPanel() {
   }
 
   function openFleetEdit(row: FleetRow) {
+    setSaveError("");
     setEditingFleet(row);
     setFleetForm({
       tailNumber: row.tailNumber,
@@ -103,10 +108,21 @@ export function CrewDataHubPanel() {
   }
 
   async function saveFleet() {
+    const tailNumber = fleetForm.tailNumber.trim();
+    if (!tailNumber) {
+      setSaveError("Tail number is required.");
+      return;
+    }
+    if (!fleetForm.aircraftTypeId) {
+      setSaveError("Select an aircraft type (add one in step 1 first).");
+      return;
+    }
+
     setSaving(true);
+    setSaveError("");
     try {
       const body = {
-        tailNumber: fleetForm.tailNumber,
+        tailNumber,
         aircraftTypeId: fleetForm.aircraftTypeId,
         status: fleetForm.status,
         homeBase: fleetForm.homeBase || null,
@@ -121,10 +137,13 @@ export function CrewDataHubPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (res.ok) {
-        setFleetOpen(false);
-        void load();
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setSaveError(json.error ?? "Save failed — check tail number is unique.");
+        return;
       }
+      setFleetOpen(false);
+      void load();
     } finally {
       setSaving(false);
     }
@@ -174,6 +193,7 @@ export function CrewDataHubPanel() {
       <CrudTab
         title="1. Aircraft types"
         apiPath="/api/data/crew-types"
+        onMutate={() => void load()}
         columns={[
           { key: "code", label: "Code" },
           { key: "manufacturer", label: "Manufacturer" },
@@ -231,7 +251,7 @@ export function CrewDataHubPanel() {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-serif text-xl">3. Charter fleet (tails)</h2>
-          <Button onClick={openFleetCreate} disabled={types.length === 0}>
+          <Button type="button" onClick={() => void openFleetCreate()} disabled={types.length === 0}>
             Add tail
           </Button>
         </div>
@@ -287,14 +307,23 @@ export function CrewDataHubPanel() {
         )}
       </div>
 
-      <Dialog.Root open={fleetOpen} onOpenChange={setFleetOpen}>
+      <Dialog.Root
+        open={fleetOpen}
+        onOpenChange={(open) => {
+          setFleetOpen(open);
+          if (!open) setSaveError("");
+        }}
+      >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(640px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-atlas-border bg-atlas-bg p-6 shadow-xl">
-            <Dialog.Title className="font-serif text-xl">
-              {editingFleet ? `Edit ${editingFleet.tailNumber}` : "Add tail"}
-            </Dialog.Title>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(90vh,calc(100dvh-2rem))] w-[min(640px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-atlas-border bg-atlas-bg shadow-xl">
+            <div className="shrink-0 border-b border-atlas-border px-6 py-4">
+              <Dialog.Title className="font-serif text-xl">
+                {editingFleet ? `Edit ${editingFleet.tailNumber}` : "Add tail"}
+              </Dialog.Title>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>Tail number</Label>
                 <Input
@@ -388,14 +417,20 @@ export function CrewDataHubPanel() {
                   )}
                 </div>
               ))}
+              </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setFleetOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => void saveFleet()} disabled={saving}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
+            <div className="shrink-0 border-t border-atlas-border px-6 py-4">
+              {saveError ? (
+                <p className="mb-3 text-sm text-atlas-danger">{saveError}</p>
+              ) : null}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={() => setFleetOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={() => void saveFleet()} disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+              </div>
             </div>
           </Dialog.Content>
         </Dialog.Portal>

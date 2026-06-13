@@ -9,6 +9,14 @@ export function jsonError(message: string, status = 400) {
 }
 
 export function handleApiError(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: string }).code === "P2002"
+  ) {
+    return jsonError("A record with that value already exists", 409);
+  }
   if (error instanceof Error) {
     if (error.message === "UNAUTHORIZED") {
       return jsonError("Unauthorized", 401);

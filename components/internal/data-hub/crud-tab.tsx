@@ -52,6 +52,7 @@ export function CrudTab({
   emptyMessage,
   fillHeight = false,
   extraBody,
+  onMutate,
 }: {
   title: string;
   apiPath: string;
@@ -62,6 +63,8 @@ export function CrudTab({
   fillHeight?: boolean;
   /** Extra fields merged into save body (e.g. assumptions JSON). */
   extraBody?: Record<string, unknown>;
+  /** Called after a successful create, update, or delete. */
+  onMutate?: () => void;
 }) {
   const searchParams = useSearchParams();
   const filterKey = useMemo(() => {
@@ -175,6 +178,7 @@ export function CrudTab({
       }
       setOpen(false);
       void load();
+      onMutate?.();
     } finally {
       setSaving(false);
     }
@@ -197,6 +201,7 @@ export function CrudTab({
       }
       setDeleteTarget(null);
       void load();
+      onMutate?.();
     } finally {
       setDeleting(false);
     }

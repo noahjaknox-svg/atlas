@@ -163,6 +163,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
   const isCrewTab = tab === CREW_TAB.id;
   const sidebarFilters = filtersForTab(tab);
   const singleTableTab = tab !== "airports" && tab !== "fuel" && !isCrewTab;
+  const scrollContainedTab = singleTableTab || isCrewTab;
   const showSidebarTools = !isCrewTab;
   const activeTab = isCrewTab
     ? CREW_TAB
@@ -241,7 +242,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
 
         <div
           className={`min-w-0 flex-1 p-4 ${
-            singleTableTab ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto"
+            scrollContainedTab ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto"
           }`}
         >
         <header className="mb-4 shrink-0">
@@ -257,7 +258,11 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             </p>
           )}
         </header>
-        {isCrewTab && <CrewDataHubPanel />}
+        {isCrewTab ? (
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <CrewDataHubPanel />
+          </div>
+        ) : null}
         {tab === "airports" && (
           <div className="space-y-8">
             <CrudTab
