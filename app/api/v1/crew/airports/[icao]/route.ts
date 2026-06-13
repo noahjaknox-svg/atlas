@@ -1,11 +1,8 @@
 import { jsonOk, jsonError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { requireCrewApiKey, handleCrewApiError } from "@/lib/crew/auth";
-import {
-  enrichAirportReference,
-  findAirportReferenceByCode,
-  searchAirportReference,
-} from "@/lib/ourairports/lookup";
+import { findAirportReferenceByCode } from "@/lib/ourairports/lookup";
+import { serializeCrewAirport } from "@/lib/ourairports/crew-wire";
 
 export async function GET(
   request: Request,
@@ -14,9 +11,9 @@ export async function GET(
   try {
     requireCrewApiKey(request);
     const { icao } = await params;
-    const airport = await findAirportReferenceByCode(prisma, icao);
-    if (!airport) return jsonError("Airport not found", 404);
-    return jsonOk(await enrichAirportReference(prisma, airport));
+    const ref = await findAirportReferenceByCode(prisma, icao);
+    if (!ref) return jsonError("Airport not found", 404);
+    return jsonOk(serializeCrewAirport(ref));
   } catch (e) {
     try {
       return handleCrewApiError(e);

@@ -1,0 +1,117 @@
+{
+  "syncedAt": "2026-06-13T08:22:13.083Z",
+  "count": 3,
+  "airports": [
+    {
+      "id": "KSEZ",
+      "name": "Sedona Airport",
+      "city": "Sedona",
+      "elevationFt": 4830,
+      "longestRunwayFt": 5132,
+      "runwayId": "03/21",
+      "lat": 34.8485985,
+      "lon": -111.788002,
+      "gradientPct": 1.77,
+      "gradientHighEndRunway": "21",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 5132,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.77,
+          "gradientHighEndRunway": "21",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KPHX",
+      "name": "Phoenix Sky Harbor International Airport",
+      "city": "Phoenix",
+      "elevationFt": 1135,
+      "longestRunwayFt": 11489,
+      "runwayId": "08/26",
+      "lat": 33.435302,
+      "lon": -112.005905,
+      "gradientPct": 0.19,
+      "gradientHighEndRunway": "26",
+      "terrain": false,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "08/26",
+          "lengthFt": 11489,
+          "widthFt": 150,
+          "surface": "CON",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.19,
+          "gradientHighEndRunway": "26",
+          "leIdent": "08",
+          "heIdent": "26"
+        },
+        {
+          "runwayId": "07L/25R",
+          "lengthFt": 10300,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.23,
+          "gradientHighEndRunway": "25R",
+          "leIdent": "07L",
+          "heIdent": "25R"
+        },
+        {
+          "runwayId": "07R/25L",
+          "lengthFt": 7800,
+          "widthFt": 150,
+          "surface": "CON",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.19,
+          "gradientHighEndRunway": "25L",
+          "leIdent": "07R",
+          "heIdent": "25L"
+        }
+      ]
+    },
+    {
+      "id": "KSDL",
+      "name": "Scottsdale Airport",
+      "city": "Scottsdale",
+      "elevationFt": 1510,
+      "longestRunwayFt": 8249,
+      "runwayId": "03/21",
+      "lat": 33.6228981,
+      "lon": -111.9110031,
+      "gradientPct": 0.72,
+      "gradientHighEndRunway": "21",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 8249,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.72,
+          "gradientHighEndRunway": "21",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    }
+  ]
+}

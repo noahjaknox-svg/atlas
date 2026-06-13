@@ -2,11 +2,9 @@ import type { PrismaClient } from "@prisma/client";
 import type { CrewGridValues, CrewOperatingData } from "@/lib/crew/types";
 import type { CrewOperatingWire } from "@/lib/crew/wire-format";
 import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
-import type { AirportReferenceWire } from "@/lib/ourairports/types";
-import {
-  enrichAirportReference,
-  findAirportReferenceByCode,
-} from "@/lib/ourairports/lookup";
+import type { CrewAirportWire } from "@/lib/ourairports/crew-wire";
+import { serializeCrewAirport } from "@/lib/ourairports/crew-wire";
+import { findAirportReferenceByCode } from "@/lib/ourairports/lookup";
 
 export type CrewSyncPayload = {
   syncedAt: string;
@@ -41,8 +39,8 @@ export type CrewSyncPayload = {
     values: CrewGridValues;
     updatedAt: string;
   }>;
-  /** OurAirports reference rows for fleet home bases (ICAO-keyed). */
-  airports: AirportReferenceWire[];
+  /** Crew airport rows for fleet home bases (same shape as GET /api/v1/crew/airports). */
+  airports: CrewAirportWire[];
 };
 
 export async function buildCrewSyncPayloadFromDb(
@@ -86,11 +84,11 @@ export async function buildCrewSyncPayloadFromDb(
     )
   );
 
-  const airports: AirportReferenceWire[] = [];
+  const airports: CrewAirportWire[] = [];
   for (const code of homeBases) {
     const ref = await findAirportReferenceByCode(db, code);
     if (ref) {
-      airports.push(await enrichAirportReference(db, ref));
+      airports.push(serializeCrewAirport(ref));
     }
   }
 

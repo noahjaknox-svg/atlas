@@ -6,17 +6,12 @@ import type {
 } from "@prisma/client";
 import { normalizeAirportCode } from "@/lib/ourairports/csv";
 import type { AirportReferenceWire, AirportSearchHit } from "@/lib/ourairports/types";
+import { decimalToNumber } from "@/lib/ourairports/lookup-utils";
 
 type AirportWithRelations = AirportReference & {
   runways: AirportRunwayReference[];
   frequencies: AirportFrequencyReference[];
 };
-
-function decimalToNumber(value: { toString(): string } | null | undefined): number | null {
-  if (value == null) return null;
-  const n = Number(value.toString());
-  return Number.isFinite(n) ? n : null;
-}
 
 export function serializeAirportReference(
   airport: AirportWithRelations,

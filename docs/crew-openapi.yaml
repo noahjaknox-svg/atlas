@@ -4,12 +4,14 @@ info:
   version: 1.0.0
   description: Read-only sync API for PrismJet Crew iOS app.
 servers:
+  - url: https://www.prismjet.space
+    description: Production
   - url: http://localhost:3000
     description: Local development
 paths:
   /api/v1/crew/sync:
     get:
-      summary: Full offline sync payload
+      summary: Full offline sync payload (fleet, performance, home-base airports)
       security:
         - bearerAuth: []
       parameters:
@@ -30,6 +32,63 @@ paths:
           description: Invalid or missing API key
         "503":
           description: CREW_API_KEY not configured on server
+  /api/v1/crew/airports:
+    get:
+      summary: Offline airport reference catalog (ICAO-keyed)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ifModifiedSince
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Same semantics as /sync — unchanged=true with empty airports[] when nothing newer.
+      responses:
+        "200":
+          description: Airport catalog or unchanged marker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AirportsResponse"
+        "401":
+          description: Invalid or missing API key
+        "503":
+          description: CREW_API_KEY not configured on server
+  /api/v1/crew/airports/search:
+    get:
+      summary: Search airports by ICAO, IATA, name, or city
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search hits (summary rows only)
+  /api/v1/crew/airports/{icao}:
+    get:
+      summary: Single airport by ICAO (same object shape as airports catalog entries)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: icao
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Airport record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrewAirport"
+        "404":
+          description: Airport not found
 components:
   securitySchemes:
     bearerAuth:
@@ -38,7 +97,7 @@ components:
   schemas:
     SyncResponse:
       type: object
-      required: [syncedAt, aircraftTypes, fleet, performance]
+      required: [syncedAt, aircraftTypes, fleet, performance, airports]
       properties:
         syncedAt:
           type: string
@@ -57,6 +116,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PerformanceGrid"
+        airports:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewAirport"
+    AirportsResponse:
+      type: object
+      required: [syncedAt, count, airports]
+      properties:
+        syncedAt:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        unchanged:
+          type: boolean
+        airports:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewAirport"
     AircraftType:
       type: object
       properties:
@@ -69,8 +147,7 @@ components:
       type: object
       properties:
         tailNumber: { type: string, example: N1213P }
-        aircraftTypeId: { type: string, format: uuid }
-        aircraftTypeCode: { type: string }
+        aircraftTypeId: { type: string, example: B300, description: Type code on the wire }
         status: { type: string, enum: [active, retired] }
         homeBase: { type: string, nullable: true }
         serialNumber: { type: string, nullable: true }
@@ -79,35 +156,34 @@ components:
         updatedAt: { type: string, format: date-time }
     Operating:
       type: object
-      description: Per-tail operating block (see docs/prismjet-crew-api-v1.md)
+      description: Per-tail operating block (Crew app wire names)
       properties:
-        basicEmptyWeightLb: { type: number }
-        mtowLb: { type: number }
-        mzfwLb: { type: number }
-        fullFuelLb: { type: number }
-        crewWeightLb: { type: number }
+        basicEmptyWeight: { type: number }
+        maxTakeoffWeight: { type: number }
+        maxZeroFuelWeight: { type: number }
+        fullFuel: { type: number }
+        crewWeight: { type: number }
         paxWeightSummer: { type: number }
         paxWeightWinter: { type: number }
-        taxiFuelLb: { type: number }
-        reserveFuelLb: { type: number }
-        burnRateLbPerHr: { type: number }
-        cruiseTasKts: { type: number }
-        cruiseAltitudeFt: { type: number }
+        burnRate: { type: number }
+        taxiFuel: { type: number }
+        reserveFuel: { type: number }
+        cruiseTAS: { type: number }
+        cruiseAltFt: { type: number }
         routePercent: { type: number }
         seatCount: { type: number }
-        maxBagWeightLb: { type: number }
+        maxBagWeight: { type: number }
         landingRunwayPercent: { type: number }
         alternateRunwayPercent: { type: number }
         wetRunwayPercent: { type: number }
-        singleRunwayAlternate: { type: boolean }
+        requireAltSingleRunway: { type: boolean }
     PerformanceGrid:
       type: object
       properties:
-        aircraftTypeId: { type: string, format: uuid }
-        aircraftTypeCode: { type: string }
+        aircraftTypeId: { type: string, example: B300, description: Type code on the wire }
         metric:
           type: string
-          enum: [takeoffFieldLength, landingDistance]
+          enum: [takeoff_field_length, landing_distance]
         unit: { type: string, example: ft }
         axes:
           type: object
@@ -125,3 +201,59 @@ components:
           type: array
           description: "3D grid values[paIdx][weightIdx][oatIdx], null outside envelope"
         updatedAt: { type: string, format: date-time }
+    CrewAirport:
+      type: object
+      required:
+        - id
+        - name
+        - terrain
+        - multiRunway
+        - updatedAt
+        - runways
+      properties:
+        id:
+          type: string
+          description: ICAO code
+          example: KSEZ
+        name: { type: string }
+        city: { type: string, nullable: true, description: Municipality }
+        elevationFt: { type: integer, nullable: true }
+        longestRunwayFt: { type: integer, nullable: true }
+        runwayId:
+          type: string
+          nullable: true
+          description: Primary (longest open) runway designator, e.g. 03/21
+        lat: { type: number, nullable: true }
+        lon: { type: number, nullable: true }
+        gradientPct:
+          type: number
+          nullable: true
+          description: Slope magnitude on primary runway (%)
+        gradientHighEndRunway:
+          type: string
+          nullable: true
+          description: Higher runway end ident on primary runway, e.g. 03
+        terrain:
+          type: boolean
+          description: True when Crew should apply terrain correction
+        multiRunway:
+          type: boolean
+          description: True when more than one open runway exists
+        updatedAt: { type: string, format: date-time }
+        runways:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewAirportRunway"
+    CrewAirportRunway:
+      type: object
+      properties:
+        runwayId: { type: string, nullable: true }
+        lengthFt: { type: integer, nullable: true }
+        widthFt: { type: integer, nullable: true }
+        surface: { type: string, nullable: true }
+        lighted: { type: boolean }
+        closed: { type: boolean }
+        gradientPct: { type: number, nullable: true }
+        gradientHighEndRunway: { type: string, nullable: true }
+        leIdent: { type: string, nullable: true }
+        heIdent: { type: string, nullable: true }

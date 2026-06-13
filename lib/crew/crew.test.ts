@@ -4,6 +4,21 @@ import { parseOperatingFromWire } from "@/lib/crew/normalize-initial-data";
 import { normalizeCrewInitialData } from "@/lib/crew/normalize-initial-data";
 import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
 import { B300_PERFORMANCE_AXES, buildB300Grid } from "@/lib/crew/seed-grids";
+import { computeRunwayGradient } from "@/lib/ourairports/crew-wire";
+
+describe("crew airport wire", () => {
+  it("computes runway gradient from OurAirports elevations", () => {
+    const g = computeRunwayGradient({
+      lengthFt: 5132,
+      leElevationFt: 4700,
+      heElevationFt: 4830,
+      leIdent: "03",
+      heIdent: "21",
+    } as never);
+    expect(g.gradientPct).toBe(2.53);
+    expect(g.gradientHighEndRunway).toBe("21");
+  });
+});
 
 describe("crew operating parse", () => {
   it("parses Crew app export field names", () => {

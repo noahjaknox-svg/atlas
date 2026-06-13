@@ -153,9 +153,35 @@ ICAO-keyed open data from [OurAirports](https://ourairports.com/data/). Load wit
 
 | Endpoint | Description |
 |----------|-------------|
+| `GET /api/v1/crew/airports` | Full offline catalog — `{ syncedAt, count, airports[] }` |
 | `GET /api/v1/crew/airports/search?q=` | Search by ICAO, IATA, name, or city (max 50) |
-| `GET /api/v1/crew/airports/{icao}` | Full airport record: coords, elevation, runways, frequencies |
-| `GET /api/v1/crew/sync` | Includes `airports[]` for each fleet `homeBase` ICAO |
+| `GET /api/v1/crew/airports/{icao}` | Single airport (same object shape as catalog entries) |
+| `GET /api/v1/crew/sync` | Fleet + performance + `airports[]` for each fleet `homeBase` ICAO |
+
+### Airport object wire names (Crew parser)
+
+Each airport in `GET /api/v1/crew/airports` uses these **exact** field names:
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `id` | string | ICAO code (e.g. `KSEZ`) |
+| `name` | string | Airport name |
+| `city` | string \| null | Municipality |
+| `elevationFt` | integer \| null | Field elevation (ft) |
+| `longestRunwayFt` | integer \| null | Longest open runway (ft) |
+| `runwayId` | string \| null | Primary runway designator, e.g. `03/21` |
+| `lat` | number \| null | WGS84 latitude |
+| `lon` | number \| null | WGS84 longitude |
+| `gradientPct` | number \| null | Primary runway slope magnitude (%) |
+| `gradientHighEndRunway` | string \| null | Higher runway end ident, e.g. `21` |
+| `terrain` | boolean | Apply terrain correction in Crew when true |
+| `multiRunway` | boolean | More than one open runway |
+| `updatedAt` | string (ISO8601) | Per-airport timestamp |
+| `runways` | array | Per-runway detail (same gradient fields repeated) |
+
+`?ifModifiedSince=` works like `/sync`: returns `unchanged: true` with `count: 0` and empty `airports[]` when nothing is newer.
+
+Sample: `data/seeds/crew-airports-sample.json` (KSEZ + KPHX + KSDL).
 
 Atlas internal UI uses the same reference via `GET /api/airports/search` and `GET /api/airports/{icao}` (session auth), merged with Atlas hangar/fuel/FBO pricing when available.
 
@@ -180,3 +206,4 @@ Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Pris
 
 - `data/seeds/atlas_initial_data.json` — POH takeoff + calibrated landing (from Crew)
 - `data/seeds/crew-sync-sample.json` — example `/sync` response for Swift parser validation
+- `data/seeds/crew-airports-sample.json` — example `/airports` response (KSEZ, KPHX, KSDL)
