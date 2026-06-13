@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getAppBaseUrl } from "@/lib/user-invites";
 
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = getAppBaseUrl();
 
   if (!url || !key) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });

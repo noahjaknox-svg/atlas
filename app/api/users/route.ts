@@ -1,6 +1,7 @@
 import { requireAdmin, requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { syncPendingInvites } from "@/lib/user-invites";
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +9,8 @@ export async function GET(request: Request) {
     const adminList = url.searchParams.get("admin") === "1";
 
     if (adminList) {
-      await requireAdmin();
+      const admin = await requireAdmin();
+      await syncPendingInvites(admin.id);
       const [users, pendingInvites] = await Promise.all([
         prisma.user.findMany({
           orderBy: { name: "asc" },

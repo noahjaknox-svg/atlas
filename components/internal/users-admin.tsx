@@ -31,14 +31,20 @@ function formatInviteDate(iso: string) {
 export function UsersAdmin() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("sales");
 
   async function load() {
+    setLoadError("");
     const res = await fetch("/api/users?admin=1");
-    if (!res.ok) return;
+    if (!res.ok) {
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      setLoadError(json.error ?? "Could not load users and invites.");
+      return;
+    }
     const data = (await res.json()) as {
       users: UserRow[];
       pendingInvites: PendingInviteRow[];
@@ -97,12 +103,29 @@ export function UsersAdmin() {
     void load();
   }
 
+  async function resendInvite(id: string, email: string) {
+    const res = await fetch(`/api/users/invites/${id}/resend`, { method: "POST" });
+    const json = await res.json();
+    if (!res.ok) {
+      alert(json.error ?? "Could not resend invite");
+      return;
+    }
+    alert(json.message ?? "Invite resent");
+    void load();
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-3xl">Users</h1>
         <Button onClick={() => setInviteOpen(true)}>+ Invite user</Button>
       </div>
+
+      {loadError ? (
+        <p className="mt-4 rounded-md border border-atlas-danger/30 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">
+          {loadError}
+        </p>
+      ) : null}
 
       {inviteOpen && (
         <div className="mt-6 rounded-lg border border-atlas-border bg-atlas-surface p-6">
@@ -166,13 +189,22 @@ export function UsersAdmin() {
                     <td>{formatInviteDate(invite.invitedAt)}</td>
                     <td>{invite.invitedBy}</td>
                     <td>
-                      <button
-                        type="button"
-                        className="text-xs text-atlas-danger hover:underline"
-                        onClick={() => void revokeInvite(invite.id, invite.email)}
-                      >
-                        Revoke
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          className="text-xs text-atlas-accent hover:underline"
+                          onClick={() => void resendInvite(invite.id, invite.email)}
+                        >
+                          Resend
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-atlas-danger hover:underline"
+                          onClick={() => void revokeInvite(invite.id, invite.email)}
+                        >
+                          Revoke
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

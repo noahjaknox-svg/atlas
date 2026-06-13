@@ -1,7 +1,10 @@
 import { requireAdmin } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
-import { prisma } from "@/lib/db";
-import { createClient } from "@supabase/supabase-js";
+import {
+  sendSupabaseInviteEmail,
+  upsertPendingInvite,
+} from "@/lib/user-invites";
+import type { UserRole } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -10,48 +13,28 @@ export async function POST(request: Request) {
     const { name, email, role } = body as {
       name: string;
       email: string;
-      role: "admin" | "sales" | "reviewer";
+      role: UserRole;
     };
 
     if (!email?.trim() || !name?.trim()) throw new Error("VALIDATION");
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-    if (!serviceKey || !supabaseUrl) {
-      throw new Error(
-        "Cannot send invite emails: configure SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL on the server."
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-      normalizedEmail,
-      {
-        data: { name: name.trim() },
-        redirectTo: `${appUrl}/auth/callback?next=/pipeline`,
-      }
+    const { email: normalizedEmail, method } = await sendSupabaseInviteEmail(
+      email,
+      name
     );
 
-    if (inviteError) {
-      throw new Error(inviteError.message);
-    }
-
-    await prisma.userInvite.create({
-      data: {
-        email: normalizedEmail,
-        role: role ?? "sales",
-        invitedBy: admin.id,
-        status: "pending",
-      },
+    await upsertPendingInvite({
+      email: normalizedEmail,
+      role: role ?? "sales",
+      invitedBy: admin.id,
     });
 
-    return jsonOk({ message: "Invite sent" });
+    return jsonOk({
+      message:
+        method === "resend"
+          ? "Invite email resent"
+          : "Invite sent",
+    });
   } catch (e) {
     return handleApiError(e);
   }
