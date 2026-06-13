@@ -314,6 +314,116 @@ model Airport {
   @@map("airports")
 }
 
+// Global reference data from OurAirports open data (https://ourairports.com/data/)
+model CountryReference {
+  id             Int      @id @map("ourairports_id")
+  code           String   @unique
+  name           String
+  continent      String?
+  wikipediaLink  String?  @map("wikipedia_link")
+  keywords       String?  @db.Text
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("country_reference")
+}
+
+model RegionReference {
+  id             Int      @id @map("ourairports_id")
+  code           String   @unique
+  localCode      String?  @map("local_code")
+  name           String
+  continent      String?
+  isoCountry     String   @map("iso_country")
+  wikipediaLink  String?  @map("wikipedia_link")
+  keywords       String?  @db.Text
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([isoCountry])
+  @@map("region_reference")
+}
+
+model AirportReference {
+  id               String   @id @default(uuid()) @db.Uuid
+  ourairportsId    Int      @unique @map("ourairports_id")
+  ident            String   @unique
+  icao             String?  @unique
+  iata             String?
+  airportType      String   @map("airport_type")
+  name             String
+  latitudeDeg      Decimal? @map("latitude_deg") @db.Decimal(10, 7)
+  longitudeDeg     Decimal? @map("longitude_deg") @db.Decimal(10, 7)
+  elevationFt      Int?     @map("elevation_ft")
+  continent        String?
+  isoCountry       String   @map("iso_country")
+  isoRegion        String?  @map("iso_region")
+  municipality     String?
+  scheduledService Boolean  @default(false) @map("scheduled_service")
+  gpsCode          String?  @map("gps_code")
+  localCode        String?  @map("local_code")
+  homeLink         String?  @map("home_link")
+  wikipediaLink    String?  @map("wikipedia_link")
+  keywords         String?  @db.Text
+  longestRunwayFt  Int?     @map("longest_runway_ft")
+  sourceVersion    String?  @map("source_version")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  runways     AirportRunwayReference[]
+  frequencies AirportFrequencyReference[]
+
+  @@index([iata])
+  @@index([isoCountry])
+  @@index([municipality])
+  @@index([name])
+  @@map("airport_reference")
+}
+
+model AirportRunwayReference {
+  id                     String   @id @default(uuid()) @db.Uuid
+  ourairportsId          Int      @unique @map("ourairports_id")
+  airportId              String   @map("airport_id") @db.Uuid
+  airportIdent           String   @map("airport_ident")
+  lengthFt               Int?     @map("length_ft")
+  widthFt                Int?     @map("width_ft")
+  surface                String?
+  lighted                Boolean  @default(false)
+  closed                 Boolean  @default(false)
+  leIdent                String?  @map("le_ident")
+  leLatitudeDeg          Decimal? @map("le_latitude_deg") @db.Decimal(10, 7)
+  leLongitudeDeg         Decimal? @map("le_longitude_deg") @db.Decimal(10, 7)
+  leElevationFt          Int?     @map("le_elevation_ft")
+  leHeadingDegT          Int?     @map("le_heading_deg_t")
+  leDisplacedThresholdFt Int?     @map("le_displaced_threshold_ft")
+  heIdent                String?  @map("he_ident")
+  heLatitudeDeg          Decimal? @map("he_latitude_deg") @db.Decimal(10, 7)
+  heLongitudeDeg         Decimal? @map("he_longitude_deg") @db.Decimal(10, 7)
+  heElevationFt          Int?     @map("he_elevation_ft")
+  heHeadingDegT          Int?     @map("he_heading_deg_t")
+  heDisplacedThresholdFt Int?     @map("he_displaced_threshold_ft")
+
+  airport AirportReference @relation(fields: [airportId], references: [id], onDelete: Cascade)
+
+  @@index([airportId])
+  @@index([airportIdent])
+  @@map("airport_runway_reference")
+}
+
+model AirportFrequencyReference {
+  id            String @id @default(uuid()) @db.Uuid
+  ourairportsId Int    @unique @map("ourairports_id")
+  airportId     String @map("airport_id") @db.Uuid
+  airportIdent  String @map("airport_ident")
+  type          String
+  description   String?
+  frequencyMhz  Decimal? @map("frequency_mhz") @db.Decimal(8, 3)
+
+  airport AirportReference @relation(fields: [airportId], references: [id], onDelete: Cascade)
+
+  @@index([airportId])
+  @@index([airportIdent])
+  @@map("airport_frequency_reference")
+}
+
 enum UserInviteStatus {
   pending
   accepted

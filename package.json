@@ -16,6 +16,8 @@
     "db:crew-seed": "dotenv -e .env.local -- tsx scripts/crew-seed.ts",
     "db:crew-import": "dotenv -e .env.local -- tsx scripts/import-crew-initial-data.ts",
     "db:crew-export-sample": "dotenv -e .env.local -- tsx scripts/export-crew-sync-sample.ts",
+    "db:ourairports-download": "tsx scripts/download-ourairports.ts",
+    "db:ourairports-import": "dotenv -e .env.local -- tsx scripts/import-ourairports.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest"

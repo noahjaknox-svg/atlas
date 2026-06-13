@@ -2,6 +2,11 @@ import type { PrismaClient } from "@prisma/client";
 import type { CrewGridValues, CrewOperatingData } from "@/lib/crew/types";
 import type { CrewOperatingWire } from "@/lib/crew/wire-format";
 import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
+import type { AirportReferenceWire } from "@/lib/ourairports/types";
+import {
+  enrichAirportReference,
+  findAirportReferenceByCode,
+} from "@/lib/ourairports/lookup";
 
 export type CrewSyncPayload = {
   syncedAt: string;
@@ -36,6 +41,8 @@ export type CrewSyncPayload = {
     values: CrewGridValues;
     updatedAt: string;
   }>;
+  /** OurAirports reference rows for fleet home bases (ICAO-keyed). */
+  airports: AirportReferenceWire[];
 };
 
 export async function buildCrewSyncPayloadFromDb(
@@ -67,7 +74,24 @@ export async function buildCrewSyncPayloadFromDb(
       aircraftTypes: [],
       fleet: [],
       performance: [],
+      airports: [],
     };
+  }
+
+  const homeBases = Array.from(
+    new Set(
+      fleet
+        .map((f) => f.homeBase?.trim().toUpperCase())
+        .filter((code): code is string => Boolean(code))
+    )
+  );
+
+  const airports: AirportReferenceWire[] = [];
+  for (const code of homeBases) {
+    const ref = await findAirportReferenceByCode(db, code);
+    if (ref) {
+      airports.push(await enrichAirportReference(db, ref));
+    }
   }
 
   return {
@@ -100,6 +124,7 @@ export async function buildCrewSyncPayloadFromDb(
       values: g.values as CrewGridValues,
       updatedAt: g.updatedAt.toISOString(),
     })),
+    airports,
   };
 }
 

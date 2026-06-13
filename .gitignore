@@ -39,3 +39,6 @@ next-env.d.ts
 
 # prisma
 prisma/*.db
+
+# ourairports bulk CSV downloads (fetch via npm run db:ourairports-download)
+/data/ourairports/*.csv

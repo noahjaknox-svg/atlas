@@ -10,7 +10,11 @@ function createPrismaClient(): PrismaClient {
 }
 
 function modelsReady(client: PrismaClient): boolean {
-  return "proposalOwnerProfile" in client && "portalContent" in client;
+  return (
+    "proposalOwnerProfile" in client &&
+    "portalContent" in client &&
+    "airportReference" in client
+  );
 }
 
 function disconnectStaleClient(client: PrismaClient | undefined) {

@@ -147,6 +147,18 @@ Standard HTTP status codes (401, 404, etc.).
 |-----|-----|
 | Staging / Production | `https://www.prismjet.space` |
 
+## Airports (OurAirports reference)
+
+ICAO-keyed open data from [OurAirports](https://ourairports.com/data/). Load with `npm run db:ourairports-download` then `npm run db:ourairports-import`.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/crew/airports/search?q=` | Search by ICAO, IATA, name, or city (max 50) |
+| `GET /api/v1/crew/airports/{icao}` | Full airport record: coords, elevation, runways, frequencies |
+| `GET /api/v1/crew/sync` | Includes `airports[]` for each fleet `homeBase` ICAO |
+
+Atlas internal UI uses the same reference via `GET /api/airports/search` and `GET /api/airports/{icao}` (session auth), merged with Atlas hangar/fuel/FBO pricing when available.
+
 ## Deliverables to Crew
 
 1. Staging base URL + read-only API key
