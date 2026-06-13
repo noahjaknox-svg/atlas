@@ -1,7 +1,12 @@
-import ical from "node-ical";
+import type { VEvent } from "node-ical";
 import type { ParsedIcsEvent } from "@/lib/schedule/types";
 import { normalizeScheduleEvent } from "@/lib/schedule/normalize-event";
 import type { NormalizedScheduleEvent } from "@/lib/schedule/types";
+
+async function loadIcalParser() {
+  const mod = await import("node-ical");
+  return mod.default ?? mod;
+}
 
 function toDate(value: Date | { toJSDate?: () => Date } | string | undefined): Date | null {
   if (!value) return null;
@@ -19,7 +24,7 @@ function extractTripCode(url: string | undefined): string | null {
   return match?.[1] ?? null;
 }
 
-function eventToRecord(event: ical.VEvent): Record<string, unknown> {
+function eventToRecord(event: VEvent): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(event)) {
     if (key.startsWith("_")) continue;
@@ -30,12 +35,13 @@ function eventToRecord(event: ical.VEvent): Record<string, unknown> {
 
 /** Parse raw ICS text into normalized schedule events. */
 export async function parseIcsText(icsText: string): Promise<NormalizedScheduleEvent[]> {
+  const ical = await loadIcalParser();
   const parsed = ical.parseICS(icsText);
   const events: NormalizedScheduleEvent[] = [];
 
   for (const item of Object.values(parsed)) {
     if (!item || item.type !== "VEVENT") continue;
-    const event = item as ical.VEvent;
+    const event = item as VEvent;
     const startsAt = toDate(event.start);
     const endsAt = toDate(event.end);
     if (!startsAt || !endsAt || !event.uid) continue;
