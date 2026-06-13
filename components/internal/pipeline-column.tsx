@@ -8,13 +8,15 @@ export function PipelineColumn({
   stage,
   label,
   cards,
-  onCardClick,
+  onCardOpen,
+  onCardQuickView,
   activeCardId,
 }: {
   stage: PipelineStage;
   label: string;
   cards: PipelineCardData[];
-  onCardClick: (id: string) => void;
+  onCardOpen: (id: string) => void;
+  onCardQuickView: (id: string) => void;
   activeCardId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
@@ -40,7 +42,8 @@ export function PipelineColumn({
             <PipelineCard
               key={card.id}
               card={card}
-              onClick={() => onCardClick(card.id)}
+              onOpen={() => onCardOpen(card.id)}
+              onQuickView={() => onCardQuickView(card.id)}
               isDragging={activeCardId === card.id}
             />
           ))

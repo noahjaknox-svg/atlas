@@ -3,8 +3,10 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { BADGE_STYLES, type PipelineBadge } from "@/lib/pipeline";
+import { prefetchProposalRoute } from "@/lib/prefetch-proposal-route";
 
 export interface PipelineCardData {
   id: string;
@@ -32,13 +34,16 @@ function assigneeInitials(name: string | null): string {
 
 export function PipelineCard({
   card,
-  onClick,
+  onOpen,
+  onQuickView,
   isDragging,
 }: {
   card: PipelineCardData;
-  onClick: () => void;
+  onOpen: () => void;
+  onQuickView?: () => void;
   isDragging?: boolean;
 }) {
+  const router = useRouter();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform } = useDraggable({
     id: card.id,
     data: { stage: card.pipelineStage },
@@ -50,6 +55,7 @@ export function PipelineCard({
     <div
       ref={setNodeRef}
       style={style}
+      onMouseEnter={() => prefetchProposalRoute(router, card.id)}
       className={cn(
         "flex w-full items-stretch rounded-md border border-atlas-border bg-atlas-bg transition-colors",
         "hover:border-atlas-accent/50",
@@ -67,11 +73,26 @@ export function PipelineCard({
       >
         <span className="text-[10px] leading-none tracking-tighter">⋮⋮</span>
       </button>
-      <button
-        type="button"
-        onClick={onClick}
-        className="min-w-0 flex-1 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-atlas-accent/50"
-      >
+      <div className="relative min-w-0 flex-1">
+        {onQuickView ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickView();
+            }}
+            className="absolute right-1 top-1 z-10 rounded px-1.5 py-0.5 text-xs text-atlas-muted hover:bg-atlas-surface/80 hover:text-atlas-text"
+            aria-label="Quick view"
+            title="Quick view (notes, publish, assign)"
+          >
+            ⋯
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="h-full w-full p-3 pr-7 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-atlas-accent/50"
+        >
         <p className="font-medium leading-snug text-atlas-text">{card.prospectName}</p>
         {card.subtitle && (
           <p className="mt-1 truncate text-xs text-atlas-muted">{card.subtitle}</p>
@@ -116,7 +137,8 @@ export function PipelineCard({
             ))}
           </div>
         )}
-      </button>
+        </button>
+      </div>
     </div>
   );
 }

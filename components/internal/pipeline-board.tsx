@@ -12,6 +12,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import type { AircraftCategory, PipelineStage, ProposalStatus } from "@prisma/client";
+import { prefetchProposalRoute } from "@/lib/prefetch-proposal-route";
 import {
   PIPELINE_COLUMNS,
   PIPELINE_DATE_RANGES,
@@ -261,7 +262,13 @@ export function PipelineBoard({
     await refresh();
   }
 
-  function handleCardClick(id: string) {
+  function handleCardOpen(id: string) {
+    prefetchProposalRoute(router, id);
+    router.push(`/proposals/${id}`);
+  }
+
+  function handleCardQuickView(id: string) {
+    prefetchProposalRoute(router, id);
     updateParams({ id });
   }
 
@@ -394,7 +401,8 @@ export function PipelineBoard({
               stage={col.id}
               label={col.label}
               cards={byStage[col.id] ?? []}
-              onCardClick={handleCardClick}
+              onCardOpen={handleCardOpen}
+              onCardQuickView={handleCardQuickView}
               activeCardId={activeId}
             />
           ))}
@@ -403,7 +411,7 @@ export function PipelineBoard({
         <DragOverlay>
           {activeCard ? (
             <div className="w-[220px] rotate-2 opacity-95">
-              <PipelineCard card={activeCard} onClick={() => {}} isDragging />
+              <PipelineCard card={activeCard} onOpen={() => {}} isDragging />
             </div>
           ) : null}
         </DragOverlay>
@@ -426,6 +434,7 @@ export function PipelineBoard({
 
       <ProposalDetailPanel
         proposalId={selectedId}
+        initialCard={selectedId ? cards.find((c) => c.id === selectedId) ?? null : null}
         open={panelOpen}
         onOpenChange={handlePanelOpenChange}
         onUpdated={refresh}

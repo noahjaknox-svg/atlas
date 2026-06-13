@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import { notFound, redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -12,12 +13,32 @@ import {
   applyProspectOpportunityFallback,
 } from "@/lib/aircraft-workspace";
 import { InternalShell } from "@/components/internal/internal-shell";
-import { ProposalWorkspace } from "@/components/internal/proposal-workspace";
 import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import { ensureExperienceSections } from "@/lib/ensure-experience-sections";
 import { parseSpecHighlights } from "@/lib/portal-aircraft-types";
+
+const ProposalWorkspace = dynamic(
+  () =>
+    import("@/components/internal/proposal-workspace").then((mod) => ({
+      default: mod.ProposalWorkspace,
+    })),
+  {
+    loading: () => (
+      <div className="flex h-full animate-pulse flex-col gap-4 p-6">
+        <div className="flex gap-4">
+          <div className="h-10 w-64 rounded bg-atlas-surface" />
+          <div className="h-10 flex-1 rounded bg-atlas-surface" />
+        </div>
+        <div className="flex flex-1 gap-4">
+          <div className="w-56 rounded-lg bg-atlas-surface" />
+          <div className="flex-1 rounded-lg bg-atlas-surface" />
+        </div>
+      </div>
+    ),
+  }
+);
 
 export default async function ProposalWorkspacePage({
   params,
