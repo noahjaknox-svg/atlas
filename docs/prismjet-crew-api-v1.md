@@ -208,3 +208,4 @@ Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Pris
 - `data/seeds/crew-sync-sample.json` — example `/sync` response for Swift parser validation
 - `data/seeds/crew-airports-sample.json` — example `/airports` response (KSEZ, KPHX, KSDL)
 - `data/seeds/crew-airports-full.json` — full `/airports` catalog for slope validation
+- `data/seeds/crew-airports-az-check.json` — 24-airport AZ + KSMO/KSDL validation subset

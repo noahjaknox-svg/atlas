@@ -18,6 +18,7 @@
     "db:crew-export-sample": "dotenv -e .env.local -- tsx scripts/export-crew-sync-sample.ts",
     "db:crew-export-airports-sample": "dotenv -e .env.local -- tsx scripts/export-crew-airports-sample.ts",
     "db:crew-export-airports-full": "dotenv -e .env.local -- tsx scripts/export-crew-airports-full.ts",
+    "db:crew-export-airports-az-check": "dotenv -e .env.local -- tsx scripts/export-crew-airports-az-check.ts",
     "db:runway-slopes-seed": "dotenv -e .env.local -- tsx scripts/seed-runway-slopes.ts",
     "db:ourairports-download": "tsx scripts/download-ourairports.ts",
     "db:ourairports-import": "dotenv -e .env.local -- tsx scripts/import-ourairports.ts",

@@ -1,0 +1,846 @@
+{
+  "syncedAt": "2026-06-13T09:42:29.510Z",
+  "count": 24,
+  "airports": [
+    {
+      "id": "KSEZ",
+      "name": "Sedona Airport",
+      "city": "Sedona",
+      "elevationFt": 4830,
+      "longestRunwayFt": 5132,
+      "runwayId": "03/21",
+      "lat": 34.8485985,
+      "lon": -111.788002,
+      "gradientPct": 1.8,
+      "gradientHighEndRunway": "21",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 5132,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.8,
+          "gradientHighEndRunway": "21",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KOLS",
+      "name": "Nogales International Airport",
+      "city": "Nogales",
+      "elevationFt": 3955,
+      "longestRunwayFt": 7200,
+      "runwayId": "04/22",
+      "lat": 31.4177,
+      "lon": -110.848,
+      "gradientPct": 1.6,
+      "gradientHighEndRunway": "22",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "04/22",
+          "lengthFt": 7200,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.6,
+          "gradientHighEndRunway": "22",
+          "leIdent": "04",
+          "heIdent": "22"
+        }
+      ]
+    },
+    {
+      "id": "KCFT",
+      "name": "Greenlee County Airport",
+      "city": "Clifton",
+      "elevationFt": 3798,
+      "longestRunwayFt": 4978,
+      "runwayId": "07/25",
+      "lat": 32.957039,
+      "lon": -109.211397,
+      "gradientPct": 1.5,
+      "gradientHighEndRunway": "25",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "07/25",
+          "lengthFt": 4978,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.5,
+          "gradientHighEndRunway": "25",
+          "leIdent": "07",
+          "heIdent": "25"
+        }
+      ]
+    },
+    {
+      "id": "KTYL",
+      "name": "Taylor Airport",
+      "city": "Taylor",
+      "elevationFt": 5823,
+      "longestRunwayFt": 7001,
+      "runwayId": "03/21",
+      "lat": 34.4528008,
+      "lon": -110.1149979,
+      "gradientPct": 1.5,
+      "gradientHighEndRunway": "3",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 7001,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.5,
+          "gradientHighEndRunway": "3",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KP13",
+      "name": "San Carlos Apache Airport",
+      "city": "Globe",
+      "elevationFt": 3261,
+      "longestRunwayFt": 6500,
+      "runwayId": "09/27",
+      "lat": 33.3531,
+      "lon": -110.667,
+      "gradientPct": 1.2,
+      "gradientHighEndRunway": "9",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "09/27",
+          "lengthFt": 6500,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.2,
+          "gradientHighEndRunway": "9",
+          "leIdent": "09",
+          "heIdent": "27"
+        }
+      ]
+    },
+    {
+      "id": "KPGA",
+      "name": "Page Municipal Airport",
+      "city": "Page",
+      "elevationFt": 4316,
+      "longestRunwayFt": 5950,
+      "runwayId": "15/33",
+      "lat": 36.924234,
+      "lon": -111.447716,
+      "gradientPct": 1.2,
+      "gradientHighEndRunway": "33",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "15/33",
+          "lengthFt": 5950,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1.2,
+          "gradientHighEndRunway": "33",
+          "leIdent": "15",
+          "heIdent": "33"
+        },
+        {
+          "runwayId": "07/25",
+          "lengthFt": 2201,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": false,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "07",
+          "heIdent": "25"
+        }
+      ]
+    },
+    {
+      "id": "K1G4",
+      "name": "Grand Canyon West Airport",
+      "city": "Peach Springs",
+      "elevationFt": 4825,
+      "longestRunwayFt": 5000,
+      "runwayId": "17/35",
+      "lat": 35.985787,
+      "lon": -113.817072,
+      "gradientPct": 1.1,
+      "gradientHighEndRunway": "35",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:08.860Z",
+      "runways": [
+        {
+          "runwayId": "17/35",
+          "lengthFt": 5000,
+          "widthFt": 75,
+          "surface": "ASPH-G",
+          "lighted": false,
+          "closed": false,
+          "gradientPct": 1.1,
+          "gradientHighEndRunway": "35",
+          "leIdent": "17",
+          "heIdent": "35"
+        }
+      ]
+    },
+    {
+      "id": "KCMR",
+      "name": "H.A. Clark Memorial Field",
+      "city": "Williams",
+      "elevationFt": 6680,
+      "longestRunwayFt": 6003,
+      "runwayId": "18/36",
+      "lat": 35.305555,
+      "lon": -112.194393,
+      "gradientPct": 1,
+      "gradientHighEndRunway": "36",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "18/36",
+          "lengthFt": 6003,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1,
+          "gradientHighEndRunway": "36",
+          "leIdent": "18",
+          "heIdent": "36"
+        }
+      ]
+    },
+    {
+      "id": "KFHU",
+      "name": "Sierra Vista Municipal Airport / Libby Army Air Field",
+      "city": "Fort Huachuca / Sierra Vista",
+      "elevationFt": 4719,
+      "longestRunwayFt": 12001,
+      "runwayId": "08/26",
+      "lat": 31.587383,
+      "lon": -110.348225,
+      "gradientPct": 1,
+      "gradientHighEndRunway": "8",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "08/26",
+          "lengthFt": 12001,
+          "widthFt": 150,
+          "surface": "CON",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1,
+          "gradientHighEndRunway": "8",
+          "leIdent": "08",
+          "heIdent": "26"
+        },
+        {
+          "runwayId": "12/30",
+          "lengthFt": 5366,
+          "widthFt": 100,
+          "surface": "PEM",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "12",
+          "heIdent": "30"
+        },
+        {
+          "runwayId": "03/21",
+          "lengthFt": 4285,
+          "widthFt": 75,
+          "surface": "PEM",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KP52",
+      "name": "Cottonwood Airport",
+      "city": "Cottonwood",
+      "elevationFt": 3550,
+      "longestRunwayFt": 4250,
+      "runwayId": "14/32",
+      "lat": 34.73,
+      "lon": -112.035004,
+      "gradientPct": 1,
+      "gradientHighEndRunway": "32",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "14/32",
+          "lengthFt": 4250,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 1,
+          "gradientHighEndRunway": "32",
+          "leIdent": "14",
+          "heIdent": "32"
+        }
+      ]
+    },
+    {
+      "id": "KPRC",
+      "name": "Prescott Regional Airport - Ernest A. Love Field",
+      "city": "Prescott",
+      "elevationFt": 5045,
+      "longestRunwayFt": 7619,
+      "runwayId": "03R/21L",
+      "lat": 34.653502,
+      "lon": -112.419883,
+      "gradientPct": 0.9,
+      "gradientHighEndRunway": "3",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "03R/21L",
+          "lengthFt": 7619,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.9,
+          "gradientHighEndRunway": "3",
+          "leIdent": "03R",
+          "heIdent": "21L"
+        },
+        {
+          "runwayId": "12/30",
+          "lengthFt": 4408,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "12",
+          "heIdent": "30"
+        },
+        {
+          "runwayId": "03L/21R",
+          "lengthFt": 4395,
+          "widthFt": 60,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "03L",
+          "heIdent": "21R"
+        }
+      ]
+    },
+    {
+      "id": "KGCN",
+      "name": "Grand Canyon National Park Airport",
+      "city": "Grand Canyon - Tusayan",
+      "elevationFt": 6609,
+      "longestRunwayFt": 8999,
+      "runwayId": "03/21",
+      "lat": 35.9524,
+      "lon": -112.147003,
+      "gradientPct": 0.8,
+      "gradientHighEndRunway": "21",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 8999,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.8,
+          "gradientHighEndRunway": "21",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KINW",
+      "name": "Winslow Lindbergh Regional Airport",
+      "city": "Winslow",
+      "elevationFt": 4941,
+      "longestRunwayFt": 7499,
+      "runwayId": "04/22",
+      "lat": 35.0219002,
+      "lon": -110.7229996,
+      "gradientPct": 0.8,
+      "gradientHighEndRunway": "4",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "04/22",
+          "lengthFt": 7499,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.8,
+          "gradientHighEndRunway": "4",
+          "leIdent": "04",
+          "heIdent": "22"
+        },
+        {
+          "runwayId": "11/29",
+          "lengthFt": 7100,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "11",
+          "heIdent": "29"
+        }
+      ]
+    },
+    {
+      "id": "KDUG",
+      "name": "Bisbee Douglas International Airport",
+      "city": "Douglas Bisbee",
+      "elevationFt": 4154,
+      "longestRunwayFt": 7503,
+      "runwayId": "17/35",
+      "lat": 31.464139,
+      "lon": -109.60456,
+      "gradientPct": 0.6,
+      "gradientHighEndRunway": "17",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "17/35",
+          "lengthFt": 6430,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.6,
+          "gradientHighEndRunway": "17",
+          "leIdent": "17",
+          "heIdent": "35"
+        },
+        {
+          "runwayId": "08/26",
+          "lengthFt": 4966,
+          "widthFt": 60,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "08",
+          "heIdent": "26"
+        }
+      ]
+    },
+    {
+      "id": "KD68",
+      "name": "Springerville Municipal Airport",
+      "city": "Springerville",
+      "elevationFt": 7055,
+      "longestRunwayFt": 8422,
+      "runwayId": "03/21",
+      "lat": 34.131101,
+      "lon": -109.310255,
+      "gradientPct": 0.5,
+      "gradientHighEndRunway": "3",
+      "terrain": true,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 8422,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.5,
+          "gradientHighEndRunway": "3",
+          "leIdent": "03",
+          "heIdent": "21"
+        },
+        {
+          "runwayId": "11/29",
+          "lengthFt": 4603,
+          "widthFt": 60,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "11",
+          "heIdent": "29"
+        }
+      ]
+    },
+    {
+      "id": "KHII",
+      "name": "Lake Havasu City Airport",
+      "city": "Lake Havasu City",
+      "elevationFt": 783,
+      "longestRunwayFt": 8000,
+      "runwayId": "14/32",
+      "lat": 34.570506,
+      "lon": -114.357745,
+      "gradientPct": 0.4,
+      "gradientHighEndRunway": "32",
+      "terrain": false,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "14/32",
+          "lengthFt": 8000,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.4,
+          "gradientHighEndRunway": "32",
+          "leIdent": "14",
+          "heIdent": "32"
+        }
+      ]
+    },
+    {
+      "id": "KP14",
+      "name": "Holbrook Municipal Airport",
+      "city": "Holbrook",
+      "elevationFt": 5262,
+      "longestRunwayFt": 6698,
+      "runwayId": "03/21",
+      "lat": 34.9407005,
+      "lon": -110.1380005,
+      "gradientPct": 0.4,
+      "gradientHighEndRunway": "21",
+      "terrain": false,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 6698,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.4,
+          "gradientHighEndRunway": "21",
+          "leIdent": "03",
+          "heIdent": "21"
+        },
+        {
+          "runwayId": "11/29",
+          "lengthFt": 3202,
+          "widthFt": 120,
+          "surface": "GVL",
+          "lighted": false,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "11",
+          "heIdent": "29"
+        }
+      ]
+    },
+    {
+      "id": "KPAN",
+      "name": "Payson Airport",
+      "city": "Payson",
+      "elevationFt": 5157,
+      "longestRunwayFt": 5504,
+      "runwayId": "06/24",
+      "lat": 34.2568016,
+      "lon": -111.3389969,
+      "gradientPct": 0.3,
+      "gradientHighEndRunway": "24",
+      "terrain": true,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "06/24",
+          "lengthFt": 5504,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.3,
+          "gradientHighEndRunway": "24",
+          "leIdent": "06",
+          "heIdent": "24"
+        }
+      ]
+    },
+    {
+      "id": "KSAD",
+      "name": "Safford Regional Airport",
+      "city": "Safford",
+      "elevationFt": 3179,
+      "longestRunwayFt": 6007,
+      "runwayId": "12/30",
+      "lat": 32.8548012,
+      "lon": -109.6350021,
+      "gradientPct": 0.3,
+      "gradientHighEndRunway": "30",
+      "terrain": false,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "12/30",
+          "lengthFt": 6007,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.3,
+          "gradientHighEndRunway": "30",
+          "leIdent": "12",
+          "heIdent": "30"
+        },
+        {
+          "runwayId": "08/26",
+          "lengthFt": 4802,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "08",
+          "heIdent": "26"
+        }
+      ]
+    },
+    {
+      "id": "KAVQ",
+      "name": "Marana Regional Airport",
+      "city": "Marana",
+      "elevationFt": 2031,
+      "longestRunwayFt": 6901,
+      "runwayId": "12/30",
+      "lat": 32.409065,
+      "lon": -111.216199,
+      "gradientPct": 0.3,
+      "gradientHighEndRunway": "30",
+      "terrain": false,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "12/30",
+          "lengthFt": 6901,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.3,
+          "gradientHighEndRunway": "30",
+          "leIdent": "12",
+          "heIdent": "30"
+        },
+        {
+          "runwayId": "03/21",
+          "lengthFt": 3892,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KFLG",
+      "name": "Flagstaff Pulliam Airport",
+      "city": "Flagstaff",
+      "elevationFt": 7014,
+      "longestRunwayFt": 8800,
+      "runwayId": "03/21",
+      "lat": 35.139757,
+      "lon": -111.669826,
+      "gradientPct": 0.2,
+      "gradientHighEndRunway": "3",
+      "terrain": false,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:09.414Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 8800,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.2,
+          "gradientHighEndRunway": "3",
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KIGM",
+      "name": "Kingman Airport",
+      "city": "Kingman",
+      "elevationFt": 3449,
+      "longestRunwayFt": 6827,
+      "runwayId": "03/21",
+      "lat": 35.259499,
+      "lon": -113.938004,
+      "gradientPct": 0.2,
+      "gradientHighEndRunway": "3",
+      "terrain": false,
+      "multiRunway": true,
+      "updatedAt": "2026-06-13T08:14:10.069Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 6827,
+          "widthFt": 150,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": 0.2,
+          "gradientHighEndRunway": "3",
+          "leIdent": "03",
+          "heIdent": "21"
+        },
+        {
+          "runwayId": "17/35",
+          "lengthFt": 6725,
+          "widthFt": 75,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "17",
+          "heIdent": "35"
+        }
+      ]
+    },
+    {
+      "id": "KSMO",
+      "name": "Santa Monica Municipal Airport",
+      "city": "Santa Monica",
+      "elevationFt": 170,
+      "longestRunwayFt": 3500,
+      "runwayId": "03/21",
+      "lat": 34.0158,
+      "lon": -118.450996,
+      "gradientPct": null,
+      "gradientHighEndRunway": null,
+      "terrain": false,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 3500,
+          "widthFt": 150,
+          "surface": "Asphalt",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    },
+    {
+      "id": "KSDL",
+      "name": "Scottsdale Airport",
+      "city": "Scottsdale",
+      "elevationFt": 1510,
+      "longestRunwayFt": 8249,
+      "runwayId": "03/21",
+      "lat": 33.6228981,
+      "lon": -111.9110031,
+      "gradientPct": null,
+      "gradientHighEndRunway": null,
+      "terrain": false,
+      "multiRunway": false,
+      "updatedAt": "2026-06-13T08:14:10.643Z",
+      "runways": [
+        {
+          "runwayId": "03/21",
+          "lengthFt": 8249,
+          "widthFt": 100,
+          "surface": "ASP",
+          "lighted": true,
+          "closed": false,
+          "gradientPct": null,
+          "gradientHighEndRunway": null,
+          "leIdent": "03",
+          "heIdent": "21"
+        }
+      ]
+    }
+  ]
+}
