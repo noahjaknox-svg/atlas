@@ -60,8 +60,21 @@
     right: 0.5rem;
     bottom: 0;
     height: 2px;
-    background: var(--atlas-accent);
+    background: #c9a227;
     border-radius: 1px;
+    transform: scaleX(1);
+    transform-origin: left center;
+    transition: transform 0.4s ease-out;
+    animation: navUnderlineSweep 0.45s ease-out;
+  }
+
+  @keyframes navUnderlineSweep {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
   }
 
   .portal-main-default {
@@ -111,6 +124,10 @@
 @media (prefers-reduced-motion: reduce) {
   .experience-hero-kenburns video,
   .experience-hero-kenburns img {
+    animation: none !important;
+  }
+
+  .portal-nav-active::after {
     animation: none !important;
   }
 }

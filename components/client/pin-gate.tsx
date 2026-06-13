@@ -56,6 +56,7 @@ export function PinGate({
     <CloudBackground
       imageUrl={heroCloudImageUrl}
       videoUrl={heroCloudVideoUrl}
+      kenBurns
       className={cn(
         "flex min-h-screen flex-col items-center justify-center transition-opacity duration-700",
         entered && "opacity-0"

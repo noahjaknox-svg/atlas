@@ -9,6 +9,7 @@ export function CloudBackground({
   posterUrl,
   overlay = "dark",
   fillContainer = false,
+  kenBurns = false,
   className,
   children,
 }: {
@@ -18,6 +19,8 @@ export function CloudBackground({
   overlay?: "dark" | "light" | "none";
   /** When true, fill parent height instead of min-h-screen (hero bands). */
   fillContainer?: boolean;
+  /** Slow zoom on still/video hero (PIN gate, experience heroes). */
+  kenBurns?: boolean;
   className?: string;
   children?: React.ReactNode;
 }) {
@@ -32,7 +35,12 @@ export function CloudBackground({
         className
       )}
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 -z-10",
+          kenBurns && "experience-hero-kenburns overflow-hidden"
+        )}
+      >
         {videoUrl ? (
           <video
             className="h-full w-full object-cover"

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   });
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${appUrl}/login`,
+    redirectTo: `${appUrl}/auth/callback?next=/login`,
   });
 
   if (error) {

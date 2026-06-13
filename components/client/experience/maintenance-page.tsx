@@ -2,6 +2,7 @@ import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
+import { PullQuote } from "./pull-quote";
 
 export function MaintenancePage({
   section,
@@ -30,11 +31,7 @@ export function MaintenancePage({
         <RevealOnScroll>
           <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>
-        {callout ? (
-          <RevealOnScroll delayMs={80}>
-            <p className="mt-8 text-center font-serif text-lg text-atlas-accent">{callout.value}</p>
-          </RevealOnScroll>
-        ) : null}
+        {callout ? <PullQuote text={callout.value} /> : null}
         {rows.length > 0 ? (
           <>
             {/* Mobile: stacked cards */}

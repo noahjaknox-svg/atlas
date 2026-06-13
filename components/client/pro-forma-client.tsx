@@ -6,6 +6,7 @@ import { cn, parseFormattedNumber } from "@/lib/utils";
 import { MoneyInput } from "@/components/ui/money-input";
 import { HoursInput } from "@/components/ui/hours-input";
 import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
+import { ProFormaVisualSummary } from "@/components/client/experience/pro-forma-visual-summary";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 import {
   computeWorkspaceProFormaForClient,
@@ -102,6 +103,24 @@ export function ProFormaClient({
     initial.statementRows,
   ]);
 
+  const lineItemsForViz = useMemo(() => {
+    const fromRows = statementRows
+      .filter((r) => r.kind === "line" && r.annual != null && Math.abs(r.annual) > 0)
+      .map((r) => ({
+        key: r.key,
+        label: r.label,
+        category:
+          r.layout === "fixed"
+            ? "fixed"
+            : r.layout === "hourly_variable" || r.layout === "revenue"
+              ? "variable"
+              : "other",
+        annual: Math.abs(r.annual!),
+        monthly: Math.abs(r.annual!) / 12,
+      }));
+    return fromRows.length > 0 ? fromRows : initial.proForma.lineItems;
+  }, [statementRows, initial.proForma.lineItems]);
+
   const persistScenario = useCallback(async () => {
     await fetch(`/api/portal/${slug}/scenario`, {
       method: "POST",
@@ -184,23 +203,25 @@ export function ProFormaClient({
         ) : (
           <span />
         )}
-        <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
-          {(["annual", "monthly"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "rounded-md px-4 py-2 text-sm capitalize transition-colors",
-                period === p
-                  ? "bg-atlas-accent text-[#0a0d14]"
-                  : "text-white/60 hover:text-white"
-              )}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        {!embedded ? (
+          <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
+            {(["annual", "monthly"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "rounded-md px-4 py-2 text-sm capitalize transition-colors",
+                  period === p
+                    ? "bg-atlas-accent text-[#0B0F1A]"
+                    : "text-white/60 hover:text-white"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {showAircraftSelector ? (
@@ -265,6 +286,12 @@ export function ProFormaClient({
       >
         Restore to PrismJet assumptions
       </button>
+
+      <ProFormaVisualSummary
+        lineItems={lineItemsForViz}
+        period={period}
+        onPeriodChange={setPeriod}
+      />
 
       <ClientProFormaStatement rows={statementRows} period={period} />
     </div>

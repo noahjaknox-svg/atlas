@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:import": "tsx scripts/import-aircraft-csv.ts",
+    "db:seed-experience": "dotenv -e .env.local -- tsx scripts/seed-experience-templates.ts",
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest"

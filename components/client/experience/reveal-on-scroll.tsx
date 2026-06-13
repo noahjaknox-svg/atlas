@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useReveal } from "./use-reveal";
 
 export function RevealOnScroll({
   children,
@@ -15,33 +15,8 @@ export function RevealOnScroll({
   /** Show immediately (above-the-fold heroes) — no initial opacity-0. */
   immediate?: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(immediate);
-
-  useEffect(() => {
-    if (immediate) return;
-
-    const el = ref.current;
-    if (!el) return;
-
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
-      setVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [immediate]);
+  const { ref, shown } = useReveal<HTMLDivElement>();
+  const visible = immediate || shown;
 
   if (immediate) {
     return (

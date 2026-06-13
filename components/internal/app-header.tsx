@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/pipeline", label: "Pipeline" },
   { href: "/proposal-design", label: "Proposal Design" },
   { href: "/data", label: "Data" },
+  { href: "/performance-data", label: "Performance Data" },
 ] as const;
 
 export function AppHeader({

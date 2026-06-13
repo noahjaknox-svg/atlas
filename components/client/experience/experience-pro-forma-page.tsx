@@ -1,5 +1,6 @@
 import type { ClientSnapshotView } from "@/lib/client-serializer";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { ProFormaClient } from "@/components/client/pro-forma-client";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
@@ -10,13 +11,20 @@ export function ExperienceProFormaPage({
   client,
   branding,
   aircraftParam,
+  contactName,
 }: {
   slug: string;
   section: ExperienceSectionSnapshot;
   client: ClientSnapshotView;
   branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null };
   aircraftParam?: string | null;
+  contactName: string;
 }) {
+  const bodyCopy = interpolateExperienceCopy(section.bodyCopy, {
+    contactName,
+    aircraftName: client.aircraft.label,
+  });
+
   return (
     <>
       <ExperienceHero
@@ -27,8 +35,8 @@ export function ExperienceProFormaPage({
         <RevealOnScroll immediate>
           <SectionNumber n="07" />
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl">{section.title}</h1>
-          {section.bodyCopy ? (
-            <p className="mt-4 max-w-2xl text-base text-white/75">{section.bodyCopy}</p>
+          {bodyCopy ? (
+            <p className="mt-4 max-w-2xl text-base text-white/75">{bodyCopy}</p>
           ) : null}
         </RevealOnScroll>
       </ExperienceHero>

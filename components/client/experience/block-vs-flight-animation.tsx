@@ -1,59 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCountUp } from "./use-count-up";
+import { useReveal } from "./use-reveal";
 
 /** Default block-to-flight factor (mirrors lib/proforma-utilization DEFAULT_BLOCK_TO_FLIGHT_FACTOR). */
 const DEFAULT_FACTOR = 1.13;
-
-function useReveal<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
-      setShown(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (e?.isIntersecting) {
-          setShown(true);
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return { ref, shown };
-}
-
-function useCountUp(target: number, run: boolean, durationMs = 1100) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!run) return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
-      setValue(target);
-      return;
-    }
-    let raf = 0;
-    const start = performance.now();
-    function tick(now: number) {
-      const t = Math.min(1, (now - start) / durationMs);
-      // easeOutCubic
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    }
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, run, durationMs]);
-  return value;
-}
 
 /**
  * Premium animation contrasting flight time (what others pay) with block time
@@ -67,7 +18,7 @@ export function BlockVsFlightAnimation({
   flightHours?: number | null;
   blockHours?: number | null;
 }) {
-  const { ref, shown } = useReveal<HTMLDivElement>();
+  const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.3 });
 
   const hasData = !!flightHours && flightHours > 0;
   const flight = hasData ? Math.round(flightHours!) : 200;

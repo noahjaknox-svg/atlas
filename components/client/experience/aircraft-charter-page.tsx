@@ -5,6 +5,7 @@ import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
+import { PullQuote } from "./pull-quote";
 
 const BLOCK_TO_FLIGHT_FACTOR = 1.13;
 
@@ -47,13 +48,7 @@ export function AircraftCharterPage({
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
-        {quote ? (
-          <RevealOnScroll>
-            <blockquote className="border-l-4 border-atlas-accent pl-6 font-serif text-2xl leading-snug text-white/90 sm:text-3xl">
-              &ldquo;{quote.text}&rdquo;
-            </blockquote>
-          </RevealOnScroll>
-        ) : null}
+        {quote ? <PullQuote text={quote.text} attribution={quote.attribution} /> : null}
         <RevealOnScroll delayMs={100}>
           <p className="mt-8 text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
         </RevealOnScroll>

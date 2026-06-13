@@ -1,5 +1,22 @@
 import type { ExperienceContentBlocks, ExperienceSectionSnapshot } from "./experience-content";
-import { PRISMJET_MEDIA } from "./prismjet-media";
+import { proposalImageKey } from "./proposal-images";
+
+const IMG = {
+  fleet: proposalImageKey("fleetThreeAircraft"),
+  casey: proposalImageKey("teamCasey"),
+  bianco: proposalImageKey("teamBianco"),
+  pixley: proposalImageKey("teamPixley"),
+  turcott: proposalImageKey("teamTurcott"),
+  life060: proposalImageKey("lifestyle060"),
+  life087: proposalImageKey("lifestyle087"),
+  hangar: proposalImageKey("hangarJet"),
+  charter: proposalImageKey("charterFlight"),
+  maint: proposalImageKey("maintenanceHangar"),
+  catering: proposalImageKey("charterCatering"),
+  guest: proposalImageKey("charterGuest"),
+  engine: proposalImageKey("engineWingDetail"),
+  overhead: proposalImageKey("scottsdaleOverhead"),
+};
 
 export const EXPERIENCE_DEFAULT_SECTIONS: Omit<
   ExperienceSectionSnapshot,
@@ -7,19 +24,20 @@ export const EXPERIENCE_DEFAULT_SECTIONS: Omit<
 >[] = [
   {
     sectionType: "welcome",
-    title: "Welcome",
+    title: "Aircraft Management & Charter",
     bodyCopy: `Dear {contactName},
 
-Thank you for the opportunity to present this management proposal for your aircraft. It is a privilege we take seriously, and one we have prepared for with the care your investment deserves.
+Thank you for the opportunity to present this management proposal for your {aircraftName}. This outlook was built specifically for you — your aircraft, your base, your expected flying — not a template.
 
-Private aviation should feel effortless. Behind that ease sits a great deal of work — proactive planning, disciplined oversight, and a team that anticipates needs before they become decisions. That is the standard we hold ourselves to on every tail we manage.
+PrismJet was founded on a simple idea: ownership should be transparent, predictable, and genuinely enjoyable. What sets us apart is the combination of proactive aircraft managers who anticipate rather than react, a charter payback model that pays you on block time rather than flight time, and a promise to never mark up an outside expense.
 
-What sets PrismJet apart is simple to say and harder to deliver: dedicated managers who know your aircraft intimately, a charter payback model built around block time rather than flight time, and a promise to never mark up outside expenses. Your interests and ours stay aligned, every step of the way.
+It took more than 100 years of combined experience to build the foundation of PrismJet. We would be honored to put that experience to work for you.
 
-The pages that follow detail how we operate, what your ownership experience will look like, and a transparent pro forma of the economics involved. We would be honored to earn your trust.`,
-    imageUrl: PRISMJET_MEDIA.clouds,
+Sincerely,
+Scott Casey — Vice President`,
+    imageUrl: IMG.fleet,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.clouds,
+    posterUrl: IMG.fleet,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "welcome_letter",
@@ -29,21 +47,22 @@ The pages that follow detail how we operate, what your ownership experience will
       aircraftMarketUrl: "https://prismjet.net/fleet/",
       aircraftMarketButtonLabel: "Available aircraft",
       gallery: [
-        { url: PRISMJET_MEDIA.team, caption: "PrismJet leadership — Scottsdale, AZ" },
-        { url: PRISMJET_MEDIA.hangarExterior, caption: "Scottsdale Airpark operations base" },
+        { url: IMG.casey, caption: "Scott Casey — Vice President" },
+        { url: IMG.life060, caption: "Executive cabin lifestyle" },
       ],
     },
   },
   {
     sectionType: "about_us",
-    title: "About Us",
-    bodyCopy:
-      "PrismJet was founded by aviation professionals who share more than a century of combined experience across operations, maintenance, charter, and ownership. We built the company we wished existed when we were on the other side of the table — one that treats transparency as a standard rather than a courtesy, and treats every aircraft as if it were our own.",
-    imageUrl: PRISMJET_MEDIA.team,
+    title: "About PrismJet",
+    bodyCopy: `PrismJet was founded by a team of aviation professionals with over a century of combined experience across operations, charter, and maintenance. We built the company we wished existed when we were owners and operators ourselves — one accountable team, clear numbers, and no surprises.
+
+From our base in Scottsdale, Arizona, we manage and operate aircraft for discerning owners who expect more than a logo on an invoice. Every relationship is built on three commitments: honesty in what we tell you, accuracy in what we report, and expertise in how we operate your asset.`,
+    imageUrl: IMG.life060,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.team,
-    calloutMetricLabel: null,
-    calloutMetricValue: null,
+    posterUrl: IMG.life060,
+    calloutMetricLabel: "Combined experience",
+    calloutMetricValue: "100+ years",
     layoutVariant: "mission_vision_values",
     signatoryName: null,
     signatoryTitle: null,
@@ -51,31 +70,32 @@ The pages that follow detail how we operate, what your ownership experience will
       pillars: [
         {
           title: "Mission",
-          body: "To set a new standard in aviation with transparent aircraft management and charter services to create a seamless experience.",
+          body: "To set a new standard in aviation: transparent aircraft management and charter that creates a seamless ownership experience.",
         },
         {
           title: "Vision",
-          body: "To exceed expectations and redefine excellence in the aircraft management and charter industry.",
+          body: "To redefine excellence in aircraft management and charter — and consistently exceed what owners expect.",
         },
         {
           title: "Values",
-          body: "Honesty, Accuracy, and Expertise",
+          body: "Honesty. Accuracy. Expertise.",
         },
       ],
       gallery: [
-        { url: PRISMJET_MEDIA.hangarExterior, caption: "PrismJet Scottsdale operations" },
-        { url: PRISMJET_MEDIA.challenger350Cabin, caption: "Super-midsize cabin — managed fleet" },
+        { url: IMG.bianco, caption: "Leadership — PrismJet" },
+        { url: IMG.pixley, caption: "Leadership — PrismJet" },
+        { url: IMG.turcott, caption: "Leadership — PrismJet" },
+        { url: IMG.casey, caption: "Scott Casey — Vice President" },
       ],
     },
   },
   {
     sectionType: "aircraft_management",
     title: "Aircraft Management",
-    bodyCopy:
-      "Ownership should add freedom to your life, not obligations. We manage every detail that surrounds your aircraft — crew, maintenance, scheduling, compliance, and accounting — with the precision of a team that has done it for decades. From day-to-day operational oversight to optional revenue-generating charter, the experience is designed to feel seamless, so the only thing you think about is where you want to go next.",
-    imageUrl: PRISMJET_MEDIA.hangarExterior,
+    bodyCopy: `We handle every detail affecting your aircraft with precision and care, so you can focus on what matters most. From complete logistical and operational oversight to optional, revenue-generating charter coordination, our team ensures a seamless ownership experience from day one.`,
+    imageUrl: IMG.hangar,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.hangarExterior,
+    posterUrl: IMG.hangar,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "management_pillars",
@@ -85,28 +105,27 @@ The pages that follow detail how we operate, what your ownership experience will
       pillars: [
         {
           title: "Dedicated Aircraft Manager",
-          body: "Your primary point of contact who communicates with our entire team on your behalf — with direct access to PrismJet leadership when you need it.",
+          body: "Your single point of contact, coordinating our entire team on your behalf — with direct access to PrismJet leadership whenever you need it.",
         },
         {
           title: "Full Operational Oversight",
-          body: "From crew and maintenance to accounting and charter sales, every detail is handled with care by experienced professionals.",
+          body: "Crew, maintenance, accounting, scheduling, and charter sales — every detail handled by experienced professionals under one roof.",
         },
       ],
       callout: {
         label: "Why PrismJet",
-        value: "One accountable team — not multiple points of contact that lead to miscommunication.",
+        value: "One accountable team — not a chain of vendors and hand-offs that lead to miscommunication.",
       },
-      gallery: [{ url: PRISMJET_MEDIA.challenger350, caption: "Managed aircraft on the PrismJet certificate" }],
+      gallery: [{ url: IMG.life087, caption: "Focus on what matters — PrismJet management" }],
     },
   },
   {
     sectionType: "aircraft_charter",
     title: "Aircraft Charter",
-    bodyCopy:
-      "Aircraft ownership carries real fixed costs — and your aircraft spends most of its life on the ground. Charter turns that idle time into offset, putting your asset to work when you are not flying. PrismJet's model is built to maximize utilization and return more of every charter hour to you, delivering up to a 15% higher average payback than industry standards.",
-    imageUrl: PRISMJET_MEDIA.charterFlight,
+    bodyCopy: `Aircraft ownership is a significant investment. PrismJet makes it more cost-effective by chartering your aircraft when you're not flying it — turning idle time into revenue while you stay in complete control of your schedule.`,
+    imageUrl: IMG.charter,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.charterFlight,
+    posterUrl: IMG.charter,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "charter_payback",
@@ -114,27 +133,26 @@ The pages that follow detail how we operate, what your ownership experience will
     signatoryTitle: null,
     contentBlocks: {
       quote: {
-        text: "PrismJet pays owners up to a 15% higher average charter payback than industry standards",
+        text: "PrismJet pays owners up to a 15% higher average charter payback than industry standards.",
       },
       introBullets: [
-        "Block time (taxi to taxi) compensation instead of wheels-up-only flight time",
-        "Higher charter yield for owners",
-        "Repositioning flights turned into revenue opportunities when possible",
+        "Block-time compensation — We pay you taxi-to-taxi, not just wheels-up to wheels-down, so more of every trip is paid back to you.",
+        "Higher charter yield — Active fleet management and demand-based pricing maximize what your aircraft earns.",
+        "Repositioning turned to revenue — Empty legs and repositioning flights become earning opportunities, not sunk cost.",
       ],
       gallery: [
-        { url: PRISMJET_MEDIA.charterFlight, caption: "Charter revenue program" },
-        { url: PRISMJET_MEDIA.challenger350Cabin, caption: "Challenger 350 — PrismJet fleet" },
+        { url: IMG.catering, caption: "Onboard catering — charter guest experience" },
+        { url: IMG.guest, caption: "In-flight experience" },
       ],
     },
   },
   {
     sectionType: "maintenance",
     title: "Maintenance",
-    bodyCopy:
-      "Maintenance is where ownership budgets are usually won or lost. Our flat-rate program is built for peace of mind: scheduled and unscheduled maintenance labor is covered under one predictable monthly rate, with no surprise invoices and no padded hours. Because we do not profit from your maintenance or parts, every recommendation we make is the one we would make for our own fleet.",
-    imageUrl: PRISMJET_MEDIA.maintenance,
+    bodyCopy: `Our flat-rate maintenance program is designed to give owners complete peace of mind — predictable monthly costs and zero incentive for us to over-service your aircraft.`,
+    imageUrl: IMG.maint,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.maintenance,
+    posterUrl: IMG.maint,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "maintenance_comparison",
@@ -146,23 +164,22 @@ The pages that follow detail how we operate, what your ownership experience will
         value: "We do not profit from your aircraft maintenance or parts.",
       },
       comparisonRows: [
-        { item: "Flight Deck Flashlight Inspection", otherCost: "$200/h × 1 hour", prismjetNote: "Included in Monthly" },
-        { item: "Static Wick Replacement", otherCost: "$200/h × 1 hour", prismjetNote: "Included in Monthly" },
-        { item: "Outside Vendor Oversight", otherCost: "$1,000/day × 5 days", prismjetNote: "Included in Monthly" },
-        { item: "Tire Replacement", otherCost: "$200/h × 4 hours", prismjetNote: "Included in Monthly" },
-        { item: "Aircraft Return to Service Fee", otherCost: "$200/h × 3.5 hours", prismjetNote: "Included in Monthly" },
+        { item: "Flight deck flashlight inspection", otherCost: "Billed hourly", prismjetNote: "Included in monthly program" },
+        { item: "Static wick replacement", otherCost: "Billed hourly", prismjetNote: "Included in monthly program" },
+        { item: "Outside vendor oversight", otherCost: "Billed daily", prismjetNote: "Included in monthly program" },
+        { item: "Tire replacement", otherCost: "Billed hourly", prismjetNote: "Included in monthly program" },
+        { item: "Aircraft return-to-service", otherCost: "Billed hourly", prismjetNote: "Included in monthly program" },
       ],
-      gallery: [{ url: PRISMJET_MEDIA.maintenance, caption: "Maintenance oversight — no markup on parts or labor" }],
+      gallery: [{ url: IMG.engine, caption: "Hands-on maintenance oversight" }],
     },
   },
   {
     sectionType: "sales_acquisitions",
     title: "Sales and Acquisitions",
-    bodyCopy:
-      "The right aircraft, acquired the right way, sets the tone for the entire ownership experience. Whether you are acquiring your next aircraft, transitioning from a current one, or optimizing a fleet, PrismJet provides clear-eyed guidance at every stage of the transaction — from market analysis and inspection through closing and entry into service.",
-    imageUrl: PRISMJET_MEDIA.global5000,
+    bodyCopy: `Whether you're acquiring your next aircraft or optimizing your current fleet, PrismJet provides expert guidance through every stage of the transaction — pre-buy strategy, inspection oversight, negotiation support, and a smooth transition onto management.`,
+    imageUrl: IMG.overhead,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.global5000,
+    posterUrl: IMG.overhead,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "sales_services",
@@ -170,31 +187,29 @@ The pages that follow detail how we operate, what your ownership experience will
     signatoryTitle: null,
     contentBlocks: {
       serviceTiles: [
-        { title: "Fleet Insurance", description: "Coverage guidance tailored to your mission." },
-        { title: "Consulting", description: "Strategic advisory for ownership decisions." },
-        { title: "Hangar", description: "Premium hangar solutions in Scottsdale." },
-        { title: "Aircraft Management", description: "Turnkey Part 91 operations." },
-        { title: "Charter", description: "Revenue programs that offset fixed costs." },
-        { title: "Join Our Fleet", description: "Explore partnership opportunities." },
+        { title: "Acquisitions & Sales", description: "Sourcing, valuation, and transaction guidance." },
+        { title: "Fleet Insurance", description: "Competitive placement and underwriting support." },
+        { title: "Consulting", description: "Operational and financial strategy for your aircraft." },
+        { title: "Hangar", description: "Storage solutions at your home base." },
+        { title: "Aircraft Management", description: "Full operational oversight." },
+        { title: "Charter", description: "Revenue strategy through our certificate." },
       ],
       contactEmail: "fly@prismjet.net",
       contactPhone: "(480) 426-8180",
       contactWebsite: "prismjet.net",
       contactAddress: "15003 N Airport Dr, Scottsdale, AZ 85260",
-      gallery: [
-        { url: PRISMJET_MEDIA.global5000, caption: "Global 5000 — long-range missions" },
-        { url: PRISMJET_MEDIA.challenger350, caption: "Challenger 350 — super-midsize" },
-      ],
+      gallery: [{ url: IMG.fleet, caption: "PrismJet fleet — Scottsdale" }],
     },
   },
   {
     sectionType: "conformity_process",
-    title: "Conformity Process",
-    bodyCopy:
-      "Bringing an aircraft onto a charter (FAA Part 135) certificate is a detailed operational and regulatory undertaking — and one that is far smoother when you know what to expect. This guide lays out the conformity process in plain terms: what it involves, what drives timeline and downtime, and how PrismJet manages each step proactively to keep your aircraft flying and your transition on schedule.",
-    imageUrl: PRISMJET_MEDIA.hangarExterior,
+    title: "Transition & Conformity Process Guide",
+    bodyCopy: `Bringing an aircraft onto a management certificate is a defined, well-managed process. Here's what to expect — and how we keep your aircraft flying and your timeline on track.
+
+Our objective is simple: a transition you barely feel, and an aircraft ready to perform.`,
+    imageUrl: IMG.engine,
     videoUrl: null,
-    posterUrl: PRISMJET_MEDIA.hangarExterior,
+    posterUrl: IMG.engine,
     calloutMetricLabel: null,
     calloutMetricValue: null,
     layoutVariant: "conformity_timeline",
@@ -202,18 +217,18 @@ The pages that follow detail how we operate, what your ownership experience will
     signatoryTitle: null,
     contentBlocks: {
       introBullets: [
-        "What the conformity process involves",
-        "What factors affect timeline and downtime",
-        "How PrismJet works to minimize disruption",
-        "What owners can do to help accelerate the process",
-        "Realistic expectations during transition",
+        "Records and airworthiness review",
+        "Conformity inspection at your home base",
+        "Letter of Authorization (91 LOA) and Minimum Equipment List (MEL) setup",
+        "Maintenance program enrollment and transfer",
+        "Crew placement and operational onboarding",
       ],
       goalBullets: [
         "Minimize aircraft downtime",
         "Preserve operational continuity",
-        "Accelerate FAA approval processes where possible",
-        "Identify risks early before they impact schedule",
-        "Position the aircraft for successful charter utilization after entry into service",
+        "Accelerate FAA approvals",
+        "Identify risks early",
+        "Position your aircraft for charter utilization from the start",
       ],
       checklist: [
         { label: "Physical inspection of the aircraft" },
@@ -223,13 +238,6 @@ The pages that follow detail how we operate, what your ownership experience will
         { label: "Alignment with PrismJet operational procedures and manuals" },
         { label: "Crew training program approval and adoption" },
         { label: "FAA review and approval processes" },
-      ],
-      recordsIssues: [
-        "Incomplete records",
-        "Disorganized maintenance history",
-        "Missing documentation",
-        "Delayed access from current operators",
-        "Lack of digital maintenance tracking",
       ],
       timeline: [
         {
@@ -281,40 +289,31 @@ The pages that follow detail how we operate, what your ownership experience will
           ],
         },
       ],
-      ownerRecommendations: [
-        "Execute agreements early",
-        "Provide records access as early as possible",
-        "Coordinate proactively with current operators",
-        "Remain flexible with FAA timing expectations",
-        "Align onboarding with maintenance schedules when possible",
-      ],
-      downtimeStrategies: [
-        "Align conformity with major maintenance inspections to reduce incremental downtime",
-        "Begin pilot and maintenance training in parallel during transition",
-        "Work with the current operator for early records access — avoid premature notice",
-      ],
       explainerCards: [
         {
           title: "Letter of Authorization (91 LOA)",
-          body: "For owners continuing Part 91 private operations, LOAs may be required for international ops, RVSM, CPDLC, and special navigation approvals — separate from Part 135 conformity.",
+          body: "Authorizes specific operations for your aircraft.",
         },
         {
           title: "Minimum Equipment List (MEL)",
-          body: "Required prior to revenue operations. Typically targeted ~30 days after agreement execution, depending on configuration, documentation quality, and FAA responsiveness.",
+          body: "Defines what equipment must be operational for dispatch.",
         },
         {
           title: "Maintenance Program Transfer",
-          body: "Engine, APU, airframe, and avionics programs must be transferred or enrolled prior to entry into service. Begin immediately after agreement execution.",
+          body: "Moves your aircraft onto a tracked, compliant program with no gaps.",
         },
       ],
-      gallery: [{ url: PRISMJET_MEDIA.hangarExterior, caption: "Conformity inspection at home base" }],
+      gallery: [{ url: IMG.maint, caption: "Conformity inspection and maintenance readiness" }],
     },
   },
   {
     sectionType: "pro_forma",
     title: "Pro Forma",
-    bodyCopy:
-      "The pro forma below offers a transparent, practical estimate of the annual and monthly economics of ownership. Every figure traces back to a clear assumption — the selected aircraft, proposed home base, expected owner usage, charter activity, and PrismJet-controlled operating inputs — so you can see exactly how the numbers are built and adjust them to match your mission.",
+    bodyCopy: `The pro forma below is a practical estimate of your annual and monthly aircraft ownership economics for the {aircraftName}. Figures are based on the selected aircraft, your proposed base, expected owner usage, charter assumptions, and PrismJet-controlled operating inputs.
+
+Adjust Aircraft value and Owner annual hours to model your own scenario — every number updates live. Select "Restore to PrismJet assumptions" at any time to return to our recommended baseline.
+
+These figures are an estimate for discussion purposes; final costs may vary based on records review, insurance underwriting, hangar availability, and crew placement.`,
     imageUrl: null,
     videoUrl: null,
     posterUrl: null,
@@ -328,8 +327,7 @@ The pages that follow detail how we operate, what your ownership experience will
   {
     sectionType: "disclaimer",
     title: "Disclaimer",
-    bodyCopy:
-      "This proposal is an estimate for discussion purposes only. Final costs may vary based on aircraft records review, insurance underwriting, hangar availability, crew placement, maintenance program status, vendor quotes, fuel pricing, charter demand, and operational requirements. This proposal does not constitute a binding agreement.",
+    bodyCopy: `This proposal is an estimate prepared for discussion purposes only and does not constitute an offer, contract, or guarantee of pricing or performance. Final costs may vary based on aircraft records review, insurance underwriting, hangar availability, crew placement, charter demand, fuel pricing, regulatory requirements, and other factors. Charter payback figures are illustrative; actual block-versus-flight time and revenue vary with routing and market demand. All figures are subject to change. © PrismJet. Prepared for {contactName}.`,
     imageUrl: null,
     videoUrl: null,
     posterUrl: null,
@@ -372,7 +370,27 @@ export function getExperienceDefault(sectionType: string): ExperienceSectionSnap
   };
 }
 
-export function interpolateWelcomeCopy(bodyCopy: string | null, contactName: string): string {
+export type ExperienceCopyVars = {
+  contactName?: string;
+  aircraftName?: string;
+};
+
+export function interpolateExperienceCopy(
+  bodyCopy: string | null,
+  vars: ExperienceCopyVars
+): string {
   if (!bodyCopy) return "";
-  return bodyCopy.replace(/\{contactName\}/g, contactName);
+  let out = bodyCopy;
+  if (vars.contactName) {
+    out = out.replace(/\{contactName\}/g, vars.contactName);
+  }
+  if (vars.aircraftName) {
+    out = out.replace(/\{aircraftName\}/g, vars.aircraftName);
+  }
+  return out;
+}
+
+/** @deprecated Use interpolateExperienceCopy */
+export function interpolateWelcomeCopy(bodyCopy: string | null, contactName: string): string {
+  return interpolateExperienceCopy(bodyCopy, { contactName });
 }

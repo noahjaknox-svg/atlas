@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
-import { interpolateWelcomeCopy } from "@/lib/experience-defaults";
+import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import { ExperienceBody, ExperienceHero, SectionNumber } from "./experience-primitives";
@@ -22,9 +22,10 @@ export function WelcomePage({
   branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null };
   slug: string;
 }) {
-  const letter = interpolateWelcomeCopy(section.bodyCopy, contactName);
   const aircraftList = normalizeAircraftList(payload);
-  const model = payload.aircraft?.model;
+  const aircraftName =
+    aircraftList[0]?.label ?? payload.aircraft?.model ?? "your aircraft";
+  const letter = interpolateExperienceCopy(section.bodyCopy, { contactName, aircraftName });
 
   return (
     <>
@@ -37,10 +38,13 @@ export function WelcomePage({
         <RevealOnScroll immediate>
           <p className="text-xs uppercase tracking-[0.35em] text-atlas-accent">PrismJet</p>
           <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl">
-            Aircraft Management &amp; Charter
+            {section.title}
           </h1>
-          <p className="mt-4 text-lg text-white/70">{payload.proposal.name}</p>
-          {model ? <p className="mt-1 text-white/50">{model}</p> : null}
+          <p className="mt-4 text-lg text-white/70">
+            Prepared for {contactName}
+            {aircraftName ? ` · ${aircraftName}` : null}
+          </p>
+          <p className="mt-1 text-white/50">{payload.proposal.name}</p>
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
@@ -69,14 +73,14 @@ export function WelcomePage({
               </p>
               <Link
                 href={`/${slug}/aircraft`}
-                className="mt-6 inline-flex rounded-lg bg-atlas-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#0a0d14] hover:bg-atlas-accent-hover"
+                className="mt-6 inline-flex rounded-lg bg-atlas-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#0B0F1A] hover:bg-atlas-accent-hover"
               >
                 View your aircraft
               </Link>
             </div>
           </RevealOnScroll>
         </div>
-        <ExperienceGallery items={section.contentBlocks?.gallery} />
+        <ExperienceGallery items={section.contentBlocks?.gallery} variant="fullBleed" />
       </ExperienceBody>
     </>
   );

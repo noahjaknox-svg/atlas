@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -39,6 +39,18 @@ export function ExperienceShell({
 }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    function onScroll() {
+      const el = document.documentElement;
+      const max = el.scrollHeight - el.clientHeight;
+      setScrollProgress(max > 0 ? el.scrollTop / max : 0);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
   const navSections = getExperienceNavSections(sections).filter(
     (s) => s.sectionType !== "pro_forma"
   );
@@ -69,13 +81,11 @@ export function ExperienceShell({
 
   function linkClass(active: boolean, mobile = false) {
     return cn(
-      "shrink-0 whitespace-nowrap border-b-2 font-medium transition-colors",
+      "shrink-0 whitespace-nowrap font-medium transition-colors",
       mobile
         ? "px-2.5 py-2 text-xs tracking-[0.1em]"
         : "px-3 py-2 text-xs tracking-[0.12em] sm:text-sm lg:px-4",
-      active
-        ? "border-atlas-accent text-white"
-        : "border-transparent text-white/65 hover:border-white/20 hover:text-white"
+      active ? "portal-nav-active text-white" : "text-white/65 hover:text-white"
     );
   }
 
@@ -118,8 +128,13 @@ export function ExperienceShell({
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-white">
-      <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0a0d14]/85 backdrop-blur-md">
+    <div className="min-h-screen bg-[#0B0F1A] text-white">
+      <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0B0F1A]/85 backdrop-blur-md">
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 h-0.5 bg-atlas-accent transition-[width] duration-150 ease-out"
+          style={{ width: `${scrollProgress * 100}%` }}
+          aria-hidden
+        />
         {/* Mobile header */}
         <div className="flex h-[var(--portal-nav-height)] items-center gap-2 px-3 md:hidden">
           <Link href={`/${slug}/experience/welcome`} className="flex shrink-0 items-center">

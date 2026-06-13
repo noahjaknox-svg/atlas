@@ -63,7 +63,7 @@ export function ExperienceBody({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={cn("bg-[#0a0d14] py-12", experiencePageX, className)}>
+    <div className={cn("bg-[#0B0F1A] py-12", experiencePageX, className)}>
       {fullWidth ? (
         children
       ) : (
@@ -78,7 +78,7 @@ export function ExperienceDisclaimer({ text }: { text: string | null }) {
   return (
     <footer
       className={cn(
-        "border-t border-white/10 bg-[#07090f] py-6 text-center text-xs leading-relaxed text-white/40",
+        "border-t border-white/10 bg-[#0B0F1A] py-6 text-center text-xs leading-relaxed text-white/40",
         experiencePageX
       )}
     >

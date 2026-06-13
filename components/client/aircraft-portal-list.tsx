@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatCurrency } from "@/lib/utils";
+import { formatMetricValue } from "@/components/client/experience/pending-metric";
 import type { AircraftSnapshotEntry } from "@/lib/portal-aircraft-types";
 
 export function AircraftPortalList({
@@ -26,12 +26,12 @@ export function AircraftPortalList({
           <Link
             key={ac.id}
             href={`/${slug}/aircraft/${ac.id}`}
-            className="group relative block min-h-[18rem] overflow-hidden rounded-xl border border-white/15 bg-white/5 backdrop-blur transition-colors hover:border-atlas-accent/40 hover:bg-white/10"
+            className="group relative block min-h-[18rem] overflow-hidden rounded-xl border border-white/15 bg-white/5 backdrop-blur transition-all duration-500 hover:border-atlas-accent/40 hover:bg-white/10 hover:shadow-lg hover:shadow-atlas-accent/5"
           >
             <div className="absolute inset-0 overflow-hidden bg-[#0a0d14]">
               {ac.portalVideoUrl ? (
                 <video
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   autoPlay
                   muted
                   loop
@@ -45,7 +45,7 @@ export function AircraftPortalList({
                 <img
                   src={ac.portalImageUrl}
                   alt=""
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-white/5 to-white/[0.02]">
@@ -65,8 +65,12 @@ export function AircraftPortalList({
               <dl className="mt-4 flex flex-wrap gap-6">
                 <div>
                   <dt className="text-[10px] uppercase tracking-wider text-white/45">Est. annual</dt>
-                  <dd className="mt-0.5 font-mono text-sm text-atlas-accent">
-                    {formatCurrency(ac.metrics.netAnnualCost)}
+                  <dd
+                    className={`mt-0.5 font-mono text-sm ${
+                      ac.metrics.netAnnualCost > 0 ? "text-atlas-accent" : "text-white/40 italic"
+                    }`}
+                  >
+                    {formatMetricValue(ac.metrics.netAnnualCost)}
                   </dd>
                 </div>
                 <div>

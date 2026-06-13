@@ -67,6 +67,7 @@ export function ExperiencePageContent({
           client={client}
           branding={branding}
           aircraftParam={aircraftParam}
+          contactName={contactName}
         />
       );
     default:

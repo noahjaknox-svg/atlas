@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+const AUTH_CALLBACK_ERRORS: Record<string, string> = {
+  auth_callback_failed: "That sign-in link expired or was already used. Request a new invite.",
+  missing_auth_code: "Invalid sign-in link. Request a new invite from your admin.",
+  auth_not_configured: "Authentication is not configured on the server.",
+  not_provisioned:
+    "Your account is not provisioned in Atlas yet. Ask an admin to send an invite.",
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,6 +23,16 @@ export default function LoginPage() {
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  useEffect(() => {
+    const authError = new URLSearchParams(window.location.search).get("error");
+    if (authError) {
+      setError(
+        AUTH_CALLBACK_ERRORS[authError] ??
+          "Sign-in link failed. Try again or contact an admin."
+      );
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
