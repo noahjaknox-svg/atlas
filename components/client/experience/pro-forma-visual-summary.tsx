@@ -11,10 +11,12 @@ export function ProFormaVisualSummary({
   lineItems,
   period,
   onPeriodChange,
+  compact = false,
 }: {
   lineItems: LineItem[];
   period: "annual" | "monthly";
   onPeriodChange: (p: "annual" | "monthly") => void;
+  compact?: boolean;
 }) {
   const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.2 });
 
@@ -37,7 +39,7 @@ export function ProFormaVisualSummary({
       }))
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
+      .slice(0, compact ? 4 : 6);
     return { fixed: fixedSum, variable: variableSum, total: t, topLines: sorted };
   }, [lineItems, period]);
 
@@ -45,8 +47,8 @@ export function ProFormaVisualSummary({
   const animatedTotal = useCountUp(total, shown);
 
   return (
-    <div ref={ref} className="mb-8 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div ref={ref} className={cn(compact ? "shrink-0 space-y-3" : "mb-8 space-y-6")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Cost overview</p>
         <div className="flex rounded-lg border border-white/15 p-0.5">
           {(["annual", "monthly"] as const).map((p) => (
@@ -55,7 +57,7 @@ export function ProFormaVisualSummary({
               type="button"
               onClick={() => onPeriodChange(p)}
               className={cn(
-                "rounded-md px-4 py-1.5 text-xs font-medium capitalize transition-colors",
+                "rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors sm:px-4 sm:py-1.5",
                 period === p
                   ? "bg-atlas-accent text-[#0B0F1A]"
                   : "text-white/60 hover:text-white"
@@ -67,10 +69,13 @@ export function ProFormaVisualSummary({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
+      <div className={cn("grid gap-4", compact ? "lg:grid-cols-[140px_1fr]" : "gap-6 lg:grid-cols-[200px_1fr]")}>
         <div className="flex flex-col items-center justify-center">
           <div
-            className="relative h-36 w-36 rounded-full transition-[background] duration-500"
+            className={cn(
+              "relative rounded-full transition-[background] duration-500",
+              compact ? "h-24 w-24" : "h-36 w-36"
+            )}
             style={{
               background: `conic-gradient(#C9A227 0% ${fixedPct}%, rgba(255,255,255,0.15) ${fixedPct}% 100%)`,
             }}
@@ -93,7 +98,7 @@ export function ProFormaVisualSummary({
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className={cn(compact ? "space-y-2" : "space-y-3")}>
           {topLines.length === 0 ? (
             <p className="text-sm text-white/45">Cost breakdown pending — complete workspace assumptions.</p>
           ) : (
@@ -107,7 +112,7 @@ export function ProFormaVisualSummary({
                       {formatCurrency(line.value)}
                     </span>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className={cn("mt-1 overflow-hidden rounded-full bg-white/10", compact ? "h-1.5" : "h-2")}>
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-atlas-accent/70 to-atlas-accent transition-[width] duration-700 ease-out"
                       style={{ width: shown ? `${pct}%` : "0%" }}

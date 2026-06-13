@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 type Status = {
   eiaConfigured: boolean;
   iflightConfigured: boolean;
+  jetinsightConfigured: boolean;
+  jetinsightSource: {
+    name: string;
+    lastSyncedAt: string | null;
+    lastSyncStatus: string | null;
+  } | null;
   latestFuel: {
     pricePerGallon: number;
     effectiveDate: string;
@@ -34,6 +40,9 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
   const [fboWithPrices, setFboWithPrices] = useState(initial.fboWithPrices);
   const [syncMsg, setSyncMsg] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [scheduleSyncMsg, setScheduleSyncMsg] = useState("");
+  const [scheduleSyncing, setScheduleSyncing] = useState(false);
+  const [jetinsightSource, setJetinsightSource] = useState(initial.jetinsightSource);
 
   async function syncEia() {
     setSyncing(true);
@@ -55,6 +64,29 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
       }
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function syncJetInsight() {
+    setScheduleSyncing(true);
+    setScheduleSyncMsg("");
+    try {
+      const res = await fetch("/api/schedule/sync", { method: "POST" });
+      const json = await res.json();
+      setScheduleSyncMsg(json.message ?? (res.ok ? "Sync complete" : "Sync failed"));
+      if (res.ok) {
+        setJetinsightSource((prev) =>
+          prev
+            ? {
+                ...prev,
+                lastSyncedAt: new Date().toISOString(),
+                lastSyncStatus: "ok",
+              }
+            : prev
+        );
+      }
+    } finally {
+      setScheduleSyncing(false);
     }
   }
 
@@ -123,6 +155,67 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
           {syncing ? "Syncing…" : "Sync fuel from EIA"}
         </Button>
         {syncMsg ? <p className="mt-2 text-sm text-atlas-muted">{syncMsg}</p> : null}
+      </section>
+
+      <section className="rounded-lg border border-atlas-border bg-atlas-surface/30 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-medium">JetInsight — ICS schedule feed</h2>
+            <p className="mt-1 text-sm text-atlas-muted">
+              Pulls the fleet calendar export into Atlas for availability Kanban and aircraft
+              matching.
+            </p>
+          </div>
+          <StatusBadge
+            ok={initial.jetinsightConfigured}
+            label={initial.jetinsightConfigured ? "Configured" : "Not configured"}
+          />
+        </div>
+        <dl className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-atlas-muted">Env variable</dt>
+            <dd className="font-mono text-xs">JETINSIGHT_ICS_URL</dd>
+          </div>
+          {jetinsightSource ? (
+            <>
+              <div className="flex justify-between gap-4">
+                <dt className="text-atlas-muted">Source</dt>
+                <dd>{jetinsightSource.name}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-atlas-muted">Last synced</dt>
+                <dd>
+                  {jetinsightSource.lastSyncedAt
+                    ? new Date(jetinsightSource.lastSyncedAt).toLocaleString()
+                    : "Never"}
+                </dd>
+              </div>
+              {jetinsightSource.lastSyncStatus ? (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-atlas-muted">Status</dt>
+                  <dd>{jetinsightSource.lastSyncStatus}</dd>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-atlas-muted">No schedule source synced yet.</p>
+          )}
+        </dl>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            disabled={scheduleSyncing || !initial.jetinsightConfigured}
+            onClick={() => void syncJetInsight()}
+          >
+            {scheduleSyncing ? "Syncing…" : "Sync JetInsight schedule"}
+          </Button>
+          <Link href="/schedule" className="text-sm text-atlas-accent hover:underline">
+            Open schedule board →
+          </Link>
+        </div>
+        {scheduleSyncMsg ? (
+          <p className="mt-2 text-sm text-atlas-muted">{scheduleSyncMsg}</p>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface/30 p-5">

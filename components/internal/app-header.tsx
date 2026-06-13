@@ -8,6 +8,7 @@ import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 
 const NAV_ITEMS = [
   { href: "/pipeline", label: "Pipeline" },
+  { href: "/schedule", label: "Schedule" },
   { href: "/proposal-design", label: "Proposal Design" },
   { href: "/data", label: "Data" },
 ] as const;

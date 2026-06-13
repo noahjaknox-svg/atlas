@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CloudBackground } from "@/components/client/cloud-background";
@@ -12,6 +12,11 @@ import {
   type ExperienceSectionSnapshot,
   getExperienceNavSections,
 } from "@/lib/experience-content";
+import {
+  experienceHref,
+  getExperiencePageSlugs,
+} from "@/lib/prefetch-experience-routes";
+import { useExperiencePrefetch } from "./use-experience-prefetch";
 
 const MOBILE_SHORT_LABELS: Record<string, string> = {
   welcome: "Welcome",
@@ -38,29 +43,76 @@ export function ExperienceShell({
   logoUrl?: string;
   clientDisplayName?: string;
   disclaimer?: string | null;
-  branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null };
+  branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null; logoUrl?: string | null };
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useExperiencePrefetch(slug, sections, branding);
 
   useEffect(() => {
-    function onScroll() {
-      const el = document.documentElement;
-      const max = el.scrollHeight - el.clientHeight;
-      setScrollProgress(max > 0 ? el.scrollTop / max : 0);
-    }
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [pathname]);
+    const prev = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prev;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
   const navSections = getExperienceNavSections(sections).filter(
     (s) => s.sectionType !== "pro_forma"
   );
 
+  const pageSlugs = useMemo(() => getExperiencePageSlugs(sections), [sections]);
+
+  const slideProgress = useMemo(() => {
+    const match = pathname?.match(/\/experience\/([^/?]+)/);
+    const current = match?.[1];
+    if (!current) return 0;
+    const index = pageSlugs.indexOf(current);
+    if (index < 0 || pageSlugs.length <= 1) return 0;
+    return index / (pageSlugs.length - 1);
+  }, [pathname, pageSlugs]);
+
+  const goToAdjacentSlide = useCallback(
+    (delta: number) => {
+      const match = pathname?.match(/\/experience\/([^/?]+)/);
+      const current = match?.[1];
+      if (!current) return;
+      const index = pageSlugs.indexOf(current);
+      if (index < 0) return;
+      const next = pageSlugs[index + delta];
+      if (!next) return;
+      router.push(experienceHref(slug, next), { scroll: false });
+    },
+    [pathname, pageSlugs, router, slug]
+  );
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "ArrowRight") goToAdjacentSlide(1);
+      if (e.key === "ArrowLeft") goToAdjacentSlide(-1);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goToAdjacentSlide]);
+
   function tabHref(sectionType: string) {
     const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as keyof typeof SECTION_TYPE_TO_SLUG];
-    return `/${slug}/experience/${pageSlug}`;
+    return experienceHref(slug, pageSlug);
   }
 
   function isActive(sectionType: string) {
@@ -102,7 +154,9 @@ export function ExperienceShell({
 
   const proFormaCta = (
     <Link
-      href={`/${slug}/experience/pro-forma`}
+      href={experienceHref(slug, "pro-forma")}
+      prefetch
+      scroll={false}
       className={cn(
         "shrink-0 rounded-md bg-atlas-accent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#0a0d14] hover:bg-atlas-accent-hover sm:px-4 sm:py-2 sm:text-xs",
         isProFormaActive() && "ring-2 ring-atlas-accent/50"
@@ -131,7 +185,7 @@ export function ExperienceShell({
   );
 
   return (
-    <div className="relative min-h-screen text-white">
+    <div className="relative h-screen overflow-hidden text-white">
       <CloudBackground
         imageUrl={branding.heroCloudImageUrl}
         videoUrl={branding.heroCloudVideoUrl}
@@ -142,12 +196,17 @@ export function ExperienceShell({
       <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0a0d14]/75 backdrop-blur-md">
         <div
           className="pointer-events-none absolute bottom-0 left-0 h-0.5 bg-atlas-accent transition-[width] duration-150 ease-out"
-          style={{ width: `${scrollProgress * 100}%` }}
+          style={{ width: `${slideProgress * 100}%` }}
           aria-hidden
         />
         {/* Mobile header */}
         <div className="flex h-[var(--portal-nav-height)] items-center gap-2 px-3 md:hidden">
-          <Link href={`/${slug}/experience/welcome`} className="flex shrink-0 items-center">
+          <Link
+            href={experienceHref(slug, "welcome")}
+            prefetch
+            scroll={false}
+            className="flex shrink-0 items-center"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl ?? "/images/prismjet-logo.svg"}
@@ -164,6 +223,8 @@ export function ExperienceShell({
               <Link
                 key={s.sectionType}
                 href={tabHref(s.sectionType)}
+                prefetch
+                scroll={false}
                 className={linkClass(isActive(s.sectionType), true)}
               >
                 {tabLabel(s.sectionType, s.title, true)}
@@ -198,6 +259,8 @@ export function ExperienceShell({
                         <Link
                           key={s.sectionType}
                           href={tabHref(s.sectionType)}
+                          prefetch
+                          scroll={false}
                           onClick={() => setMoreOpen(false)}
                           className={cn(
                             "block px-4 py-2.5 text-xs tracking-wide",
@@ -221,7 +284,12 @@ export function ExperienceShell({
 
         {/* Desktop: logo left | centered tabs | Pro Forma right */}
         <div className="hidden h-[var(--portal-nav-height)] grid-cols-[auto_1fr_auto] items-center gap-4 px-6 lg:px-10 md:grid">
-          <Link href={`/${slug}/experience/welcome`} className="flex shrink-0 items-center">
+          <Link
+            href={experienceHref(slug, "welcome")}
+            prefetch
+            scroll={false}
+            className="flex shrink-0 items-center"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logoUrl ?? "/images/prismjet-logo.svg"}
@@ -238,6 +306,8 @@ export function ExperienceShell({
               <Link
                 key={s.sectionType}
                 href={tabHref(s.sectionType)}
+                prefetch
+                scroll={false}
                 className={linkClass(isActive(s.sectionType))}
               >
                 {tabLabel(s.sectionType, s.title, false)}
@@ -256,12 +326,16 @@ export function ExperienceShell({
         </div>
       </header>
 
-      <main className="relative z-10 pt-[var(--portal-nav-height)]">{children}</main>
-      {disclaimer ? (
-        <footer className="relative z-10 border-t border-white/10 bg-[#0B0F1A]/40 px-6 py-4 text-center text-[11px] leading-relaxed text-white/35 backdrop-blur-sm sm:px-12">
-          <p className="mx-auto max-w-3xl">{disclaimer}</p>
-        </footer>
-      ) : null}
+      <main className="relative z-10 h-screen overflow-hidden pt-[var(--portal-nav-height)]">
+        <div className="h-[calc(100vh-var(--portal-nav-height))] min-h-0 overflow-hidden">
+          {children}
+        </div>
+        {disclaimer ? (
+          <p className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-white/5 bg-[#0B0F1A]/50 px-6 py-1.5 text-center text-[9px] leading-snug text-white/30 backdrop-blur-sm sm:px-12 sm:text-[10px]">
+            <span className="line-clamp-1">{disclaimer}</span>
+          </p>
+        ) : null}
+      </main>
     </div>
   );
 }

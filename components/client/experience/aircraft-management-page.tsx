@@ -1,7 +1,14 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, SectionNumber } from "./experience-primitives";
+import {
+  ExperienceBody,
+  ExperienceHero,
+  ExperienceHeroTitle,
+  ExperienceSlide,
+  experienceGlass,
+  SectionNumber,
+} from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 
 export function AircraftManagementPage({
@@ -15,7 +22,7 @@ export function AircraftManagementPage({
   const callout = section.contentBlocks?.callout;
 
   return (
-    <>
+    <ExperienceSlide>
       <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="02" />
@@ -23,36 +30,50 @@ export function AircraftManagementPage({
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
-        <RevealOnScroll>
-          <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
-        </RevealOnScroll>
-        <div className={cn(experienceSectionGap, "grid gap-6 md:grid-cols-2 md:gap-8")}>
-          {pillars.map((pillar, i) => (
-            <RevealOnScroll key={pillar.title} delayMs={i * 100}>
-              <div className={cn(experienceGlass, "p-6")}>
-                <span className="font-mono text-2xl text-atlas-accent/80">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <h3 className="mt-2 font-serif text-2xl">{pillar.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-white/75">{pillar.body}</p>
-              </div>
+        <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
+          <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+            <RevealOnScroll>
+              <p className="line-clamp-5 text-sm leading-relaxed text-white/80 sm:text-base">
+                {section.bodyCopy}
+              </p>
             </RevealOnScroll>
-          ))}
-        </div>
-        {callout ? (
-          <RevealOnScroll delayMs={200}>
-            <div className={cn(experienceSectionGap, "max-w-3xl rounded-xl border border-atlas-accent/40 bg-atlas-accent/10 px-8 py-6 text-center")}>
-              <p className="text-xs uppercase tracking-wider text-white/60">{callout.label}</p>
-              <p className="mt-2 font-serif text-xl text-atlas-accent">{callout.value}</p>
+            <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2 sm:gap-3">
+              {pillars.map((pillar, i) => (
+                <RevealOnScroll key={pillar.title} delayMs={i * 80} className="min-h-0">
+                  <div className={cn(experienceGlass, "flex h-full flex-col p-3 sm:p-4")}>
+                    <span className="font-mono text-lg text-atlas-accent/80 sm:text-xl">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="mt-1 font-serif text-lg sm:text-xl">{pillar.title}</h3>
+                    <p className="mt-1 line-clamp-4 text-xs leading-relaxed text-white/75 sm:text-sm">
+                      {pillar.body}
+                    </p>
+                  </div>
+                </RevealOnScroll>
+              ))}
             </div>
-          </RevealOnScroll>
-        ) : null}
-        <ExperienceGallery
-          items={section.contentBlocks?.gallery}
-          layout="single"
-          variant="landscape-wide"
-        />
+            {callout ? (
+              <RevealOnScroll delayMs={160}>
+                <div className="shrink-0 rounded-xl border border-atlas-accent/40 bg-atlas-accent/10 px-4 py-3 text-center sm:px-6">
+                  <p className="text-[10px] uppercase tracking-wider text-white/60 sm:text-xs">
+                    {callout.label}
+                  </p>
+                  <p className="mt-1 font-serif text-base text-atlas-accent sm:text-lg">
+                    {callout.value}
+                  </p>
+                </div>
+              </RevealOnScroll>
+            ) : null}
+          </div>
+          <ExperienceGallery
+            items={section.contentBlocks?.gallery}
+            layout="single"
+            variant="landscape-wide"
+            slide
+            className="min-h-0"
+          />
+        </div>
       </ExperienceBody>
-    </>
+    </ExperienceSlide>
   );
 }

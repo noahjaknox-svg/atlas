@@ -14,9 +14,11 @@ const DEFAULT_FACTOR = 1.13;
 export function BlockVsFlightAnimation({
   flightHours,
   blockHours,
+  slide = false,
 }: {
   flightHours?: number | null;
   blockHours?: number | null;
+  slide?: boolean;
 }) {
   const { ref, shown } = useReveal<HTMLDivElement>({ threshold: 0.3 });
 
@@ -39,17 +41,27 @@ export function BlockVsFlightAnimation({
   return (
     <div
       ref={ref}
-      className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-6 sm:p-10"
+      className={
+        slide
+          ? "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-3 sm:p-4"
+          : "overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-6 sm:p-10"
+      }
     >
-      <p className="text-center text-xs uppercase tracking-[0.35em] text-white/50">
+      <p className="text-center text-[10px] uppercase tracking-[0.35em] text-white/50 sm:text-xs">
         Charter payback
       </p>
-      <p className="mx-auto mt-3 max-w-xl text-center text-sm text-white/60">
+      <p
+        className={
+          slide
+            ? "mx-auto mt-1 line-clamp-2 max-w-xl text-center text-xs text-white/60"
+            : "mx-auto mt-3 max-w-xl text-center text-sm text-white/60"
+        }
+      >
         Most operators compensate owners only for wheels-up flight time. PrismJet pays on block
         time — taxi to taxi — so more of every trip is paid back to you.
       </p>
 
-      <div className="mt-10 space-y-8">
+      <div className={slide ? "mt-3 min-h-0 flex-1 space-y-3" : "mt-10 space-y-8"}>
         {/* Flight time (others) */}
         <div>
           <div className="flex items-baseline justify-between">
@@ -59,7 +71,7 @@ export function BlockVsFlightAnimation({
             </p>
           </div>
           <p className="mt-0.5 text-xs text-white/40">Wheels up → wheels down (flight time)</p>
-          <div className="mt-3 h-9 overflow-hidden rounded-lg bg-white/[0.06]">
+          <div className="mt-2 h-6 overflow-hidden rounded-lg bg-white/[0.06] sm:mt-3 sm:h-9">
             <div
               className="h-full rounded-lg bg-white/20 transition-[width] duration-1000 ease-out"
               style={{ width: shown ? `${flightPct}%` : "0%" }}
@@ -76,7 +88,7 @@ export function BlockVsFlightAnimation({
             </p>
           </div>
           <p className="mt-0.5 text-xs text-white/40">Taxi to taxi (block time)</p>
-          <div className="mt-3 h-9 overflow-hidden rounded-lg bg-atlas-accent/15">
+          <div className="mt-2 h-6 overflow-hidden rounded-lg bg-atlas-accent/15 sm:mt-3 sm:h-9">
             <div
               className="h-full rounded-lg bg-gradient-to-r from-atlas-accent/80 to-atlas-accent transition-[width] duration-1000 ease-out"
               style={{ width: shown ? "100%" : "0%", transitionDelay: "250ms" }}
@@ -86,17 +98,23 @@ export function BlockVsFlightAnimation({
       </div>
 
       {deltaHours > 0 ? (
-        <div className="mt-10 flex flex-col items-center gap-1 border-t border-white/10 pt-6 text-center">
-          <p className="font-serif text-3xl text-atlas-accent">
+        <div
+          className={
+            slide
+              ? "mt-2 flex shrink-0 flex-col items-center gap-0.5 border-t border-white/10 pt-2 text-center"
+              : "mt-10 flex flex-col items-center gap-1 border-t border-white/10 pt-6 text-center"
+          }
+        >
+          <p className={slide ? "font-serif text-xl text-atlas-accent sm:text-2xl" : "font-serif text-3xl text-atlas-accent"}>
             +{deltaHours.toLocaleString()} hours
           </p>
-          <p className="text-sm text-white/60">
+          <p className={slide ? "text-xs text-white/60" : "text-sm text-white/60"}>
             paid back to you{deltaPct > 0 ? ` — about ${deltaPct}% more than flight-time models` : ""}
           </p>
         </div>
       ) : null}
 
-      <p className="mt-6 text-center text-[11px] text-white/40">
+      <p className={slide ? "mt-1 shrink-0 text-center text-[10px] text-white/40" : "mt-6 text-center text-[11px] text-white/40"}>
         {hasData
           ? "Based on this proposal's estimated charter utilization. Exact figures vary with demand."
           : "Illustrative example. Actual block vs flight time varies with routing and demand."}

@@ -1,7 +1,12 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
-import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, experienceGlass, experienceSectionGap, SectionNumber } from "./experience-primitives";
+import {
+  ExperienceBody,
+  ExperienceHero,
+  ExperienceHeroTitle,
+  ExperienceSlide,
+  SectionNumber,
+} from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
 import { PullQuote } from "./pull-quote";
 
@@ -16,7 +21,7 @@ export function MaintenancePage({
   const callout = section.contentBlocks?.callout;
 
   return (
-    <>
+    <ExperienceSlide>
       <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="04" />
@@ -24,70 +29,51 @@ export function MaintenancePage({
         </RevealOnScroll>
       </ExperienceHero>
       <ExperienceBody>
-        <RevealOnScroll>
-          <p className="text-base leading-relaxed text-white/80">{section.bodyCopy}</p>
-        </RevealOnScroll>
-        {callout ? <PullQuote text={callout.value} /> : null}
-        {rows.length > 0 ? (
-          <>
-            {/* Mobile: stacked cards */}
-            <div className={cn(experienceSectionGap, "space-y-3 md:hidden")}>
-              {rows.map((row) => (
-                <RevealOnScroll key={row.item} delayMs={60}>
-                  <div className={cn(experienceGlass, "p-4")}>
-                    <p className="font-medium text-white/90">{row.item}</p>
-                    <div className="mt-3 flex justify-between gap-4 text-sm">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-white/45">Other</p>
-                        <p className="mt-0.5 font-mono text-white/55">{row.otherCost}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-wider text-atlas-accent">
-                          PrismJet
-                        </p>
-                        <p className="mt-0.5 text-atlas-accent">{row.prismjetNote}</p>
-                      </div>
-                    </div>
-                  </div>
-                </RevealOnScroll>
-              ))}
-            </div>
-            {/* Desktop: table */}
-            <RevealOnScroll delayMs={120}>
-              <div className={cn(experienceSectionGap, "hidden overflow-x-auto rounded-xl border border-white/10 md:block")}>
-                <div className="min-w-[640px]">
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-px bg-white/10 text-xs uppercase tracking-wider text-white/50">
-                    <div className="bg-[#0f131c] px-4 py-3">Labor cost examples</div>
-                    <div className="bg-[#0f131c] px-4 py-3 text-right">Other</div>
-                    <div className="bg-[#0f131c] px-4 py-3 text-right text-atlas-accent">
+        <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-6">
+          <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+            <RevealOnScroll>
+              <p className="line-clamp-3 text-sm leading-relaxed text-white/80 sm:text-base">
+                {section.bodyCopy}
+              </p>
+            </RevealOnScroll>
+            {callout ? <PullQuote text={callout.value} slide /> : null}
+            {rows.length > 0 ? (
+              <RevealOnScroll delayMs={100} className="min-h-0 flex-1 overflow-hidden">
+                <div className="h-full overflow-hidden rounded-xl border border-white/10">
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-px bg-white/10 text-[10px] uppercase tracking-wider text-white/50 sm:text-xs">
+                    <div className="bg-[#0f131c] px-3 py-2">Labor cost examples</div>
+                    <div className="bg-[#0f131c] px-3 py-2 text-right">Other</div>
+                    <div className="bg-[#0f131c] px-3 py-2 text-right text-atlas-accent">
                       PrismJet
                     </div>
                   </div>
-                  {rows.map((row) => (
+                  {rows.slice(0, 5).map((row) => (
                     <div
                       key={row.item}
-                      className="grid grid-cols-[1fr_auto_auto] gap-px border-t border-white/10 bg-white/5 text-sm"
+                      className="grid grid-cols-[1fr_auto_auto] gap-px border-t border-white/10 bg-white/5 text-xs sm:text-sm"
                     >
-                      <div className="bg-[#0a0d14] px-4 py-3 text-white/85">{row.item}</div>
-                      <div className="bg-[#0a0d14] px-4 py-3 text-right font-mono text-white/50">
+                      <div className="bg-[#0a0d14] px-3 py-2 text-white/85">{row.item}</div>
+                      <div className="bg-[#0a0d14] px-3 py-2 text-right font-mono text-white/50">
                         {row.otherCost}
                       </div>
-                      <div className="bg-[#0a0d14] px-4 py-3 text-right text-atlas-accent">
+                      <div className="bg-[#0a0d14] px-3 py-2 text-right text-atlas-accent">
                         {row.prismjetNote}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            </RevealOnScroll>
-          </>
-        ) : null}
-        <ExperienceGallery
-          items={section.contentBlocks?.gallery}
-          layout="single"
-          variant="landscape-wide"
-        />
+              </RevealOnScroll>
+            ) : null}
+          </div>
+          <ExperienceGallery
+            items={section.contentBlocks?.gallery}
+            layout="single"
+            variant="landscape-wide"
+            slide
+            className="min-h-0"
+          />
+        </div>
       </ExperienceBody>
-    </>
+    </ExperienceSlide>
   );
 }

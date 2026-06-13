@@ -55,12 +55,14 @@ export function ProFormaClient({
   initialAircraftId,
   embedded = false,
   experiencePath = true,
+  slide = false,
 }: {
   slug: string;
   initial: ClientProFormaData;
   initialAircraftId?: string | null;
   embedded?: boolean;
   experiencePath?: boolean;
+  slide?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -258,15 +260,16 @@ export function ProFormaClient({
   ) : null;
 
   const inputsPanel = (
-    <div className="space-y-6">
+    <div className={cn(slide ? "space-y-3" : "space-y-6")}>
       {embedded ? (
         <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
       ) : null}
       {aircraftSelector}
       <div
         className={cn(
-          "grid gap-6",
-          embedded ? "grid-cols-1" : "max-w-xl sm:grid-cols-2"
+          "grid gap-4",
+          embedded ? "grid-cols-1" : "max-w-xl sm:grid-cols-2",
+          slide && "gap-3"
         )}
       >
         <label className="block text-sm text-white/70">
@@ -303,18 +306,26 @@ export function ProFormaClient({
   );
 
   const proFormaPanel = (
-    <div className="space-y-6">
+    <div className={cn(slide ? "flex min-h-0 flex-col gap-3 overflow-hidden" : "space-y-6")}>
       <ProFormaVisualSummary
         lineItems={lineItemsForViz}
         period={period}
         onPeriodChange={setPeriod}
+        compact={slide}
       />
-      <ClientProFormaStatement rows={statementRows} period={period} />
+      <div className={slide ? "min-h-0 flex-1 overflow-hidden" : undefined}>
+        <ClientProFormaStatement rows={statementRows} period={period} compact={slide} />
+      </div>
     </div>
   );
 
   return (
-    <div className={cn("text-white", embedded ? "space-y-8" : "space-y-10")}>
+    <div
+      className={cn(
+        "text-white",
+        embedded ? (slide ? "h-full" : "space-y-8") : "space-y-10"
+      )}
+    >
       {!embedded ? (
         <>
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -353,7 +364,8 @@ export function ProFormaClient({
       {embedded ? (
         <div
           className={cn(
-            "grid items-start gap-10 lg:grid-cols-[minmax(280px,380px)_1fr] lg:gap-12 xl:gap-16",
+            "grid items-start gap-6 lg:grid-cols-[minmax(240px,320px)_1fr] lg:gap-8 xl:gap-10",
+            slide && "h-full min-h-0 items-stretch gap-4 lg:gap-6",
             aircraftLoading && "opacity-70 transition-opacity"
           )}
         >

@@ -1048,7 +1048,9 @@ model CrewFleetAircraft {
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  aircraftType CrewAircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
+  aircraftType         CrewAircraftType         @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
+  scheduleEvents       ScheduleEvent[]
+  charterRequestMatches CharterRequestMatch[]
 
   @@index([aircraftTypeId])
   @@map("crew_fleet_aircraft")
@@ -1071,4 +1073,172 @@ model CrewPerformanceGrid {
 
   @@unique([aircraftTypeId, metric])
   @@map("crew_performance_grids")
+}
+
+// ——— JetInsight schedule + charter requests ———
+
+enum ScheduleRawEventType {
+  charter
+  owner
+  positioning
+  maintenance
+  ferry_mx
+  training
+  other
+}
+
+enum ScheduleAvailabilityClass {
+  hard_block
+  soft_hold
+  repo_opportunity
+  info_only
+}
+
+enum InboundMessageProvider {
+  postmark
+  manual
+}
+
+enum CharterRequestStatus {
+  new
+  parsed
+  matched
+  quoted
+  sent_to_jetinsight
+}
+
+enum CharterRequestParsedBy {
+  rules
+  ai
+}
+
+model ScheduleSource {
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String
+  icsUrl               String    @map("ics_url")
+  pollIntervalMinutes  Int       @default(10) @map("poll_interval_minutes")
+  lastSyncedAt         DateTime? @map("last_synced_at")
+  lastSyncStatus       String?   @map("last_sync_status")
+  enabled              Boolean   @default(true)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  events   ScheduleEvent[]
+  syncRuns ScheduleSyncRun[]
+
+  @@map("schedule_sources")
+}
+
+model ScheduleEvent {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  sourceId           String                    @map("source_id") @db.Uuid
+  externalUid        String                    @map("external_uid")
+  externalTripCode   String?                   @map("external_trip_code")
+  externalUrl        String?                   @map("external_url")
+  tailNumber         String                    @map("tail_number")
+  fleetAircraftId    String?                   @map("fleet_aircraft_id") @db.Uuid
+  depIcao            String?                   @map("dep_icao")
+  arrIcao            String?                   @map("arr_icao")
+  locationIcao       String?                   @map("location_icao")
+  startsAt           DateTime                  @map("starts_at")
+  endsAt             DateTime                  @map("ends_at")
+  lastModifiedAt     DateTime?                 @map("last_modified_at")
+  clientLabel        String?                   @map("client_label")
+  paxCount           Int?                      @map("pax_count")
+  picName            String?                   @map("pic_name")
+  sicName            String?                   @map("sic_name")
+  cabinCrew          String[]                  @default([]) @map("cabin_crew")
+  summaryRaw         String                    @map("summary_raw")
+  descriptionRaw     String?                   @map("description_raw")
+  rawEventType       ScheduleRawEventType      @map("raw_event_type")
+  isHold             Boolean                   @default(false) @map("is_hold")
+  isAdminBlock       Boolean                   @default(false) @map("is_admin_block")
+  availabilityClass  ScheduleAvailabilityClass @map("availability_class")
+  rawIcs             Json                      @default("{}") @map("raw_ics") @db.JsonB
+  deletedAt          DateTime?                 @map("deleted_at")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+
+  source        ScheduleSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  fleetAircraft CrewFleetAircraft? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, externalUid])
+  @@index([tailNumber, startsAt])
+  @@index([availabilityClass, startsAt])
+  @@map("schedule_events")
+}
+
+model ScheduleSyncRun {
+  id              String    @id @default(uuid()) @db.Uuid
+  sourceId        String    @map("source_id") @db.Uuid
+  startedAt       DateTime  @default(now()) @map("started_at")
+  finishedAt      DateTime? @map("finished_at")
+  eventsUpserted  Int       @default(0) @map("events_upserted")
+  eventsDeleted   Int       @default(0) @map("events_deleted")
+  errorMessage    String?   @map("error_message")
+
+  source ScheduleSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt(sort: Desc)])
+  @@map("schedule_sync_runs")
+}
+
+model InboundMessage {
+  id          String                 @id @default(uuid()) @db.Uuid
+  provider    InboundMessageProvider
+  messageId   String?                @map("message_id")
+  fromAddress String                 @map("from_address")
+  toAddress   String?                @map("to_address")
+  subject     String?
+  bodyText    String?                @map("body_text") @db.Text
+  bodyHtml    String?                @map("body_html") @db.Text
+  rawPayload  Json                   @default("{}") @map("raw_payload") @db.JsonB
+  receivedAt  DateTime               @default(now()) @map("received_at")
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  charterRequests CharterRequest[]
+
+  @@index([receivedAt(sort: Desc)])
+  @@map("inbound_messages")
+}
+
+model CharterRequest {
+  id                 String                @id @default(uuid()) @db.Uuid
+  inboundMessageId   String?               @map("inbound_message_id") @db.Uuid
+  status             CharterRequestStatus  @default(new)
+  requestedDepIcao   String?               @map("requested_dep_icao")
+  requestedArrIcao   String?               @map("requested_arr_icao")
+  requestedDepartAt  DateTime?             @map("requested_depart_at")
+  paxCount           Int?                  @map("pax_count")
+  clientName         String?               @map("client_name")
+  notes              String?               @db.Text
+  parseConfidence    Decimal?              @map("parse_confidence") @db.Decimal(5, 4)
+  parsedBy           CharterRequestParsedBy? @map("parsed_by")
+  rawExtraction      Json                  @default("{}") @map("raw_extraction") @db.JsonB
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  inboundMessage InboundMessage?        @relation(fields: [inboundMessageId], references: [id], onDelete: SetNull)
+  matches        CharterRequestMatch[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("charter_requests")
+}
+
+model CharterRequestMatch {
+  id              String   @id @default(uuid()) @db.Uuid
+  requestId       String   @map("request_id") @db.Uuid
+  tailNumber      String   @map("tail_number")
+  fleetAircraftId String?  @map("fleet_aircraft_id") @db.Uuid
+  score           Decimal  @db.Decimal(8, 4)
+  rank            Int
+  reasoning       Json     @default("{}") @db.JsonB
+  recommended     Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  request       CharterRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fleetAircraft CrewFleetAircraft? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, rank])
+  @@map("charter_request_matches")
 }

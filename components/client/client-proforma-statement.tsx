@@ -199,8 +199,9 @@ function FlatStatement({
     <div
       className={cn(
         "overflow-x-auto rounded-lg border border-white/15 bg-white/5 backdrop-blur",
-        compact && "max-h-[28rem] overflow-y-auto",
-        className
+        compact ? "h-full max-h-full overflow-hidden" : undefined,
+        !compact && className,
+        compact && className
       )}
     >
       <div className="divide-y divide-white/10">
@@ -242,6 +243,7 @@ function FlatStatement({
               row={row}
               period={period}
               colMode={currentColMode}
+              compact={compact}
             />
           );
         })}
@@ -254,10 +256,12 @@ function StatementLine({
   row,
   period,
   colMode,
+  compact = false,
 }: {
   row: ProFormaStatementRow;
   period: "annual" | "monthly";
   colMode: ColMode;
+  compact?: boolean;
 }) {
   const isTotal = row.kind === "subtotal" || row.kind === "total";
   const showRateHours = colMode === "full";
@@ -266,7 +270,8 @@ function StatementLine({
   return (
     <div
       className={cn(
-        "grid items-center gap-2 px-4 py-2 text-sm",
+        "grid items-center gap-2 px-4 text-sm",
+        compact ? "py-1 text-xs" : "py-2 text-sm",
         showRateHours ? "grid-cols-[1fr_5rem_4rem_6rem]" : "grid-cols-[1fr_6rem]",
         isTotal && "bg-white/10 font-medium"
       )}

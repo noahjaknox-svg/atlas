@@ -3,7 +3,13 @@ import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { ProFormaClient } from "@/components/client/pro-forma-client";
 import { RevealOnScroll } from "./reveal-on-scroll";
-import { ExperienceBody, ExperienceHero, ExperienceHeroTitle, SectionNumber } from "./experience-primitives";
+import {
+  ExperienceBody,
+  ExperienceHero,
+  ExperienceHeroTitle,
+  ExperienceSlide,
+  SectionNumber,
+} from "./experience-primitives";
 
 export function ExperienceProFormaPage({
   slug,
@@ -26,29 +32,34 @@ export function ExperienceProFormaPage({
   });
 
   return (
-    <>
+    <ExperienceSlide>
       <ExperienceHero>
         <RevealOnScroll immediate>
           <SectionNumber n="07" />
           <ExperienceHeroTitle>{section.title}</ExperienceHeroTitle>
         </RevealOnScroll>
       </ExperienceHero>
-      <ExperienceBody fullWidth className="!pt-6">
-        {bodyCopy ? (
-          <RevealOnScroll>
-            <p className="mb-8 max-w-3xl text-sm leading-relaxed text-white/65 sm:mb-10">
-              {bodyCopy}
-            </p>
-          </RevealOnScroll>
-        ) : null}
-        <ProFormaClient
-          slug={slug}
-          initial={client}
-          initialAircraftId={aircraftParam ?? client.aircraft.id}
-          embedded
-          experiencePath
-        />
+      <ExperienceBody fullWidth className="!py-1">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          {bodyCopy ? (
+            <RevealOnScroll>
+              <p className="mb-2 line-clamp-2 max-w-3xl text-xs leading-relaxed text-white/65 sm:text-sm">
+                {bodyCopy}
+              </p>
+            </RevealOnScroll>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ProFormaClient
+              slug={slug}
+              initial={client}
+              initialAircraftId={aircraftParam ?? client.aircraft.id}
+              embedded
+              experiencePath
+              slide
+            />
+          </div>
+        </div>
       </ExperienceBody>
-    </>
+    </ExperienceSlide>
   );
 }

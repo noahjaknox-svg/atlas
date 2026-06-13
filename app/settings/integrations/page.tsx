@@ -21,12 +21,25 @@ export default async function IntegrationsSettingsPage() {
     },
   });
 
+  const scheduleSource = await prisma.scheduleSource.findFirst({
+    where: { enabled: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
   return (
     <InternalShell userName={user.name} isAdmin>
       <IntegrationsClient
         initial={{
           eiaConfigured: Boolean(process.env.EIA_API_KEY?.trim()),
           iflightConfigured: Boolean(process.env.IFLIGHTPLANNER_API_KEY?.trim()),
+          jetinsightConfigured: Boolean(process.env.JETINSIGHT_ICS_URL?.trim()),
+          jetinsightSource: scheduleSource
+            ? {
+                name: scheduleSource.name,
+                lastSyncedAt: scheduleSource.lastSyncedAt?.toISOString() ?? null,
+                lastSyncStatus: scheduleSource.lastSyncStatus,
+              }
+            : null,
           latestFuel: latestFuel
             ? {
                 pricePerGallon: Number(latestFuel.pricePerGallon),

@@ -17,12 +17,14 @@ export function EditorialImageGrid({
   title,
   primaryIndex = 0,
   className,
+  slide = false,
 }: {
   items?: ExperienceGalleryItem[] | null;
   title?: string;
   /** Which item is the wide primary (defaults to first). */
   primaryIndex?: number;
   className?: string;
+  slide?: boolean;
 }) {
   const [active, setActive] = useState<number | null>(null);
 
@@ -51,15 +53,25 @@ export function EditorialImageGrid({
   const secondaryIndex = items.indexOf(secondary);
 
   return (
-    <RevealOnScroll delayMs={120}>
-      <section className={cn(experienceImageSectionMt, "pb-2", className)} aria-label={title ?? "Gallery"}>
+    <RevealOnScroll delayMs={120} className={cn(slide && "flex h-full min-h-0 flex-col", className)}>
+      <section
+        className={cn(
+          slide ? "flex min-h-0 flex-1 flex-col pb-0" : cn(experienceImageSectionMt, "pb-2")
+        )}
+        aria-label={title ?? "Gallery"}
+      >
         {title ? (
           <p className="mb-5 text-center text-xs uppercase tracking-[0.35em] text-white/45">
             {title}
           </p>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-[3fr_2fr] md:gap-5 md:h-[min(48vw,480px)] md:max-h-[480px] md:min-h-[260px]">
+        <div
+          className={cn(
+            "grid gap-3 md:grid-cols-[3fr_2fr] md:gap-4",
+            slide ? "min-h-0 flex-1 md:h-full md:max-h-none" : "md:h-[min(48vw,480px)] md:max-h-[480px] md:min-h-[260px]"
+          )}
+        >
           <ProposalImage
             src={primary.url}
             alt={primary.caption ?? ""}
