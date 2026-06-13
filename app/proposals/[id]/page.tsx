@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { perfTimed } from "@/lib/perf-log";
 import { getPortalUrl } from "@/lib/portal-credentials";
 import { decryptPinFromStorage } from "@/lib/pin-vault";
 import { loadProposalAircraft } from "@/lib/load-proposal-aircraft";
@@ -25,32 +26,36 @@ export default async function ProposalWorkspacePage({
 }) {
   const { id } = await params;
 
-  await ensureExperienceSections(id);
-
-  const [user, proposal, atlasUsers, comments] = await Promise.all([
-    getInternalUser(),
-    prisma.proposal.findUnique({
-      where: { id },
-      include: {
-        prospect: true,
-        aircraftInstance: { include: { aircraftMaster: true } },
-        assumptions: true,
-        sections: { orderBy: { sortOrder: "asc" } },
-        scenarios: true,
-        clientPortal: true,
-      },
-    }),
-    prisma.user.findMany({
-      where: { active: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.proposalComment.findMany({
-      where: { proposalId: id },
-      include: { user: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+  const [user, proposal, atlasUsers, comments] = await perfTimed(
+    "proposal workspace query",
+    () =>
+      Promise.all([
+        getInternalUser(),
+        ensureExperienceSections(id).then(() =>
+          prisma.proposal.findUnique({
+            where: { id },
+            include: {
+              prospect: true,
+              aircraftInstance: { include: { aircraftMaster: true } },
+              assumptions: true,
+              sections: { orderBy: { sortOrder: "asc" } },
+              scenarios: true,
+              clientPortal: true,
+            },
+          })
+        ),
+        prisma.user.findMany({
+          where: { active: true },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+        prisma.proposalComment.findMany({
+          where: { proposalId: id },
+          include: { user: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+        }),
+      ])
+  );
 
   if (!user) redirect("/login");
   if (!proposal) notFound();

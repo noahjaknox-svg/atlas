@@ -12,9 +12,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "operating-defaults",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.aircraftOperatingDefault.findMany({
           where,
+          skip,
+          take,
           orderBy: [{ aircraftMasterId: "asc" }, { costKey: "asc" }],
           include: {
             aircraftMaster: { select: { manufacturer: true, model: true } },

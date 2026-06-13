@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { UsersAdminInviteRow, UsersAdminUserRow } from "@/lib/users-admin-load";
 
-type UserRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  active: boolean;
-  proposalsAssigned: number;
-};
-
-type PendingInviteRow = {
-  id: string;
-  email: string;
-  role: string;
-  invitedAt: string;
-  invitedBy: string;
-};
+type UserRow = UsersAdminUserRow;
+type PendingInviteRow = UsersAdminInviteRow;
 
 function formatInviteDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -28,9 +15,19 @@ function formatInviteDate(iso: string) {
   });
 }
 
-export function UsersAdmin() {
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([]);
+export function UsersAdmin({
+  initialData,
+}: {
+  initialData?: {
+    users: UserRow[];
+    pendingInvites: PendingInviteRow[];
+  };
+}) {
+  const [users, setUsers] = useState<UserRow[]>(initialData?.users ?? []);
+  const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>(
+    initialData?.pendingInvites ?? []
+  );
+  const skipInitialLoad = useRef(!!initialData);
   const [loadError, setLoadError] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteName, setInviteName] = useState("");
@@ -54,6 +51,10 @@ export function UsersAdmin() {
   }
 
   useEffect(() => {
+    if (skipInitialLoad.current) {
+      skipInitialLoad.current = false;
+      return;
+    }
     void load();
   }, []);
 

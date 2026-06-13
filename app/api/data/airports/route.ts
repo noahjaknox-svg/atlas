@@ -10,9 +10,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "airports",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.airport.findMany({
           where,
+          skip,
+          take,
           orderBy: { icao: "asc" },
           include: { _count: { select: { fboLocations: true } } },
         }),

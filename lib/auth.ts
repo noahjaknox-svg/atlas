@@ -1,9 +1,11 @@
 import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { ATLAS_USER_EMAIL_HEADER } from "./auth-constants";
 
 const PORTAL_COOKIE = "atlas_portal_session";
 const PIN_ATTEMPT_COOKIE = "atlas_pin_attempts";
@@ -33,18 +35,27 @@ export async function createSupabaseServerClient() {
   );
 }
 
-export async function getInternalUser() {
+async function resolveInternalUserEmail(): Promise<string | null> {
+  const headerStore = await headers();
+  const fromMiddleware = headerStore.get(ATLAS_USER_EMAIL_HEADER);
+  if (fromMiddleware) return fromMiddleware;
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user?.email) return null;
+  return user?.email ?? null;
+}
+
+export const getInternalUser = cache(async () => {
+  const email = await resolveInternalUserEmail();
+  if (!email) return null;
 
   return prisma.user.findFirst({
-    where: { email: user.email, active: true },
+    where: { email, active: true },
   });
-}
+});
 
 export async function requireInternalUser() {
   const user = await getInternalUser();

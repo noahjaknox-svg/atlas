@@ -47,16 +47,23 @@ export function PipelineBoard({
   initialCards,
   atlasUsers,
   isAdmin,
+  totalCount,
+  hasMore: initialHasMore,
 }: {
   initialCards: PipelineCardData[];
   atlasUsers: AtlasUser[];
   isAdmin?: boolean;
+  totalCount?: number;
+  hasMore?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [cards, setCards] = useState(initialCards);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialHasMore ?? false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
 
   const query = searchParams.get("q") ?? "";
   const assigneeRaw = searchParams.get("assignee") ?? "";
@@ -114,16 +121,37 @@ export function PipelineBoard({
   }, [searchInput, query, updateParams]);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/proposals/pipeline");
+    const res = await fetch("/api/proposals/pipeline?page=1");
     if (res.ok) {
       const data = await res.json();
-      setCards(data);
+      setCards(data.cards ?? data);
+      setPage(1);
+      setHasMore(data.hasMore ?? false);
     }
   }, []);
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await fetch(`/api/proposals/pipeline?page=${nextPage}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const nextCards = data.cards ?? [];
+      setCards((prev) => [...prev, ...nextCards]);
+      setPage(nextPage);
+      setHasMore(data.hasMore ?? false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, page]);
+
   useEffect(() => {
     setCards(initialCards);
-  }, [initialCards]);
+    setHasMore(initialHasMore ?? false);
+    setPage(1);
+  }, [initialCards, initialHasMore]);
 
   const assigneeSet = useMemo(() => parseAssigneeFilter(assigneeRaw), [assigneeRaw]);
 
@@ -380,6 +408,21 @@ export function PipelineBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {hasMore ? (
+        <div className="mb-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => void loadMore()}
+            disabled={loadingMore}
+            className="rounded-md border border-atlas-border px-4 py-2 text-sm text-atlas-muted hover:bg-atlas-surface disabled:opacity-50"
+          >
+            {loadingMore
+              ? "Loading…"
+              : `Load more${totalCount ? ` (${cards.length} of ${totalCount})` : ""}`}
+          </button>
+        </div>
+      ) : null}
 
       <ProposalDetailPanel
         proposalId={selectedId}

@@ -12,9 +12,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "training-costs",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.trainingCost.findMany({
           where,
+          skip,
+          take,
           include: { aircraftMaster: { select: { manufacturer: true, model: true } } },
           orderBy: { updatedAt: "desc" },
         }),

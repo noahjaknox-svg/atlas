@@ -11,9 +11,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "state-cost-factors",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.stateCostFactor.findMany({
           where,
+          skip,
+          take,
           orderBy: { state: "asc" },
         }),
       () => prisma.stateCostFactor.count(),

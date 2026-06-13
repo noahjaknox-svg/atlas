@@ -11,9 +11,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "fbos",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.fboLocation.findMany({
           where,
+          skip,
+          take,
           orderBy: { fboName: "asc" },
           include: { airport: { select: { icao: true, airportName: true } } },
         }),

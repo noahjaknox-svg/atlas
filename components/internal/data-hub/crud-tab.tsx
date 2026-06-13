@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/internal/data-hub/data-table";
@@ -15,6 +15,9 @@ type ListPayload = {
   rows: Row[];
   total: number;
   filtered: number;
+  page?: number;
+  pageSize?: number;
+  hasMore?: boolean;
 };
 
 function isListPayload(data: unknown): data is ListPayload {
@@ -53,6 +56,7 @@ export function CrudTab({
   fillHeight = false,
   extraBody,
   onMutate,
+  initialData,
 }: {
   title: string;
   apiPath: string;
@@ -65,6 +69,8 @@ export function CrudTab({
   extraBody?: Record<string, unknown>;
   /** Called after a successful create, update, or delete. */
   onMutate?: () => void;
+  /** Server-prefetched list payload to avoid an initial client fetch. */
+  initialData?: ListPayload | null;
 }) {
   const searchParams = useSearchParams();
   const filterKey = useMemo(() => {
@@ -72,9 +78,10 @@ export function CrudTab({
     return buildDataHubQuery(f).toString();
   }, [searchParams]);
 
-  const [rows, setRows] = useState<Row[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [filteredCount, setFilteredCount] = useState(0);
+  const [rows, setRows] = useState<Row[]>(initialData?.rows ?? []);
+  const [totalCount, setTotalCount] = useState(initialData?.total ?? 0);
+  const [filteredCount, setFilteredCount] = useState(initialData?.filtered ?? 0);
+  const skipInitialLoad = useRef(!!initialData);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -104,6 +111,10 @@ export function CrudTab({
   }, [apiPath, searchParams]);
 
   useEffect(() => {
+    if (skipInitialLoad.current) {
+      skipInitialLoad.current = false;
+      return;
+    }
     void load();
   }, [load, filterKey]);
 

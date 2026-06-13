@@ -272,8 +272,21 @@ export function buildPrismaWhere(
   }
 }
 
-export function listResponse<T>(rows: T[], total: number) {
-  return { rows, total, filtered: rows.length };
+export function listResponse<T>(
+  rows: T[],
+  total: number,
+  filtered: number,
+  page = 1,
+  pageSize = rows.length
+) {
+  return {
+    rows,
+    total,
+    filtered,
+    page,
+    pageSize,
+    hasMore: page * pageSize < filtered,
+  };
 }
 
 export function hasListFilters(filters: ListQueryFilters): boolean {

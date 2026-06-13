@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ATLAS_USER_EMAIL_HEADER } from "@/lib/auth-constants";
 
 const INTERNAL_PREFIXES = [
   "/dashboard",
@@ -35,8 +36,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  const requestHeaders = new Headers(request.headers);
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
+  const authStart = Date.now();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -47,7 +50,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request: { headers: request.headers } });
+          response = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -60,8 +63,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[perf] middleware auth (${pathname}): ${Date.now() - authStart}ms`);
+  }
+
   if (!user && !pathname.startsWith("/api/")) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (user?.email) {
+    requestHeaders.set(ATLAS_USER_EMAIL_HEADER, user.email);
+    const refreshed = NextResponse.next({ request: { headers: requestHeaders } });
+    response.cookies.getAll().forEach((cookie) => {
+      refreshed.cookies.set(cookie);
+    });
+    response = refreshed;
   }
 
   return response;

@@ -10,9 +10,11 @@ export async function GET(request: Request) {
     const result = await fetchDataHubList(
       request,
       "scenario-templates",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.scenarioTemplate.findMany({
           where,
+          skip,
+          take,
           include: {
             aircraftMaster: { select: { manufacturer: true, model: true } },
             assumptions: true,

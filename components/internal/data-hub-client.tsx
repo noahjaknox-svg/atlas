@@ -25,6 +25,7 @@ import { CrewDataHubPanel } from "@/components/internal/data-hub/crew-data-hub-p
 import { CsvImportPanel } from "@/components/internal/data-hub/csv-import-panel";
 import type { DataTableColumn } from "@/components/internal/data-hub/data-table";
 import { formatHubLabel } from "@/lib/data-hub-labels";
+import type { DataHubListPayload } from "@/lib/data-hub-prefetch";
 
 type HubRow = Record<string, unknown>;
 
@@ -102,7 +103,18 @@ const REFERENCE_TABS = [
 /** Operational fleet + POH grids for the PrismJet Crew iOS app — pinned separately. */
 const CREW_TAB = { id: "performance-data", label: "PrismJet Crew Data" } as const;
 
-export function DataHubClient({ initialTab }: { initialTab: string }) {
+export function DataHubClient({
+  initialTab,
+  initialTabData = null,
+  initialAirportsTabData = null,
+}: {
+  initialTab: string;
+  initialTabData?: DataHubListPayload | null;
+  initialAirportsTabData?: {
+    airports: DataHubListPayload;
+    fbos: DataHubListPayload;
+  } | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") ?? initialTab;
@@ -313,6 +325,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             <CrudTab
               title="Airports"
               apiPath="/api/data/airports"
+              initialData={initialAirportsTabData?.airports}
               columns={[
                 { key: "icao", label: "ICAO" },
                 { key: "airportName", label: "Name" },
@@ -332,6 +345,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
             <CrudTab
               title="FBO Locations"
               apiPath="/api/data/fbos"
+              initialData={initialAirportsTabData?.fbos}
               columns={[
                 { key: "airportIcao", label: "Airport" },
                 { key: "fboName", label: "FBO" },
@@ -372,6 +386,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Aircraft master"
             apiPath="/api/data/aircraft-master"
+            initialData={initialTab === "aircraft" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "manufacturer", label: "Manufacturer" },
@@ -411,6 +426,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Operating defaults"
             apiPath="/api/data/operating-defaults"
+            initialData={initialTab === "operating" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
@@ -438,6 +454,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Crew rates"
             apiPath="/api/data/crew-rates"
+            initialData={initialTab === "crew" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
@@ -459,6 +476,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Program costs"
             apiPath="/api/data/program-costs"
+            initialData={initialTab === "programs" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
@@ -486,6 +504,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Training costs"
             apiPath="/api/data/training-costs"
+            initialData={initialTab === "training" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
@@ -513,6 +532,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Insurance assumptions"
             apiPath="/api/data/insurance-assumptions"
+            initialData={initialTab === "insurance" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },
@@ -532,6 +552,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Hangar costs"
             apiPath="/api/data/hangar-costs"
+            initialData={initialTab === "hangar" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "airportIcao", label: "Airport" },
@@ -570,6 +591,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="State cost factors"
             apiPath="/api/data/state-cost-factors"
+            initialData={initialTab === "taxes" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "state", label: "State" },
@@ -590,6 +612,7 @@ export function DataHubClient({ initialTab }: { initialTab: string }) {
           <CrudTab
             title="Charter market rates"
             apiPath="/api/data/charter-rates"
+            initialData={initialTab === "charter" ? initialTabData : undefined}
             fillHeight
             columns={[
               { key: "aircraft", label: "Aircraft" },

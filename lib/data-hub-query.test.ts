@@ -79,10 +79,13 @@ describe("hasListFilters", () => {
 
 describe("listResponse", () => {
   it("wraps rows with counts", () => {
-    expect(listResponse([{ id: "1" }], 10)).toEqual({
+    expect(listResponse([{ id: "1" }], 10, 1)).toEqual({
       rows: [{ id: "1" }],
       total: 10,
       filtered: 1,
+      page: 1,
+      pageSize: 1,
+      hasMore: false,
     });
   });
 });

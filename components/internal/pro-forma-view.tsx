@@ -1,30 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import type { ScenarioProFormaResult } from "@/lib/proforma";
 import type { ScenarioInput } from "@/lib/proforma";
+import type { ProFormaPayload } from "@/lib/proforma-load";
 
 export function ProFormaView({
   proposalId,
   aircraftInstanceId,
   aircraftLabel,
+  initialData,
 }: {
   proposalId: string;
   aircraftInstanceId: string;
   aircraftLabel: string;
+  initialData?: ProFormaPayload;
 }) {
   const [period, setPeriod] = useState<"annual" | "monthly">("annual");
-  const [inputs, setInputs] = useState<ScenarioInput[]>([]);
-  const [results, setResults] = useState<ScenarioProFormaResult[]>([]);
+  const [inputs, setInputs] = useState<ScenarioInput[]>(initialData?.scenarioInputs ?? []);
+  const [results, setResults] = useState<ScenarioProFormaResult[]>(initialData?.scenarios ?? []);
   const [assumptionsOpen, setAssumptionsOpen] = useState(false);
   const [breakEvenOpen, setBreakEvenOpen] = useState(false);
   const [assumptionsMeta, setAssumptionsMeta] = useState<
     { label: string; value: string; source: string }[]
-  >([]);
-  const [breakEvenBase, setBreakEvenBase] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  >(initialData?.assumptionsMeta ?? []);
+  const [breakEvenBase, setBreakEvenBase] = useState<number | null>(
+    initialData?.breakEvenBase ?? null
+  );
+  const [loading, setLoading] = useState(!initialData);
+  const skipInitialLoad = useRef(!!initialData);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +48,10 @@ export function ProFormaView({
   }, [proposalId, aircraftInstanceId]);
 
   useEffect(() => {
+    if (skipInitialLoad.current) {
+      skipInitialLoad.current = false;
+      return;
+    }
     void load();
   }, [load]);
 

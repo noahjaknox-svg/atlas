@@ -3,27 +3,26 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { dec, dateStr } from "@/lib/data-hub-serialize";
 import { fetchDataHubList } from "@/lib/data-hub-list";
-import { hasListFilters, parseListQuery } from "@/lib/data-hub-query";
 import { parseOptionalDate, parseOptionalDecimal, parseOptionalString } from "@/lib/data-hub-parse";
 import type { AircraftCategory, DataConfidence, HangarPricingMethod } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
     await requireAdmin();
-    const filters = parseListQuery(request.url);
     const result = await fetchDataHubList(
       request,
       "hangar-costs",
-      (where) =>
+      (where, { skip, take }) =>
         prisma.hangarCost.findMany({
           where,
+          skip,
+          take,
           include: {
             airport: { select: { icao: true } },
             aircraftMaster: { select: { manufacturer: true, model: true } },
             fboLocation: { select: { fboName: true } },
           },
           orderBy: { updatedAt: "desc" },
-          take: hasListFilters(filters) ? undefined : 500,
         }),
       () => prisma.hangarCost.count(),
       (rows) =>
