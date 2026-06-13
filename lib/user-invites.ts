@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient, type User as SupabaseAuthUser } from "@supabase/supabase-js";
+import { getInviteRedirectUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/db";
 import type { UserRole } from "@prisma/client";
 
@@ -28,21 +29,6 @@ function requireSupabaseAdmin(): {
   });
 
   return { supabase, anonKey, supabaseUrl };
-}
-
-/** Public app URL used in invite / reset email links. */
-export function getAppBaseUrl(): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (!appUrl) {
-    throw new Error(
-      "NEXT_PUBLIC_APP_URL is required so invite emails contain valid sign-in links."
-    );
-  }
-  return appUrl.replace(/\/$/, "");
-}
-
-export function getInviteRedirectUrl(): string {
-  return `${getAppBaseUrl()}/auth/callback?next=/pipeline`;
 }
 
 async function resendSignupEmail(

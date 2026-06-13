@@ -1,19 +1,23 @@
 import "../lib/load-env";
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import { getExternalAppUrl, getInviteRedirectUrl } from "../lib/app-url";
 
 const prisma = new PrismaClient();
 
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const externalUrl = getExternalAppUrl();
+  const inviteRedirect = getInviteRedirectUrl();
 
   console.log("=== Atlas invite audit ===\n");
   console.log("Env:");
   console.log("  NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl ? "set" : "MISSING");
   console.log("  SUPABASE_SERVICE_ROLE_KEY:", serviceKey ? "set" : "MISSING");
-  console.log("  NEXT_PUBLIC_APP_URL:", appUrl);
+  console.log("  NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL ?? "(default)");
+  console.log("  NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL ?? "(unset)");
+  console.log("  External links use:", externalUrl);
 
   try {
     const pending = await prisma.userInvite.count({ where: { status: "pending" } });
@@ -79,7 +83,7 @@ async function main() {
   console.log("  count:", invitedAuthUsers);
   console.log("  missing pending user_invites row:", invitedWithoutDbRow);
   console.log("\nInvite redirect URL used by API:");
-  console.log(`  ${appUrl}/auth/callback?next=/pipeline`);
+  console.log(`  ${inviteRedirect}`);
 
   const pendingRows = await prisma.userInvite.findMany({
     where: { status: "pending" },
@@ -89,7 +93,7 @@ async function main() {
   console.log("\nPending invite ↔ Supabase sync:");
   for (const inv of pendingRows) {
     const email = inv.email.toLowerCase();
-    let page = 1;
+    let scanPage = 1;
     let match: {
       email_confirmed_at?: string | null;
       invited_at?: string | null;
@@ -97,7 +101,10 @@ async function main() {
     } | null = null;
 
     while (!match) {
-      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+      const { data, error } = await supabase.auth.admin.listUsers({
+        page: scanPage,
+        perPage: 200,
+      });
       if (error) break;
       const u = data.users.find((x) => x.email?.toLowerCase() === email);
       if (u) {
@@ -109,7 +116,7 @@ async function main() {
         break;
       }
       if (data.users.length < 200) break;
-      page += 1;
+      scanPage += 1;
     }
 
     const label = email.split("@")[0] + "@***";
@@ -122,9 +129,9 @@ async function main() {
     );
   }
 
-  if (appUrl.includes("localhost")) {
+  if (/localhost|127\.0\.0\.1/i.test(externalUrl)) {
     console.log(
-      "\nWARNING: NEXT_PUBLIC_APP_URL is localhost — invite links in emails will not work for recipients."
+      "\nWARNING: External URL is still localhost — invite links will not work for recipients."
     );
   }
 

@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getAppBaseUrl } from "@/lib/user-invites";
+import { getAuthCallbackUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const appUrl = getAppBaseUrl();
+  const redirectTo = getAuthCallbackUrl("/login");
 
   if (!url || !key) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   });
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${appUrl}/auth/callback?next=/login`,
+    redirectTo,
   });
 
   if (error) {

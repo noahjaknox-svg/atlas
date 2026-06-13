@@ -25,6 +25,19 @@ export default function LoginPage() {
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+      const isInvite = hashParams.get("type") === "invite";
+      const next = params.get("next") ?? "/pipeline";
+      const flow = isInvite ? "&flow=invite" : "";
+      window.location.replace(
+        `/auth/callback?next=${encodeURIComponent(next)}${flow}${hash}`
+      );
+      return;
+    }
+
     const authError = new URLSearchParams(window.location.search).get("error");
     if (authError) {
       setError(

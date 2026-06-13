@@ -3,9 +3,11 @@ import { hashPin } from "./auth";
 import { decryptPinFromStorage, encryptPinForStorage } from "./pin-vault";
 import { generatePin } from "./utils";
 
+import { getExternalAppUrl } from "./app-url";
+
 export function getPortalUrl(slug: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return `${base.replace(/\/$/, "")}/${slug}`;
+  const base = getExternalAppUrl();
+  return `${base}/${slug}`;
 }
 
 export async function getPortalCredentials(proposalId: string) {

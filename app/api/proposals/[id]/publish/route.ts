@@ -1,5 +1,6 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
+import { getExternalAppUrl } from "@/lib/app-url";
 import { publishProposal, republishProposal } from "@/lib/publish";
 
 export async function POST(
@@ -18,7 +19,7 @@ export async function POST(
 
     if (isRepublish) {
       const result = await republishProposal(id, user.id);
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      const baseUrl = getExternalAppUrl();
       return jsonOk({
         ...result,
         portalUrl: `${baseUrl}/${result.slug}`,
@@ -28,7 +29,7 @@ export async function POST(
 
     const result = await publishProposal(id, user.id);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const baseUrl = getExternalAppUrl();
 
     return jsonOk({
       ...result,
