@@ -6,12 +6,13 @@
  */
 import "../lib/load-env";
 import { PrismaClient } from "@prisma/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
 
 async function findSupabaseUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   email: string
 ): Promise<string | null> {
   let page = 1;
