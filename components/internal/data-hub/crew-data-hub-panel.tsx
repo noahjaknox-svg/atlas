@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CrudTab } from "@/components/internal/data-hub/crud-tab";
+import { CrewRunwaySlopesPanel } from "@/components/internal/data-hub/crew-runway-slopes-panel";
 import {
   CREW_OPERATING_DEFAULTS,
   CREW_OPERATING_FIELD_META,
@@ -435,6 +436,8 @@ export function CrewDataHubPanel() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      <CrewRunwaySlopesPanel />
     </div>
   );
 }

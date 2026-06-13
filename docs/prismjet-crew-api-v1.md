@@ -172,8 +172,8 @@ Each airport in `GET /api/v1/crew/airports` uses these **exact** field names:
 | `runwayId` | string \| null | Primary runway designator, e.g. `03/21` |
 | `lat` | number \| null | WGS84 latitude |
 | `lon` | number \| null | WGS84 longitude |
-| `gradientPct` | number \| null | Primary runway slope magnitude (%) |
-| `gradientHighEndRunway` | string \| null | Higher runway end ident, e.g. `21` |
+| `gradientPct` | number \| null | Primary runway verified slope (%); null = level |
+| `gradientHighEndRunway` | string \| null | Higher runway end ident on primary runway |
 | `terrain` | boolean | Apply terrain correction in Crew when true |
 | `multiRunway` | boolean | More than one open runway |
 | `updatedAt` | string (ISO8601) | Per-airport timestamp |
@@ -207,3 +207,4 @@ Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Pris
 - `data/seeds/atlas_initial_data.json` — POH takeoff + calibrated landing (from Crew)
 - `data/seeds/crew-sync-sample.json` — example `/sync` response for Swift parser validation
 - `data/seeds/crew-airports-sample.json` — example `/airports` response (KSEZ, KPHX, KSDL)
+- `data/seeds/crew-airports-full.json` — full `/airports` catalog for slope validation

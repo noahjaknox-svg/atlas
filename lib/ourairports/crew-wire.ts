@@ -61,36 +61,39 @@ function runwayDesignator(le: string | null, he: string | null): string | null {
   return le ?? he ?? null;
 }
 
-export function computeRunwayGradient(runway: AirportRunwayReference): {
+/** Verified slope served to Crew; null when unverified (app treats as level). */
+export function servedRunwayGradient(runway: AirportRunwayReference): {
   gradientPct: number | null;
   gradientHighEndRunway: string | null;
 } {
-  const { lengthFt, leElevationFt, heElevationFt, leIdent, heIdent } = runway;
-  if (
-    lengthFt == null ||
-    lengthFt <= 0 ||
-    leElevationFt == null ||
-    heElevationFt == null
-  ) {
-    return { gradientPct: null, gradientHighEndRunway: null };
-  }
+  return {
+    gradientPct: runway.gradientPctVerified ?? null,
+    gradientHighEndRunway: runway.gradientHighEndVerified ?? null,
+  };
+}
 
-  const delta = Math.abs(leElevationFt - heElevationFt);
-  const gradientPct = Math.round((delta / lengthFt) * 100 * 100) / 100;
-
-  let gradientHighEndRunway: string | null = null;
-  if (leElevationFt > heElevationFt) gradientHighEndRunway = leIdent;
-  else if (heElevationFt > leElevationFt) gradientHighEndRunway = heIdent;
-
-  return { gradientPct, gradientHighEndRunway };
+function serializeRunway(runway: AirportRunwayReference): CrewAirportRunwayWire {
+  const { gradientPct, gradientHighEndRunway } = servedRunwayGradient(runway);
+  return {
+    runwayId: runwayDesignator(runway.leIdent, runway.heIdent),
+    lengthFt: runway.lengthFt,
+    widthFt: runway.widthFt,
+    surface: runway.surface,
+    lighted: runway.lighted,
+    closed: runway.closed,
+    gradientPct,
+    gradientHighEndRunway,
+    leIdent: runway.leIdent,
+    heIdent: runway.heIdent,
+  };
 }
 
 function isTerrainAirport(
   airport: AirportReference,
-  primaryGradientPct: number | null,
+  verifiedGradientPct: number | null,
   openRunwayCount: number
 ): boolean {
-  if (primaryGradientPct != null && primaryGradientPct >= TERRAIN_GRADIENT_PCT) {
+  if (verifiedGradientPct != null && verifiedGradientPct >= TERRAIN_GRADIENT_PCT) {
     return true;
   }
 
@@ -108,29 +111,13 @@ function isTerrainAirport(
     openRunwayCount === 1 &&
     airport.elevationFt != null &&
     airport.elevationFt >= 4000 &&
-    primaryGradientPct != null &&
-    primaryGradientPct >= 0.25
+    verifiedGradientPct != null &&
+    verifiedGradientPct >= 0.25
   ) {
     return true;
   }
 
   return false;
-}
-
-function serializeRunway(runway: AirportRunwayReference): CrewAirportRunwayWire {
-  const { gradientPct, gradientHighEndRunway } = computeRunwayGradient(runway);
-  return {
-    runwayId: runwayDesignator(runway.leIdent, runway.heIdent),
-    lengthFt: runway.lengthFt,
-    widthFt: runway.widthFt,
-    surface: runway.surface,
-    lighted: runway.lighted,
-    closed: runway.closed,
-    gradientPct,
-    gradientHighEndRunway,
-    leIdent: runway.leIdent,
-    heIdent: runway.heIdent,
-  };
 }
 
 export function serializeCrewAirport(airport: AirportWithRelations): CrewAirportWire {
@@ -140,7 +127,7 @@ export function serializeCrewAirport(airport: AirportWithRelations): CrewAirport
     .sort((a, b) => (b.lengthFt ?? 0) - (a.lengthFt ?? 0));
 
   const primary = openRunways[0] ?? null;
-  const primaryGradient = primary ? computeRunwayGradient(primary) : null;
+  const primaryGradient = primary ? servedRunwayGradient(primary) : null;
 
   return {
     id: icao,

@@ -400,6 +400,9 @@ model AirportRunwayReference {
   heElevationFt          Int?     @map("he_elevation_ft")
   heHeadingDegT          Int?     @map("he_heading_deg_t")
   heDisplacedThresholdFt Int?     @map("he_displaced_threshold_ft")
+  gradientPctVerified    Float?   @map("gradient_pct_verified")
+  gradientHighEndVerified String? @map("gradient_high_end_verified")
+  gradientPctEstimated   Float?   @map("gradient_pct_estimated")
 
   airport AirportReference @relation(fields: [airportId], references: [id], onDelete: Cascade)
 

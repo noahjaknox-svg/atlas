@@ -8,6 +8,7 @@ import {
   readOurAirportsCsv,
   resolveIcaoFromRow,
 } from "@/lib/ourairports/csv";
+import { computeRunwayGradientEstimated } from "@/lib/ourairports/gradient";
 
 const CREATE_BATCH = 2000;
 
@@ -174,27 +175,38 @@ export async function importOurAirportsData(
       const ident = row.airport_ident?.trim().toUpperCase();
       const airportId = ident ? identToId.get(ident) : undefined;
       if (!airportId || !ident) return null;
+      const leElevationFt = parseIntOrNull(row.le_elevation_ft);
+      const heElevationFt = parseIntOrNull(row.he_elevation_ft);
+      const lengthFt = parseIntOrNull(row.length_ft);
+      const runwayRow = {
+        lengthFt,
+        leElevationFt,
+        heElevationFt,
+        leIdent: row.le_ident || null,
+        heIdent: row.he_ident || null,
+      };
       return {
         ourairportsId: parseIntOrNull(row.id)!,
         airportId,
         airportIdent: ident,
-        lengthFt: parseIntOrNull(row.length_ft),
+        lengthFt,
         widthFt: parseIntOrNull(row.width_ft),
         surface: row.surface || null,
         lighted: parseBool01(row.lighted),
         closed: parseBool01(row.closed),
-        leIdent: row.le_ident || null,
+        leIdent: runwayRow.leIdent,
         leLatitudeDeg: parseFloatOrNull(row.le_latitude_deg),
         leLongitudeDeg: parseFloatOrNull(row.le_longitude_deg),
-        leElevationFt: parseIntOrNull(row.le_elevation_ft),
+        leElevationFt,
         leHeadingDegT: parseIntOrNull(row.le_heading_degT),
         leDisplacedThresholdFt: parseIntOrNull(row.le_displaced_threshold_ft),
-        heIdent: row.he_ident || null,
+        heIdent: runwayRow.heIdent,
         heLatitudeDeg: parseFloatOrNull(row.he_latitude_deg),
         heLongitudeDeg: parseFloatOrNull(row.he_longitude_deg),
-        heElevationFt: parseIntOrNull(row.he_elevation_ft),
+        heElevationFt,
         heHeadingDegT: parseIntOrNull(row.he_heading_degT),
         heDisplacedThresholdFt: parseIntOrNull(row.he_displaced_threshold_ft),
+        gradientPctEstimated: computeRunwayGradientEstimated(runwayRow as never),
       };
     })
     .filter((r): r is NonNullable<typeof r> => r != null);

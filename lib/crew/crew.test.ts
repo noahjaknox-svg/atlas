@@ -4,19 +4,109 @@ import { parseOperatingFromWire } from "@/lib/crew/normalize-initial-data";
 import { normalizeCrewInitialData } from "@/lib/crew/normalize-initial-data";
 import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
 import { B300_PERFORMANCE_AXES, buildB300Grid } from "@/lib/crew/seed-grids";
-import { computeRunwayGradient } from "@/lib/ourairports/crew-wire";
+import {
+  computeRunwayGradientEstimated,
+  computeRunwayGradientHighEndEstimated,
+  runwayEndMatches,
+} from "@/lib/ourairports/gradient";
+import { servedRunwayGradient, serializeCrewAirport } from "@/lib/ourairports/crew-wire";
 
-describe("crew airport wire", () => {
-  it("computes runway gradient from OurAirports elevations", () => {
-    const g = computeRunwayGradient({
+describe("runway gradient", () => {
+  it("computes OurAirports estimate from end elevations", () => {
+    const runway = {
       lengthFt: 5132,
       leElevationFt: 4700,
       heElevationFt: 4830,
       leIdent: "03",
       heIdent: "21",
+    };
+    expect(computeRunwayGradientEstimated(runway as never)).toBe(2.53);
+    expect(computeRunwayGradientHighEndEstimated(runway as never)).toBe("21");
+  });
+
+  it("matches numeric runway end variants (3 ↔ 03R)", () => {
+    expect(runwayEndMatches("03R", "3")).toBe(true);
+    expect(runwayEndMatches("21L", "3")).toBe(false);
+  });
+
+  it("serves verified slope only; null when unverified", () => {
+    const verified = servedRunwayGradient({
+      gradientPctVerified: 1.8,
+      gradientHighEndVerified: "21",
+      gradientPctEstimated: 1.77,
     } as never);
-    expect(g.gradientPct).toBe(2.53);
-    expect(g.gradientHighEndRunway).toBe("21");
+    expect(verified.gradientPct).toBe(1.8);
+    expect(verified.gradientHighEndRunway).toBe("21");
+
+    const unverified = servedRunwayGradient({
+      gradientPctVerified: null,
+      gradientHighEndVerified: null,
+      gradientPctEstimated: 0.72,
+    } as never);
+    expect(unverified.gradientPct).toBeNull();
+    expect(unverified.gradientHighEndRunway).toBeNull();
+  });
+
+  it("does not use estimated slope for terrain when unverified", () => {
+    const airport = serializeCrewAirport({
+      icao: "KSDL",
+      ident: "KSDL",
+      name: "Scottsdale Airport",
+      municipality: "Scottsdale",
+      elevationFt: 1510,
+      longestRunwayFt: 8249,
+      latitudeDeg: null,
+      longitudeDeg: null,
+      keywords: null,
+      updatedAt: new Date("2026-01-01"),
+      runways: [
+        {
+          closed: false,
+          lengthFt: 8249,
+          widthFt: 100,
+          surface: "ASP",
+          lighted: true,
+          leIdent: "03",
+          heIdent: "21",
+          gradientPctVerified: null,
+          gradientHighEndVerified: null,
+          gradientPctEstimated: 0.72,
+        },
+      ],
+    } as never);
+    expect(airport.gradientPct).toBeNull();
+    expect(airport.terrain).toBe(false);
+  });
+
+  it("flags terrain from verified slope >= 0.5%", () => {
+    const airport = serializeCrewAirport({
+      icao: "KSEZ",
+      ident: "KSEZ",
+      name: "Sedona Airport",
+      municipality: "Sedona",
+      elevationFt: 4830,
+      longestRunwayFt: 5132,
+      latitudeDeg: null,
+      longitudeDeg: null,
+      keywords: null,
+      updatedAt: new Date("2026-01-01"),
+      runways: [
+        {
+          closed: false,
+          lengthFt: 5132,
+          widthFt: 100,
+          surface: "ASP",
+          lighted: true,
+          leIdent: "03",
+          heIdent: "21",
+          gradientPctVerified: 1.8,
+          gradientHighEndVerified: "21",
+          gradientPctEstimated: 1.77,
+        },
+      ],
+    } as never);
+    expect(airport.gradientPct).toBe(1.8);
+    expect(airport.terrain).toBe(true);
   });
 });
 
