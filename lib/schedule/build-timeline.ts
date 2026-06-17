@@ -4,6 +4,7 @@ import type {
   TimelineBlock,
   TimelineBlockKind,
   TimelineDay,
+  TimelineNote,
   TimelineRow,
   ScheduleTimelineData,
 } from "@/lib/schedule/timeline-types";
@@ -25,16 +26,36 @@ export interface BuildTimelineInput {
   timezoneByIcao?: Record<string, string>;
 }
 
+/** Higher priority wins when intervals overlap (red over blue over green). */
+const KIND_PRIORITY: Record<TimelineBlockKind, number> = {
+  unavailable: 3,
+  empty_leg: 2,
+  available: 1,
+};
+
+/** A single source interval before overlaps are resolved and merged. */
+interface LanePiece {
+  kind: TimelineBlockKind;
+  start: number;
+  end: number;
+  dep: string | null;
+  arr: string | null;
+  event: ScheduleEvent | null;
+  window: AvailabilityWindow | null;
+}
+
 export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimelineData {
   const days = buildDays(input.rangeStart, input.rangeEnd);
   const eventsByTail = groupByTail(input.events);
+  const rangeStartMs = input.rangeStart.getTime();
+  const rangeEndMs = input.rangeEnd.getTime();
 
   const rows: TimelineRow[] = input.tails.map((tail) => {
     const tailEvents = (eventsByTail.get(tail.tailNumber) ?? []).sort(
       (a, b) => a.startsAt.getTime() - b.startsAt.getTime()
     );
     const visibleEvents = tailEvents.filter(
-      (e) => e.startsAt < input.rangeEnd && e.endsAt > input.rangeStart
+      (e) => e.startsAt < input.rangeEnd && e.endsAt > input.rangeStart && !e.deletedAt
     );
     const tailWindows = input.windows.filter((w) => w.tailNumber === tail.tailNumber);
     const locationAtRangeStart = inferLocationAt(
@@ -43,12 +64,15 @@ export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimeli
       tail.homeBase
     );
 
-    const eventBlocks = visibleEvents.map((e) => eventToTimelineBlock(e, tail.homeBase));
-    const windowBlocks = tailWindows.map((w) => windowToTimelineBlock(w, tail.homeBase));
-
-    const blocks = [...eventBlocks, ...windowBlocks].sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+    const pieces = collectLanePieces(
+      visibleEvents,
+      tailWindows,
+      rangeStartMs,
+      rangeEndMs
     );
+    const segments = paintAndMerge(pieces, rangeStartMs, rangeEndMs);
+    const blocks = segments.map((seg) => segmentToBlock(seg, tail));
+    const notes = collectNotes(visibleEvents);
 
     const tz = resolveRowTimezone(tail.homeBase, input.timezoneByIcao ?? {});
 
@@ -60,6 +84,7 @@ export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimeli
       timezone: tz.timezone,
       timezoneIcao: tz.timezoneIcao,
       blocks,
+      notes,
     };
   });
 
@@ -71,6 +96,245 @@ export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimeli
     legend: TIMELINE_LEGEND,
     airportTimezones: input.timezoneByIcao ?? {},
   };
+}
+
+/** Map each lane-occupying event/window to a clipped LanePiece. */
+function collectLanePieces(
+  events: ScheduleEvent[],
+  windows: AvailabilityWindow[],
+  rangeStartMs: number,
+  rangeEndMs: number
+): LanePiece[] {
+  const pieces: LanePiece[] = [];
+
+  for (const event of events) {
+    const kind = laneKind(event);
+    if (!kind) continue; // soft holds / info-only are notes, not lane blocks
+    const start = Math.max(event.startsAt.getTime(), rangeStartMs);
+    const end = Math.min(event.endsAt.getTime(), rangeEndMs);
+    if (end <= start) continue;
+    pieces.push({
+      kind,
+      start,
+      end,
+      dep: upper(event.depIcao ?? event.locationIcao),
+      arr: upper(event.arrIcao ?? event.locationIcao ?? event.depIcao),
+      event,
+      window: null,
+    });
+  }
+
+  for (const window of windows) {
+    const start = Math.max(window.startsAt.getTime(), rangeStartMs);
+    const end = Math.min(window.endsAt.getTime(), rangeEndMs);
+    if (end <= start) continue;
+    const loc = upper(window.locationIcao);
+    pieces.push({
+      kind: "available",
+      start,
+      end,
+      dep: loc,
+      arr: loc,
+      event: null,
+      window,
+    });
+  }
+
+  return pieces;
+}
+
+/**
+ * Paint pieces onto a single non-overlapping lane (higher priority wins
+ * overlaps), then merge adjacent same-kind runs into one block, condensing
+ * to the first departure and final arrival airport across the run.
+ */
+function paintAndMerge(
+  pieces: LanePiece[],
+  rangeStartMs: number,
+  rangeEndMs: number
+): MergedSegment[] {
+  if (pieces.length === 0) return [];
+
+  // Boundary points: every piece edge, clamped to the visible range.
+  const bounds = new Set<number>();
+  for (const p of pieces) {
+    bounds.add(Math.max(p.start, rangeStartMs));
+    bounds.add(Math.min(p.end, rangeEndMs));
+  }
+  const points = Array.from(bounds).sort((a, b) => a - b);
+
+  // For each slice, pick the highest-priority piece covering its midpoint.
+  const slices: { start: number; end: number; piece: LanePiece }[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const start = points[i]!;
+    const end = points[i + 1]!;
+    if (end <= start) continue;
+    const mid = (start + end) / 2;
+    let winner: LanePiece | null = null;
+    for (const p of pieces) {
+      if (p.start <= mid && mid < p.end) {
+        if (!winner || KIND_PRIORITY[p.kind] > KIND_PRIORITY[winner.kind]) {
+          winner = p;
+        }
+      }
+    }
+    if (winner) slices.push({ start, end, piece: winner });
+  }
+
+  // Merge contiguous slices that share a kind into one section.
+  const merged: MergedSegment[] = [];
+  for (const slice of slices) {
+    const last = merged[merged.length - 1];
+    if (last && last.kind === slice.piece.kind && last.end === slice.start) {
+      last.end = slice.end;
+      if (last.pieces[last.pieces.length - 1] !== slice.piece) {
+        last.pieces.push(slice.piece);
+      }
+    } else {
+      merged.push({
+        kind: slice.piece.kind,
+        start: slice.start,
+        end: slice.end,
+        pieces: [slice.piece],
+      });
+    }
+  }
+
+  return merged;
+}
+
+interface MergedSegment {
+  kind: TimelineBlockKind;
+  start: number;
+  end: number;
+  pieces: LanePiece[];
+}
+
+function segmentToBlock(
+  seg: MergedSegment,
+  tail: { tailNumber: string; homeBase: string | null }
+): TimelineBlock {
+  const first = seg.pieces[0]!;
+  const last = seg.pieces[seg.pieces.length - 1]!;
+  const startAirport = first.dep ?? first.arr;
+  const endAirport = last.arr ?? last.dep;
+  const moved = !!startAirport && !!endAirport && startAirport !== endAirport;
+  const routeLabel = moved
+    ? `${startAirport} → ${endAirport}`
+    : startAirport ?? endAirport ?? "—";
+
+  const startIso = new Date(seg.start).toISOString();
+  const endIso = new Date(seg.end).toISOString();
+  const eventPieces = seg.pieces.filter((p) => p.event);
+  const segmentCount = eventPieces.length || seg.pieces.length;
+
+  let sublabel: string | null;
+  let atlasNote: string;
+  let awayFromBase = false;
+
+  switch (seg.kind) {
+    case "available": {
+      const loc = startAirport ?? "base";
+      awayFromBase = isAwayFromBase(startAirport, tail.homeBase);
+      sublabel = awayFromBase ? `Open at ${loc} · away from ${tail.homeBase ?? "base"}` : `Open at ${loc}`;
+      atlasNote = awayFromBase
+        ? `Charter-quotable at ${loc} — away from home ${tail.homeBase ?? "base"}`
+        : `Charter-quotable at ${loc}`;
+      break;
+    }
+    case "empty_leg": {
+      sublabel =
+        eventPieces.length > 1 ? `Empty legs · ${eventPieces.length}` : "Empty leg · sell one-way";
+      atlasNote = `Empty positioning leg ${routeLabel} — pair with an inbound charter request`;
+      break;
+    }
+    default: {
+      const detail = eventPieces.length > 1
+        ? `${eventPieces.length} blocks`
+        : blockDetail(last.event);
+      sublabel = detail;
+      atlasNote = `Not available — ${detail?.toLowerCase() ?? "occupied"}`;
+      break;
+    }
+  }
+
+  const idBase = first.event
+    ? `evt-${first.event.id}`
+    : first.window
+      ? `win-${first.window.id}`
+      : "seg";
+
+  return {
+    // Suffix with the segment start so a window split by a block stays unique.
+    id: `${idBase}-${seg.start}`,
+    kind: seg.kind,
+    tailNumber: tail.tailNumber,
+    startsAt: startIso,
+    endsAt: endIso,
+    startAirport,
+    endAirport,
+    routeLabel,
+    sublabel,
+    atlasNote,
+    awayFromBase,
+    segmentCount,
+  };
+}
+
+/** Soft holds (and info-only events) become annotations in front of the lane. */
+function collectNotes(events: ScheduleEvent[]): TimelineNote[] {
+  return events
+    .filter(
+      (e) =>
+        e.isHold ||
+        e.availabilityClass === "soft_hold" ||
+        e.availabilityClass === "info_only"
+    )
+    .map((e) => {
+      const isInfo = !e.isHold && e.availabilityClass === "info_only";
+      const who = e.clientLabel ?? truncateSummary(e.summaryRaw);
+      return {
+        id: `note-${e.id}`,
+        tailNumber: e.tailNumber,
+        startsAt: e.startsAt.toISOString(),
+        endsAt: e.endsAt.toISOString(),
+        label: isInfo ? who : `Hold · ${who}`,
+        atlasNote: isInfo
+          ? `Informational: ${who}`
+          : `Soft hold — ${who}. Still quotable, confirm before booking.`,
+      };
+    });
+}
+
+/** Which lane category an event occupies, or null if it is a note. */
+function laneKind(event: ScheduleEvent): TimelineBlockKind | null {
+  if (event.isHold || event.availabilityClass === "soft_hold") return null;
+  if (event.availabilityClass === "info_only") return null;
+  if (event.availabilityClass === "repo_opportunity") return "empty_leg";
+  return "unavailable";
+}
+
+function blockDetail(event: ScheduleEvent | null): string {
+  if (!event) return "Blocked";
+  const type = blockTypeLabel(event);
+  return event.clientLabel ? `${event.clientLabel} · ${type}` : type;
+}
+
+function blockTypeLabel(event: ScheduleEvent): string {
+  if (event.isAdminBlock) return "DONT QUOTE";
+  if (/\bNo Crew\b/i.test(event.summaryRaw)) return "No Crew";
+  switch (event.rawEventType) {
+    case "charter":
+      return "Charter";
+    case "owner":
+      return "Owner";
+    case "maintenance":
+      return "MX";
+    case "training":
+      return "Training";
+    default:
+      return "Blocked";
+  }
 }
 
 function buildDays(rangeStart: Date, rangeEnd: Date): TimelineDay[] {
@@ -98,146 +362,19 @@ function groupByTail(events: ScheduleEvent[]): Map<string, ScheduleEvent[]> {
   return map;
 }
 
-function eventToTimelineBlock(event: ScheduleEvent, homeBase: string | null): TimelineBlock {
-  const kind = eventBlockKind(event);
-  const route =
-    event.depIcao && event.arrIcao ? `${event.depIcao} → ${event.arrIcao}` : event.locationIcao;
-  const crewShort = formatCrewShort(event.picName, event.sicName);
-
-  let label: string;
-  let atlasNote: string;
-
-  switch (kind) {
-    case "needs_to_sell":
-      label = `${route} · Repo`;
-      atlasNote = `Positioning leg ${route} — pair with inbound charter request`;
-      break;
-    case "soft_hold":
-      label = event.clientLabel ?? truncateSummary(event.summaryRaw);
-      atlasNote = `Soft hold — confirm crewing before quoting`;
-      break;
-    case "hard_block":
-      label = event.clientLabel
-        ? `${event.clientLabel} · ${blockTypeLabel(event)}`
-        : `${blockTypeLabel(event)}`;
-      atlasNote = `Not available — ${blockTypeLabel(event).toLowerCase()}`;
-      break;
-    default:
-      label = truncateSummary(event.summaryRaw);
-      atlasNote = event.summaryRaw;
-  }
-
-  const sublabel = [
-    route,
-    event.paxCount != null ? `${event.paxCount} pax` : null,
-    crewShort,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  return {
-    id: `evt-${event.id}`,
-    kind,
-    tailNumber: event.tailNumber,
-    startsAt: event.startsAt.toISOString(),
-    endsAt: event.endsAt.toISOString(),
-    label,
-    sublabel: sublabel || null,
-    locationIcao: event.locationIcao ?? event.depIcao,
-    depIcao: event.depIcao,
-    arrIcao: event.arrIcao,
-    paxCount: event.paxCount,
-    crewShort,
-    externalUrl: event.externalUrl,
-    atlasNote,
-    awayFromBase: isAwayFromBase(event.arrIcao ?? event.locationIcao, homeBase),
-  };
-}
-
-function windowToTimelineBlock(
-  window: AvailabilityWindow,
-  homeBase: string | null
-): TimelineBlock {
-  const away = isAwayFromBase(window.locationIcao, homeBase);
-  const timeLabel = formatTimeRange(window.startsAt, window.endsAt);
-  const durationDays =
-    (window.endsAt.getTime() - window.startsAt.getTime()) / (24 * 60 * 60 * 1000);
-
-  const label =
-    durationDays >= 1
-      ? `Charter available · ${window.locationIcao}`
-      : `Available · ${window.locationIcao}`;
-
-  const atlasNote = away
-    ? `Charter-quotable at ${window.locationIcao} (${timeLabel}) — away from home ${homeBase ?? "base"}`
-    : `Charter-quotable at ${window.locationIcao} (${timeLabel})`;
-
-  return {
-    id: window.id,
-    kind: "available",
-    tailNumber: window.tailNumber,
-    startsAt: window.startsAt.toISOString(),
-    endsAt: window.endsAt.toISOString(),
-    label,
-    sublabel:
-      durationDays >= 1
-        ? `${Math.round(durationDays)}d at ${window.locationIcao}`
-        : timeLabel,
-    locationIcao: window.locationIcao,
-    depIcao: null,
-    arrIcao: null,
-    paxCount: null,
-    crewShort: null,
-    externalUrl: null,
-    atlasNote,
-    awayFromBase: away,
-  };
-}
-
-function eventBlockKind(event: ScheduleEvent): TimelineBlockKind {
-  if (event.isHold || event.availabilityClass === "soft_hold") return "soft_hold";
-  if (event.availabilityClass === "repo_opportunity") return "needs_to_sell";
-  if (event.availabilityClass === "hard_block") return "hard_block";
-  return "hard_block";
-}
-
-function blockTypeLabel(event: ScheduleEvent): string {
-  if (event.isAdminBlock) return "DONT QUOTE";
-  if (/\bNo Crew\b/i.test(event.summaryRaw)) return "No Crew";
-  switch (event.rawEventType) {
-    case "charter":
-      return "Charter";
-    case "owner":
-      return "Owner";
-    case "maintenance":
-      return "MX";
-    case "training":
-      return "Training";
-    default:
-      return "Blocked";
-  }
-}
-
 function isAwayFromBase(location: string | null, homeBase: string | null): boolean {
   if (!location) return false;
   if (!homeBase) return true;
   return location.toUpperCase() !== homeBase.toUpperCase();
 }
 
-function formatCrewShort(pic: string | null, sic: string | null): string | null {
-  const picLast = pic?.split(/\s+/).pop();
-  const sicLast = sic?.split(/\s+/).pop();
-  if (picLast && sicLast) return `${picLast}/${sicLast}`;
-  return picLast ?? sicLast ?? null;
+function upper(value: string | null): string | null {
+  return value ? value.toUpperCase() : null;
 }
 
 function truncateSummary(summary: string): string {
   const cleaned = summary.replace(/^HOLD:\s*/i, "").trim();
   return cleaned.length > 48 ? `${cleaned.slice(0, 45)}…` : cleaned;
-}
-
-function formatTimeRange(start: Date, end: Date): string {
-  return `${format(start, "HH:mm")}–${format(end, "HH:mm")} UTC`;
 }
 
 /** Position a block as % left and width within the visible range. */

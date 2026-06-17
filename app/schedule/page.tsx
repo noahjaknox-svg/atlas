@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { loadScheduleKanban } from "@/lib/schedule/load-kanban";
 import { loadScheduleTimeline } from "@/lib/schedule/load-timeline";
-import { KANBAN_COLUMNS } from "@/lib/schedule/kanban";
 import { scheduleRangeEnd, startOfUtcDay } from "@/lib/schedule/view-range";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ScheduleView } from "@/components/internal/schedule-view";
@@ -15,27 +13,22 @@ export default async function SchedulePage() {
   const rangeStart = startOfUtcDay(new Date());
   const rangeEnd = scheduleRangeEnd(rangeStart);
 
-  const [kanban, timelineData] = await Promise.all([
-    loadScheduleKanban(prisma, { rangeStart, rangeEnd }),
-    loadScheduleTimeline(prisma, { rangeStart, rangeEnd }),
-  ]);
+  const timelineData = await loadScheduleTimeline(prisma, { rangeStart, rangeEnd });
 
-  const initialKanban = {
-    columns: KANBAN_COLUMNS,
-    rangeStart: kanban.rangeStart,
-    rangeEnd: kanban.rangeEnd,
-    source: kanban.source
-      ? {
-          id: kanban.source.id,
-          name: kanban.source.name,
-          lastSyncedAt: kanban.source.lastSyncedAt?.toISOString() ?? null,
-          lastSyncStatus: kanban.source.lastSyncStatus,
-        }
-      : null,
-    fleet: kanban.fleet,
-    eventCount: kanban.eventCount,
-    board: kanban.board,
-  };
+  const initialSource = timelineData.source
+    ? {
+        id: timelineData.source.id,
+        name: timelineData.source.name,
+        lastSyncedAt: timelineData.source.lastSyncedAt?.toISOString() ?? null,
+        lastSyncStatus: timelineData.source.lastSyncStatus,
+      }
+    : null;
+
+  const initialFleet = timelineData.fleet.map((f) => ({
+    tailNumber: f.tailNumber,
+    homeBase: f.homeBase,
+    typeCode: f.typeCode,
+  }));
 
   return (
     <InternalShell userName={user.name} isAdmin={user.role === "admin"} workspace>
@@ -43,12 +36,13 @@ export default async function SchedulePage() {
         <div className="shrink-0">
           <h1 className="font-serif text-2xl">Schedule</h1>
           <p className="mt-0.5 text-sm text-atlas-muted">
-            Atlas charter availability — when each tail is quotable, where it sits, and legs to sell
+            Atlas charter availability — green sells, blue repositions, red is blocked
           </p>
         </div>
         <ScheduleView
-          initialKanban={initialKanban}
           initialTimeline={timelineData.timeline}
+          initialSource={initialSource}
+          initialFleet={initialFleet}
           isAdmin={user.role === "admin"}
         />
       </div>
