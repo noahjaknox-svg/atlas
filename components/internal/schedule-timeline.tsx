@@ -1,30 +1,30 @@
 "use client";
 
 import { useMemo } from "react";
-import type { ScheduleTimelineData, TimelineBlock } from "@/lib/schedule/timeline-types";
+import type {
+  ScheduleTimelineData,
+  TimelineBlock,
+  TimelineLegendKind,
+  TimelineNote,
+} from "@/lib/schedule/timeline-types";
 import { blockPosition } from "@/lib/schedule/build-timeline";
 import {
   formatScheduleTimeRange,
-  resolveBlockTimezone,
   timezoneAbbr,
   type ScheduleTimeMode,
 } from "@/lib/schedule/airport-timezones";
 import { cn } from "@/lib/utils";
 
-const BLOCK_STYLES = {
-  available:
-    "border-emerald-600/50 bg-emerald-900/40 text-emerald-50",
-  needs_to_sell:
-    "border-blue-500/70 bg-blue-950/70 text-blue-50",
-  soft_hold:
-    "border-amber-500/70 bg-amber-950/60 text-amber-50",
-  hard_block:
-    "border-zinc-500/70 bg-zinc-900/90 text-zinc-200",
-} as const;
+const BLOCK_STYLES: Record<TimelineLegendKind, string> = {
+  available: "border-emerald-500/60 bg-emerald-900/45 text-emerald-50",
+  empty_leg: "border-blue-400/70 bg-blue-900/60 text-blue-50",
+  unavailable: "border-red-500/60 bg-red-950/70 text-red-100",
+  soft_hold: "border-amber-400/70 bg-amber-900/70 text-amber-50",
+};
 
 const TAIL_COL_W = 168;
-const ROW_HEIGHT = 96;
-const CARD_HEIGHT = 56;
+const ROW_HEIGHT = 84;
+const NOTE_STRIP_H = 18;
 
 function isTodayUtc(dateStr: string): boolean {
   const today = new Date().toISOString().slice(0, 10);
@@ -145,9 +145,6 @@ function TimelineRowView({
       ? `home ${row.homeBase}`
       : "";
 
-  const availabilityBlocks = row.blocks.filter((b) => b.kind === "available");
-  const overlayBlocks = row.blocks.filter((b) => b.kind !== "available");
-
   return (
     <div
       className="flex border-b border-atlas-border/70 last:border-b-0"
@@ -168,10 +165,7 @@ function TimelineRowView({
         <div className="mt-0.5 text-[10px] text-atlas-muted/80">{tzLabel}</div>
       </div>
 
-      <div
-        className="relative min-w-0 flex-1"
-        style={{ minHeight: ROW_HEIGHT }}
-      >
+      <div className="relative min-w-0 flex-1" style={{ minHeight: ROW_HEIGHT }}>
         {/* Day columns */}
         <div className="absolute inset-0 flex">
           {timeline.days.map((day, i) => (
@@ -187,33 +181,27 @@ function TimelineRowView({
           ))}
         </div>
 
-        {availabilityBlocks.map((block) => (
+        {/* Non-overlapping lane of availability / unavailability blocks */}
+        {row.blocks.map((block) => (
           <TimelineBlockView
             key={block.id}
             block={block}
             rangeStart={timeline.rangeStart}
             rangeEnd={timeline.rangeEnd}
-            layer="background"
             timeMode={timeMode}
             rowTimezone={row.timezone}
-            rowHomeBase={row.homeBase}
             userTimezone={userTimezone}
             airportTimezones={timeline.airportTimezones}
           />
         ))}
 
-        {overlayBlocks.map((block) => (
-          <TimelineBlockView
-            key={block.id}
-            block={block}
+        {/* Soft holds float in front, along the top of the lane */}
+        {row.notes.map((note) => (
+          <TimelineNoteView
+            key={note.id}
+            note={note}
             rangeStart={timeline.rangeStart}
             rangeEnd={timeline.rangeEnd}
-            layer="foreground"
-            timeMode={timeMode}
-            rowTimezone={row.timezone}
-            rowHomeBase={row.homeBase}
-            userTimezone={userTimezone}
-            airportTimezones={timeline.airportTimezones}
           />
         ))}
       </div>
@@ -225,78 +213,73 @@ function TimelineBlockView({
   block,
   rangeStart,
   rangeEnd,
-  layer,
   timeMode,
   rowTimezone,
-  rowHomeBase,
   userTimezone,
   airportTimezones,
 }: {
   block: TimelineBlock;
   rangeStart: string;
   rangeEnd: string;
-  layer: "background" | "foreground";
   timeMode: ScheduleTimeMode;
   rowTimezone: string;
-  rowHomeBase: string | null;
   userTimezone: string;
   airportTimezones: Record<string, string>;
 }) {
   const { leftPct, widthPct } = blockPosition(block, rangeStart, rangeEnd);
-  const isAvailable = block.kind === "available";
 
   const displayTz = useMemo(() => {
     if (timeMode === "user") return userTimezone;
-    if (isAvailable && block.locationIcao) {
-      return (
-        airportTimezones[block.locationIcao.toUpperCase()] ??
-        resolveBlockTimezone(block, rowHomeBase, airportTimezones)
-      );
-    }
-    return resolveBlockTimezone(block, rowHomeBase, airportTimezones) || rowTimezone;
-  }, [timeMode, userTimezone, isAvailable, block, rowHomeBase, rowTimezone, airportTimezones]);
+    const icao = block.startAirport?.toUpperCase();
+    if (icao && airportTimezones[icao]) return airportTimezones[icao];
+    return rowTimezone;
+  }, [timeMode, userTimezone, block.startAirport, rowTimezone, airportTimezones]);
 
   const timeRange = formatScheduleTimeRange(block.startsAt, block.endsAt, displayTz, {
     includeTzAbbr: false,
   });
 
-  const multiDay =
-    new Date(block.endsAt).getTime() - new Date(block.startsAt).getTime() >=
-    24 * 60 * 60 * 1000;
-
   return (
     <div
-      title={block.atlasNote}
+      title={`${block.routeLabel} · ${block.atlasNote}`}
       className={cn(
-        "absolute overflow-hidden rounded-md border px-2 text-[10px] leading-snug shadow-sm",
-        BLOCK_STYLES[block.kind],
-        layer === "background"
-          ? "top-0 bottom-0 z-0 flex flex-col justify-center"
-          : "z-10 flex flex-col justify-center",
-        layer === "foreground" && "top-1/2 -translate-y-1/2"
+        "absolute bottom-1 flex flex-col justify-center overflow-hidden rounded-md border px-2 text-[10px] leading-snug shadow-sm",
+        BLOCK_STYLES[block.kind]
       )}
       style={{
         left: `${leftPct}%`,
         width: `${widthPct}%`,
-        minWidth: layer === "foreground" ? 52 : undefined,
-        height: layer === "foreground" ? CARD_HEIGHT : undefined,
+        top: NOTE_STRIP_H + 4,
       }}
     >
-      <div className="line-clamp-1 font-semibold">{block.label}</div>
-      {block.sublabel && !isAvailable && (
-        <div className="line-clamp-1 opacity-90">{block.sublabel}</div>
+      <div className="line-clamp-1 font-semibold">{block.routeLabel}</div>
+      {block.sublabel && <div className="line-clamp-1 opacity-90">{block.sublabel}</div>}
+      <div className="line-clamp-1 tabular-nums opacity-80">{timeRange}</div>
+    </div>
+  );
+}
+
+function TimelineNoteView({
+  note,
+  rangeStart,
+  rangeEnd,
+}: {
+  note: TimelineNote;
+  rangeStart: string;
+  rangeEnd: string;
+}) {
+  const { leftPct } = blockPosition(note, rangeStart, rangeEnd);
+  return (
+    <div
+      title={note.atlasNote}
+      className={cn(
+        "absolute z-20 flex max-w-[40%] items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[9px] font-medium shadow-sm",
+        BLOCK_STYLES.soft_hold
       )}
-      {isAvailable && multiDay ? (
-        <div className="line-clamp-1 opacity-90">{block.sublabel}</div>
-      ) : (
-        <div className="line-clamp-1 tabular-nums opacity-80">{timeRange}</div>
-      )}
-      {!isAvailable && block.crewShort && (
-        <div className="line-clamp-1 opacity-70">{block.crewShort}</div>
-      )}
-      {block.awayFromBase && isAvailable && (
-        <div className="line-clamp-1 text-[9px] opacity-70">away from home</div>
-      )}
+      style={{ left: `${leftPct}%`, top: 2 }}
+    >
+      <span aria-hidden>⚑</span>
+      <span className="line-clamp-1">{note.label}</span>
     </div>
   );
 }

@@ -42,7 +42,7 @@ function makeEvent(overrides: Partial<ScheduleEvent>): ScheduleEvent {
 }
 
 describe("buildScheduleTimeline", () => {
-  it("classifies repo leg as needs_to_sell", () => {
+  it("classifies a repo leg as an empty leg and condenses the route", () => {
     const timeline = buildScheduleTimeline({
       rangeStart,
       rangeEnd,
@@ -53,12 +53,36 @@ describe("buildScheduleTimeline", () => {
     });
 
     const block = timeline.rows[0]!.blocks[0]!;
-    expect(block.kind).toBe("needs_to_sell");
-    expect(block.label).toContain("Repo");
+    expect(block.kind).toBe("empty_leg");
+    expect(block.routeLabel).toBe("SDL → COE");
     expect(block.atlasNote).toContain("inbound charter");
   });
 
-  it("marks idle away-from-base as charter available", () => {
+  it("classifies an occupied charter flight as unavailable", () => {
+    const timeline = buildScheduleTimeline({
+      rangeStart,
+      rangeEnd,
+      tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
+      events: [
+        makeEvent({
+          id: "charter",
+          rawEventType: "charter",
+          availabilityClass: "hard_block",
+          paxCount: 4,
+          depIcao: "SDL",
+          arrIcao: "LAS",
+        }),
+      ],
+      windows: [],
+      timezoneByIcao: { SDL: "America/Phoenix" },
+    });
+
+    const block = timeline.rows[0]!.blocks[0]!;
+    expect(block.kind).toBe("unavailable");
+    expect(block.routeLabel).toBe("SDL → LAS");
+  });
+
+  it("marks idle away-from-base as available with its location", () => {
     const windows: AvailabilityWindow[] = [
       {
         id: "w1",
@@ -81,18 +105,43 @@ describe("buildScheduleTimeline", () => {
 
     const block = timeline.rows[0]!.blocks[0]!;
     expect(block.kind).toBe("available");
-    expect(block.label).toContain("COE");
+    expect(block.routeLabel).toBe("COE");
+    expect(block.startAirport).toBe("COE");
+    expect(block.endAirport).toBe("COE");
     expect(block.awayFromBase).toBe(true);
   });
 
-  it("marks home-base idle as available", () => {
+  it("renders soft holds as notes, not lane blocks", () => {
+    const timeline = buildScheduleTimeline({
+      rangeStart,
+      rangeEnd,
+      tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
+      events: [
+        makeEvent({
+          id: "hold",
+          isHold: true,
+          availabilityClass: "soft_hold",
+          clientLabel: "Acme",
+        }),
+      ],
+      windows: [],
+      timezoneByIcao: { SDL: "America/Phoenix" },
+    });
+
+    const row = timeline.rows[0]!;
+    expect(row.blocks).toHaveLength(0);
+    expect(row.notes).toHaveLength(1);
+    expect(row.notes[0]!.label).toContain("Acme");
+  });
+
+  it("produces a non-overlapping lane when a hard block sits inside availability", () => {
     const windows: AvailabilityWindow[] = [
       {
-        id: "w2",
+        id: "w1",
         tailNumber: "N365AV",
         locationIcao: "SDL",
-        startsAt: new Date("2026-06-13T08:00:00Z"),
-        endsAt: new Date("2026-06-13T18:00:00Z"),
+        startsAt: new Date("2026-06-12T00:00:00Z"),
+        endsAt: new Date("2026-06-16T00:00:00Z"),
         fleetAircraftId: null,
       },
     ];
@@ -101,14 +150,34 @@ describe("buildScheduleTimeline", () => {
       rangeStart,
       rangeEnd,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
-      events: [],
+      events: [
+        makeEvent({
+          id: "mx",
+          rawEventType: "maintenance",
+          availabilityClass: "hard_block",
+          depIcao: "SDL",
+          arrIcao: "SDL",
+          locationIcao: "SDL",
+          startsAt: new Date("2026-06-13T00:00:00Z"),
+          endsAt: new Date("2026-06-14T00:00:00Z"),
+        }),
+      ],
       windows,
-      timezoneByIcao: { SDL: "America/Phoenix", COE: "America/Los_Angeles" },
+      timezoneByIcao: { SDL: "America/Phoenix" },
     });
 
-    const block = timeline.rows[0]!.blocks[0]!;
-    expect(block.kind).toBe("available");
-    expect(block.label).toContain("Available");
+    const blocks = timeline.rows[0]!.blocks;
+    // available | unavailable | available — and no two blocks overlap in time
+    expect(blocks.map((b) => b.kind)).toEqual([
+      "available",
+      "unavailable",
+      "available",
+    ]);
+    for (let i = 1; i < blocks.length; i++) {
+      expect(new Date(blocks[i]!.startsAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(blocks[i - 1]!.endsAt).getTime()
+      );
+    }
   });
 });
 
