@@ -7,48 +7,124 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 
-type NavItem = { href: string; label: string };
+type NavLink = { kind: "link"; href: string; label: string };
+type NavAction = { kind: "action"; action: "new-proposal"; label: string };
+type NavItem = NavLink | NavAction;
 
-type Program = {
+type Department = {
   id: string;
   label: string;
-  /** Pages shown in the center nav when this program is active. */
   items: readonly NavItem[];
 };
 
-const PROGRAMS = [
-  {
-    id: "aircraft-management",
-    label: "Aircraft Management",
-    items: [
-      { href: "/pipeline", label: "Pipeline" },
-      { href: "/proposal-design", label: "Proposal Design" },
-    ],
-  },
-  {
-    id: "charter",
-    label: "Charter",
-    items: [{ href: "/schedule", label: "Schedule" }],
-  },
-] as const satisfies readonly Program[];
-
-const DATA_WAREHOUSE: Program = {
-  id: "data-warehouse",
-  label: "Data Warehouse",
-  items: [{ href: "/data", label: "Data Warehouse" }],
+const CHARTER: Department = {
+  id: "charter",
+  label: "Charter",
+  items: [
+    { kind: "link", href: "/charter/find", label: "Find Aircraft" },
+    { kind: "link", href: "/charter/trips", label: "Trips" },
+    { kind: "link", href: "/schedule", label: "Schedule" },
+  ],
 };
 
-const ALL_PROGRAMS: readonly Program[] = [...PROGRAMS, DATA_WAREHOUSE];
+const AIRCRAFT_MANAGEMENT: Department = {
+  id: "aircraft-management",
+  label: "Aircraft Management",
+  items: [
+    { kind: "link", href: "/pipeline", label: "Pipeline" },
+    { kind: "link", href: "/proposal-design", label: "Proposal Design" },
+    { kind: "action", action: "new-proposal", label: "New proposal" },
+  ],
+};
 
-function isItemActive(pathname: string, href: string) {
+const DEPARTMENTS = [CHARTER, AIRCRAFT_MANAGEMENT] as const;
+
+const DATA_WAREHOUSE: Department = {
+  id: "data-warehouse",
+  label: "Data Warehouse",
+  items: [{ kind: "link", href: "/data", label: "Data Warehouse" }],
+};
+
+function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function getActiveProgram(pathname: string): Program {
-  const match = ALL_PROGRAMS.find((program) =>
-    program.items.some((item) => isItemActive(pathname, item.href))
+function isItemActive(pathname: string, item: NavItem) {
+  if (item.kind === "action") {
+    return item.action === "new-proposal" && pathname === "/proposals/new";
+  }
+  return isLinkActive(pathname, item.href);
+}
+
+function departmentMatchesPath(department: Department, pathname: string) {
+  if (department.id === "aircraft-management" && pathname.startsWith("/proposals")) {
+    return true;
+  }
+  return department.items.some((item) => isItemActive(pathname, item));
+}
+
+function getActiveDepartment(pathname: string): Department {
+  if (departmentMatchesPath(DATA_WAREHOUSE, pathname)) return DATA_WAREHOUSE;
+  const match = DEPARTMENTS.find((department) => departmentMatchesPath(department, pathname));
+  return match ?? AIRCRAFT_MANAGEMENT;
+}
+
+function navItemClass(active: boolean) {
+  return cn(
+    "rounded px-3 py-1.5 text-sm transition-colors",
+    active
+      ? "bg-atlas-accent/15 text-atlas-accent"
+      : "text-atlas-muted hover:text-atlas-text"
   );
-  return match ?? PROGRAMS[0];
+}
+
+function NavMenuItem({
+  item,
+  pathname,
+  onNavigate,
+  className,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+  className?: string;
+}) {
+  const active = isItemActive(pathname, item);
+
+  if (item.kind === "action" && item.action === "new-proposal") {
+    return (
+      <NewProposalDialog
+        trigger={
+          <button
+            type="button"
+            role="menuitem"
+            className={cn(
+              "block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+              active ? "text-atlas-accent" : "text-atlas-text",
+              className
+            )}
+          >
+            {item.label}
+          </button>
+        }
+      />
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      role="menuitem"
+      onClick={onNavigate}
+      className={cn(
+        "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+        active ? "text-atlas-accent" : "text-atlas-text",
+        className
+      )}
+    >
+      {item.label}
+    </Link>
+  );
 }
 
 export function AppHeader({
@@ -60,30 +136,32 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [programMenuOpen, setProgramMenuOpen] = useState(false);
-  const programMenuRef = useRef<HTMLDivElement>(null);
+  const [departmentMenuOpen, setDepartmentMenuOpen] = useState(false);
+  const departmentMenuRef = useRef<HTMLDivElement>(null);
 
-  const activeProgram = getActiveProgram(pathname);
+  const activeDepartment = getActiveDepartment(pathname);
+  const centerItems =
+    activeDepartment.id === DATA_WAREHOUSE.id
+      ? DATA_WAREHOUSE.items
+      : activeDepartment.items;
 
-  // Close the program menu on navigation.
   useEffect(() => {
-    setProgramMenuOpen(false);
+    setDepartmentMenuOpen(false);
   }, [pathname]);
 
-  // Close the program menu when clicking outside of it.
   useEffect(() => {
-    if (!programMenuOpen) return;
+    if (!departmentMenuOpen) return;
     function onPointerDown(event: PointerEvent) {
       if (
-        programMenuRef.current &&
-        !programMenuRef.current.contains(event.target as Node)
+        departmentMenuRef.current &&
+        !departmentMenuRef.current.contains(event.target as Node)
       ) {
-        setProgramMenuOpen(false);
+        setDepartmentMenuOpen(false);
       }
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [programMenuOpen]);
+  }, [departmentMenuOpen]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -95,7 +173,7 @@ export function AppHeader({
     <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-bg/95 backdrop-blur">
       <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center px-3 lg:px-5">
         <div className="flex h-9 items-center justify-self-start gap-3">
-          <div className="flex h-9 items-center" aria-label="PrismJet">
+          <Link href="/pipeline" className="flex h-9 items-center" aria-label="PrismJet home">
             <Image
               src="/images/prismjet-logo.png"
               alt="PrismJet"
@@ -104,31 +182,40 @@ export function AppHeader({
               className="h-9 w-auto object-contain"
               priority
             />
-          </div>
-          <span className="h-7 w-px bg-atlas-border/80" aria-hidden />
-          <Link
-            href="/pipeline"
-            className="font-serif text-[2rem] leading-none tracking-wide text-white"
-          >
-            Atlas
           </Link>
 
-          <div className="relative" ref={programMenuRef}>
+          <div className="relative" ref={departmentMenuRef}>
             <button
               type="button"
-              onClick={() => setProgramMenuOpen((open) => !open)}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-sm text-atlas-muted transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
+              onClick={() => setDepartmentMenuOpen((open) => !open)}
+              className="flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
               aria-haspopup="menu"
-              aria-expanded={programMenuOpen}
+              aria-expanded={departmentMenuOpen}
             >
-              <span className="font-medium text-atlas-text">
-                {activeProgram.label}
-              </span>
+              {DEPARTMENTS.map((department, index) => (
+                <span key={department.id} className="flex items-center gap-2">
+                  {index > 0 && (
+                    <span className="text-atlas-border" aria-hidden>
+                      |
+                    </span>
+                  )}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      department.id === activeDepartment.id
+                        ? "text-atlas-text"
+                        : "text-atlas-muted"
+                    )}
+                  >
+                    {department.label}
+                  </span>
+                </span>
+              ))}
               <svg
                 viewBox="0 0 12 12"
                 className={cn(
                   "h-3 w-3 transition-transform",
-                  programMenuOpen && "rotate-180"
+                  departmentMenuOpen && "rotate-180"
                 )}
                 fill="none"
                 stroke="currentColor"
@@ -139,64 +226,56 @@ export function AppHeader({
               </svg>
             </button>
 
-            {programMenuOpen && (
+            {departmentMenuOpen && (
               <div
                 role="menu"
-                className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
+                className="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
               >
-                <p className="px-3 pb-1 pt-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-atlas-muted">
-                  Programs
-                </p>
-                {PROGRAMS.map((program) => {
-                  const active = program.id === activeProgram.id;
-                  return (
-                    <Link
-                      key={program.id}
-                      href={program.items[0].href}
-                      role="menuitem"
-                      className={cn(
-                        "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
-                        active
-                          ? "text-atlas-accent"
-                          : "text-atlas-text"
-                      )}
-                    >
-                      {program.label}
-                    </Link>
-                  );
-                })}
+                {DEPARTMENTS.map((department) => (
+                  <div key={department.id}>
+                    <p className="px-3 pb-1 pt-2 text-[0.7rem] font-medium uppercase tracking-wide text-atlas-muted">
+                      {department.label}
+                    </p>
+                    {department.items.map((item) => (
+                      <NavMenuItem
+                        key={item.kind === "link" ? item.href : item.action}
+                        item={item}
+                        pathname={pathname}
+                        onNavigate={() => setDepartmentMenuOpen(false)}
+                      />
+                    ))}
+                  </div>
+                ))}
                 <div className="my-1 h-px bg-atlas-border" aria-hidden />
-                <Link
-                  href={DATA_WAREHOUSE.items[0].href}
-                  role="menuitem"
-                  className={cn(
-                    "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
-                    activeProgram.id === DATA_WAREHOUSE.id
-                      ? "text-atlas-accent"
-                      : "text-atlas-text"
-                  )}
-                >
-                  {DATA_WAREHOUSE.label}
-                </Link>
+                <NavMenuItem
+                  item={DATA_WAREHOUSE.items[0]}
+                  pathname={pathname}
+                  onNavigate={() => setDepartmentMenuOpen(false)}
+                />
               </div>
             )}
           </div>
         </div>
 
         <nav className="flex items-center justify-center gap-0.5">
-          {activeProgram.items.map((item) => {
-            const active = isItemActive(pathname, item.href);
+          {centerItems.map((item) => {
+            const active = isItemActive(pathname, item);
+
+            if (item.kind === "action" && item.action === "new-proposal") {
+              return (
+                <NewProposalDialog
+                  key={item.action}
+                  trigger={
+                    <button type="button" className={navItemClass(active)}>
+                      {item.label}
+                    </button>
+                  }
+                />
+              );
+            }
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "rounded px-3 py-1.5 text-sm transition-colors",
-                  active
-                    ? "bg-atlas-accent/15 text-atlas-accent"
-                    : "text-atlas-muted hover:text-atlas-text"
-                )}
-              >
+              <Link key={item.href} href={item.href} className={navItemClass(active)}>
                 {item.label}
               </Link>
             );
@@ -204,7 +283,6 @@ export function AppHeader({
         </nav>
 
         <div className="flex items-center justify-end gap-3">
-          <NewProposalDialog />
           <div className="relative group">
             <button
               type="button"

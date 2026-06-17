@@ -1,4 +1,4 @@
-import { CharterHeader } from "@/components/internal/charter/charter-header";
+import { AppHeader } from "@/components/internal/app-header";
 
 export function CharterShell({
   children,
@@ -11,7 +11,7 @@ export function CharterShell({
 }) {
   return (
     <div className="min-h-screen bg-atlas-bg pt-14">
-      <CharterHeader userName={userName} isAdmin={isAdmin} />
+      <AppHeader userName={userName} isAdmin={isAdmin} />
       <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6">{children}</main>
     </div>
   );
