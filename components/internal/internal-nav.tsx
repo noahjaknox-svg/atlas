@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
+import { ROUTES } from "@/lib/routes";
 
 export function InternalNav({
   userName,
@@ -21,11 +22,11 @@ export function InternalNav({
 
   return (
     <nav className="flex items-center gap-6 text-sm text-atlas-muted">
-      <Link href="/pipeline" className="hover:text-atlas-text">
+      <Link href={ROUTES.aircraftManagement.pipeline} className="hover:text-atlas-text">
         Pipeline
       </Link>
       {isAdmin && (
-        <Link href="/data" className="hover:text-atlas-text">
+        <Link href={ROUTES.dataWarehouse.data} className="hover:text-atlas-text">
           Data
         </Link>
       )}

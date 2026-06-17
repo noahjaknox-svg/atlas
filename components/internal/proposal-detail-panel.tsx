@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { BADGE_STYLES } from "@/lib/pipeline";
 import { prefetchProposalRoute } from "@/lib/prefetch-proposal-route";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import type { PipelineCardData } from "@/components/internal/pipeline-card";
 
@@ -355,7 +356,7 @@ export function ProposalDetailPanel({
             <div className="space-y-2 border-t border-atlas-border px-5 py-3">
               <div className="flex flex-wrap gap-2">
                 <Link
-                  href={`/proposals/${data?.id ?? initialCard!.id}`}
+                  href={ROUTES.aircraftManagement.proposal(data?.id ?? initialCard!.id)}
                   prefetch
                   className="min-w-[120px] flex-1"
                 >

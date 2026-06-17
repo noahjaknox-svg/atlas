@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ROUTES } from "@/lib/routes";
 import { formatCurrency } from "@/lib/utils";
 import type { ScenarioProFormaResult } from "@/lib/proforma";
 import type { ScenarioInput } from "@/lib/proforma";
@@ -83,7 +84,7 @@ export function ProFormaView({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link
-            href={`/proposals/${proposalId}`}
+            href={ROUTES.aircraftManagement.proposal(proposalId)}
             className="text-sm text-atlas-accent hover:underline"
           >
             ← Workspace

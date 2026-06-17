@@ -12,6 +12,7 @@ import {
   type DataHubFilterKey,
   type FilterField,
 } from "@/lib/data-hub-filters";
+import { ROUTES } from "@/lib/routes";
 
 export function DataHubSearchBar({ tab }: { tab: string }) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function DataHubSearchBar({ tab }: { tab: string }) {
       if (!next.q) delete next.q;
       const params = buildDataHubQuery(next);
       params.set("tab", tab);
-      router.replace(`/data?${params.toString()}`);
+      router.replace(`${ROUTES.dataWarehouse.data}?${params.toString()}`);
     },
     [router, searchParams, tab]
   );
@@ -82,7 +83,7 @@ export function DataHubFilterSidebar({
       }
       const params = buildDataHubQuery(next);
       params.set("tab", tab);
-      router.replace(`/data?${params.toString()}`);
+      router.replace(`${ROUTES.dataWarehouse.data}?${params.toString()}`);
     },
     [router, searchParams, tab]
   );
@@ -151,7 +152,7 @@ export function DataHubFilterSidebar({
   }, [filters.airportId]);
 
   function clearAll() {
-    router.replace(`/data?${clearDataHubFilters(tab).toString()}`);
+    router.replace(`${ROUTES.dataWarehouse.data}?${clearDataHubFilters(tab).toString()}`);
     setAircraftLabel("");
     setAirportLabel("");
   }

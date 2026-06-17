@@ -96,19 +96,48 @@ export async function searchAirportReference(
   const q = query.trim();
   if (!q) return [];
 
-  const upper = q.toUpperCase();
+  const upper = normalizeAirportCode(q);
+  const isAirportCode = /^[A-Z0-9]{2,4}$/.test(upper);
+
+  const codeClauses: object[] = [
+    { icao: { equals: upper, mode: "insensitive" } },
+    { ident: { equals: upper, mode: "insensitive" } },
+    { iata: { equals: upper, mode: "insensitive" } },
+    { localCode: { equals: upper, mode: "insensitive" } },
+    { gpsCode: { equals: upper, mode: "insensitive" } },
+    { icao: { startsWith: upper, mode: "insensitive" } },
+    { ident: { startsWith: upper, mode: "insensitive" } },
+    { iata: { startsWith: upper, mode: "insensitive" } },
+    { localCode: { startsWith: upper, mode: "insensitive" } },
+    { gpsCode: { startsWith: upper, mode: "insensitive" } },
+  ];
+
+  // FAA LID ↔ US ICAO (APA ↔ KAPA, SDL ↔ KSDL).
+  if (upper.length === 3) {
+    codeClauses.push(
+      { icao: { equals: `K${upper}`, mode: "insensitive" } },
+      { ident: { equals: `K${upper}`, mode: "insensitive" } },
+      { gpsCode: { equals: `K${upper}`, mode: "insensitive" } }
+    );
+  } else if (upper.length === 4 && upper.startsWith("K")) {
+    const lid = upper.slice(1);
+    codeClauses.push(
+      { localCode: { equals: lid, mode: "insensitive" } },
+      { iata: { equals: lid, mode: "insensitive" } }
+    );
+  }
+
   const rows = await db.airportReference.findMany({
     where: {
       airportType: { not: "closed_airport" },
-      OR: [
-        { icao: { startsWith: upper, mode: "insensitive" } },
-        { ident: { startsWith: upper, mode: "insensitive" } },
-        { iata: { startsWith: upper, mode: "insensitive" } },
-        { municipality: { equals: q, mode: "insensitive" } },
-        { municipality: { contains: q, mode: "insensitive" } },
-        { name: { contains: q, mode: "insensitive" } },
-        { keywords: { contains: q, mode: "insensitive" } },
-      ],
+      OR: isAirportCode
+        ? codeClauses
+        : [
+            { municipality: { equals: q, mode: "insensitive" } },
+            { municipality: { contains: q, mode: "insensitive" } },
+            { name: { contains: q, mode: "insensitive" } },
+            { keywords: { contains: q, mode: "insensitive" } },
+          ],
     },
     orderBy: [
       { scheduledService: "desc" },

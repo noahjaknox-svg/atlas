@@ -4,13 +4,19 @@ export function postEventLocation(event: ScheduleEvent, fallback: string | null)
   return event.arrIcao ?? event.locationIcao ?? event.depIcao ?? fallback;
 }
 
+function sortEventsChronologically(events: ScheduleEvent[]): ScheduleEvent[] {
+  return [...events].sort(
+    (a, b) => a.startsAt.getTime() - b.startsAt.getTime() || a.endsAt.getTime() - b.endsAt.getTime()
+  );
+}
+
 export function inferLocationAt(
   events: ScheduleEvent[],
   at: Date,
   homeBase: string | null
 ): string | null {
   let location = homeBase?.toUpperCase() ?? null;
-  for (const e of events) {
+  for (const e of sortEventsChronologically(events)) {
     if (e.endsAt <= at) {
       location = postEventLocation(e, location);
     } else if (e.startsAt <= at) {

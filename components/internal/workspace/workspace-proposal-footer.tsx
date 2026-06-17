@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/lib/routes";
 
 export function WorkspaceProposalFooter({
   proposalId,
@@ -68,7 +69,7 @@ export function WorkspaceProposalFooter({
             size="sm"
             className="shrink-0 text-xs"
           >
-            <Link href={`/proposals/${proposalId}/design`}>Design report</Link>
+            <Link href={ROUTES.aircraftManagement.proposalDesignView(proposalId)}>Design report</Link>
           </Button>
 
           <Button

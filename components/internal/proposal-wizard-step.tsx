@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { parseFormattedNumber } from "@/lib/utils";
 import type { Proposal, Prospect, AircraftInstance, AircraftMaster, ProposalAssumption, ProposalScenario, ClientPortal } from "@prisma/client";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
+import { ROUTES } from "@/lib/routes";
 
 type ProposalWithRelations = Proposal & {
   prospect: Prospect;
@@ -180,7 +181,7 @@ function AssumptionForm({
       {error && <p className="text-sm text-atlas-danger">{error}</p>}
       <div className="flex gap-3">
         {step > 1 && (
-          <Link href={`/proposals/${proposalId}?step=${step - 1}`}>
+          <Link href={ROUTES.aircraftManagement.proposal(proposalId, step - 1)}>
             <Button type="button" variant="secondary">
               Back
             </Button>
@@ -328,7 +329,7 @@ function ReviewStep({
         </Card>
       )}
 
-      <Link href={`/proposals/${proposalId}?step=9`}>
+      <Link href={ROUTES.aircraftManagement.proposal(proposalId, 9)}>
         <Button variant="ghost">Back</Button>
       </Link>
     </div>
@@ -347,7 +348,7 @@ export function ProposalWizardStep({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const next = () => router.push(`/proposals/${proposalId}?step=${step + 1}`);
+  const next = () => router.push(ROUTES.aircraftManagement.proposal(proposalId, step + 1));
 
   const titles: Record<number, string> = {
     1: "Prospect",
@@ -457,7 +458,7 @@ export function ProposalWizardStep({
     return (
       <p className="text-atlas-muted">
         Prospect saved. Continue to step 2 or{" "}
-        <Link href={`/proposals/${proposalId}?step=2`} className="text-atlas-accent">
+        <Link href={ROUTES.aircraftManagement.proposal(proposalId, 2)} className="text-atlas-accent">
           configure aircraft
         </Link>
         .
@@ -474,10 +475,10 @@ export function ProposalWizardStep({
           for V1, proceed to review.
         </p>
         <div className="flex gap-3">
-          <Link href={`/proposals/${proposalId}?step=${step - 1}`}>
+          <Link href={ROUTES.aircraftManagement.proposal(proposalId, step - 1)}>
             <Button variant="secondary">Back</Button>
           </Link>
-          <Link href={`/proposals/${proposalId}?step=${step + 1}`}>
+          <Link href={ROUTES.aircraftManagement.proposal(proposalId, step + 1)}>
             <Button>Continue</Button>
           </Link>
         </div>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 
 type NavLink = { kind: "link"; href: string; label: string };
@@ -14,25 +15,28 @@ type NavItem = NavLink | NavAction;
 type Department = {
   id: string;
   label: string;
+  prefix: string;
   items: readonly NavItem[];
 };
 
 const CHARTER: Department = {
   id: "charter",
   label: "Charter",
+  prefix: "/charter",
   items: [
-    { kind: "link", href: "/charter/find", label: "Find Aircraft" },
-    { kind: "link", href: "/charter/trips", label: "Trips" },
-    { kind: "link", href: "/schedule", label: "Schedule" },
+    { kind: "link", href: ROUTES.charter.find, label: "Find Aircraft" },
+    { kind: "link", href: ROUTES.charter.trips, label: "Trips" },
+    { kind: "link", href: ROUTES.charter.schedule, label: "Schedule" },
   ],
 };
 
 const AIRCRAFT_MANAGEMENT: Department = {
   id: "aircraft-management",
   label: "Aircraft Management",
+  prefix: "/aircraft-management",
   items: [
-    { kind: "link", href: "/pipeline", label: "Pipeline" },
-    { kind: "link", href: "/proposal-design", label: "Proposal Design" },
+    { kind: "link", href: ROUTES.aircraftManagement.pipeline, label: "Pipeline" },
+    { kind: "link", href: ROUTES.aircraftManagement.proposalDesign, label: "Proposal Design" },
     { kind: "action", action: "new-proposal", label: "New proposal" },
   ],
 };
@@ -42,30 +46,25 @@ const DEPARTMENTS = [CHARTER, AIRCRAFT_MANAGEMENT] as const;
 const DATA_WAREHOUSE: Department = {
   id: "data-warehouse",
   label: "Data Warehouse",
-  items: [{ kind: "link", href: "/data", label: "Data Warehouse" }],
+  prefix: "/data-warehouse",
+  items: [{ kind: "link", href: ROUTES.dataWarehouse.data, label: "Data Warehouse" }],
 };
 
 function isLinkActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const base = href.split("?")[0];
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 function isItemActive(pathname: string, item: NavItem) {
   if (item.kind === "action") {
-    return item.action === "new-proposal" && pathname === "/proposals/new";
+    return item.action === "new-proposal" && pathname === ROUTES.aircraftManagement.proposalNew;
   }
   return isLinkActive(pathname, item.href);
 }
 
-function departmentMatchesPath(department: Department, pathname: string) {
-  if (department.id === "aircraft-management" && pathname.startsWith("/proposals")) {
-    return true;
-  }
-  return department.items.some((item) => isItemActive(pathname, item));
-}
-
 function getActiveDepartment(pathname: string): Department {
-  if (departmentMatchesPath(DATA_WAREHOUSE, pathname)) return DATA_WAREHOUSE;
-  const match = DEPARTMENTS.find((department) => departmentMatchesPath(department, pathname));
+  if (pathname.startsWith(DATA_WAREHOUSE.prefix)) return DATA_WAREHOUSE;
+  const match = DEPARTMENTS.find((department) => pathname.startsWith(department.prefix));
   return match ?? AIRCRAFT_MANAGEMENT;
 }
 
@@ -169,11 +168,18 @@ export function AppHeader({
     router.refresh();
   }
 
+  const homeHref =
+    activeDepartment.id === CHARTER.id
+      ? ROUTES.charter.find
+      : activeDepartment.id === DATA_WAREHOUSE.id
+        ? ROUTES.dataWarehouse.data
+        : ROUTES.home;
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-bg/95 backdrop-blur">
       <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center px-3 lg:px-5">
         <div className="flex h-9 items-center justify-self-start gap-3">
-          <Link href="/pipeline" className="flex h-9 items-center" aria-label="PrismJet home">
+          <Link href={homeHref} className="flex h-9 items-center" aria-label="PrismJet home">
             <Image
               src="/images/prismjet-logo.png"
               alt="PrismJet"

@@ -18,6 +18,7 @@ import type {
   ExperienceSectionType,
 } from "@/lib/experience-content";
 import type { ExperienceMasterTemplate } from "@/lib/experience-master";
+import { ROUTES } from "@/lib/routes";
 import { getMasterTemplateForSection } from "@/lib/experience-master";
 import { cn } from "@/lib/utils";
 
@@ -166,7 +167,7 @@ export function ProposalDesignWorkspace({
       <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-atlas-border bg-atlas-surface/20">
         <div className="border-b border-atlas-border px-4 py-3">
           <Link
-            href={`/proposals/${proposalId}`}
+            href={ROUTES.aircraftManagement.proposal(proposalId)}
             className="text-xs text-atlas-accent hover:underline"
           >
             ← Back to workspace
@@ -175,7 +176,7 @@ export function ProposalDesignWorkspace({
           <p className="mt-0.5 truncate text-xs text-atlas-muted">{proposalName}</p>
           <p className="mt-2 text-[11px] leading-snug text-atlas-muted">
             Master copy lives at{" "}
-            <Link href="/proposal-design" className="text-atlas-accent hover:underline">
+            <Link href={ROUTES.aircraftManagement.proposalDesign} className="text-atlas-accent hover:underline">
               Proposal Design
             </Link>
             . Reset a page below to restore the master version.
@@ -259,7 +260,7 @@ export function ProposalDesignWorkspace({
               {resetting ? "Loading…" : "Reset page from master"}
             </Button>
             <Link
-              href="/proposal-design"
+              href={ROUTES.aircraftManagement.proposalDesign}
               className="text-xs text-atlas-accent hover:underline"
             >
               Edit master copy →

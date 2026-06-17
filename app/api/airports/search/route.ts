@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
     if (q.length < 1) return jsonOk([]);
 
+    const upper = q.toUpperCase();
     const referenceHits = await searchAirportReference(prisma, q, 15);
 
     if (referenceHits.length > 0) {
@@ -29,7 +30,13 @@ export async function GET(request: Request) {
     const airports = await prisma.airport.findMany({
       where: {
         OR: [
+          { icao: { equals: upper, mode: "insensitive" } },
           { icao: { contains: q, mode: "insensitive" } },
+          ...(upper.length === 3
+            ? [{ icao: { equals: `K${upper}`, mode: "insensitive" } }]
+            : upper.length === 4 && upper.startsWith("K")
+              ? [{ icao: { equals: upper.slice(1), mode: "insensitive" } }]
+              : []),
           { airportName: { contains: q, mode: "insensitive" } },
           { city: { contains: q, mode: "insensitive" } },
         ],

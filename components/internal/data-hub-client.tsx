@@ -15,6 +15,7 @@ import {
   TRAINING_TYPES,
 } from "@/components/internal/data-hub/field-options";
 import { clearDataHubFilters } from "@/lib/data-hub-filters";
+import { ROUTES } from "@/lib/routes";
 import {
   DataHubFilterSidebar,
   DataHubSearchBar,
@@ -124,7 +125,7 @@ export function DataHubClient({
 
   const setTab = useCallback(
     (id: string) => {
-      router.replace(`/data?${clearDataHubFilters(id).toString()}`);
+      router.replace(`${ROUTES.dataWarehouse.data}?${clearDataHubFilters(id).toString()}`);
     },
     [router]
   );

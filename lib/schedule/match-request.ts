@@ -1,6 +1,7 @@
 import type { ScheduleEvent } from "@prisma/client";
 import type { MatchReasoning } from "@/lib/schedule/types";
 import type { LegMatchReasoning, MultiLegMatchReasoning } from "@/lib/charter/types";
+import { airportCodesMatch } from "@/lib/airports/code-match";
 import { inferLocationAt } from "@/lib/schedule/location";
 
 export interface CharterRequestInput {
@@ -164,7 +165,7 @@ function buildReasoning(
   const notes: string[] = [];
 
   const tailLocation = inferLocationAt(events, atDeparture, ac.homeBase);
-  const locationFit = tailLocation === dep;
+  const locationFit = airportCodesMatch(tailLocation, dep);
   if (!locationFit) {
     notes.push(
       tailLocation
@@ -198,7 +199,7 @@ function buildReasoning(
       e.availabilityClass === "repo_opportunity" &&
       e.endsAt <= atDeparture &&
       e.endsAt >= repoWindowStart &&
-      (e.arrIcao?.toUpperCase() === dep || e.depIcao?.toUpperCase() === dep)
+      (airportCodesMatch(e.arrIcao, dep) || airportCodesMatch(e.depIcao, dep))
   );
   const repoBoost = !!repoLeg;
   if (repoBoost) notes.push(`Repo leg aligns: ${repoLeg!.depIcao} → ${repoLeg!.arrIcao}`);

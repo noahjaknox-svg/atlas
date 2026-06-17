@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { ROUTES } from "@/lib/routes";
 
 export function NewProposalDialog({
   trigger,
@@ -60,7 +61,7 @@ export function NewProposalDialog({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create proposal");
       setOpen(false);
-      router.push(`/proposals/${data.proposal.id}`);
+      router.push(ROUTES.aircraftManagement.proposal(data.proposal.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

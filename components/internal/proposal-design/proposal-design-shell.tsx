@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 import { ProposalDesignEditor } from "@/components/internal/proposal-design-editor";
 import { ExperienceMasterEditor } from "@/components/internal/proposal-design/experience-master-editor";
 import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
@@ -74,7 +75,7 @@ export function ProposalDesignShell({
                 Report pages
               </button>
               ; individual proposals can override in{" "}
-              <Link href="/pipeline" className="text-atlas-accent hover:underline">
+              <Link href={ROUTES.aircraftManagement.pipeline} className="text-atlas-accent hover:underline">
                 Design report
               </Link>
               .

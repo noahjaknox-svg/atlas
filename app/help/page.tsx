@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { InternalShell } from "@/components/internal/internal-shell";
+import { ROUTES } from "@/lib/routes";
 
 export default async function HelpPage() {
   const user = await getInternalUser();
@@ -39,7 +40,7 @@ export default async function HelpPage() {
           <h2 className="font-medium">Data Hub</h2>
           <p className="text-sm text-atlas-muted">
             Admins manage reference data under{" "}
-            <Link href="/data" className="text-atlas-accent hover:underline">
+            <Link href={ROUTES.dataWarehouse.data} className="text-atlas-accent hover:underline">
               Data
             </Link>
             . Use <strong>Re-import seed CSV</strong> for the bundled reference file, or upload a

@@ -4,6 +4,8 @@ import { ATLAS_USER_EMAIL_HEADER } from "@/lib/auth-constants";
 
 const INTERNAL_PREFIXES = [
   "/dashboard",
+  "/aircraft-management",
+  "/data-warehouse",
   "/pipeline",
   "/proposals",
   "/settings",
@@ -90,6 +92,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/aircraft-management/:path*",
+    "/data-warehouse/:path*",
     "/pipeline/:path*",
     "/proposals/:path*",
     "/proposal-design/:path*",

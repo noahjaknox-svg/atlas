@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/lib/routes";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { AircraftSetupBar } from "@/components/internal/workspace/aircraft-setup-panel";
 import {
@@ -261,7 +262,7 @@ export function AircraftConfigPanel({
                 Recalculate
               </Button>
               <Link
-                href={`/proposals/${proposalId}/pro-forma?aircraft=${aircraftId}`}
+                href={ROUTES.aircraftManagement.proposalProForma(proposalId, aircraftId)}
                 className="text-xs text-atlas-accent hover:underline"
               >
                 Full P&amp;L view →

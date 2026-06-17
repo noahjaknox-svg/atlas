@@ -1,3 +1,5 @@
+import { ROUTES } from "@/lib/routes";
+
 /** Canonical production site — used for invite emails and client portal links. */
 export const PRODUCTION_SITE_URL = "https://www.prismjet.space";
 
@@ -31,9 +33,9 @@ export function getAppBaseUrl(): string {
 }
 
 export function getInviteRedirectUrl(): string {
-  return `${getExternalAppUrl()}/auth/callback?flow=invite&next=/pipeline`;
+  return `${getExternalAppUrl()}/auth/callback?flow=invite&next=${encodeURIComponent(ROUTES.home)}`;
 }
 
-export function getAuthCallbackUrl(next = "/pipeline"): string {
+export function getAuthCallbackUrl(next = ROUTES.home): string {
   return `${getExternalAppUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 }

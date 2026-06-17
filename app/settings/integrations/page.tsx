@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
+import { ROUTES } from "@/lib/routes";
 import { prisma } from "@/lib/db";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { IntegrationsClient } from "@/components/internal/settings/integrations-client";
@@ -7,7 +8,7 @@ import { IntegrationsClient } from "@/components/internal/settings/integrations-
 export default async function IntegrationsSettingsPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/pipeline");
+  if (user.role !== "admin") redirect(ROUTES.home);
 
   const latestFuel = await prisma.fuelIndexSnapshot.findFirst({
     orderBy: { fetchedAt: "desc" },

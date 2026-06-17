@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import type { AircraftCategory, PipelineStage, ProposalStatus } from "@prisma/client";
 import { prefetchProposalRoute } from "@/lib/prefetch-proposal-route";
+import { ROUTES } from "@/lib/routes";
 import {
   PIPELINE_COLUMNS,
   PIPELINE_DATE_RANGES,
@@ -107,7 +108,7 @@ export function PipelineBoard({
         }
       }
       const qs = params.toString();
-      router.replace(qs ? `/pipeline?${qs}` : "/pipeline", { scroll: false });
+      router.replace(qs ? `${ROUTES.aircraftManagement.pipeline}?${qs}` : ROUTES.aircraftManagement.pipeline, { scroll: false });
     },
     [router, searchParams]
   );
@@ -264,7 +265,7 @@ export function PipelineBoard({
 
   function handleCardOpen(id: string) {
     prefetchProposalRoute(router, id);
-    router.push(`/proposals/${id}`);
+    router.push(ROUTES.aircraftManagement.proposal(id));
   }
 
   function handleCardQuickView(id: string) {
@@ -278,7 +279,7 @@ export function PipelineBoard({
 
   function resetFilters() {
     setSearchInput("");
-    router.replace("/pipeline", { scroll: false });
+    router.replace(ROUTES.aircraftManagement.pipeline, { scroll: false });
   }
 
   const hasActiveFilters =

@@ -13,6 +13,7 @@ import { getMissingInfoCount } from "@/lib/required-fields";
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
+import { ROUTES } from "@/lib/routes";
 import type { AircraftListItem } from "./aircraft-list-panel";
 
 export function WorkspaceLayout({
@@ -94,7 +95,7 @@ export function WorkspaceLayout({
       <div className="flex min-h-0 flex-1">
       <aside className="flex h-full w-[272px] shrink-0 flex-col border-r border-atlas-border bg-atlas-surface">
         <div className="shrink-0 border-b border-atlas-border px-3 py-2">
-          <Link href="/pipeline" className="atlas-caption hover:text-atlas-accent">
+          <Link href={ROUTES.aircraftManagement.pipeline} className="atlas-caption hover:text-atlas-accent">
             ← Pipeline
           </Link>
           <input

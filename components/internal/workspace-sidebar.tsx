@@ -8,6 +8,7 @@ import {
   CLIENT_EDITABLE_ASSUMPTIONS,
   type WorkspaceFormState,
 } from "@/lib/workspace-sections";
+import { ROUTES } from "@/lib/routes";
 
 type ScenarioSummary = {
   netAnnualCost: string | number | null;
@@ -190,7 +191,7 @@ export function WorkspaceSidebar({
             </Button>
           </Link>
         )}
-        <Link href="/pipeline">
+        <Link href={ROUTES.aircraftManagement.pipeline}>
           <Button variant="ghost" className="w-full">
             Back to pipeline
           </Button>

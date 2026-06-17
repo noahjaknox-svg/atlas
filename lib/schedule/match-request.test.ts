@@ -85,4 +85,31 @@ describe("matchCharterRequest", () => {
     expect(matches[0]!.tailNumber).toBe("N365AV");
     expect(matches[0]!.reasoning.legs[0]!.repoBoost).toBe(true);
   });
+
+  it("treats KSDL and SDL as the same airport for location fit", () => {
+    const events = [
+      baseEvent({
+        endsAt: new Date("2026-06-17T23:24:00.000Z"),
+        startsAt: new Date("2026-06-17T21:30:00.000Z"),
+        depIcao: "2V5",
+        arrIcao: "SDL",
+        availabilityClass: "hard_block",
+        rawEventType: "charter",
+      }),
+    ];
+
+    const matches = matchCharterRequest(
+      {
+        requestedDepIcao: "KSDL",
+        requestedArrIcao: "KSDM",
+        requestedDepartAt: new Date("2026-06-18T16:00:00.000Z"),
+        paxCount: 4,
+      },
+      events,
+      [{ tailNumber: "N365AV", id: "fleet-1", homeBase: "SDL" }]
+    );
+
+    expect(matches[0]!.reasoning.legs[0]!.locationFit).toBe(true);
+    expect(matches[0]!.reasoning.legs[0]!.tailLocation).toBe("SDL");
+  });
 });

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/lib/routes";
 
 export function WorkspaceTopBar({
   saveLabel,
@@ -24,7 +25,7 @@ export function WorkspaceTopBar({
     <header className="flex shrink-0 items-center justify-between gap-4 border-b border-atlas-border bg-atlas-bg/95 px-4 py-2.5 backdrop-blur">
       <div className="flex items-center gap-4">
         <Link
-          href="/pipeline"
+          href={ROUTES.aircraftManagement.pipeline}
           className="text-xs text-atlas-muted transition-colors hover:text-atlas-accent"
         >
           ← Back to Pipeline

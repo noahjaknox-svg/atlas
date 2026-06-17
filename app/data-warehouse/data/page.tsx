@@ -7,6 +7,7 @@ import {
   prefetchDataHubTab,
   type DataHubListPayload,
 } from "@/lib/data-hub-prefetch";
+import { ROUTES } from "@/lib/routes";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { DataHubClient } from "@/components/internal/data-hub-client";
 
@@ -17,7 +18,7 @@ export default async function DataHubPage({
 }) {
   const user = await getInternalUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/pipeline");
+  if (user.role !== "admin") redirect(ROUTES.home);
 
   const params = await searchParams;
   const activeTab = params.tab ?? "airports";

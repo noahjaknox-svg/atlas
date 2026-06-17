@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ROUTES } from "@/lib/routes";
 
 const PROSPECT_TYPES = [
   { value: "individual_owner", label: "Individual owner" },
@@ -55,7 +56,7 @@ export function ProspectStepForm({
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to create proposal");
-        router.push(`/proposals/${data.proposal.id}?step=2`);
+        router.push(ROUTES.aircraftManagement.proposal(data.proposal.id, 2));
       } else if (proposalId) {
         await fetch(`/api/proposals/${proposalId}/assumptions`, {
           method: "POST",
@@ -65,7 +66,7 @@ export function ProspectStepForm({
             { category: "prospect", assumptionName: "contact_name", value: payload.contactName, sourceType: "manual" },
           ]),
         });
-        router.push(`/proposals/${proposalId}?step=2`);
+        router.push(ROUTES.aircraftManagement.proposal(proposalId, 2));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

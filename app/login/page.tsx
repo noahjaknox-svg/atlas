@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ROUTES } from "@/lib/routes";
 
 const AUTH_CALLBACK_ERRORS: Record<string, string> = {
   auth_callback_failed: "That sign-in link expired or was already used. Request a new invite.",
@@ -30,7 +31,7 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
       const isInvite = hashParams.get("type") === "invite";
-      const next = params.get("next") ?? "/pipeline";
+      const next = params.get("next") ?? ROUTES.home;
       const flow = isInvite ? "&flow=invite" : "";
       window.location.replace(
         `/auth/callback?next=${encodeURIComponent(next)}${flow}${hash}`
@@ -74,7 +75,7 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/pipeline";
+      window.location.href = ROUTES.home;
     } catch {
       setError("Could not reach the server. Is npm run dev running?");
       setLoading(false);

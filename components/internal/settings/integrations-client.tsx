@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/lib/routes";
 
 type Status = {
   eiaConfigured: boolean;
@@ -211,7 +212,7 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
           >
             {scheduleSyncing ? "Syncing…" : "Sync JetInsight schedule"}
           </Button>
-          <Link href="/schedule" className="text-sm text-atlas-accent hover:underline">
+          <Link href={ROUTES.charter.schedule} className="text-sm text-atlas-accent hover:underline">
             Open schedule board →
           </Link>
         </div>

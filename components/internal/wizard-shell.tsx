@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { WIZARD_STEPS } from "@/lib/assumptions";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export function WizardShell({
@@ -19,7 +20,7 @@ export function WizardShell({
         {WIZARD_STEPS.map((step) => (
           <Link
             key={step.id}
-            href={`/proposals/${proposalId}?step=${step.id}`}
+            href={ROUTES.aircraftManagement.proposal(proposalId, step.id)}
             className={cn(
               "rounded-full px-3 py-1 text-xs transition-colors",
               currentStep === step.id

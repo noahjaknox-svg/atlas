@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ROUTES } from "@/lib/routes";
 
 function safeNextPath(next: string | null) {
-  const path = next ?? "/pipeline";
-  return path.startsWith("/") && !path.startsWith("//") ? path : "/pipeline";
+  const path = next ?? ROUTES.home;
+  return path.startsWith("/") && !path.startsWith("//") ? path : ROUTES.home;
 }
 
 function needsPasswordSetup(

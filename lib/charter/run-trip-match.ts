@@ -49,7 +49,10 @@ export async function runTripMatch(
   });
 
   const [events, fleetRows] = await Promise.all([
-    db.scheduleEvent.findMany({ where: { deletedAt: null } }),
+    db.scheduleEvent.findMany({
+      where: { deletedAt: null },
+      orderBy: { startsAt: "asc" },
+    }),
     db.crewFleetAircraft.findMany({
       where: { status: "active" },
       include: {

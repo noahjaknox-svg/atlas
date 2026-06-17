@@ -1,6 +1,7 @@
 "use client";
 
 import type { MultiLegMatchReasoning } from "@/lib/charter/types";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export interface StoredMatch {
@@ -51,7 +52,7 @@ export function MatchResultsPanel({
         <p className="mt-1 text-sm text-atlas-muted">
           No tails matched this routing against the current schedule. Try different dates or
           check the{" "}
-          <a href="/schedule" className="text-atlas-accent hover:underline">
+          <a href={ROUTES.charter.schedule} className="text-atlas-accent hover:underline">
             schedule board
           </a>
           .

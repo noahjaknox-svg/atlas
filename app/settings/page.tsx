@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { InternalShell } from "@/components/internal/internal-shell";
+import { ROUTES } from "@/lib/routes";
 
 export default async function SettingsPage() {
   const user = await getInternalUser();
@@ -51,7 +52,7 @@ export default async function SettingsPage() {
           </li>
           <li>
             <Link
-              href="/proposal-design"
+              href={ROUTES.aircraftManagement.proposalDesign}
               className="block px-4 py-3 text-sm hover:bg-atlas-surface/40"
             >
               <span className="font-medium">Proposal design</span>
