@@ -36,7 +36,14 @@ function eventToRecord(event: VEvent): Record<string, unknown> {
 /** Parse raw ICS text into normalized schedule events. */
 export async function parseIcsText(icsText: string): Promise<NormalizedScheduleEvent[]> {
   const ical = await loadIcalParser();
-  const parsed = ical.parseICS(icsText);
+
+  let parsed: ReturnType<typeof ical.parseICS>;
+  try {
+    parsed = ical.parseICS(icsText);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Could not parse ICS calendar: ${detail}`);
+  }
   const events: NormalizedScheduleEvent[] = [];
 
   for (const item of Object.values(parsed)) {

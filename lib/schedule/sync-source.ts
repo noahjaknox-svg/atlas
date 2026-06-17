@@ -9,19 +9,28 @@ export interface SyncSourceResult {
   unmatchedTails: string[];
 }
 
+/**
+ * JetInsight "Subscribe" links are commonly `webcal://`, which the runtime
+ * `fetch()` cannot handle. Normalize to https so the feed is reachable.
+ */
+export function normalizeIcsUrl(url: string): string {
+  return url.trim().replace(/^webcal:\/\//i, "https://");
+}
+
 export async function ensureScheduleSource(
   db: PrismaClient,
   opts: { name: string; icsUrl: string; pollIntervalMinutes?: number }
 ) {
+  const icsUrl = normalizeIcsUrl(opts.icsUrl);
   const existing = await db.scheduleSource.findFirst({
-    where: { icsUrl: opts.icsUrl },
+    where: { icsUrl },
   });
   if (existing) return existing;
 
   return db.scheduleSource.create({
     data: {
       name: opts.name,
-      icsUrl: opts.icsUrl,
+      icsUrl,
       pollIntervalMinutes: opts.pollIntervalMinutes ?? 10,
     },
   });
@@ -84,14 +93,41 @@ export async function fetchAndSyncScheduleSource(
   sourceId: string,
   icsUrl: string
 ): Promise<SyncSourceResult> {
-  const res = await fetch(icsUrl, {
-    headers: { Accept: "text/calendar" },
-    next: { revalidate: 0 },
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ICS (${res.status})`);
+  const url = normalizeIcsUrl(icsUrl);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        // Some calendar exports reject requests without a UA / Accept header.
+        Accept: "text/calendar, text/plain;q=0.9, */*;q=0.8",
+        "User-Agent": "Atlas-Schedule-Sync/1.0",
+      },
+      redirect: "follow",
+      cache: "no-store",
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Could not reach the ICS URL: ${detail}`);
   }
+
+  if (!res.ok) {
+    const body = (await res.text().catch(() => "")).slice(0, 160).replace(/\s+/g, " ").trim();
+    throw new Error(
+      `ICS fetch failed (${res.status} ${res.statusText})${body ? ` — ${body}` : ""}`
+    );
+  }
+
   const icsText = await res.text();
+  if (!icsText.includes("BEGIN:VCALENDAR")) {
+    const snippet = icsText.trim().slice(0, 120).replace(/\s+/g, " ");
+    throw new Error(
+      snippet
+        ? `ICS URL did not return a calendar (got "${snippet}…"). Confirm JETINSIGHT_ICS_URL points to the raw .ics export and the token is still valid.`
+        : "ICS URL returned an empty response. Confirm JETINSIGHT_ICS_URL is correct and the token is still valid."
+    );
+  }
+
   return syncScheduleSource(db, sourceId, icsText);
 }
 

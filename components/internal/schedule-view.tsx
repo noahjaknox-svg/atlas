@@ -100,8 +100,12 @@ export function ScheduleView({
     setSyncMsg("");
     try {
       const res = await fetch("/api/schedule/sync", { method: "POST" });
-      const json = await res.json();
-      setSyncMsg(json.message ?? (res.ok ? "Sync complete" : "Sync failed"));
+      const json = await res.json().catch(() => ({}));
+      setSyncMsg(
+        res.ok
+          ? json.message ?? "Sync complete"
+          : `Sync failed: ${json.error ?? json.message ?? res.statusText}`
+      );
       if (res.ok) await fetchRange(rangeStart, tailFilter);
     } finally {
       setSyncing(false);
