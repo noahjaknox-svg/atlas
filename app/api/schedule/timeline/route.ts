@@ -25,11 +25,14 @@ export async function GET(req: NextRequest) {
       computedEnd = new Date(start.getTime() + parseInt(days, 10) * 24 * 60 * 60 * 1000);
     }
 
+    const gridTimezone = searchParams.get("gridTimezone") ?? undefined;
+
     const data = await loadScheduleTimeline(prisma, {
       rangeStart,
       rangeEnd: computedEnd,
       tailNumbers: tails,
       sourceId,
+      gridTimezone,
     });
 
     return jsonOk({

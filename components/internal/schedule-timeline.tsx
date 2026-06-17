@@ -13,6 +13,7 @@ import {
   timezoneAbbr,
   type ScheduleTimeMode,
 } from "@/lib/schedule/airport-timezones";
+import { isTodayInTimezone, isWeekendInTimezone } from "@/lib/schedule/zoned-time";
 import { cn } from "@/lib/utils";
 
 const BLOCK_STYLES: Record<TimelineLegendKind, string> = {
@@ -26,16 +27,6 @@ const TAIL_COL_W = 168;
 const ROW_HEIGHT = 84;
 const NOTE_STRIP_H = 18;
 
-function isTodayUtc(dateStr: string): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  return dateStr === today;
-}
-
-function isWeekend(dateStr: string): boolean {
-  const day = new Date(`${dateStr}T12:00:00Z`).getUTCDay();
-  return day === 0 || day === 6;
-}
-
 export function ScheduleTimeline({
   timeline,
   timeMode,
@@ -45,6 +36,8 @@ export function ScheduleTimeline({
   timeMode: ScheduleTimeMode;
   userTimezone: string;
 }) {
+  const gridTimezone = timeline.gridTimezone;
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex shrink-0 flex-wrap gap-x-4 gap-y-2 rounded-lg border border-atlas-border/60 bg-atlas-surface/20 px-3 py-2">
@@ -78,8 +71,8 @@ export function ScheduleTimeline({
                 className={cn(
                   "min-w-0 flex-1 border-r border-atlas-border/70 px-1 py-2 text-center last:border-r-0",
                   i % 2 === 0 ? "bg-atlas-surface/30" : "bg-atlas-bg/80",
-                  isWeekend(day.date) && "bg-atlas-surface/50",
-                  isTodayUtc(day.date) &&
+                  isWeekendInTimezone(day.date, gridTimezone) && "bg-atlas-surface/50",
+                  isTodayInTimezone(day.date, gridTimezone) &&
                     "bg-atlas-accent/10 ring-1 ring-inset ring-atlas-accent/40"
                 )}
               >
@@ -89,7 +82,7 @@ export function ScheduleTimeline({
                 <div
                   className={cn(
                     "text-sm font-semibold",
-                    isTodayUtc(day.date) ? "text-atlas-accent" : "text-atlas-text"
+                    isTodayInTimezone(day.date, gridTimezone) ? "text-atlas-accent" : "text-atlas-text"
                   )}
                 >
                   {day.label}
@@ -107,6 +100,7 @@ export function ScheduleTimeline({
               timeline={timeline}
               timeMode={timeMode}
               userTimezone={userTimezone}
+              gridTimezone={gridTimezone}
             />
           ))}
 
@@ -126,11 +120,13 @@ function TimelineRowView({
   timeline,
   timeMode,
   userTimezone,
+  gridTimezone,
 }: {
   row: ScheduleTimelineData["rows"][0];
   timeline: ScheduleTimelineData;
   timeMode: ScheduleTimeMode;
   userTimezone: string;
+  gridTimezone: string;
 }) {
   const tzLabel =
     timeMode === "aircraft"
@@ -174,8 +170,8 @@ function TimelineRowView({
               className={cn(
                 "min-w-0 flex-1 border-r border-atlas-border/50 last:border-r-0",
                 i % 2 === 0 ? "bg-atlas-surface/[0.07]" : "bg-transparent",
-                isWeekend(day.date) && "bg-atlas-surface/10",
-                isTodayUtc(day.date) && "bg-atlas-accent/[0.04]"
+                isWeekendInTimezone(day.date, gridTimezone) && "bg-atlas-surface/10",
+                isTodayInTimezone(day.date, gridTimezone) && "bg-atlas-accent/[0.04]"
               )}
             />
           ))}
@@ -268,15 +264,15 @@ function TimelineNoteView({
   rangeStart: string;
   rangeEnd: string;
 }) {
-  const { leftPct } = blockPosition(note, rangeStart, rangeEnd);
+  const { leftPct, widthPct } = blockPosition(note, rangeStart, rangeEnd);
   return (
     <div
       title={note.atlasNote}
       className={cn(
-        "absolute z-20 flex max-w-[40%] items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[9px] font-medium shadow-sm",
+        "absolute z-20 flex items-center gap-1 overflow-hidden rounded-sm border px-1.5 py-0.5 text-[9px] font-medium shadow-sm",
         BLOCK_STYLES.soft_hold
       )}
-      style={{ left: `${leftPct}%`, top: 2 }}
+      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%`, top: 2 }}
     >
       <span aria-hidden>⚑</span>
       <span className="line-clamp-1">{note.label}</span>

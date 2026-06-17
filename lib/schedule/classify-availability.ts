@@ -32,6 +32,9 @@ export function classifyAvailability(input: ClassificationInput): ScheduleAvaila
       if (/\bStandby Crew\b/i.test(input.summaryRaw)) {
         return "info_only";
       }
+      if (/\baway from home base\b/i.test(input.summaryRaw)) {
+        return "info_only";
+      }
       if (/\bScheduled MX\b/i.test(input.summaryRaw) || /\bCharts Due\b/i.test(input.summaryRaw)) {
         return "hard_block";
       }

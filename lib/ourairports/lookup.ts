@@ -4,9 +4,10 @@ import type {
   AirportRunwayReference,
   PrismaClient,
 } from "@prisma/client";
-import { normalizeAirportCode } from "@/lib/ourairports/csv";
+import { normalizeAirportCode } from "@/lib/ourairports/normalize-code";
 import type { AirportReferenceWire, AirportSearchHit } from "@/lib/ourairports/types";
 import { decimalToNumber } from "@/lib/ourairports/lookup-utils";
+import { rankAirportSearchHits } from "@/lib/ourairports/search-rank";
 
 type AirportWithRelations = AirportReference & {
   runways: AirportRunwayReference[];
@@ -144,10 +145,10 @@ export async function searchAirportReference(
       { airportType: "asc" },
       { name: "asc" },
     ],
-    take: limit,
+    take: Math.max(limit * 4, 40),
   });
 
-  return rows.map(serializeSearchHit);
+  return rankAirportSearchHits(q, rows.map(serializeSearchHit)).slice(0, limit);
 }
 
 export async function enrichAirportReference(

@@ -1,6 +1,6 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, ScheduleEvent } from "@prisma/client";
 import type { CharterTripType } from "@prisma/client";
-import { matchCharterLegs } from "@/lib/schedule/match-request";
+import { matchCharterLegs, type FleetAircraftInput } from "@/lib/schedule/match-request";
 import { persistMatchResults } from "@/lib/schedule/load-kanban";
 import type { TripLegInput, TripMatchInput } from "@/lib/charter/types";
 
@@ -9,6 +9,64 @@ function parseDepartAt(leg: TripLegInput): Date {
     return new Date(new Date().toISOString().slice(0, 10) + "T12:00:00.000Z");
   }
   return new Date(leg.departAt);
+}
+
+function inferHomeBaseFromSchedule(events: ScheduleEvent[], tailNumber: string): string | null {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    if (event.tailNumber !== tailNumber) continue;
+    for (const code of [event.arrIcao, event.locationIcao, event.depIcao]) {
+      if (!code) continue;
+      counts.set(code.toUpperCase(), (counts.get(code.toUpperCase()) ?? 0) + 1);
+    }
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [code, count] of Array.from(counts.entries())) {
+    if (count > bestCount) {
+      best = code;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+function buildMatchFleet(
+  fleetRows: Awaited<ReturnType<typeof loadActiveFleet>>,
+  events: ScheduleEvent[]
+): FleetAircraftInput[] {
+  const byTail = new Map(fleetRows.map((ac) => [ac.tailNumber, ac]));
+  const tailNumbers = Array.from(
+    new Set([...fleetRows.map((ac) => ac.tailNumber), ...events.map((e) => e.tailNumber)])
+  ).sort();
+
+  return tailNumbers.map((tailNumber) => {
+    const ac = byTail.get(tailNumber);
+    return {
+      tailNumber,
+      id: ac?.id ?? null,
+      homeBase: ac?.homeBase ?? inferHomeBaseFromSchedule(events, tailNumber),
+      maxPassengers: ac?.aircraftType.maxPassengers ?? null,
+      aircraftTypeLabel: ac
+        ? `${ac.aircraftType.manufacturer} ${ac.aircraftType.model}`
+        : null,
+    };
+  });
+}
+
+async function loadActiveFleet(db: PrismaClient) {
+  return db.crewFleetAircraft.findMany({
+    where: { status: "active" },
+    include: {
+      aircraftType: {
+        select: {
+          manufacturer: true,
+          model: true,
+          maxPassengers: true,
+        },
+      },
+    },
+  });
 }
 
 export async function runTripMatch(
@@ -53,27 +111,10 @@ export async function runTripMatch(
       where: { deletedAt: null },
       orderBy: { startsAt: "asc" },
     }),
-    db.crewFleetAircraft.findMany({
-      where: { status: "active" },
-      include: {
-        aircraftType: {
-          select: {
-            manufacturer: true,
-            model: true,
-            maxPassengers: true,
-          },
-        },
-      },
-    }),
+    loadActiveFleet(db),
   ]);
 
-  const fleet = fleetRows.map((ac) => ({
-    tailNumber: ac.tailNumber,
-    id: ac.id,
-    homeBase: ac.homeBase,
-    maxPassengers: ac.aircraftType.maxPassengers,
-    aircraftTypeLabel: `${ac.aircraftType.manufacturer} ${ac.aircraftType.model}`,
-  }));
+  const fleet = buildMatchFleet(fleetRows, events);
 
   const legInputs = input.legs.map((leg) => ({
     depIcao: leg.depIcao,

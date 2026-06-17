@@ -41,14 +41,14 @@ const AIRCRAFT_MANAGEMENT: Department = {
   ],
 };
 
-const DEPARTMENTS = [CHARTER, AIRCRAFT_MANAGEMENT] as const;
-
 const DATA_WAREHOUSE: Department = {
   id: "data-warehouse",
   label: "Data Warehouse",
   prefix: "/data-warehouse",
   items: [{ kind: "link", href: ROUTES.dataWarehouse.data, label: "Data Warehouse" }],
 };
+
+const ALL_DEPARTMENTS = [CHARTER, AIRCRAFT_MANAGEMENT, DATA_WAREHOUSE] as const;
 
 function isLinkActive(pathname: string, href: string) {
   const base = href.split("?")[0];
@@ -63,9 +63,14 @@ function isItemActive(pathname: string, item: NavItem) {
 }
 
 function getActiveDepartment(pathname: string): Department {
-  if (pathname.startsWith(DATA_WAREHOUSE.prefix)) return DATA_WAREHOUSE;
-  const match = DEPARTMENTS.find((department) => pathname.startsWith(department.prefix));
+  const match = ALL_DEPARTMENTS.find((department) => pathname.startsWith(department.prefix));
   return match ?? AIRCRAFT_MANAGEMENT;
+}
+
+function departmentHomeHref(department: Department): string {
+  if (department.id === CHARTER.id) return ROUTES.charter.find;
+  if (department.id === DATA_WAREHOUSE.id) return ROUTES.dataWarehouse.data;
+  return ROUTES.home;
 }
 
 function navItemClass(active: boolean) {
@@ -74,55 +79,6 @@ function navItemClass(active: boolean) {
     active
       ? "bg-atlas-accent/15 text-atlas-accent"
       : "text-atlas-muted hover:text-atlas-text"
-  );
-}
-
-function NavMenuItem({
-  item,
-  pathname,
-  onNavigate,
-  className,
-}: {
-  item: NavItem;
-  pathname: string;
-  onNavigate?: () => void;
-  className?: string;
-}) {
-  const active = isItemActive(pathname, item);
-
-  if (item.kind === "action") {
-    return (
-      <NewProposalDialog
-        trigger={
-          <button
-            type="button"
-            role="menuitem"
-            className={cn(
-              "block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
-              active ? "text-atlas-accent" : "text-atlas-text",
-              className
-            )}
-          >
-            {item.label}
-          </button>
-        }
-      />
-    );
-  }
-
-  return (
-    <Link
-      href={item.href}
-      role="menuitem"
-      onClick={onNavigate}
-      className={cn(
-        "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
-        active ? "text-atlas-accent" : "text-atlas-text",
-        className
-      )}
-    >
-      {item.label}
-    </Link>
   );
 }
 
@@ -139,10 +95,9 @@ export function AppHeader({
   const departmentMenuRef = useRef<HTMLDivElement>(null);
 
   const activeDepartment = getActiveDepartment(pathname);
-  const centerItems =
-    activeDepartment.id === DATA_WAREHOUSE.id
-      ? DATA_WAREHOUSE.items
-      : activeDepartment.items;
+  const centerItems = activeDepartment.items;
+  const showCenterNav =
+    centerItems.length > 1 || centerItems.some((item) => item.kind === "action");
 
   useEffect(() => {
     setDepartmentMenuOpen(false);
@@ -168,12 +123,7 @@ export function AppHeader({
     router.refresh();
   }
 
-  const homeHref =
-    activeDepartment.id === CHARTER.id
-      ? ROUTES.charter.find
-      : activeDepartment.id === DATA_WAREHOUSE.id
-        ? ROUTES.dataWarehouse.data
-        : ROUTES.home;
+  const homeHref = departmentHomeHref(activeDepartment);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-bg/95 backdrop-blur">
@@ -194,33 +144,16 @@ export function AppHeader({
             <button
               type="button"
               onClick={() => setDepartmentMenuOpen((open) => !open)}
-              className="flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-sm font-medium text-atlas-text transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
               aria-haspopup="menu"
               aria-expanded={departmentMenuOpen}
+              aria-label={`Department: ${activeDepartment.label}`}
             >
-              {DEPARTMENTS.map((department, index) => (
-                <span key={department.id} className="flex items-center gap-2">
-                  {index > 0 && (
-                    <span className="text-atlas-border" aria-hidden>
-                      |
-                    </span>
-                  )}
-                  <span
-                    className={cn(
-                      "font-medium",
-                      department.id === activeDepartment.id
-                        ? "text-atlas-text"
-                        : "text-atlas-muted"
-                    )}
-                  >
-                    {department.label}
-                  </span>
-                </span>
-              ))}
+              <span>{activeDepartment.label}</span>
               <svg
                 viewBox="0 0 12 12"
                 className={cn(
-                  "h-3 w-3 transition-transform",
+                  "h-3 w-3 text-atlas-muted transition-transform",
                   departmentMenuOpen && "rotate-180"
                 )}
                 fill="none"
@@ -235,58 +168,57 @@ export function AppHeader({
             {departmentMenuOpen && (
               <div
                 role="menu"
-                className="absolute left-0 top-full z-50 mt-1 min-w-[240px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
+                className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
               >
-                {DEPARTMENTS.map((department) => (
-                  <div key={department.id}>
-                    <p className="px-3 pb-1 pt-2 text-[0.7rem] font-medium uppercase tracking-wide text-atlas-muted">
-                      {department.label}
-                    </p>
-                    {department.items.map((item) => (
-                      <NavMenuItem
-                        key={item.kind === "link" ? item.href : item.action}
-                        item={item}
-                        pathname={pathname}
-                        onNavigate={() => setDepartmentMenuOpen(false)}
-                      />
-                    ))}
-                  </div>
+                {ALL_DEPARTMENTS.map((department) => (
+                  <Link
+                    key={department.id}
+                    href={departmentHomeHref(department)}
+                    role="menuitem"
+                    onClick={() => setDepartmentMenuOpen(false)}
+                    className={cn(
+                      "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+                      department.id === activeDepartment.id
+                        ? "text-atlas-accent"
+                        : "text-atlas-text"
+                    )}
+                  >
+                    {department.label}
+                  </Link>
                 ))}
-                <div className="my-1 h-px bg-atlas-border" aria-hidden />
-                <NavMenuItem
-                  item={DATA_WAREHOUSE.items[0]}
-                  pathname={pathname}
-                  onNavigate={() => setDepartmentMenuOpen(false)}
-                />
               </div>
             )}
           </div>
         </div>
 
-        <nav className="flex items-center justify-center gap-0.5">
-          {centerItems.map((item) => {
-            const active = isItemActive(pathname, item);
+        {showCenterNav ? (
+          <nav className="flex items-center justify-center gap-0.5">
+            {centerItems.map((item) => {
+              const active = isItemActive(pathname, item);
 
-            if (item.kind === "action") {
+              if (item.kind === "action") {
+                return (
+                  <NewProposalDialog
+                    key={item.action}
+                    trigger={
+                      <button type="button" className={navItemClass(active)}>
+                        {item.label}
+                      </button>
+                    }
+                  />
+                );
+              }
+
               return (
-                <NewProposalDialog
-                  key={item.action}
-                  trigger={
-                    <button type="button" className={navItemClass(active)}>
-                      {item.label}
-                    </button>
-                  }
-                />
+                <Link key={item.href} href={item.href} className={navItemClass(active)}>
+                  {item.label}
+                </Link>
               );
-            }
-
-            return (
-              <Link key={item.href} href={item.href} className={navItemClass(active)}>
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+            })}
+          </nav>
+        ) : (
+          <div />
+        )}
 
         <div className="flex items-center justify-end gap-3">
           <div className="relative group">

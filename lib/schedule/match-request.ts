@@ -2,6 +2,7 @@ import type { ScheduleEvent } from "@prisma/client";
 import type { MatchReasoning } from "@/lib/schedule/types";
 import type { LegMatchReasoning, MultiLegMatchReasoning } from "@/lib/charter/types";
 import { airportCodesMatch } from "@/lib/airports/code-match";
+import { blocksCharterScheduling } from "@/lib/schedule/blocks-charter";
 import { inferLocationAt } from "@/lib/schedule/location";
 
 export interface CharterRequestInput {
@@ -19,7 +20,7 @@ export interface CharterLegInput {
 
 export interface FleetAircraftInput {
   tailNumber: string;
-  id: string;
+  id: string | null;
   homeBase: string | null;
   maxPassengers?: number | null;
   aircraftTypeLabel?: string | null;
@@ -166,17 +167,16 @@ function buildReasoning(
 
   const tailLocation = inferLocationAt(events, atDeparture, ac.homeBase);
   const locationFit = airportCodesMatch(tailLocation, dep);
-  if (!locationFit) {
-    notes.push(
-      tailLocation
-        ? `Tail at ${tailLocation}, request departs ${dep}`
-        : `Could not determine tail location at departure`
-    );
+  const repositionRequired = !locationFit && !!tailLocation;
+  if (repositionRequired) {
+    notes.push(`Reposition required: ${tailLocation} → ${dep}`);
+  } else if (!locationFit) {
+    notes.push(`Could not determine tail location at departure`);
   }
 
   const hardBlockOverlap = events.some(
     (e) =>
-      e.availabilityClass === "hard_block" &&
+      blocksCharterScheduling(e) &&
       rangesOverlap(
         new Date(atDeparture.getTime() - TURN_BUFFER_MS),
         new Date(reqEnd.getTime() + TURN_BUFFER_MS),
@@ -207,6 +207,8 @@ function buildReasoning(
   return {
     locationFit,
     tailLocation,
+    repositionRequired,
+    repositionFrom: repositionRequired ? tailLocation : null,
     hardBlockOverlap,
     softHoldOverlap,
     repoBoost,

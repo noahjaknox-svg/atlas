@@ -1,4 +1,10 @@
 import { readFileSync } from "fs";
+import {
+  normalizeAirportCode,
+  resolveIcaoFromRow,
+} from "@/lib/ourairports/normalize-code";
+
+export { normalizeAirportCode, resolveIcaoFromRow };
 
 /** RFC 4180-style parser (handles quoted fields with embedded newlines). */
 export function parseCsvRecords(content: string): string[][] {
@@ -88,20 +94,6 @@ export function parseFloatOrNull(value: string | undefined): number | null {
 
 export function parseBool01(value: string | undefined): boolean {
   return value === "1" || value?.toLowerCase() === "yes" || value?.toLowerCase() === "true";
-}
-
-/** Normalize lookup code to uppercase ident / ICAO. */
-export function normalizeAirportCode(code: string): string {
-  return code.trim().toUpperCase();
-}
-
-/** Prefer official ICAO; fall back to ident for airports without icao_code. */
-export function resolveIcaoFromRow(row: Record<string, string>): string | null {
-  const icao = row.icao_code?.trim().toUpperCase();
-  if (icao && icao.length === 4) return icao;
-  const ident = row.ident?.trim().toUpperCase();
-  if (ident && /^[A-Z0-9]{4}$/.test(ident)) return ident;
-  return null;
 }
 
 export const OURAIRPORTS_DATA_BASE =

@@ -8,6 +8,8 @@ import {
   MatchResultsPanel,
   type StoredMatch,
 } from "@/components/internal/charter/match-results-panel";
+import { CharterDateField } from "@/components/internal/charter/charter-date-field";
+import { DEFAULT_CHARTER_DEPARTURE } from "@/lib/ourairports/search-rank";
 import type { TripLegInput } from "@/lib/charter/types";
 
 type SegmentState = {
@@ -31,6 +33,21 @@ const EMPTY_SEGMENT = (): SegmentState => ({
   time: "09:00",
   timeTbd: false,
 });
+
+const DEFAULT_SEGMENT = (): SegmentState => ({
+  ...EMPTY_SEGMENT(),
+  depIcao: DEFAULT_CHARTER_DEPARTURE.icao,
+  depLabel: DEFAULT_CHARTER_DEPARTURE.label,
+});
+
+function resolveDeparture(seg: SegmentState): SegmentState {
+  if (seg.depIcao.trim()) return seg;
+  return {
+    ...seg,
+    depIcao: DEFAULT_CHARTER_DEPARTURE.icao,
+    depLabel: DEFAULT_CHARTER_DEPARTURE.label,
+  };
+}
 
 const TRIP_TYPES: { id: CharterTripType; label: string }[] = [
   { id: "one_way", label: "One way" },
@@ -61,10 +78,10 @@ export function TripFinderForm() {
   const [flightCategory, setFlightCategory] = useState("Charter flight");
   const [paxCount, setPaxCount] = useState(8);
 
-  const [outbound, setOutbound] = useState<SegmentState>(EMPTY_SEGMENT());
+  const [outbound, setOutbound] = useState<SegmentState>(DEFAULT_SEGMENT());
   const [inbound, setInbound] = useState<SegmentState>(EMPTY_SEGMENT());
   const [multiSegments, setMultiSegments] = useState<SegmentState[]>([
-    EMPTY_SEGMENT(),
+    DEFAULT_SEGMENT(),
     EMPTY_SEGMENT(),
     EMPTY_SEGMENT(),
   ]);
@@ -78,8 +95,19 @@ export function TripFinderForm() {
   const [matches, setMatches] = useState<StoredMatch[]>([]);
 
   const searchAirports = useCallback(async (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) {
+      setAirportOptions([
+        {
+          id: DEFAULT_CHARTER_DEPARTURE.icao,
+          label: DEFAULT_CHARTER_DEPARTURE.label,
+        },
+      ]);
+      return;
+    }
+
     setAirportLoading(true);
-    const res = await fetch(`/api/airports/search?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/api/airports/search?q=${encodeURIComponent(trimmed)}`);
     const json = await res.json();
     setAirportLoading(false);
     if (res.ok) {
@@ -121,20 +149,22 @@ export function TripFinderForm() {
 
   function buildLegs(): TripLegInput[] {
     if (tripType === "one_way") {
-      return [segmentToLeg(outbound)];
+      return [segmentToLeg(resolveDeparture(outbound))];
     }
     if (tripType === "round_trip") {
+      const dep = resolveDeparture(outbound);
       const returnLeg = segmentToLeg(inbound);
       return [
-        segmentToLeg(outbound),
+        segmentToLeg(dep),
         {
           ...returnLeg,
-          depIcao: outbound.arrIcao,
-          arrIcao: outbound.depIcao,
+          depIcao: dep.arrIcao,
+          arrIcao: dep.depIcao,
         },
       ];
     }
     return multiSegments
+      .map((s) => resolveDeparture(s))
       .filter((s) => s.depIcao && s.arrIcao)
       .map(segmentToLeg);
   }
@@ -452,11 +482,9 @@ function TimingRow({
         <option value="depart_at">Depart at</option>
         <option value="arrive_by">Arrive by</option>
       </select>
-      <input
-        type="date"
+      <CharterDateField
         value={segment.date}
-        onChange={(e) => onChange({ ...segment, date: e.target.value })}
-        className="atlas-input h-9"
+        onChange={(date) => onChange({ ...segment, date })}
         required={required && !segment.timeTbd}
         disabled={segment.timeTbd}
       />
@@ -547,11 +575,9 @@ function MultiCityRow({
         <option value="depart_at">Depart at</option>
         <option value="arrive_by">Arrive by</option>
       </select>
-      <input
-        type="date"
+      <CharterDateField
         value={segment.date}
-        onChange={(e) => onChange({ ...segment, date: e.target.value })}
-        className="atlas-input h-9"
+        onChange={(date) => onChange({ ...segment, date })}
         disabled={segment.timeTbd}
       />
       <input

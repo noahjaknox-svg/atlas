@@ -1,5 +1,4 @@
 import type { ScheduleEvent } from "@prisma/client";
-import { addDays, format, startOfDay } from "date-fns";
 import type {
   TimelineBlock,
   TimelineBlockKind,
@@ -12,10 +11,17 @@ import type { AvailabilityWindow } from "@/lib/schedule/types";
 import { TIMELINE_LEGEND } from "@/lib/schedule/timeline-types";
 import { inferLocationAt } from "@/lib/schedule/location";
 import { resolveRowTimezone } from "@/lib/schedule/airport-timezones";
+import {
+  addZonedDays,
+  formatZonedDateKey,
+  startOfZonedDay,
+  zonedDateParts,
+} from "@/lib/schedule/zoned-time";
 
 export interface BuildTimelineInput {
   rangeStart: Date;
   rangeEnd: Date;
+  gridTimezone: string;
   tails: {
     tailNumber: string;
     homeBase: string | null;
@@ -45,22 +51,27 @@ interface LanePiece {
 }
 
 export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimelineData {
-  const days = buildDays(input.rangeStart, input.rangeEnd);
+  const gridTimezone = input.gridTimezone;
+  const rangeStart = startOfZonedDay(input.rangeStart, gridTimezone);
+  const rangeEnd = input.rangeEnd.getTime() > rangeStart.getTime()
+    ? input.rangeEnd
+    : addZonedDays(rangeStart, 14, gridTimezone);
+  const days = buildDays(rangeStart, rangeEnd, gridTimezone);
   const eventsByTail = groupByTail(input.events);
-  const rangeStartMs = input.rangeStart.getTime();
-  const rangeEndMs = input.rangeEnd.getTime();
+  const rangeStartMs = rangeStart.getTime();
+  const rangeEndMs = rangeEnd.getTime();
 
   const rows: TimelineRow[] = input.tails.map((tail) => {
     const tailEvents = (eventsByTail.get(tail.tailNumber) ?? []).sort(
       (a, b) => a.startsAt.getTime() - b.startsAt.getTime()
     );
     const visibleEvents = tailEvents.filter(
-      (e) => e.startsAt < input.rangeEnd && e.endsAt > input.rangeStart && !e.deletedAt
+      (e) => e.startsAt < rangeEnd && e.endsAt > rangeStart && !e.deletedAt
     );
     const tailWindows = input.windows.filter((w) => w.tailNumber === tail.tailNumber);
     const locationAtRangeStart = inferLocationAt(
       tailEvents,
-      input.rangeStart,
+      rangeStart,
       tail.homeBase
     );
 
@@ -89,8 +100,9 @@ export function buildScheduleTimeline(input: BuildTimelineInput): ScheduleTimeli
   });
 
   return {
-    rangeStart: input.rangeStart.toISOString(),
-    rangeEnd: input.rangeEnd.toISOString(),
+    rangeStart: rangeStart.toISOString(),
+    rangeEnd: rangeEnd.toISOString(),
+    gridTimezone,
     days,
     rows,
     legend: TIMELINE_LEGEND,
@@ -281,12 +293,17 @@ function segmentToBlock(
   };
 }
 
+/** JetInsight full-day holds like "Hold Pine Canyon (SDL - SDL)". */
+function isJetInsightHoldEvent(event: ScheduleEvent): boolean {
+  return event.isHold || /\bHold\s+[^(]+\(/i.test(event.summaryRaw);
+}
+
 /** Soft holds (and info-only events) become annotations in front of the lane. */
 function collectNotes(events: ScheduleEvent[]): TimelineNote[] {
   return events
     .filter(
       (e) =>
-        e.isHold ||
+        isJetInsightHoldEvent(e) ||
         e.availabilityClass === "soft_hold" ||
         e.availabilityClass === "info_only"
     )
@@ -308,7 +325,7 @@ function collectNotes(events: ScheduleEvent[]): TimelineNote[] {
 
 /** Which lane category an event occupies, or null if it is a note. */
 function laneKind(event: ScheduleEvent): TimelineBlockKind | null {
-  if (event.isHold || event.availabilityClass === "soft_hold") return null;
+  if (isJetInsightHoldEvent(event) || event.availabilityClass === "soft_hold") return null;
   if (event.availabilityClass === "info_only") return null;
   if (event.availabilityClass === "repo_opportunity") return "empty_leg";
   return "unavailable";
@@ -337,17 +354,23 @@ function blockTypeLabel(event: ScheduleEvent): string {
   }
 }
 
-function buildDays(rangeStart: Date, rangeEnd: Date): TimelineDay[] {
+function buildDays(rangeStart: Date, rangeEnd: Date, timeZone: string): TimelineDay[] {
   const days: TimelineDay[] = [];
-  let cursor = startOfDay(rangeStart);
-  const end = startOfDay(rangeEnd);
-  while (cursor < end) {
+  let cursor = rangeStart;
+  const endMs = rangeEnd.getTime();
+
+  while (cursor.getTime() < endMs) {
+    const date = formatZonedDateKey(cursor, timeZone);
+    const { day } = zonedDateParts(cursor, timeZone);
     days.push({
-      date: format(cursor, "yyyy-MM-dd"),
-      label: format(cursor, "d"),
-      weekday: format(cursor, "EEE"),
+      date,
+      label: String(day),
+      weekday: new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        timeZone,
+      }).format(cursor),
     });
-    cursor = addDays(cursor, 1);
+    cursor = addZonedDays(cursor, 1, timeZone);
   }
   return days;
 }

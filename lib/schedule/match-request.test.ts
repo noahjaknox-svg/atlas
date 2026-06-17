@@ -112,4 +112,66 @@ describe("matchCharterRequest", () => {
     expect(matches[0]!.reasoning.legs[0]!.locationFit).toBe(true);
     expect(matches[0]!.reasoning.legs[0]!.tailLocation).toBe("SDL");
   });
+
+  it("includes tails needing reposition when schedule is otherwise open", () => {
+    const events = [
+      baseEvent({
+        id: "away",
+        tailNumber: "N370EL",
+        startsAt: new Date("2026-06-18T22:24:00.000Z"),
+        endsAt: new Date("2026-06-21T18:00:00.000Z"),
+        depIcao: "COE",
+        arrIcao: "COE",
+        availabilityClass: "hard_block",
+        rawEventType: "other",
+        summaryRaw: "[N370EL] @ KCOE (COE - COE) - Aircraft away from home base",
+      }),
+    ];
+
+    const matches = matchCharterRequest(
+      {
+        requestedDepIcao: "KSDL",
+        requestedArrIcao: "KAPA",
+        requestedDepartAt: new Date("2026-06-19T16:00:00.000Z"),
+        paxCount: 8,
+      },
+      events,
+      [{ tailNumber: "N370EL", id: null, homeBase: "SDL" }]
+    );
+
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.tailNumber).toBe("N370EL");
+    expect(matches[0]!.reasoning.legs[0]!.repositionRequired).toBe(true);
+    expect(matches[0]!.reasoning.legs[0]!.repositionFrom).toBe("COE");
+    expect(matches[0]!.score).toBeGreaterThan(0);
+  });
+
+  it("excludes tail with No Crew hard block on departure day", () => {
+    const events = [
+      baseEvent({
+        id: "no-crew",
+        tailNumber: "N698RS",
+        startsAt: new Date("2026-06-19T07:00:00.000Z"),
+        endsAt: new Date("2026-06-21T06:59:00.000Z"),
+        depIcao: "SDL",
+        arrIcao: "SDL",
+        availabilityClass: "hard_block",
+        rawEventType: "other",
+        summaryRaw: "[N698RS] No Crew (SDL - SDL) - Other",
+      }),
+    ];
+
+    const matches = matchCharterRequest(
+      {
+        requestedDepIcao: "KSDL",
+        requestedArrIcao: "KAPA",
+        requestedDepartAt: new Date("2026-06-19T16:00:00.000Z"),
+        paxCount: 8,
+      },
+      events,
+      [{ tailNumber: "N698RS", id: null, homeBase: "SDL" }]
+    );
+
+    expect(matches).toHaveLength(0);
+  });
 });

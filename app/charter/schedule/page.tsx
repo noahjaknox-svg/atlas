@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadScheduleTimeline } from "@/lib/schedule/load-timeline";
-import { scheduleRangeEnd, startOfUtcDay } from "@/lib/schedule/view-range";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ScheduleView } from "@/components/internal/schedule-view";
 
@@ -10,10 +9,7 @@ export default async function SchedulePage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
 
-  const rangeStart = startOfUtcDay(new Date());
-  const rangeEnd = scheduleRangeEnd(rangeStart);
-
-  const timelineData = await loadScheduleTimeline(prisma, { rangeStart, rangeEnd });
+  const timelineData = await loadScheduleTimeline(prisma, {});
 
   const initialSource = timelineData.source
     ? {

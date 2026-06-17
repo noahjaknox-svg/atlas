@@ -1,19 +1,19 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ScheduleTimelineData } from "@/lib/schedule/timeline-types";
-import {
-  SCHEDULE_VIEW_DAYS,
-  scheduleRangeEnd,
-  shiftScheduleRange,
-  startOfUtcDay,
-} from "@/lib/schedule/view-range";
+import { SCHEDULE_VIEW_DAYS } from "@/lib/schedule/view-range";
 import {
   getBrowserTimezone,
   type ScheduleTimeMode,
 } from "@/lib/schedule/airport-timezones";
+import {
+  addZonedDays,
+  resolveScheduleGridTimezone,
+  zonedStartFromDateKey,
+} from "@/lib/schedule/zoned-time";
 import { ScheduleTimeline } from "@/components/internal/schedule-timeline";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,8 +45,8 @@ export function ScheduleView({
   const [timeline, setTimeline] = useState(initialTimeline);
   const [source, setSource] = useState<ScheduleSource | null>(initialSource);
   const [fleet, setFleet] = useState<FleetTail[]>(initialFleet);
-  const [rangeStart, setRangeStart] = useState(() =>
-    startOfUtcDay(new Date(initialTimeline.rangeStart))
+  const [viewDateKey, setViewDateKey] = useState(
+    () => initialTimeline.days[0]?.date ?? initialTimeline.rangeStart.slice(0, 10)
   );
   const [syncing, setSyncing] = useState(false);
   const [navigating, setNavigating] = useState(false);
@@ -55,31 +55,64 @@ export function ScheduleView({
   const [timeMode, setTimeMode] = useState<ScheduleTimeMode>("aircraft");
   const userTimezone = useMemo(() => getBrowserTimezone(), []);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeModeRef = useRef(timeMode);
 
-  const rangeEnd = scheduleRangeEnd(rangeStart);
+  const aircraftGridTimezone = useMemo(
+    () =>
+      resolveScheduleGridTimezone(
+        fleet.map((f) => ({ homeBase: f.homeBase })),
+        timeline.airportTimezones
+      ),
+    [fleet, timeline.airportTimezones]
+  );
 
-  const fetchRange = useCallback(async (start: Date, tails: string) => {
-    const end = scheduleRangeEnd(start);
-    const params = new URLSearchParams();
-    if (tails !== "all") params.set("tails", tails);
-    params.set("start", start.toISOString());
-    params.set("end", end.toISOString());
-    params.set("days", String(SCHEDULE_VIEW_DAYS));
+  const gridTimezone = timeMode === "user" ? userTimezone : aircraftGridTimezone;
 
-    const res = await fetch(`/api/schedule/timeline?${params}`);
-    if (res.ok) {
-      const json = await res.json();
-      setTimeline(json.timeline as ScheduleTimelineData);
-      if (json.source !== undefined) setSource(json.source as ScheduleSource | null);
-      if (Array.isArray(json.fleet)) setFleet(json.fleet as FleetTail[]);
-    }
-  }, []);
+  const rangeStart = useMemo(
+    () => zonedStartFromDateKey(viewDateKey, gridTimezone),
+    [viewDateKey, gridTimezone]
+  );
+  const rangeEnd = useMemo(
+    () => addZonedDays(rangeStart, SCHEDULE_VIEW_DAYS, gridTimezone),
+    [rangeStart, gridTimezone]
+  );
 
-  async function navigateTo(start: Date, tails = tailFilter) {
+  const fetchRange = useCallback(
+    async (dateKey: string, tails: string, tz: string) => {
+      const start = zonedStartFromDateKey(dateKey, tz);
+      const end = addZonedDays(start, SCHEDULE_VIEW_DAYS, tz);
+      const params = new URLSearchParams();
+      if (tails !== "all") params.set("tails", tails);
+      params.set("start", start.toISOString());
+      params.set("end", end.toISOString());
+      params.set("days", String(SCHEDULE_VIEW_DAYS));
+      params.set("gridTimezone", tz);
+
+      const res = await fetch(`/api/schedule/timeline?${params}`);
+      if (res.ok) {
+        const json = await res.json();
+        const nextTimeline = json.timeline as ScheduleTimelineData;
+        setTimeline(nextTimeline);
+        if (nextTimeline.days[0]?.date) setViewDateKey(nextTimeline.days[0].date);
+        if (json.source !== undefined) setSource(json.source as ScheduleSource | null);
+        if (Array.isArray(json.fleet)) setFleet(json.fleet as FleetTail[]);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (timeModeRef.current === timeMode) return;
+    timeModeRef.current = timeMode;
     setNavigating(true);
-    setRangeStart(start);
+    void fetchRange(viewDateKey, tailFilter, gridTimezone).finally(() => setNavigating(false));
+  }, [timeMode, gridTimezone, viewDateKey, tailFilter, fetchRange]);
+
+  async function navigateTo(dateKey: string, tails = tailFilter) {
+    setNavigating(true);
+    setViewDateKey(dateKey);
     try {
-      await fetchRange(start, tails);
+      await fetchRange(dateKey, tails, gridTimezone);
     } finally {
       setNavigating(false);
     }
@@ -89,7 +122,7 @@ export function ScheduleView({
     setTailFilter(value);
     setNavigating(true);
     try {
-      await fetchRange(rangeStart, value);
+      await fetchRange(viewDateKey, value, gridTimezone);
     } finally {
       setNavigating(false);
     }
@@ -104,7 +137,7 @@ export function ScheduleView({
       setSyncMsg(
         json.message ?? json.error ?? (res.ok ? "Sync complete" : `Sync failed (${res.status})`)
       );
-      if (res.ok) await fetchRange(rangeStart, tailFilter);
+      if (res.ok) await fetchRange(viewDateKey, tailFilter, gridTimezone);
     } finally {
       setSyncing(false);
     }
@@ -120,6 +153,10 @@ export function ScheduleView({
     }
   }
 
+  function formatDateKeyInTimezone(instant: Date, tz: string): string {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(instant);
+  }
+
   const rangeLabel = `${format(rangeStart, "MMM d")} – ${format(rangeEnd, "MMM d, yyyy")}`;
 
   return (
@@ -132,7 +169,11 @@ export function ScheduleView({
             className="h-8 w-8 shrink-0 p-0"
             disabled={navigating}
             aria-label={`Previous ${SCHEDULE_VIEW_DAYS} days`}
-            onClick={() => void navigateTo(shiftScheduleRange(rangeStart, -SCHEDULE_VIEW_DAYS))}
+            onClick={() => {
+              const anchor = zonedStartFromDateKey(viewDateKey, gridTimezone);
+              const prevStart = addZonedDays(anchor, -SCHEDULE_VIEW_DAYS, gridTimezone);
+              void navigateTo(formatDateKeyInTimezone(prevStart, gridTimezone));
+            }}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -142,7 +183,7 @@ export function ScheduleView({
             size="sm"
             className="h-8"
             disabled={navigating}
-            onClick={() => void navigateTo(startOfUtcDay(new Date()))}
+            onClick={() => void navigateTo(formatDateKeyInTimezone(new Date(), gridTimezone))}
           >
             Today
           </Button>
@@ -160,11 +201,9 @@ export function ScheduleView({
             ref={dateInputRef}
             type="date"
             className="sr-only"
-            value={format(rangeStart, "yyyy-MM-dd")}
+            value={viewDateKey}
             onChange={(e) => {
-              if (e.target.value) {
-                void navigateTo(startOfUtcDay(new Date(`${e.target.value}T12:00:00`)));
-              }
+              if (e.target.value) void navigateTo(e.target.value);
             }}
           />
           <Button
@@ -173,7 +212,11 @@ export function ScheduleView({
             className="h-8 w-8 shrink-0 p-0"
             disabled={navigating}
             aria-label={`Next ${SCHEDULE_VIEW_DAYS} days`}
-            onClick={() => void navigateTo(shiftScheduleRange(rangeStart, SCHEDULE_VIEW_DAYS))}
+            onClick={() => {
+              const anchor = zonedStartFromDateKey(viewDateKey, gridTimezone);
+              const nextStart = addZonedDays(anchor, SCHEDULE_VIEW_DAYS, gridTimezone);
+              void navigateTo(formatDateKeyInTimezone(nextStart, gridTimezone));
+            }}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

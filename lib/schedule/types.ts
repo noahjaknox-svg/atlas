@@ -105,6 +105,8 @@ export type KanbanCard = KanbanEventCard | KanbanAvailableCard;
 export interface MatchReasoning {
   locationFit: boolean;
   tailLocation: string | null;
+  repositionRequired: boolean;
+  repositionFrom: string | null;
   hardBlockOverlap: boolean;
   softHoldOverlap: boolean;
   repoBoost: boolean;

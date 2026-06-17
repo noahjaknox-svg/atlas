@@ -1,7 +1,26 @@
 import type { ScheduleEvent } from "@prisma/client";
+import { airportCodesMatch } from "@/lib/airports/code-match";
 
 export function postEventLocation(event: ScheduleEvent, fallback: string | null): string | null {
+  const parked =
+    event.depIcao &&
+    event.arrIcao &&
+    airportCodesMatch(event.depIcao, event.arrIcao);
+  if (parked) {
+    return event.arrIcao ?? event.depIcao ?? fallback;
+  }
   return event.arrIcao ?? event.locationIcao ?? event.depIcao ?? fallback;
+}
+
+function locationDuringEvent(event: ScheduleEvent, fallback: string | null): string | null {
+  const parked =
+    event.depIcao &&
+    event.arrIcao &&
+    airportCodesMatch(event.depIcao, event.arrIcao);
+  if (parked) {
+    return event.arrIcao ?? event.depIcao ?? fallback;
+  }
+  return event.depIcao ?? event.locationIcao ?? fallback;
 }
 
 function sortEventsChronologically(events: ScheduleEvent[]): ScheduleEvent[] {
@@ -20,7 +39,7 @@ export function inferLocationAt(
     if (e.endsAt <= at) {
       location = postEventLocation(e, location);
     } else if (e.startsAt <= at) {
-      return (e.locationIcao ?? e.depIcao ?? location)?.toUpperCase() ?? location;
+      return locationDuringEvent(e, location)?.toUpperCase() ?? location;
     } else {
       break;
     }

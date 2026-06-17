@@ -5,17 +5,27 @@ import {
   collectIcaosFromSchedule,
   loadAirportTimezones,
 } from "@/lib/schedule/airport-timezones";
+import {
+  addZonedDays,
+  resolveScheduleGridTimezone,
+  startOfZonedDay,
+} from "@/lib/schedule/zoned-time";
+import { SCHEDULE_VIEW_DAYS } from "@/lib/schedule/view-range";
+
 export interface LoadTimelineOptions {
   rangeStart?: Date;
   rangeEnd?: Date;
   tailNumbers?: string[];
   sourceId?: string;
+  gridTimezone?: string;
 }
 
 export async function loadScheduleTimeline(db: PrismaClient, opts: LoadTimelineOptions = {}) {
-  const rangeStart = opts.rangeStart ?? new Date();
-  const rangeEnd =
-    opts.rangeEnd ?? new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const anchor = opts.rangeStart ?? new Date();
+  const preliminaryStart = new Date(anchor.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const preliminaryEnd = new Date(
+    anchor.getTime() + (SCHEDULE_VIEW_DAYS + 7) * 24 * 60 * 60 * 1000
+  );
 
   const source = opts.sourceId
     ? await db.scheduleSource.findUnique({ where: { id: opts.sourceId } })
@@ -29,7 +39,7 @@ export async function loadScheduleTimeline(db: PrismaClient, opts: LoadTimelineO
     include: { aircraftType: true },
   });
 
-  const contextStart = new Date(rangeStart.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const contextStart = preliminaryStart;
 
   const events = await db.scheduleEvent.findMany({
     where: {
@@ -37,7 +47,7 @@ export async function loadScheduleTimeline(db: PrismaClient, opts: LoadTimelineO
       ...(source ? { sourceId: source.id } : {}),
       ...(opts.tailNumbers?.length ? { tailNumber: { in: opts.tailNumbers } } : {}),
       endsAt: { gt: contextStart },
-      startsAt: { lt: rangeEnd },
+      startsAt: { lt: preliminaryEnd },
     },
     orderBy: { startsAt: "asc" },
   });
@@ -61,6 +71,19 @@ export async function loadScheduleTimeline(db: PrismaClient, opts: LoadTimelineO
     };
   });
 
+  const timezoneByIcao = await loadAirportTimezones(
+    db,
+    collectIcaosFromSchedule(tails, events)
+  );
+
+  const gridTimezone =
+    opts.gridTimezone ?? resolveScheduleGridTimezone(tails, timezoneByIcao);
+  const rangeStart = startOfZonedDay(anchor, gridTimezone);
+  const rangeEnd =
+    opts.rangeEnd && opts.rangeEnd.getTime() > rangeStart.getTime()
+      ? opts.rangeEnd
+      : addZonedDays(rangeStart, SCHEDULE_VIEW_DAYS, gridTimezone);
+
   const windows = computeAvailabilityWindows({
     rangeStart,
     rangeEnd,
@@ -68,14 +91,10 @@ export async function loadScheduleTimeline(db: PrismaClient, opts: LoadTimelineO
     events,
   });
 
-  const timezoneByIcao = await loadAirportTimezones(
-    db,
-    collectIcaosFromSchedule(tails, events)
-  );
-
   const timeline = buildScheduleTimeline({
     rangeStart,
     rangeEnd,
+    gridTimezone,
     tails,
     events,
     windows,

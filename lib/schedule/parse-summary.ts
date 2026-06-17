@@ -21,7 +21,8 @@ const EVENT_TYPE_MAP: Record<string, ScheduleRawEventType> = {
 /** JetInsight SUMMARY: `[HOLD: ] [NTAIL] Client (DEP - ARR) - EventType` */
 export function parseSummary(summaryRaw: string): ParsedSummary {
   const normalized = summaryRaw.replace(/\\,/g, ",").replace(/\s+/g, " ").trim();
-  const isHold = /^HOLD:\s*/i.test(normalized);
+  const isHold =
+    /^HOLD:\s*/i.test(normalized) || /\bHold\s+[^(]+\(/i.test(normalized);
   const withoutHold = normalized.replace(/^HOLD:\s*/i, "");
 
   const isAdminBlock = ADMIN_BLOCK_PATTERNS.some((p) => p.test(withoutHold));

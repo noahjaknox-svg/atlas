@@ -57,6 +57,8 @@ export type TimelineLegendKind = TimelineBlockKind | "soft_hold";
 export interface ScheduleTimelineData {
   rangeStart: string;
   rangeEnd: string;
+  /** IANA timezone used for day columns and block positioning. */
+  gridTimezone: string;
   days: TimelineDay[];
   rows: TimelineRow[];
   legend: { kind: TimelineLegendKind; label: string; description: string }[];

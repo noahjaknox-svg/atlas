@@ -2,9 +2,18 @@ import { describe, expect, it } from "vitest";
 import type { ScheduleEvent } from "@prisma/client";
 import { buildScheduleTimeline, blockPosition } from "@/lib/schedule/build-timeline";
 import type { AvailabilityWindow } from "@/lib/schedule/types";
+import { startOfZonedDay } from "@/lib/schedule/zoned-time";
 
-const rangeStart = new Date("2026-06-11T00:00:00Z");
-const rangeEnd = new Date("2026-06-25T00:00:00Z");
+const GRID_TZ = "America/Phoenix";
+const rangeStart = startOfZonedDay(new Date("2026-06-11T00:00:00Z"), GRID_TZ);
+const rangeEnd = new Date(rangeStart.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+const timelineBase = {
+  rangeStart,
+  rangeEnd,
+  gridTimezone: GRID_TZ,
+  timezoneByIcao: { SDL: "America/Phoenix" },
+};
 
 function makeEvent(overrides: Partial<ScheduleEvent>): ScheduleEvent {
   const id = overrides.id ?? "e1";
@@ -44,12 +53,10 @@ function makeEvent(overrides: Partial<ScheduleEvent>): ScheduleEvent {
 describe("buildScheduleTimeline", () => {
   it("classifies a repo leg as an empty leg and condenses the route", () => {
     const timeline = buildScheduleTimeline({
-      rangeStart,
-      rangeEnd,
+      ...timelineBase,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
       events: [makeEvent({ id: "e1" })],
       windows: [],
-      timezoneByIcao: { SDL: "America/Phoenix" },
     });
 
     const block = timeline.rows[0]!.blocks[0]!;
@@ -60,8 +67,7 @@ describe("buildScheduleTimeline", () => {
 
   it("classifies an occupied charter flight as unavailable", () => {
     const timeline = buildScheduleTimeline({
-      rangeStart,
-      rangeEnd,
+      ...timelineBase,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
       events: [
         makeEvent({
@@ -74,7 +80,6 @@ describe("buildScheduleTimeline", () => {
         }),
       ],
       windows: [],
-      timezoneByIcao: { SDL: "America/Phoenix" },
     });
 
     const block = timeline.rows[0]!.blocks[0]!;
@@ -95,8 +100,7 @@ describe("buildScheduleTimeline", () => {
     ];
 
     const timeline = buildScheduleTimeline({
-      rangeStart,
-      rangeEnd,
+      ...timelineBase,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
       events: [],
       windows,
@@ -113,8 +117,7 @@ describe("buildScheduleTimeline", () => {
 
   it("renders soft holds as notes, not lane blocks", () => {
     const timeline = buildScheduleTimeline({
-      rangeStart,
-      rangeEnd,
+      ...timelineBase,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
       events: [
         makeEvent({
@@ -125,13 +128,40 @@ describe("buildScheduleTimeline", () => {
         }),
       ],
       windows: [],
-      timezoneByIcao: { SDL: "America/Phoenix" },
     });
 
     const row = timeline.rows[0]!;
     expect(row.blocks).toHaveLength(0);
     expect(row.notes).toHaveLength(1);
     expect(row.notes[0]!.label).toContain("Acme");
+  });
+
+  it("treats JetInsight Hold Pine Canyon summaries as soft-hold notes", () => {
+    const timeline = buildScheduleTimeline({
+      ...timelineBase,
+      tails: [{ tailNumber: "N1213P", homeBase: "SDL", typeCode: "B300" }],
+      events: [
+        makeEvent({
+          id: "pine",
+          tailNumber: "N1213P",
+          isHold: false,
+          availabilityClass: "hard_block",
+          clientLabel: "Pine Canyon",
+          summaryRaw: "[N1213P] Hold Pine Canyon (SDL - SDL) - Hold",
+          depIcao: "SDL",
+          arrIcao: "SDL",
+          locationIcao: "SDL",
+          startsAt: new Date("2026-06-22T07:00:00.000Z"),
+          endsAt: new Date("2026-06-23T06:59:00.000Z"),
+        }),
+      ],
+      windows: [],
+    });
+
+    const row = timeline.rows[0]!;
+    expect(row.blocks).toHaveLength(0);
+    expect(row.notes).toHaveLength(1);
+    expect(row.notes[0]!.label).toContain("Pine Canyon");
   });
 
   it("produces a non-overlapping lane when a hard block sits inside availability", () => {
@@ -147,8 +177,7 @@ describe("buildScheduleTimeline", () => {
     ];
 
     const timeline = buildScheduleTimeline({
-      rangeStart,
-      rangeEnd,
+      ...timelineBase,
       tails: [{ tailNumber: "N365AV", homeBase: "SDL", typeCode: "B300" }],
       events: [
         makeEvent({
@@ -163,7 +192,6 @@ describe("buildScheduleTimeline", () => {
         }),
       ],
       windows,
-      timezoneByIcao: { SDL: "America/Phoenix" },
     });
 
     const blocks = timeline.rows[0]!.blocks;

@@ -144,6 +144,10 @@ function MatchReasoningDetails({
           <ul className="mt-1 list-inside list-disc space-y-0.5 pl-1">
             {leg.locationFit ? (
               <li className="text-emerald-400/90">At departure airport</li>
+            ) : leg.repositionRequired ? (
+              <li className="text-amber-400">
+                Reposition required: {leg.repositionFrom ?? leg.tailLocation} → {leg.depIcao}
+              </li>
             ) : (
               <li>
                 Tail at {leg.tailLocation ?? "unknown"} (needs {leg.depIcao})
