@@ -36,6 +36,6 @@ export function getInviteRedirectUrl(): string {
   return `${getExternalAppUrl()}/auth/callback?flow=invite&next=${encodeURIComponent(ROUTES.home)}`;
 }
 
-export function getAuthCallbackUrl(next = ROUTES.home): string {
+export function getAuthCallbackUrl(next: string = ROUTES.home): string {
   return `${getExternalAppUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 }

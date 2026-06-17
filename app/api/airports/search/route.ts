@@ -2,6 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { searchAirportReference } from "@/lib/ourairports/lookup";
+import type { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -27,16 +28,19 @@ export async function GET(request: Request) {
       );
     }
 
+    const icaoVariants: Prisma.AirportWhereInput[] =
+      upper.length === 3
+        ? [{ icao: { equals: `K${upper}`, mode: "insensitive" } }]
+        : upper.length === 4 && upper.startsWith("K")
+          ? [{ icao: { equals: upper.slice(1), mode: "insensitive" } }]
+          : [];
+
     const airports = await prisma.airport.findMany({
       where: {
         OR: [
           { icao: { equals: upper, mode: "insensitive" } },
           { icao: { contains: q, mode: "insensitive" } },
-          ...(upper.length === 3
-            ? [{ icao: { equals: `K${upper}`, mode: "insensitive" } }]
-            : upper.length === 4 && upper.startsWith("K")
-              ? [{ icao: { equals: upper.slice(1), mode: "insensitive" } }]
-              : []),
+          ...icaoVariants,
           { airportName: { contains: q, mode: "insensitive" } },
           { city: { contains: q, mode: "insensitive" } },
         ],
