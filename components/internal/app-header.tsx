@@ -3,15 +3,53 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 
-const NAV_ITEMS = [
-  { href: "/pipeline", label: "Pipeline" },
-  { href: "/schedule", label: "Schedule" },
-  { href: "/proposal-design", label: "Proposal Design" },
-  { href: "/data", label: "Data" },
-] as const;
+type NavItem = { href: string; label: string };
+
+type Program = {
+  id: string;
+  label: string;
+  /** Pages shown in the center nav when this program is active. */
+  items: readonly NavItem[];
+};
+
+const PROGRAMS = [
+  {
+    id: "aircraft-management",
+    label: "Aircraft Management",
+    items: [
+      { href: "/pipeline", label: "Pipeline" },
+      { href: "/proposal-design", label: "Proposal Design" },
+    ],
+  },
+  {
+    id: "charter",
+    label: "Charter",
+    items: [{ href: "/schedule", label: "Schedule" }],
+  },
+] as const satisfies readonly Program[];
+
+const DATA_WAREHOUSE: Program = {
+  id: "data-warehouse",
+  label: "Data Warehouse",
+  items: [{ href: "/data", label: "Data Warehouse" }],
+};
+
+const ALL_PROGRAMS: readonly Program[] = [...PROGRAMS, DATA_WAREHOUSE];
+
+function isItemActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getActiveProgram(pathname: string): Program {
+  const match = ALL_PROGRAMS.find((program) =>
+    program.items.some((item) => isItemActive(pathname, item.href))
+  );
+  return match ?? PROGRAMS[0];
+}
 
 export function AppHeader({
   userName,
@@ -22,6 +60,30 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [programMenuOpen, setProgramMenuOpen] = useState(false);
+  const programMenuRef = useRef<HTMLDivElement>(null);
+
+  const activeProgram = getActiveProgram(pathname);
+
+  // Close the program menu on navigation.
+  useEffect(() => {
+    setProgramMenuOpen(false);
+  }, [pathname]);
+
+  // Close the program menu when clicking outside of it.
+  useEffect(() => {
+    if (!programMenuOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (
+        programMenuRef.current &&
+        !programMenuRef.current.contains(event.target as Node)
+      ) {
+        setProgramMenuOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [programMenuOpen]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -50,12 +112,80 @@ export function AppHeader({
           >
             Atlas
           </Link>
+
+          <div className="relative" ref={programMenuRef}>
+            <button
+              type="button"
+              onClick={() => setProgramMenuOpen((open) => !open)}
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-sm text-atlas-muted transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
+              aria-haspopup="menu"
+              aria-expanded={programMenuOpen}
+            >
+              <span className="font-medium text-atlas-text">
+                {activeProgram.label}
+              </span>
+              <svg
+                viewBox="0 0 12 12"
+                className={cn(
+                  "h-3 w-3 transition-transform",
+                  programMenuOpen && "rotate-180"
+                )}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden
+              >
+                <path d="M3 4.5 6 7.5 9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {programMenuOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 top-full z-50 mt-1 min-w-[220px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
+              >
+                <p className="px-3 pb-1 pt-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-atlas-muted">
+                  Programs
+                </p>
+                {PROGRAMS.map((program) => {
+                  const active = program.id === activeProgram.id;
+                  return (
+                    <Link
+                      key={program.id}
+                      href={program.items[0].href}
+                      role="menuitem"
+                      className={cn(
+                        "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+                        active
+                          ? "text-atlas-accent"
+                          : "text-atlas-text"
+                      )}
+                    >
+                      {program.label}
+                    </Link>
+                  );
+                })}
+                <div className="my-1 h-px bg-atlas-border" aria-hidden />
+                <Link
+                  href={DATA_WAREHOUSE.items[0].href}
+                  role="menuitem"
+                  className={cn(
+                    "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+                    activeProgram.id === DATA_WAREHOUSE.id
+                      ? "text-atlas-accent"
+                      : "text-atlas-text"
+                  )}
+                >
+                  {DATA_WAREHOUSE.label}
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
         <nav className="flex items-center justify-center gap-0.5">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+          {activeProgram.items.map((item) => {
+            const active = isItemActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
