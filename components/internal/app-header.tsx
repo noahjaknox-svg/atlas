@@ -91,7 +91,7 @@ function NavMenuItem({
 }) {
   const active = isItemActive(pathname, item);
 
-  if (item.kind === "action" && item.action === "new-proposal") {
+  if (item.kind === "action") {
     return (
       <NewProposalDialog
         trigger={
@@ -261,7 +261,7 @@ export function AppHeader({
           {centerItems.map((item) => {
             const active = isItemActive(pathname, item);
 
-            if (item.kind === "action" && item.action === "new-proposal") {
+            if (item.kind === "action") {
               return (
                 <NewProposalDialog
                   key={item.action}
