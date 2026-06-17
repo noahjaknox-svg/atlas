@@ -111,25 +111,31 @@ async function upsertEvents(
 ) {
   let upserted = 0;
   const unmatched = new Set<string>();
+  const UPSERT_BATCH = 15;
 
-  for (const e of events) {
-    const tail = e.tailNumber?.toUpperCase();
-    if (!tail) continue;
+  for (let i = 0; i < events.length; i += UPSERT_BATCH) {
+    const batch = events.slice(i, i + UPSERT_BATCH);
+    await Promise.all(
+      batch.map(async (e) => {
+        const tail = e.tailNumber?.toUpperCase();
+        if (!tail) return;
 
-    const fleetAircraftId = fleetByTail.get(tail) ?? null;
-    if (!fleetAircraftId) unmatched.add(tail);
+        const fleetAircraftId = fleetByTail.get(tail) ?? null;
+        if (!fleetAircraftId) unmatched.add(tail);
 
-    await db.scheduleEvent.upsert({
-      where: {
-        sourceId_externalUid: { sourceId, externalUid: e.externalUid },
-      },
-      create: eventData(sourceId, e, tail, fleetAircraftId),
-      update: {
-        ...eventData(sourceId, e, tail, fleetAircraftId),
-        deletedAt: null,
-      },
-    });
-    upserted++;
+        await db.scheduleEvent.upsert({
+          where: {
+            sourceId_externalUid: { sourceId, externalUid: e.externalUid },
+          },
+          create: eventData(sourceId, e, tail, fleetAircraftId),
+          update: {
+            ...eventData(sourceId, e, tail, fleetAircraftId),
+            deletedAt: null,
+          },
+        });
+        upserted++;
+      })
+    );
   }
 
   return { upserted, unmatchedTails: Array.from(unmatched).sort() };

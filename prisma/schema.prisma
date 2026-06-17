@@ -12,6 +12,7 @@ enum UserRole {
   admin
   sales
   reviewer
+  charter
 }
 
 enum ProspectType {
@@ -179,7 +180,8 @@ model User {
   proposalsReviewed Proposal[]         @relation("ProposalReviewedBy")
   proposalsApproved Proposal[]         @relation("ProposalApprovedBy")
   snapshotsPublished ProposalSnapshot[] @relation("SnapshotPublishedBy")
-  proposalComments   ProposalComment[]
+  proposalComments      ProposalComment[]
+  charterRequestsCreated CharterRequest[] @relation("CharterRequestCreatedBy")
 
   @@map("users")
 }
@@ -1023,12 +1025,13 @@ enum CrewPerformanceMetric {
 
 /// Aircraft type catalog for Crew (e.g. B300 / King Air 350).
 model CrewAircraftType {
-  id           String   @id @default(uuid()) @db.Uuid
-  code         String   @unique
-  manufacturer String
-  model        String
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
+  manufacturer  String
+  model         String
+  maxPassengers Int?     @map("max_passengers")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   fleet        CrewFleetAircraft[]
   performance  CrewPerformanceGrid[]
@@ -1110,6 +1113,12 @@ enum CharterRequestStatus {
 enum CharterRequestParsedBy {
   rules
   ai
+}
+
+enum CharterTripType {
+  one_way
+  round_trip
+  multi_city
 }
 
 model ScheduleSource {
@@ -1205,7 +1214,11 @@ model InboundMessage {
 model CharterRequest {
   id                 String                @id @default(uuid()) @db.Uuid
   inboundMessageId   String?               @map("inbound_message_id") @db.Uuid
+  createdById        String?               @map("created_by_id") @db.Uuid
   status             CharterRequestStatus  @default(new)
+  tripType           CharterTripType       @default(one_way) @map("trip_type")
+  source             String                @default("manual")
+  flightCategory     String?               @map("flight_category")
   requestedDepIcao   String?               @map("requested_dep_icao")
   requestedArrIcao   String?               @map("requested_arr_icao")
   requestedDepartAt  DateTime?             @map("requested_depart_at")
@@ -1219,10 +1232,29 @@ model CharterRequest {
   updatedAt          DateTime              @updatedAt @map("updated_at")
 
   inboundMessage InboundMessage?        @relation(fields: [inboundMessageId], references: [id], onDelete: SetNull)
+  createdBy      User?                  @relation("CharterRequestCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  legs           CharterRequestLeg[]
   matches        CharterRequestMatch[]
 
   @@index([status, createdAt(sort: Desc)])
   @@map("charter_requests")
+}
+
+model CharterRequestLeg {
+  id         String    @id @default(uuid()) @db.Uuid
+  requestId  String    @map("request_id") @db.Uuid
+  legIndex   Int       @map("leg_index")
+  depIcao    String    @map("dep_icao")
+  arrIcao    String    @map("arr_icao")
+  departAt   DateTime? @map("depart_at")
+  timeTbd    Boolean   @default(false) @map("time_tbd")
+  departPref String?   @map("depart_pref")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  request CharterRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, legIndex])
+  @@map("charter_request_legs")
 }
 
 model CharterRequestMatch {

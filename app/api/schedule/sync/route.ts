@@ -8,6 +8,10 @@ import {
   syncScheduleSource,
 } from "@/lib/schedule/sync-source";
 
+/** JetInsight sync upserts ~900 events; needs headroom on Vercel serverless. */
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
 function isCronAuthorized(req: NextRequest): boolean {
   const secret = process.env.SCHEDULE_SYNC_SECRET;
   if (!secret) return false;

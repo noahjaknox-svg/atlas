@@ -153,6 +153,7 @@ export function UsersAdmin({
               <option value="admin">Admin</option>
               <option value="sales">Sales</option>
               <option value="reviewer">Reviewer</option>
+              <option value="charter">Charter</option>
             </select>
           </div>
           <div className="mt-4 flex gap-2">
@@ -245,6 +246,7 @@ export function UsersAdmin({
                       <option value="admin">Admin</option>
                       <option value="sales">Sales</option>
                       <option value="reviewer">Reviewer</option>
+                      <option value="charter">Charter</option>
                     </select>
                   </td>
                   <td>{u.active ? "Active" : "Inactive"}</td>

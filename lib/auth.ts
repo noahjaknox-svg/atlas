@@ -73,6 +73,18 @@ export async function requireAdmin() {
   return user;
 }
 
+export async function requireCharterAccess() {
+  const user = await requireInternalUser();
+  if (user.role !== "admin" && user.role !== "charter") {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}
+
+export function hasCharterAccess(role: string) {
+  return role === "admin" || role === "charter";
+}
+
 function portalSecret() {
   const secret = process.env.PORTAL_SESSION_SECRET;
   if (!secret || secret.length < 32) {

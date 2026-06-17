@@ -83,6 +83,6 @@ describe("matchCharterRequest", () => {
 
     expect(matches.length).toBeGreaterThan(0);
     expect(matches[0]!.tailNumber).toBe("N365AV");
-    expect(matches[0]!.reasoning.repoBoost).toBe(true);
+    expect(matches[0]!.reasoning.legs[0]!.repoBoost).toBe(true);
   });
 });
