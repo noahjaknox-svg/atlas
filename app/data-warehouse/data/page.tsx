@@ -3,7 +3,6 @@ import { getInternalUser } from "@/lib/auth";
 import {
   dataHubSearchParamsFromRecord,
   isPrefetchableDataHubTab,
-  prefetchAirportsTabData,
   prefetchDataHubTab,
   type DataHubListPayload,
 } from "@/lib/data-hub-prefetch";
@@ -21,26 +20,17 @@ export default async function DataHubPage({
   if (user.role !== "admin") redirect(ROUTES.home);
 
   const params = await searchParams;
-  const activeTab = params.tab ?? "airports";
+  const activeTab = params.tab ?? "aircraft";
   const filterParams = dataHubSearchParamsFromRecord(params);
 
   let initialTabData: DataHubListPayload | null = null;
-  let initialAirportsTabData: Awaited<ReturnType<typeof prefetchAirportsTabData>> | null =
-    null;
-
-  if (activeTab === "airports") {
-    initialAirportsTabData = await prefetchAirportsTabData(filterParams);
-  } else if (isPrefetchableDataHubTab(activeTab)) {
+  if (isPrefetchableDataHubTab(activeTab)) {
     initialTabData = await prefetchDataHubTab(activeTab, filterParams);
   }
 
   return (
     <InternalShell userName={user.name} isAdmin workspace>
-      <DataHubClient
-        initialTab={activeTab}
-        initialTabData={initialTabData}
-        initialAirportsTabData={initialAirportsTabData}
-      />
+      <DataHubClient initialTab={activeTab} initialTabData={initialTabData} />
     </InternalShell>
   );
 }

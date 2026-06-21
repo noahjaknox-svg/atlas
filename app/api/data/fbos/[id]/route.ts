@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/auth";
-import { jsonOk, handleApiError } from "@/lib/api";
+import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { parseOptionalDecimal, parseOptionalString } from "@/lib/data-hub-parse";
 
@@ -11,20 +11,27 @@ export async function PATCH(
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const fbo = await prisma.fboLocation.update({
+    const airportIcao = parseOptionalString(body.airportIcao)?.toUpperCase();
+    if (airportIcao) {
+      const match = await prisma.airportReference.findFirst({
+        where: { OR: [{ icao: airportIcao }, { ident: airportIcao }] },
+        select: { id: true },
+      });
+      if (!match) return jsonError(`Unknown airport ICAO: ${airportIcao}`);
+    }
+    const row = await prisma.fbo.update({
       where: { id },
       data: {
         fboName: parseOptionalString(body.fboName),
-        phone: parseOptionalString(body.phone),
-        website: parseOptionalString(body.website),
-        jetARetailPrice: parseOptionalDecimal(body.jetARetailPrice),
-        jetAContractPrice: parseOptionalDecimal(body.jetAContractPrice),
-        manualOverride:
-          typeof body.manualOverride === "boolean" ? body.manualOverride : undefined,
-        source: parseOptionalString(body.source),
+        airportIcao,
+        baseFuelRate: parseOptionalDecimal(body.baseFuelRate),
+        hangarCostPerSqft:
+          body.hangarCostPerSqft === "" || body.hangarCostPerSqft === null
+            ? null
+            : parseOptionalDecimal(body.hangarCostPerSqft),
       },
     });
-    return jsonOk(fbo);
+    return jsonOk(row);
   } catch (e) {
     return handleApiError(e);
   }
@@ -37,7 +44,7 @@ export async function DELETE(
   try {
     await requireAdmin();
     const { id } = await params;
-    await prisma.fboLocation.delete({ where: { id } });
+    await prisma.fbo.delete({ where: { id } });
     return jsonOk({ deleted: true });
   } catch (e) {
     return handleApiError(e);

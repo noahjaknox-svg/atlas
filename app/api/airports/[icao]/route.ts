@@ -1,11 +1,11 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { resolveHangarCostFromRows } from "@/lib/resolve-hangar-cost";
 import {
   enrichAirportReference,
   findAirportReferenceByCode,
 } from "@/lib/ourairports/lookup";
+import { serializeCrewAirport } from "@/lib/ourairports/crew-wire";
 
 export async function GET(
   request: Request,
@@ -14,81 +14,80 @@ export async function GET(
   try {
     await requireInternalUser();
     const { icao } = await params;
+    const code = icao.toUpperCase();
     const url = new URL(request.url);
-    const aircraftMasterId = url.searchParams.get("aircraftMasterId");
-    const fboName = url.searchParams.get("fboName");
+    const warehouseAircraftId = url.searchParams.get("warehouseAircraftId");
 
     const reference = await findAirportReferenceByCode(prisma, icao);
-    const code = icao.toUpperCase();
+    if (!reference) return jsonError("Airport not found", 404);
 
-    const airport = await prisma.airport.findUnique({
-      where: { icao: code },
-      include: {
-        fuelPrices: { take: 1, orderBy: { effectiveDate: "desc" } },
-        hangarCosts: { take: 1, orderBy: { effectiveDate: "desc" } },
-        fboLocations: { orderBy: { fboName: "asc" } },
-      },
+    const fbos = await prisma.fbo.findMany({
+      where: { airportIcao: { equals: code, mode: "insensitive" } },
+      orderBy: { fboName: "asc" },
     });
 
-    if (!reference && !airport) return jsonError("Airport not found", 404);
-
-    const fuel = airport?.fuelPrices[0];
-    let hangarMonthly: string | null =
-      airport?.hangarCosts[0]?.monthlyCostBase?.toString() ?? null;
-
-    if (airport && aircraftMasterId) {
-      const master = await prisma.aircraftMaster.findUnique({
-        where: { id: aircraftMasterId },
-      });
-      const fboMatch = fboName
-        ? airport.fboLocations.find(
-            (f) => f.fboName.toLowerCase() === fboName.toLowerCase()
-          )
+    // Cheapest base fuel rate at the field, if any FBOs are on file.
+    const fuelPrice =
+      fbos.length > 0
+        ? Math.min(...fbos.map((f) => Number(f.baseFuelRate))).toString()
         : null;
 
-      const hangarRows = await prisma.hangarCost.findMany({
-        where: {
-          airportId: airport.id,
-          aircraftMasterId,
-          ...(fboMatch ? { fboLocationId: fboMatch.id } : {}),
-        },
-        orderBy: { effectiveDate: "desc" },
-        take: 5,
+    // Hangar: per-aircraft override wins; else hangarCostPerSqft x aircraft sqft.
+    let hangarMonthly: string | null = null;
+    if (warehouseAircraftId) {
+      const aircraft = await prisma.warehouseAircraft.findUnique({
+        where: { id: warehouseAircraftId },
+        select: { squareFootage: true },
       });
-
-      const resolved = resolveHangarCostFromRows({
-        hangarRows,
-        cabinSqft: master?.cabinSqft,
+      const override = await prisma.fboHangarOverride.findFirst({
+        where: { warehouseAircraftId, fbo: { airportIcao: { equals: code, mode: "insensitive" } } },
       });
-      if (resolved) hangarMonthly = resolved.hangar_monthly;
+      if (override) {
+        hangarMonthly = (override.annualRate / 12).toFixed(2);
+      } else if (aircraft) {
+        const ratePerSqft = fbos
+          .map((f) => (f.hangarCostPerSqft == null ? null : Number(f.hangarCostPerSqft)))
+          .filter((n): n is number => n != null);
+        if (ratePerSqft.length > 0 && aircraft.squareFootage != null) {
+          const annual = Math.min(...ratePerSqft) * aircraft.squareFootage;
+          hangarMonthly = (annual / 12).toFixed(2);
+        }
+      }
     }
 
-    const referenceWire = reference
-      ? await enrichAirportReference(prisma, reference)
-      : null;
+    const referenceWire = await enrichAirportReference(prisma, reference);
+    const crew = serializeCrewAirport(reference);
 
     return jsonOk({
-      icao: referenceWire?.icao ?? airport!.icao,
-      ident: referenceWire?.ident ?? airport!.icao,
-      airportName: referenceWire?.name ?? airport!.airportName,
-      city: referenceWire?.municipality ?? airport!.city,
-      state: airport?.state ?? null,
-      country: referenceWire?.countryName ?? airport?.country ?? null,
-      iata: referenceWire?.iata ?? airport?.iata ?? null,
-      elevationFt: referenceWire?.elevationFt ?? airport?.runwayLengthFt ?? null,
+      icao: referenceWire?.icao ?? code,
+      ident: referenceWire?.ident ?? code,
+      airportName: referenceWire?.name ?? code,
+      city: referenceWire?.municipality ?? null,
+      state: null,
+      country: referenceWire?.countryName ?? null,
+      iata: referenceWire?.iata ?? null,
+      elevationFt: referenceWire?.elevationFt ?? null,
       latitudeDeg: referenceWire?.latitudeDeg ?? null,
       longitudeDeg: referenceWire?.longitudeDeg ?? null,
-      longestRunwayFt: referenceWire?.longestRunwayFt ?? airport?.runwayLengthFt ?? null,
-      fuelPrice: fuel?.retailFuelPrice?.toString() ?? fuel?.homeFuelPrice?.toString() ?? null,
+      longestRunwayFt: referenceWire?.longestRunwayFt ?? null,
+      fuelPrice,
       hangarMonthly,
-      fbos: airport?.fboLocations.map((f) => ({
+      fbos: fbos.map((f) => ({
         id: f.id,
         fboName: f.fboName,
-        jetARetailPrice: f.jetARetailPrice?.toString() ?? null,
-        jetAContractPrice: f.jetAContractPrice?.toString() ?? null,
-      })) ?? [],
+        baseFuelRate: f.baseFuelRate.toString(),
+        hangarCostPerSqft: f.hangarCostPerSqft?.toString() ?? null,
+      })),
       reference: referenceWire,
-      hasAtlasPricing: Boolean(airport),
+      hasAtlasPricing: fbos.length > 0,
+      crew: {
+        terrain: crew.terrain,
+        multiRunway: crew.multiRunway,
+        gradientPct: crew.gradientPct,
+        gradientHighEndRunway: crew.gradientHighEndRunway,
+        primaryRunwayId: crew.runwayId,
+        runways: crew.runways,
+      },
     });
   } catch (e) {
     return handleApiError(e);

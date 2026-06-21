@@ -6,12 +6,13 @@ import { resolveAircraftDefaults } from "@/lib/resolve-aircraft-defaults";
 import { prisma } from "@/lib/db";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; aircraftId: string }> }
 ) {
   try {
     await requireInternalUser();
     const { id, aircraftId } = await params;
+    const url = new URL(request.url);
 
     const proposal = await prisma.proposal.findUnique({
       where: { id },
@@ -28,6 +29,22 @@ export async function GET(
       })),
       category
     );
+
+    const homeIcao = url.searchParams.get("homeIcao")?.trim();
+    const fboName = url.searchParams.get("fboName")?.trim();
+    const usageType = url.searchParams.get("usageType")?.trim();
+    const warehouseAircraftId = url.searchParams.get("warehouseAircraftId")?.trim();
+
+    if (homeIcao) {
+      const code = homeIcao.toUpperCase();
+      assumptions.home_airport_icao = code;
+      assumptions.proposed_home_base = code;
+    }
+    if (fboName) assumptions.fbo_name = fboName;
+    if (usageType === "part_91_135" || usageType === "part_91") {
+      assumptions.usage_type = usageType;
+    }
+    if (warehouseAircraftId) assumptions.aircraft_master_id = warehouseAircraftId;
 
     const defaults = await resolveAircraftDefaults({
       aircraftInstanceId: aircraftId,

@@ -26,13 +26,13 @@ export async function POST(
       data: {
         prospectId: proposal.prospectId,
         proposalId,
-        aircraftMasterId: source.aircraftMasterId,
+        warehouseAircraftId: source.warehouseAircraftId,
         year: source.year,
         proposedHomeBaseIcao: source.proposedHomeBaseIcao,
         tailNumber: source.tailNumber,
         estimatedValue: source.estimatedValue,
       },
-      include: { aircraftMaster: true },
+      include: { warehouseAircraft: true },
     });
 
     const srcCategory = aircraftAssumptionCategory(aircraftId);

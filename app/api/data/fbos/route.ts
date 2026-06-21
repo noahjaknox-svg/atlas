@@ -5,6 +5,14 @@ import { dec } from "@/lib/data-hub-serialize";
 import { fetchDataHubList } from "@/lib/data-hub-list";
 import { parseOptionalDecimal, parseOptionalString } from "@/lib/data-hub-parse";
 
+async function validIcao(icao: string): Promise<boolean> {
+  const match = await prisma.airportReference.findFirst({
+    where: { OR: [{ icao: icao }, { ident: icao }] },
+    select: { id: true },
+  });
+  return !!match;
+}
+
 export async function GET(request: Request) {
   try {
     await requireAdmin();
@@ -12,25 +20,22 @@ export async function GET(request: Request) {
       request,
       "fbos",
       (where, { skip, take }) =>
-        prisma.fboLocation.findMany({
+        prisma.fbo.findMany({
           where,
           skip,
           take,
-          orderBy: { fboName: "asc" },
-          include: { airport: { select: { icao: true, airportName: true } } },
+          orderBy: [{ airportIcao: "asc" }, { fboName: "asc" }],
+          include: { _count: { select: { hangarOverrides: true } } },
         }),
-      () => prisma.fboLocation.count(),
+      () => prisma.fbo.count(),
       (rows) =>
         rows.map((r) => ({
           id: r.id,
-          airportId: r.airportId,
-          airportIcao: r.airport.icao,
           fboName: r.fboName,
-          jetARetailPrice: dec(r.jetARetailPrice),
-          jetAContractPrice: dec(r.jetAContractPrice),
-          phone: r.phone,
-          website: r.website,
-          manualOverride: r.manualOverride,
+          airportIcao: r.airportIcao,
+          baseFuelRate: dec(r.baseFuelRate),
+          hangarCostPerSqft: dec(r.hangarCostPerSqft),
+          overrides: r._count.hangarOverrides,
         }))
     );
     return jsonOk(result);
@@ -43,22 +48,24 @@ export async function POST(request: Request) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const airportId = parseOptionalString(body.airportId);
     const fboName = parseOptionalString(body.fboName);
-    if (!airportId || !fboName) return jsonError("airportId and fboName required");
-
-    const fbo = await prisma.fboLocation.create({
+    const airportIcao = parseOptionalString(body.airportIcao)?.toUpperCase();
+    const baseFuelRate = parseOptionalDecimal(body.baseFuelRate);
+    if (!fboName || !airportIcao || baseFuelRate === undefined) {
+      return jsonError("fboName, airportIcao, and baseFuelRate are required");
+    }
+    if (!(await validIcao(airportIcao))) {
+      return jsonError(`Unknown airport ICAO: ${airportIcao}`);
+    }
+    const row = await prisma.fbo.create({
       data: {
-        airportId,
         fboName,
-        phone: parseOptionalString(body.phone),
-        website: parseOptionalString(body.website),
-        jetARetailPrice: parseOptionalDecimal(body.jetARetailPrice),
-        jetAContractPrice: parseOptionalDecimal(body.jetAContractPrice),
-        source: parseOptionalString(body.source) ?? "manual",
+        airportIcao,
+        baseFuelRate,
+        hangarCostPerSqft: parseOptionalDecimal(body.hangarCostPerSqft) ?? null,
       },
     });
-    return jsonOk(fbo, 201);
+    return jsonOk(row, 201);
   } catch (e) {
     return handleApiError(e);
   }

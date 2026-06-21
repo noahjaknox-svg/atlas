@@ -299,7 +299,7 @@ export type AircraftCardMeta = {
   proposedHomeBaseIcao: string | null;
   estimatedValue: string | null;
   valueSource: string | null;
-  aircraftMaster: { manufacturer: string; model: string } | null;
+  aircraftMaster: { manufacturer: string | null; model: string | null } | null;
 };
 
 export function getAircraftDisplayName(

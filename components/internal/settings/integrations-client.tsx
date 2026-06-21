@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/routes";
 
 type Status = {
-  eiaConfigured: boolean;
   iflightConfigured: boolean;
   jetinsightConfigured: boolean;
   jetinsightSource: {
@@ -14,14 +13,6 @@ type Status = {
     lastSyncedAt: string | null;
     lastSyncStatus: string | null;
   } | null;
-  latestFuel: {
-    pricePerGallon: number;
-    effectiveDate: string;
-    fetchedAt: string;
-    indexName: string;
-  } | null;
-  fboCount: number;
-  fboWithPrices: number;
 };
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -37,36 +28,9 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export function IntegrationsClient({ initial }: { initial: Status }) {
-  const [fuel, setFuel] = useState(initial.latestFuel);
-  const [fboWithPrices, setFboWithPrices] = useState(initial.fboWithPrices);
-  const [syncMsg, setSyncMsg] = useState("");
-  const [syncing, setSyncing] = useState(false);
   const [scheduleSyncMsg, setScheduleSyncMsg] = useState("");
   const [scheduleSyncing, setScheduleSyncing] = useState(false);
   const [jetinsightSource, setJetinsightSource] = useState(initial.jetinsightSource);
-
-  async function syncEia() {
-    setSyncing(true);
-    setSyncMsg("");
-    try {
-      const res = await fetch("/api/data/fuel/sync", { method: "POST" });
-      const json = await res.json();
-      setSyncMsg(json.message ?? (res.ok ? "Sync complete" : "Sync failed"));
-      if (res.ok && json.indexPrice != null) {
-        setFuel({
-          pricePerGallon: json.indexPrice,
-          effectiveDate: json.effectiveDate ?? new Date().toISOString().slice(0, 10),
-          fetchedAt: new Date().toISOString(),
-          indexName: "EIA US Kerosene-Type Jet Fuel (EPJK)",
-        });
-        if (typeof json.fboUpdated === "number") {
-          setFboWithPrices((n) => n + json.fboUpdated);
-        }
-      }
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   async function syncJetInsight() {
     setScheduleSyncing(true);
@@ -105,60 +69,6 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
           This page shows connection status and manual sync triggers.
         </p>
       </div>
-
-      <section className="rounded-lg border border-atlas-border bg-atlas-surface/30 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-medium">EIA Open Data — Jet fuel index</h2>
-            <p className="mt-1 text-sm text-atlas-muted">
-              Powers the Fuel Prices tab reference index and backfills missing FBO Jet-A prices.
-            </p>
-          </div>
-          <StatusBadge
-            ok={initial.eiaConfigured}
-            label={initial.eiaConfigured ? "Configured" : "Not configured"}
-          />
-        </div>
-        <dl className="mt-4 space-y-2 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-atlas-muted">Env variable</dt>
-            <dd className="font-mono text-xs">EIA_API_KEY</dd>
-          </div>
-          {fuel ? (
-            <>
-              <div className="flex justify-between gap-4">
-                <dt className="text-atlas-muted">Latest index</dt>
-                <dd className="font-mono">${fuel.pricePerGallon.toFixed(2)}/gal</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-atlas-muted">Effective</dt>
-                <dd>{fuel.effectiveDate}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-atlas-muted">Last fetched</dt>
-                <dd>{new Date(fuel.fetchedAt).toLocaleString()}</dd>
-              </div>
-            </>
-          ) : (
-            <p className="text-atlas-muted">No index loaded yet.</p>
-          )}
-          <div className="flex justify-between gap-4">
-            <dt className="text-atlas-muted">FBO rows with prices</dt>
-            <dd>
-              {fboWithPrices} / {initial.fboCount}
-            </dd>
-          </div>
-        </dl>
-        <Button
-          type="button"
-          className="mt-4"
-          disabled={syncing || !initial.eiaConfigured}
-          onClick={() => void syncEia()}
-        >
-          {syncing ? "Syncing…" : "Sync fuel from EIA"}
-        </Button>
-        {syncMsg ? <p className="mt-2 text-sm text-atlas-muted">{syncMsg}</p> : null}
-      </section>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface/30 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

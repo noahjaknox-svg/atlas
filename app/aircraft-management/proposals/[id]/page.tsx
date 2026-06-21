@@ -57,7 +57,7 @@ export default async function ProposalWorkspacePage({
             where: { id },
             include: {
               prospect: true,
-              aircraftInstance: { include: { aircraftMaster: true } },
+              aircraftInstance: { include: { warehouseAircraft: true } },
               assumptions: true,
               sections: { orderBy: { sortOrder: "asc" } },
               scenarios: true,
@@ -112,15 +112,15 @@ export default async function ProposalWorkspacePage({
       proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
       estimatedValue: ac.estimatedValue?.toString() ?? null,
       valueSource: ac.valueSource,
-      aircraftMaster: ac.aircraftMaster
+      aircraftMaster: ac.warehouseAircraft
         ? {
-            manufacturer: ac.aircraftMaster.manufacturer,
-            model: ac.aircraftMaster.model,
+            manufacturer: ac.warehouseAircraft.manufacturer,
+            model: ac.warehouseAircraft.model,
           }
         : null,
     };
     if (ac.fboName) assumptionMap.fbo_name = ac.fboName;
-    if (ac.aircraftMasterId) assumptionMap.aircraft_master_id = ac.aircraftMasterId;
+    if (ac.warehouseAircraftId) assumptionMap.aircraft_master_id = ac.warehouseAircraftId;
 
     const portalFields = ac as typeof ac & {
       portalImageUrl?: string | null;

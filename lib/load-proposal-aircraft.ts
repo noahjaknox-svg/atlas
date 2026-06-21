@@ -6,7 +6,7 @@ export async function loadProposalAircraft(
   prospectId: string,
   primaryAircraftInstanceId: string | null
 ) {
-  const include = { aircraftMaster: true } as const;
+  const include = { warehouseAircraft: true } as const;
 
   try {
     const byProposal = await prisma.aircraftInstance.findMany({

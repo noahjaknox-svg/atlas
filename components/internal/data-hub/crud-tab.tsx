@@ -57,6 +57,8 @@ export function CrudTab({
   extraBody,
   onMutate,
   initialData,
+  readOnly = false,
+  enableCopy = false,
 }: {
   title: string;
   apiPath: string;
@@ -71,6 +73,10 @@ export function CrudTab({
   onMutate?: () => void;
   /** Server-prefetched list payload to avoid an initial client fetch. */
   initialData?: ListPayload | null;
+  /** Hide all mutation controls (Add / Edit / Delete). */
+  readOnly?: boolean;
+  /** Show a per-row Copy action that POSTs { copyFromId }. */
+  enableCopy?: boolean;
 }) {
   const searchParams = useSearchParams();
   const filterKey = useMemo(() => {
@@ -218,6 +224,22 @@ export function CrudTab({
     }
   }
 
+  async function copyRow(row: Row) {
+    if (!row.id) return;
+    const res = await fetch(apiPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ copyFromId: row.id }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(typeof json.error === "string" ? json.error : "Copy failed");
+      return;
+    }
+    void load();
+    onMutate?.();
+  }
+
   const showCount = totalCount > 0 && filteredCount !== totalCount;
 
   return (
@@ -231,14 +253,15 @@ export function CrudTab({
             </p>
           )}
         </div>
-        <Button onClick={openCreate}>+ Add</Button>
+        {!readOnly && <Button onClick={openCreate}>+ Add</Button>}
       </div>
       <DataTable
         title=""
         rows={rows}
         columns={columns}
-        onEdit={openEdit}
-        onDelete={remove}
+        onEdit={readOnly ? undefined : openEdit}
+        onDelete={readOnly ? undefined : remove}
+        onCopy={enableCopy && !readOnly ? copyRow : undefined}
         emptyMessage={emptyMessage}
         fillHeight={fillHeight}
       />

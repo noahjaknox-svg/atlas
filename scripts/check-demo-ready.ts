@@ -12,8 +12,8 @@ async function main() {
     prisma.user.count(),
     prisma.proposal.count(),
     prisma.aircraftInstance.count(),
-    prisma.aircraftMaster.count(),
-    prisma.airport.count(),
+    prisma.warehouseAircraft.count(),
+    prisma.airportReference.count(),
   ]);
 
   console.log("Atlas demo readiness");

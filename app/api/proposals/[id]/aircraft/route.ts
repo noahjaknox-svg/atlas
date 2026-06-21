@@ -5,6 +5,10 @@ import {
   aircraftAssumptionCategory,
   mergeLegacyAssumptions,
 } from "@/lib/aircraft-workspace";
+import {
+  PROFORMA_VISIBILITY_KEY,
+  serializeProFormaVisibility,
+} from "@/lib/proforma-line-visibility";
 
 export async function GET(
   _request: Request,
@@ -30,7 +34,7 @@ export async function GET(
             : []),
         ],
       },
-      include: { aircraftMaster: true },
+      include: { warehouseAircraft: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -70,7 +74,7 @@ export async function GET(
         proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
         estimatedValue: ac.estimatedValue,
         valueSource: ac.valueSource,
-        aircraftMaster: ac.aircraftMaster,
+        aircraftMaster: ac.warehouseAircraft,
         assumptions: assumptionMap,
       };
     });
@@ -116,9 +120,9 @@ export async function POST(
         proposalId,
         proposedHomeBaseIcao: homeBase,
         fboName: body.fboName?.trim() || "PrismJet",
-        aircraftMasterId: body.aircraftMasterId?.trim() || null,
+        warehouseAircraftId: body.aircraftMasterId?.trim() || null,
       },
-      include: { aircraftMaster: true },
+      include: { warehouseAircraft: true },
     });
 
     const acCategory = aircraftAssumptionCategory(aircraft.id);
@@ -140,7 +144,16 @@ export async function POST(
       { assumptionName: "home_airport_icao", value: homeBase },
       { assumptionName: "fbo_name", value: body.fboName?.trim() || "PrismJet" },
       { assumptionName: "usage_type", value: usageType },
-      { assumptionName: "operating_model", value: operatingModel }
+      { assumptionName: "operating_model", value: operatingModel },
+      // Insurance & Taxes tab is empty for now: hide insurance + registration/tax
+      // line items by default until that warehouse tab is built out.
+      {
+        assumptionName: PROFORMA_VISIBILITY_KEY,
+        value: serializeProFormaVisibility({
+          insurance_pl: false,
+          registration_pl: false,
+        }),
+      }
     );
 
     for (const row of assumptionRows) {

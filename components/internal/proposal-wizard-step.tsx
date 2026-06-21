@@ -10,13 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { parseFormattedNumber } from "@/lib/utils";
-import type { Proposal, Prospect, AircraftInstance, AircraftMaster, ProposalAssumption, ProposalScenario, ClientPortal } from "@prisma/client";
+import type { Proposal, Prospect, AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalScenario, ClientPortal } from "@prisma/client";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 import { ROUTES } from "@/lib/routes";
 
 type ProposalWithRelations = Proposal & {
   prospect: Prospect;
-  aircraftInstance: (AircraftInstance & { aircraftMaster: AircraftMaster | null }) | null;
+  aircraftInstance: (AircraftInstance & { warehouseAircraft: WarehouseAircraft | null }) | null;
   assumptions: ProposalAssumption[];
   scenarios: ProposalScenario[];
   clientPortal: ClientPortal | null;
@@ -275,8 +275,8 @@ function ReviewStep({
           <div>
             <p className="text-atlas-muted">Aircraft</p>
             <p>
-              {proposal.aircraftInstance?.aircraftMaster
-                ? `${proposal.aircraftInstance.aircraftMaster.manufacturer} ${proposal.aircraftInstance.aircraftMaster.model}`
+              {proposal.aircraftInstance?.warehouseAircraft
+                ? `${proposal.aircraftInstance.warehouseAircraft.manufacturer} ${proposal.aircraftInstance.warehouseAircraft.model}`
                 : "—"}
             </p>
           </div>

@@ -42,6 +42,7 @@ export type AirportReferenceWire = {
   longestRunwayFt: number | null;
   countryName: string | null;
   regionName: string | null;
+  sourceVersion: string | null;
   runways: AirportRunwayWire[];
   frequencies: AirportFrequencyWire[];
   updatedAt: string;
@@ -57,6 +58,9 @@ export type AirportRunwayWire = {
   heIdent: string | null;
   leHeadingDegT: number | null;
   heHeadingDegT: number | null;
+  gradientPctVerified: number | null;
+  gradientHighEndVerified: string | null;
+  gradientPctEstimated: number | null;
 };
 
 export type AirportFrequencyWire = {

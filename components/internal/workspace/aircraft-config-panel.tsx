@@ -204,7 +204,12 @@ export function AircraftConfigPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-atlas-bg">
       {onApplySetupDefaults && (
-        <AircraftSetupBar assumptions={assumptions} onApplyDefaults={onApplySetupDefaults} />
+        <AircraftSetupBar
+          proposalId={proposalId}
+          aircraftId={aircraftId}
+          assumptions={assumptions}
+          onApplyDefaults={onApplySetupDefaults}
+        />
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">

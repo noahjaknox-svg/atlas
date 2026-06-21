@@ -1,4 +1,4 @@
-import type { AircraftInstance, AircraftMaster, ProposalAssumption, ProposalScenario } from "@prisma/client";
+import type { AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalScenario } from "@prisma/client";
 import {
   aircraftAssumptionCategory,
   getAircraftDisplayName,
@@ -15,7 +15,7 @@ import type { AircraftSnapshotEntry, AircraftSnapshotMetrics } from "./portal-ai
 import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
 
-type AircraftWithMaster = AircraftInstance & { aircraftMaster: AircraftMaster | null };
+type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
 
 function clientVisibleAssumptions(
   all: ProposalAssumption[],
@@ -63,10 +63,10 @@ export function buildAircraftSnapshotEntry(args: {
     proposedHomeBaseIcao: aircraft.proposedHomeBaseIcao,
     estimatedValue: aircraft.estimatedValue?.toString() ?? null,
     valueSource: aircraft.valueSource,
-    aircraftMaster: aircraft.aircraftMaster
+    aircraftMaster: aircraft.warehouseAircraft
       ? {
-          manufacturer: aircraft.aircraftMaster.manufacturer,
-          model: aircraft.aircraftMaster.model,
+          manufacturer: aircraft.warehouseAircraft.manufacturer,
+          model: aircraft.warehouseAircraft.model,
         }
       : null,
   };
@@ -74,7 +74,7 @@ export function buildAircraftSnapshotEntry(args: {
   const fullMap = { ...assumptionsFromInstance(meta), ...map };
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
-  const master = aircraft.aircraftMaster;
+  const master = aircraft.warehouseAircraft;
 
   return {
     id: aircraft.id,

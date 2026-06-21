@@ -8,33 +8,31 @@ export async function GET(request: Request) {
     await requireInternalUser();
     const url = new URL(request.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
-    const airportId = url.searchParams.get("airportId")?.trim() ?? "";
+    const airportIcao = url.searchParams.get("airportIcao")?.trim().toUpperCase() ?? "";
 
-    const where: Prisma.FboLocationWhereInput = {};
-
-    if (airportId) {
-      where.airportId = airportId;
-    }
-
-    if (q.length >= 1) {
-      where.fboName = { contains: q, mode: "insensitive" };
-    } else if (!airportId) {
+    const where: Prisma.FboWhereInput = {};
+    if (airportIcao) where.airportIcao = { equals: airportIcao, mode: "insensitive" };
+    if (q) {
+      where.OR = [
+        { fboName: { contains: q, mode: "insensitive" } },
+        { airportIcao: { contains: q, mode: "insensitive" } },
+      ];
+    } else if (!airportIcao) {
       return jsonOk([]);
     }
 
-    const rows = await prisma.fboLocation.findMany({
+    const rows = await prisma.fbo.findMany({
       where,
       take: 20,
-      orderBy: { fboName: "asc" },
-      include: { airport: { select: { icao: true, airportName: true } } },
+      orderBy: [{ airportIcao: "asc" }, { fboName: "asc" }],
     });
 
     return jsonOk(
       rows.map((r) => ({
         id: r.id,
-        label: `${r.airport.icao} — ${r.fboName}`,
+        label: `${r.airportIcao} — ${r.fboName}`,
         fboName: r.fboName,
-        airportId: r.airportId,
+        airportIcao: r.airportIcao,
       }))
     );
   } catch (e) {
