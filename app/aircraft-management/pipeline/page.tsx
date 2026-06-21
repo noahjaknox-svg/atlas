@@ -5,20 +5,27 @@ import { perfTimed } from "@/lib/perf-log";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { PipelineBoard } from "@/components/internal/pipeline-board";
 
-export default async function PipelinePage() {
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ archived?: string }>;
+}) {
   const user = await perfTimed("pipeline auth", () => getInternalUser());
   if (!user) redirect("/login");
 
+  const { archived: archivedParam } = await searchParams;
+  const showArchived = archivedParam === "1";
+
   const { cards, atlasUsers, totalCount, hasMore } = await perfTimed(
     "pipeline query",
-    () => loadPipelinePage()
+    () => loadPipelinePage(1, { archived: showArchived })
   );
 
   return (
     <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
       <h1 className="font-serif text-2xl">Pipeline</h1>
       <p className="mt-1 text-sm text-atlas-muted">
-        Sales workflow
+        {showArchived ? "Archived deals" : "Sales workflow"}
         {totalCount > cards.length ? (
           <span className="ml-2 text-atlas-muted/80">
             (showing {cards.length} of {totalCount})
@@ -32,6 +39,7 @@ export default async function PipelinePage() {
         isAdmin={user.role === "admin"}
         totalCount={totalCount}
         hasMore={hasMore}
+        showArchived={showArchived}
       />
     </InternalShell>
   );

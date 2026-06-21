@@ -5,12 +5,17 @@ import type { PipelineCardData } from "@/components/internal/pipeline-card";
 
 export const PIPELINE_PAGE_SIZE = 50;
 
-export async function loadPipelinePage(page = 1) {
+export async function loadPipelinePage(
+  page = 1,
+  opts?: { archived?: boolean }
+) {
   const skip = (Math.max(1, page) - 1) * PIPELINE_PAGE_SIZE;
+  const archived = opts?.archived === true;
+  const where = archived ? { deletedAt: { not: null } } : { deletedAt: null };
 
   const [proposals, totalCount, rawAtlasUsers] = await Promise.all([
     prisma.proposal.findMany({
-      where: { deletedAt: null },
+      where,
       include: {
         prospect: true,
         aircraftInstance: { include: { aircraftMaster: true } },
@@ -19,11 +24,11 @@ export async function loadPipelinePage(page = 1) {
           select: { assumptionName: true, value: true, confidence: true },
         },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: archived ? { deletedAt: "desc" } : { updatedAt: "desc" },
       skip,
       take: PIPELINE_PAGE_SIZE,
     }),
-    prisma.proposal.count({ where: { deletedAt: null } }),
+    prisma.proposal.count({ where }),
     prisma.user.findMany({
       where: { active: true },
       select: { id: true, name: true },
@@ -55,10 +60,12 @@ export async function loadPipelinePage(page = 1) {
       status: p.status,
       pipelineStage: p.pipelineStage,
       isParked: p.isParked,
+      archived: archived || p.deletedAt != null,
       assumptions: p.assumptions,
       clientPortal: p.clientPortal,
     }),
     missingFieldLabels: getMissingRequiredFields(p.assumptions),
+    deletedAt: p.deletedAt?.toISOString() ?? null,
   }));
 
   return {
@@ -68,5 +75,6 @@ export async function loadPipelinePage(page = 1) {
     page,
     pageSize: PIPELINE_PAGE_SIZE,
     hasMore: skip + proposals.length < totalCount,
+    archived,
   };
 }

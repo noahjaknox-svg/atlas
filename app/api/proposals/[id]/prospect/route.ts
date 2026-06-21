@@ -1,6 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
-import { jsonOk, handleApiError } from "@/lib/api";
+import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { getProposalArchiveState, isProposalArchived } from "@/lib/proposal-archive";
 
 export async function PATCH(
   request: Request,
@@ -13,9 +14,12 @@ export async function PATCH(
 
     const proposal = await prisma.proposal.findUnique({
       where: { id },
-      select: { prospectId: true },
+      select: { prospectId: true, deletedAt: true },
     });
     if (!proposal) throw new Error("NOT_FOUND");
+    if (isProposalArchived(proposal)) {
+      return jsonError("Proposal is archived", 409);
+    }
 
     const prospectData: Record<string, unknown> = {};
     if (body.prospectName !== undefined) prospectData.prospectName = body.prospectName;

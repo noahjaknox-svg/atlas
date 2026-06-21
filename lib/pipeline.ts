@@ -36,7 +36,8 @@ export type PipelineBadgeId =
   | "viewed"
   | "won"
   | "lost"
-  | "parked";
+  | "parked"
+  | "archived";
 
 export interface PipelineBadge {
   id: PipelineBadgeId;
@@ -47,6 +48,7 @@ export interface PipelineCardInput {
   status: ProposalStatus;
   pipelineStage: PipelineStage;
   isParked: boolean;
+  archived?: boolean;
   assumptions: { assumptionName: string; value: string; confidence: DataConfidence }[];
   clientPortal: { active: boolean; viewCount: number } | null;
 }
@@ -75,6 +77,9 @@ export function getPipelineBadges(input: PipelineCardInput): PipelineBadge[] {
   const badges: PipelineBadge[] = [];
   const missingCount = getMissingInfoCount(input.assumptions);
 
+  if (input.archived) {
+    badges.push({ id: "archived", label: "Archived" });
+  }
   if (input.isParked) {
     badges.push({ id: "parked", label: "Parked" });
   }
@@ -101,6 +106,7 @@ export function getPipelineBadges(input: PipelineCardInput): PipelineBadge[] {
   }
 
   const priority: PipelineBadgeId[] = [
+    "archived",
     "parked",
     "missing_info",
     "needs_review",
@@ -133,6 +139,7 @@ export const BADGE_STYLES: Record<PipelineBadgeId, string> = {
   won: "bg-atlas-success/20 text-atlas-success",
   lost: "bg-atlas-danger/20 text-atlas-danger",
   parked: "bg-atlas-border text-atlas-muted",
+  archived: "bg-atlas-border/80 text-atlas-muted line-through decoration-atlas-muted/50",
 };
 
 export function filterCardsByDateRange<T extends { updatedAt: string }>(

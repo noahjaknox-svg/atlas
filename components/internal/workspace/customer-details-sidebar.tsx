@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,9 @@ export function CustomerDetailsSidebar({
   atlasUsers,
   onSave,
   saveState,
+  readOnly = false,
+  onArchive,
+  archiveLoading = false,
 }: {
   prospect: ProspectFormState;
   currentManager: string;
@@ -25,8 +29,12 @@ export function CustomerDetailsSidebar({
   atlasUsers: AtlasUserOption[];
   onSave: (data: ProspectSavePayload) => Promise<void>;
   saveState: "idle" | "saving" | "saved" | "error";
+  readOnly?: boolean;
+  onArchive?: () => Promise<void>;
+  archiveLoading?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [draft, setDraft] = useState(prospect);
   const [draftManager, setDraftManager] = useState(currentManager);
   const [draftAssignedId, setDraftAssignedId] = useState(assignedToId ?? "");
@@ -47,6 +55,29 @@ export function CustomerDetailsSidebar({
     });
     setEditing(false);
   }
+
+  const archiveAction =
+    !readOnly && onArchive ? (
+      <>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-1 w-full text-xs text-atlas-muted hover:text-atlas-danger"
+          disabled={archiveLoading}
+          onClick={() => setArchiveDialogOpen(true)}
+        >
+          Archive customer
+        </Button>
+        <ArchiveCustomerDialog
+          open={archiveDialogOpen}
+          onOpenChange={setArchiveDialogOpen}
+          customerName={prospect.prospectName}
+          archiveLoading={archiveLoading}
+          onConfirm={() => void onArchive().then(() => setArchiveDialogOpen(false))}
+        />
+      </>
+    ) : null;
 
   if (editing) {
     return (
@@ -109,6 +140,7 @@ export function CustomerDetailsSidebar({
             {saveState === "saving" ? "Saving…" : "Save"}
           </Button>
         </div>
+        {archiveAction}
       </div>
     );
   }
@@ -129,11 +161,52 @@ export function CustomerDetailsSidebar({
         variant="secondary"
         size="sm"
         className="mt-3 w-full text-xs"
+        disabled={readOnly}
         onClick={() => setEditing(true)}
       >
         Edit customer
       </Button>
+      {archiveAction}
     </div>
+  );
+}
+
+function ArchiveCustomerDialog({
+  open,
+  onOpenChange,
+  customerName,
+  archiveLoading,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  customerName: string;
+  archiveLoading: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-atlas-border bg-atlas-surface p-6 shadow-xl">
+          <Dialog.Title className="font-serif text-lg text-atlas-text">
+            Archive customer?
+          </Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-atlas-muted">
+            Archive {customerName || "this customer"}? This removes the deal from the pipeline and
+            deactivates the client portal.
+          </Dialog.Description>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" disabled={archiveLoading} onClick={onConfirm}>
+              {archiveLoading ? "Archiving…" : "Archive"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

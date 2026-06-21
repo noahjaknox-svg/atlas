@@ -2,6 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { getExternalAppUrl } from "@/lib/app-url";
 import { publishProposal, republishProposal } from "@/lib/publish";
+import { getProposalArchiveState, isProposalArchived } from "@/lib/proposal-archive";
 
 export async function POST(
   request: Request,
@@ -14,6 +15,13 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const existing = await getProposalArchiveState(id);
+    if (!existing) throw new Error("NOT_FOUND");
+    if (isProposalArchived(existing)) {
+      return jsonError("Proposal is archived", 409);
+    }
+
     const body = await request.json().catch(() => ({}));
     const isRepublish = Boolean((body as { republish?: boolean }).republish);
 

@@ -1,6 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
-import { jsonOk, handleApiError } from "@/lib/api";
+import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { getProposalArchiveState, isProposalArchived } from "@/lib/proposal-archive";
 import { decryptPinFromStorage } from "@/lib/pin-vault";
 import { getPortalUrl } from "@/lib/portal-credentials";
 
@@ -53,6 +54,12 @@ export async function PATCH(
     await requireInternalUser();
     const { id } = await params;
     const body = await request.json();
+
+    const existing = await getProposalArchiveState(id);
+    if (!existing) throw new Error("NOT_FOUND");
+    if (isProposalArchived(existing)) {
+      return jsonError("Proposal is archived", 409);
+    }
 
     const proposal = await prisma.proposal.update({
       where: { id },

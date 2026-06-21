@@ -155,6 +155,7 @@ export default async function ProposalWorkspacePage({
     proposalName: proposal.proposalName,
     status: proposal.status,
     updatedAt: proposal.updatedAt.toISOString(),
+    deletedAt: proposal.deletedAt?.toISOString() ?? null,
     currentManager: proposal.prospect.currentManager ?? "",
     currentUserId: user.id,
     currentUserName: user.name,

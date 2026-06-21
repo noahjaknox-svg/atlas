@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CustomerDetailsSidebar } from "@/components/internal/workspace/customer-details-sidebar";
 import {
   ProposalCommentsPanel,
@@ -42,6 +43,10 @@ export function WorkspaceLayout({
   initialComments,
   ownerBar,
   footer,
+  deletedAt,
+  archiveLoading,
+  onArchive,
+  onRestore,
   children,
 }: {
   proposalId: string;
@@ -69,8 +74,13 @@ export function WorkspaceLayout({
   initialComments?: ProposalComment[];
   ownerBar?: React.ReactNode;
   footer?: React.ReactNode;
+  deletedAt?: string | null;
+  archiveLoading?: boolean;
+  onArchive?: () => Promise<void>;
+  onRestore?: () => Promise<void>;
   children: React.ReactNode;
 }) {
+  const isArchived = deletedAt != null;
   const { missingCount, completeness } = useMemo(() => {
     const includedAircraft = aircraft.filter((a) => a.includedOnProposal !== false);
     const allAssumptionRows = includedAircraft.flatMap((ac) => {
@@ -102,15 +112,41 @@ export function WorkspaceLayout({
             type="text"
             value={proposalName}
             onChange={(e) => onProposalNameChange(e.target.value)}
-            className="mt-2 w-full rounded border border-transparent bg-transparent font-serif text-lg text-atlas-text hover:border-atlas-border focus:border-atlas-accent focus:outline-none"
+            readOnly={isArchived}
+            className="mt-2 w-full rounded border border-transparent bg-transparent font-serif text-lg text-atlas-text hover:border-atlas-border focus:border-atlas-accent focus:outline-none read-only:cursor-default read-only:opacity-80"
           />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
+            {isArchived ? (
+              <span className="rounded bg-atlas-border/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-atlas-muted">
+                Archived
+              </span>
+            ) : null}
             <span className="atlas-caption">
               {completeness}% · {missingCount} missing
             </span>
           </div>
           <p className="atlas-caption mt-1">{saveLabel}</p>
+          {isArchived ? (
+            <div className="mt-2 rounded border border-atlas-border/80 bg-atlas-bg/50 px-2 py-2">
+              <p className="text-[11px] text-atlas-muted">
+                This deal is archived and hidden from the pipeline. Client portal access is
+                deactivated.
+              </p>
+              {onRestore ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2 w-full text-xs"
+                  disabled={archiveLoading}
+                  onClick={() => void onRestore()}
+                >
+                  {archiveLoading ? "Restoring…" : "Restore to pipeline"}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <CustomerDetailsSidebar
@@ -121,6 +157,9 @@ export function WorkspaceLayout({
           atlasUsers={atlasUsers}
           onSave={onProspectSave}
           saveState={prospectSaveState}
+          readOnly={isArchived}
+          onArchive={!isArchived ? onArchive : undefined}
+          archiveLoading={archiveLoading}
         />
 
         <div className="flex min-h-0 flex-1 flex-col border-t border-atlas-border/80 bg-atlas-bg/30">
@@ -144,6 +183,7 @@ export function WorkspaceLayout({
           onToggleIncluded={onToggleIncluded}
           onRemove={onRemoveAircraft}
           onDuplicate={onDuplicateAircraft}
+          readOnly={isArchived}
         />
 
         {ownerBar}

@@ -21,6 +21,7 @@ export interface PipelineCardData {
   aircraftCategory: string | null;
   badges: PipelineBadge[];
   missingFieldLabels?: string[];
+  deletedAt?: string | null;
 }
 
 function assigneeInitials(name: string | null): string {

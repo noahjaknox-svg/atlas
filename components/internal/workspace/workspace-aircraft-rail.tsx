@@ -15,6 +15,7 @@ export function WorkspaceAircraftRail({
   onToggleIncluded,
   onRemove,
   onDuplicate,
+  readOnly = false,
 }: {
   aircraft: AircraftListItem[];
   selectedId: string | null;
@@ -24,18 +25,21 @@ export function WorkspaceAircraftRail({
   onToggleIncluded: (id: string, included: boolean) => void;
   onRemove?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  readOnly?: boolean;
 }) {
   return (
     <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/60">
       <div className="flex min-h-[3.25rem] items-stretch gap-2 px-3 py-2">
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex shrink-0 items-center gap-1.5 self-center rounded-md border border-dashed border-atlas-border px-3 py-2 text-sm font-medium text-atlas-accent transition-colors hover:border-atlas-accent hover:bg-atlas-accent/5"
-        >
-          <span className="text-base leading-none">+</span>
-          Add aircraft
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="flex shrink-0 items-center gap-1.5 self-center rounded-md border border-dashed border-atlas-border px-3 py-2 text-sm font-medium text-atlas-accent transition-colors hover:border-atlas-accent hover:bg-atlas-accent/5"
+          >
+            <span className="text-base leading-none">+</span>
+            Add aircraft
+          </button>
+        ) : null}
 
         {aircraft.length === 0 ? (
           <p className="flex shrink-0 items-center self-center atlas-caption px-2">
@@ -78,16 +82,19 @@ export function WorkspaceAircraftRail({
                     <input
                       type="checkbox"
                       checked={included}
+                      disabled={readOnly}
                       onChange={(e) => onToggleIncluded(ac.id, e.target.checked)}
-                      className="h-3.5 w-3.5 accent-atlas-accent"
+                      className="h-3.5 w-3.5 accent-atlas-accent disabled:opacity-50"
                     />
                     <span className="atlas-caption text-[10px]">Show</span>
                   </label>
-                  <AircraftChipActionsMenu
-                    onDuplicate={onDuplicate ? () => onDuplicate(ac.id) : undefined}
-                    onRemove={onRemove ? () => onRemove(ac.id) : undefined}
-                    triggerClassName="opacity-70 group-hover/chip:opacity-100 data-[open]:opacity-100"
-                  />
+                  {!readOnly ? (
+                    <AircraftChipActionsMenu
+                      onDuplicate={onDuplicate ? () => onDuplicate(ac.id) : undefined}
+                      onRemove={onRemove ? () => onRemove(ac.id) : undefined}
+                      triggerClassName="opacity-70 group-hover/chip:opacity-100 data-[open]:opacity-100"
+                    />
+                  ) : null}
                 </div>
               </li>
             );

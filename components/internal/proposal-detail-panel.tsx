@@ -67,6 +67,7 @@ export function ProposalDetailPanel({
   const [notes, setNotes] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -195,6 +196,33 @@ export function ProposalDetailPanel({
         d ? { ...d, status: updated.status, pipelineStage: updated.pipelineStage } : d
       );
       onUpdated?.();
+    }
+  }
+
+  async function handleArchive() {
+    if (!data) return;
+    const name = data.prospect.prospectName;
+    if (
+      !confirm(
+        `Archive ${name}? This removes the deal from the pipeline and deactivates the client portal.`
+      )
+    ) {
+      return;
+    }
+    setArchiveLoading(true);
+    try {
+      const res = await fetch(`/api/proposals/${data.id}/archive`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "Archive failed");
+        return;
+      }
+      onOpenChange(false);
+      onUpdated?.();
+      router.push(ROUTES.aircraftManagement.pipeline);
+      router.refresh();
+    } finally {
+      setArchiveLoading(false);
     }
   }
 
@@ -414,6 +442,16 @@ export function ProposalDetailPanel({
                 </Button>
                 <Button type="button" variant="ghost" size="sm" className="text-xs" onClick={() => setStatus("lost")}>
                   Mark lost
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-atlas-muted hover:text-atlas-danger"
+                  disabled={archiveLoading}
+                  onClick={() => void handleArchive()}
+                >
+                  {archiveLoading ? "Archiving…" : "Archive"}
                 </Button>
               </div>
               ) : null}

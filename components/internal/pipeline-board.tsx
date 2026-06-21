@@ -23,7 +23,9 @@ import {
 } from "@/lib/pipeline";
 import { PipelineColumn } from "./pipeline-column";
 import { PipelineCard, type PipelineCardData } from "./pipeline-card";
+import { ArchivedPipelineList } from "./archived-pipeline-list";
 import { ProposalDetailPanel } from "./proposal-detail-panel";
+import { Button } from "@/components/ui/button";
 
 type AtlasUser = { id: string; name: string };
 
@@ -51,12 +53,14 @@ export function PipelineBoard({
   isAdmin,
   totalCount,
   hasMore: initialHasMore,
+  showArchived: showArchivedProp = false,
 }: {
   initialCards: PipelineCardData[];
   atlasUsers: AtlasUser[];
   isAdmin?: boolean;
   totalCount?: number;
   hasMore?: boolean;
+  showArchived?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -66,7 +70,9 @@ export function PipelineBoard({
   const [hasMore, setHasMore] = useState(initialHasMore ?? false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
+  const showArchived = searchParams.get("archived") === "1" || showArchivedProp;
   const query = searchParams.get("q") ?? "";
   const assigneeRaw = searchParams.get("assignee") ?? "";
   const statusFilter = searchParams.get("status") ?? "all";
@@ -123,21 +129,25 @@ export function PipelineBoard({
   }, [searchInput, query, updateParams]);
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/proposals/pipeline?page=1");
+    const params = new URLSearchParams({ page: "1" });
+    if (showArchived) params.set("archived", "1");
+    const res = await fetch(`/api/proposals/pipeline?${params}`);
     if (res.ok) {
       const data = await res.json();
       setCards(data.cards ?? data);
       setPage(1);
       setHasMore(data.hasMore ?? false);
     }
-  }, []);
+  }, [showArchived]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/proposals/pipeline?page=${nextPage}`);
+      const params = new URLSearchParams({ page: String(nextPage) });
+      if (showArchived) params.set("archived", "1");
+      const res = await fetch(`/api/proposals/pipeline?${params}`);
       if (!res.ok) return;
       const data = await res.json();
       const nextCards = data.cards ?? [];
@@ -147,7 +157,7 @@ export function PipelineBoard({
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, page]);
+  }, [hasMore, loadingMore, page, showArchived]);
 
   useEffect(() => {
     setCards(initialCards);
@@ -279,7 +289,31 @@ export function PipelineBoard({
 
   function resetFilters() {
     setSearchInput("");
-    router.replace(ROUTES.aircraftManagement.pipeline, { scroll: false });
+    router.replace(
+      showArchived
+        ? `${ROUTES.aircraftManagement.pipeline}?archived=1`
+        : ROUTES.aircraftManagement.pipeline,
+      { scroll: false }
+    );
+  }
+
+  async function handleRestore(cardId: string) {
+    setRestoringId(cardId);
+    try {
+      const res = await fetch(`/api/proposals/${cardId}/restore`, { method: "POST" });
+      if (!res.ok) {
+        const json = await res.json();
+        alert(json.error ?? "Restore failed");
+        return;
+      }
+      setCards((prev) => prev.filter((c) => c.id !== cardId));
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
+  function toggleArchivedView() {
+    updateParams({ archived: showArchived ? null : "1", id: null });
   }
 
   const hasActiveFilters =
@@ -343,6 +377,15 @@ export function PipelineBoard({
               Reset filters
             </button>
           ) : null}
+          <Button
+            type="button"
+            variant={showArchived ? "default" : "secondary"}
+            size="sm"
+            className="h-10 text-xs"
+            onClick={toggleArchivedView}
+          >
+            {showArchived ? "Showing archived" : "Show archived"}
+          </Button>
         </div>
         <p className="text-xs text-atlas-muted">
           Tip: press{" "}
@@ -390,33 +433,44 @@ export function PipelineBoard({
         </div>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-3 overflow-x-auto pb-4">
-          {PIPELINE_COLUMNS.map((col) => (
-            <PipelineColumn
-              key={col.id}
-              stage={col.id}
-              label={col.label}
-              cards={byStage[col.id] ?? []}
-              onCardOpen={handleCardOpen}
-              onCardQuickView={handleCardQuickView}
-              activeCardId={activeId}
-            />
-          ))}
-        </div>
-
-        <DragOverlay>
-          {activeCard ? (
-            <div className="w-[220px] rotate-2 opacity-95">
-              <PipelineCard card={activeCard} onOpen={() => {}} isDragging />
+      {showArchived ? (
+        <ArchivedPipelineList
+          cards={filtered}
+          onOpen={handleCardOpen}
+          onRestore={handleRestore}
+          restoringId={restoringId}
+        />
+      ) : (
+        <>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-3 overflow-x-auto pb-4">
+              {PIPELINE_COLUMNS.map((col) => (
+                <PipelineColumn
+                  key={col.id}
+                  stage={col.id}
+                  label={col.label}
+                  cards={byStage[col.id] ?? []}
+                  onCardOpen={handleCardOpen}
+                  onCardQuickView={handleCardQuickView}
+                  activeCardId={activeId}
+                />
+              ))}
             </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+
+            <DragOverlay>
+              {activeCard ? (
+                <div className="w-[220px] rotate-2 opacity-95">
+                  <PipelineCard card={activeCard} onOpen={() => {}} isDragging />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </>
+      )}
 
       {hasMore ? (
         <div className="mb-4 flex justify-center">

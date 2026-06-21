@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { type AircraftListItem } from "@/components/internal/workspace/aircraft-list-panel";
 import { AircraftTabsPanel } from "@/components/internal/workspace/aircraft-tabs-panel";
@@ -37,6 +38,7 @@ import {
 import { mergeWithDerived } from "@/lib/aircraft-calculated-fields";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
+import { ROUTES } from "@/lib/routes";
 
 type SectionRow = {
   id: string;
@@ -81,6 +83,7 @@ export type ProposalWorkspaceData = {
   initialClientEditable?: Record<string, boolean>;
   ownersByAircraft: Record<string, ProposalOwnerProfile[]>;
   allocationModeByAircraft: Record<string, OwnerExpenseAllocationMode>;
+  deletedAt?: string | null;
 };
 
 function mergeAssumptions(
@@ -97,6 +100,7 @@ export function ProposalWorkspace({
   data: ProposalWorkspaceData;
   isAdmin: boolean;
 }) {
+  const router = useRouter();
   const [prospect, setProspect] = useState(data.prospect);
   const [currentManager, setCurrentManager] = useState(data.currentManager);
   const [assignedToId, setAssignedToId] = useState<string | null>(data.assignedToId);
@@ -129,6 +133,8 @@ export function ProposalWorkspace({
     data.allocationModeByAircraft
   );
   const [sections, setSections] = useState(data.sections);
+  const [deletedAt, setDeletedAt] = useState<string | null>(data.deletedAt ?? null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const ownersSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipOwnersSave = useRef(true);
 
@@ -268,8 +274,10 @@ export function ProposalWorkspace({
       };
     });
   }
-  const saveLabel =
-    saveStatus === "saving"
+  const isArchived = deletedAt != null;
+  const saveLabel = isArchived
+    ? "Archived — read only"
+    : saveStatus === "saving"
       ? "Saving…"
       : saveStatus === "saved"
         ? lastSavedAt
@@ -300,6 +308,7 @@ export function ProposalWorkspace({
   );
 
   const persist = useCallback(async () => {
+    if (isArchived) return;
     if (persistInFlight.current) {
       persistQueued.current = true;
       return;
@@ -377,6 +386,7 @@ export function ProposalWorkspace({
     clientEditable,
     portal?.active,
     scheduleScenarioSync,
+    isArchived,
   ]);
 
   async function handleProspectSave(payload: ProspectSavePayload) {
@@ -689,12 +699,45 @@ export function ProposalWorkspace({
   const portalSlug = portal?.active ? portal.slug : null;
 
   async function handleProposalNameChange(name: string) {
+    if (isArchived) return;
     setProposalName(name);
     await fetch(`/api/proposals/${data.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ proposalName: name }),
     });
+  }
+
+  async function handleArchive() {
+    setArchiveLoading(true);
+    try {
+      const res = await fetch(`/api/proposals/${data.id}/archive`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "Archive failed");
+        return;
+      }
+      router.push(ROUTES.aircraftManagement.pipeline);
+      router.refresh();
+    } finally {
+      setArchiveLoading(false);
+    }
+  }
+
+  async function handleRestore() {
+    setArchiveLoading(true);
+    try {
+      const res = await fetch(`/api/proposals/${data.id}/restore`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "Restore failed");
+        return;
+      }
+      setDeletedAt(null);
+      router.refresh();
+    } finally {
+      setArchiveLoading(false);
+    }
   }
 
   function portalPresentationFor(ac: AircraftListItem): PortalPresentationState {
@@ -751,11 +794,16 @@ export function ProposalWorkspace({
         onProspectSave={handleProspectSave}
         prospectSaveState={prospectSaveState}
         saveLabel={saveLabel}
+        deletedAt={deletedAt}
+        archiveLoading={archiveLoading}
+        onArchive={handleArchive}
+        onRestore={handleRestore}
         currentUserId={data.currentUserId}
         currentUserName={data.currentUserName}
         initialComments={data.initialComments}
         ownerBar={null}
         footer={
+          isArchived ? null : (
           <WorkspaceProposalFooter
             proposalId={data.id}
             portalSlug={portalSlug}
@@ -773,6 +821,7 @@ export function ProposalWorkspace({
             onRegeneratePin={() => void handleRegeneratePin()}
             onEditPresentation={() => setPortalPresentationOpen(true)}
           />
+          )
         }
       >
         {selected ? (
