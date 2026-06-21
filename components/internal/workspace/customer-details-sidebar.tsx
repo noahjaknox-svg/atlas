@@ -166,7 +166,6 @@ export function CustomerDetailsSidebar({
       >
         Edit customer
       </Button>
-      {archiveAction}
     </div>
   );
 }
