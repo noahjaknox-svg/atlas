@@ -2,92 +2,140 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    aircraftMaster: { findUnique: vi.fn() },
-    crewRate: { findMany: vi.fn() },
-    trainingCost: { findMany: vi.fn() },
-    programCost: { findMany: vi.fn() },
-    insuranceAssumption: { findFirst: vi.fn() },
-    aircraftOperatingDefault: { findMany: vi.fn() },
-    charterMarketRate: { findFirst: vi.fn() },
-    airport: { findUnique: vi.fn() },
-    stateCostFactor: { findUnique: vi.fn() },
-    hangarCost: { findMany: vi.fn() },
+    warehouseAircraft: { findUnique: vi.fn() },
+    fbo: { findMany: vi.fn() },
+    fboHangarOverride: { findUnique: vi.fn() },
   },
 }));
 
+vi.mock("@/lib/company-settings", () => ({
+  getCompanySettings: vi.fn(),
+}));
+
 import { prisma } from "@/lib/db";
+import { getCompanySettings } from "@/lib/company-settings";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
+
+const AIRCRAFT = {
+  id: "wa-1",
+  displayName: "Challenger 350",
+  manufacturer: "Bombardier",
+  model: "Challenger 350",
+  modelCode: "CL35",
+  squareFootage: 930,
+  passengerCapacity: 9,
+  averageCost: 11000000,
+  fuelGallonsPerHour: 300,
+  homeFuelPct: 70,
+  engineProgram: 1150,
+  apuProgram: 90,
+  partsProgram: 495,
+  inspectionReserve: 75,
+  tripExpenseHourly: 250,
+  charterHourlyRate: 6000,
+  fuelSurcharge: 600,
+  pilotCharterIncentive: 113,
+  charterPaybackBasis: "block_hours",
+  fuelSurchargePaybackBasis: "flight_hours",
+  cabinAttendantCount: 0,
+  cabinAttendantSalary: 0,
+  leadPilotCount: 1,
+  leadPilotSalary: 240000,
+  picCount: 0,
+  picSalary: 240000,
+  sicCount: 1,
+  sicSalary: 150000,
+  picTrainingCost: 15666,
+  sicTrainingCost: 15667,
+  maxUsage1Pilot: 200,
+  maxUsage2Pilots: 450,
+  maxUsage3Pilots: 600,
+  maxUsage4Pilots: 700,
+  maxUsage5Pilots: 800,
+  maxUsage6Pilots: 900,
+};
+
+const SETTINGS = {
+  id: "default",
+  usAverageFuelCost: 5.5,
+  annualManagementFee: 120000,
+  annualMaintenanceManagementFee: 60000,
+  charterPaybackPercent: 82.5,
+  crewBenefitsPercent: 0.16,
+  fuelTaxRefund: 0.175,
+};
 
 describe("loadAircraftReferenceDefaults", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getCompanySettings).mockResolvedValue(SETTINGS as never);
+    vi.mocked(prisma.fbo.findMany).mockResolvedValue([] as never);
   });
 
-  it("maps crew, programs, and operating defaults from DB", async () => {
-    vi.mocked(prisma.aircraftMaster.findUnique).mockResolvedValue({
-      id: "master-1",
-      typicalFuelBurnGph: { toString: () => "300" } as never,
-      typicalCharterRate: { toString: () => "6000" } as never,
-      maxRecommendedUtilization: 450,
-      typicalHullValue: { toString: () => "11000000" } as never,
-      cabinSqft: 4550,
-      typicalPassengerCapacity: null,
-      typicalRangeNm: null,
-      typicalCruiseSpeedKtas: null,
-      aircraftCategory: "super_midsize_jet",
-    } as never);
+  it("maps hourly rates, finances, and company defaults", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
 
-    vi.mocked(prisma.crewRate.findMany).mockResolvedValue([
-      {
-        role: "pic",
-        salaryBase: { toString: () => "240000" } as never,
-        benefitsPercent: { toString: () => "16" } as never,
-      },
-      {
-        role: "sic",
-        salaryBase: { toString: () => "150000" } as never,
-        benefitsPercent: null,
-      },
-    ] as never);
+    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
 
-    vi.mocked(prisma.trainingCost.findMany).mockResolvedValue([
-      { role: "pic", annualCost: { toString: () => "15666" } as never },
-      { role: "sic", annualCost: { toString: () => "15667" } as never },
-    ] as never);
-
-    vi.mocked(prisma.programCost.findMany).mockResolvedValue([
-      { programType: "engine", provider: null, hourlyRate: { toString: () => "1150" } as never },
-      { programType: "parts", provider: null, hourlyRate: { toString: () => "495" } as never },
-      { programType: "other", provider: "inspection_reserve", hourlyRate: { toString: () => "75" } as never },
-      { programType: "other", provider: "trip_expense", hourlyRate: { toString: () => "250" } as never },
-    ] as never);
-
-    vi.mocked(prisma.insuranceAssumption.findFirst).mockResolvedValue({
-      annualPremiumEstimate: { toString: () => "51000" } as never,
-    } as never);
-
-    vi.mocked(prisma.aircraftOperatingDefault.findMany).mockResolvedValue([
-      { costKey: "wifi_annual", annualAmount: { toString: () => "50000" } as never },
-      { costKey: "management_fee", annualAmount: { toString: () => "120000" } as never },
-    ] as never);
-
-    vi.mocked(prisma.charterMarketRate.findFirst).mockResolvedValue({
-      retailRateBase: { toString: () => "6000" } as never,
-      fuelSurcharge: { toString: () => "600" } as never,
-      ownerPaybackPercent: { toString: () => "75" } as never,
-    } as never);
-
-    vi.mocked(prisma.airport.findUnique).mockResolvedValue(null);
-
-    const map = await loadAircraftReferenceDefaults({ aircraftMasterId: "master-1" });
-
-    expect(map.pic_salary).toBe("240000");
-    expect(map.sic_salary).toBe("150000");
     expect(map.engine_program_rate).toBe("1150");
+    expect(map.home_fuel_pct).toBe("70");
     expect(map.inspection_reserve_rate).toBe("75");
     expect(map.trip_expense_per_hour).toBe("250");
-    expect(map.wifi_annual).toBe("50000");
-    expect(map.insurance_annual).toBe("51000");
     expect(map.aircraft_value).toBe("11000000");
+    expect(map.management_fee).toBe("120000");
+    expect(map.maintenance_management_fee).toBe("60000");
+    expect(map.pic_salary).toBe("240000");
+    expect(map.sic_salary).toBe("150000");
+  });
+
+  it("computes fully-loaded crew salary with benefits", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+
+    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
+
+    // (1*240000 + 1*150000) * 1.16 = 452400
+    expect(map.crew_total).toBe("452400");
+  });
+
+  it("keeps insurance and taxes zeroed until that tab exists", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+
+    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
+
+    expect(map.insurance_annual).toBe("0");
+    expect(map.registration_annual).toBe("0");
+  });
+
+  it("uses FBO base fuel rate and sqft-derived hangar when an FBO matches", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+    vi.mocked(prisma.fbo.findMany).mockResolvedValue([
+      {
+        id: "fbo-1",
+        fboName: "PrismJet",
+        airportIcao: "KSDL",
+        baseFuelRate: { toString: () => "6.25" },
+        hangarCostPerSqft: 24,
+      },
+    ] as never);
+    vi.mocked(prisma.fboHangarOverride.findUnique).mockResolvedValue(null as never);
+
+    const map = await loadAircraftReferenceDefaults({
+      warehouseAircraftId: "wa-1",
+      airportIcao: "KSDL",
+      fboName: "PrismJet",
+    });
+
+    expect(map.home_fuel_price).toBe("6.25");
+    expect(map.fuel_source).toBe("fbo_base");
+    // 24 * 930 = 22320
+    expect(map.hangar_annual).toBe("22320");
+  });
+
+  it("returns an empty map when the aircraft is missing", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(null as never);
+
+    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "missing" });
+
+    expect(map).toEqual({});
   });
 });

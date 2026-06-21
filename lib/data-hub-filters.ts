@@ -1,13 +1,7 @@
 export const DATA_HUB_FILTER_KEYS = [
   "q",
-  "aircraftId",
-  "airportId",
-  "state",
-  "role",
-  "programType",
-  "costKey",
+  "airportIcao",
   "category",
-  "pricingMethod",
 ] as const;
 
 export type DataHubFilterKey = (typeof DATA_HUB_FILTER_KEYS)[number];
@@ -51,5 +45,5 @@ export type FilterField = {
   type: FilterFieldType;
   placeholder?: string;
   options?: { value: string; label: string }[];
-  searchKind?: "aircraft" | "airport";
+  searchKind?: "aircraft" | "airport" | "fbo";
 };

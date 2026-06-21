@@ -41,7 +41,7 @@ export async function PATCH(
     }
     if (body.valueSource !== undefined) instanceData.valueSource = body.valueSource;
     if (body.aircraftMasterId !== undefined) {
-      instanceData.aircraftMasterId = body.aircraftMasterId || null;
+      instanceData.warehouseAircraftId = body.aircraftMasterId || null;
     }
     if (body.fboName !== undefined) instanceData.fboName = body.fboName;
     if (typeof body.includedOnProposal === "boolean") {
@@ -65,7 +65,7 @@ export async function PATCH(
     const updated = await prisma.aircraftInstance.update({
       where: { id: aircraftId },
       data: instanceData,
-      include: { aircraftMaster: true },
+      include: { warehouseAircraft: true },
     });
 
     return jsonOk(updated);

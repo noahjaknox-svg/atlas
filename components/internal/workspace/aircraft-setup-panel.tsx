@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { getAircraftDisplayName, USAGE_TYPE_OPTIONS } from "@/lib/aircraft-workspace";
-import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
+import {
+  getAircraftDisplayName,
+  USAGE_TYPE_OPTIONS,
+  usageTypeToOperatingModel,
+} from "@/lib/aircraft-workspace";
 import type { AssumptionMap } from "@/lib/assumptions";
 
 type MasterRow = {
@@ -11,24 +14,32 @@ type MasterRow = {
   label: string;
   manufacturer: string;
   model: string;
-  typicalFuelBurnGph: string | null;
-  typicalCharterRate: string | null;
-  maxRecommendedUtilization: number | null;
 };
 
+type FboOption = { id: string; label: string };
+
 export function AircraftSetupBar({
+  proposalId,
+  aircraftId,
   assumptions,
   onApplyDefaults,
+  onDefaultsRefresh,
 }: {
+  proposalId: string;
+  aircraftId: string;
   assumptions: AssumptionMap;
   onApplyDefaults: (patch: Partial<AssumptionMap>, instancePatch?: Record<string, unknown>) => void;
+  onDefaultsRefresh?: () => void;
 }) {
   const [masterOptions, setMasterOptions] = useState<{ id: string; label: string }[]>([]);
   const [airportOptions, setAirportOptions] = useState<{ id: string; label: string }[]>([]);
+  const [fboOptions, setFboOptions] = useState<FboOption[]>([]);
   const [masterLoading, setMasterLoading] = useState(false);
   const [airportLoading, setAirportLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [selectedMaster, setSelectedMaster] = useState<MasterRow | null>(null);
   const [selectedIcao, setSelectedIcao] = useState(assumptions.home_airport_icao ?? "SDL");
+  const [fboName, setFboName] = useState(assumptions.fbo_name ?? "PrismJet");
   const [usageType, setUsageType] = useState(
     assumptions.usage_type === "part_91_135" ? "part_91_135" : "part_91"
   );
@@ -50,52 +61,83 @@ export function AircraftSetupBar({
     setAirportLoading(false);
     if (res.ok) {
       setAirportOptions(
-        json.map((a: { icao: string; airportName: string; city: string | null }) => ({
+        json.map((a: { icao: string; label?: string; airportName?: string; city?: string | null }) => ({
           id: a.icao,
-          label: `${a.icao} — ${a.airportName}${a.city ? `, ${a.city}` : ""}`,
+          label: a.label ?? `${a.icao} — ${a.airportName ?? ""}${a.city ? `, ${a.city}` : ""}`,
         }))
       );
     }
   }, []);
 
+  const loadFbos = useCallback(async (icao: string) => {
+    if (!icao.trim()) {
+      setFboOptions([]);
+      return;
+    }
+    const res = await fetch(`/api/airports/${encodeURIComponent(icao.trim())}`);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setFboOptions([]);
+      return;
+    }
+    const fbos = ((json.fbos ?? []) as Array<{ id: string; fboName: string }>).map((f) => ({
+      id: f.id,
+      label: f.fboName,
+    }));
+    setFboOptions(fbos);
+    if (fbos.some((f) => f.label === fboName)) return;
+    const preferred = fbos.find((f) => f.label.toLowerCase() === "prismjet");
+    if (preferred) setFboName(preferred.label);
+    else if (fbos.length > 0) setFboName(fbos[0]!.label);
+  }, [fboName]);
+
   const applyBundle = useCallback(
-    async (master: MasterRow | null, icao: string, usage: string) => {
-      let airportDefaults = null;
-      if (icao) {
-        const res = await fetch(`/api/airports/${icao}`);
-        if (res.ok) {
-          airportDefaults = await res.json();
-        }
+    async (master: MasterRow | null, icao: string, fbo: string, usage: string) => {
+      setApplying(true);
+      try {
+        await fetch(`/api/proposals/${proposalId}/aircraft/${aircraftId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            proposedHomeBaseIcao: icao || undefined,
+            fboName: fbo || undefined,
+            aircraftMasterId: master?.id ?? null,
+          }),
+        });
+
+        const params = new URLSearchParams();
+        if (icao) params.set("homeIcao", icao);
+        if (fbo) params.set("fboName", fbo);
+        if (usage) params.set("usageType", usage);
+        if (master?.id) params.set("warehouseAircraftId", master.id);
+
+        const res = await fetch(
+          `/api/proposals/${proposalId}/aircraft/${aircraftId}/defaults?${params.toString()}`
+        );
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.defaults) return;
+
+        onApplyDefaults(
+          {
+            ...json.defaults,
+            usage_type: usage,
+            operating_model: usageTypeToOperatingModel(usage),
+            fbo_name: fbo,
+            home_airport_icao: icao.toUpperCase(),
+            proposed_home_base: icao.toUpperCase(),
+          },
+          {
+            proposedHomeBaseIcao: icao || undefined,
+            fboName: fbo || undefined,
+            aircraftMasterId: master?.id,
+          }
+        );
+        onDefaultsRefresh?.();
+      } finally {
+        setApplying(false);
       }
-      const patch = buildDefaultsFromReferences({
-        master: master
-          ? {
-              id: master.id,
-              manufacturer: master.manufacturer,
-              model: master.model,
-              typicalFuelBurnGph: master.typicalFuelBurnGph,
-              typicalCharterRate: master.typicalCharterRate,
-              maxRecommendedUtilization: master.maxRecommendedUtilization,
-            }
-          : null,
-        airport: airportDefaults
-          ? {
-              icao: airportDefaults.icao,
-              airportName: airportDefaults.airportName,
-              fuelPrice: airportDefaults.fuelPrice,
-              hangarMonthly: airportDefaults.hangarMonthly,
-              fbos: airportDefaults.fbos ?? [],
-            }
-          : null,
-        fboId: null,
-        usageType: usage,
-      });
-      onApplyDefaults(patch, {
-        proposedHomeBaseIcao: icao || undefined,
-        aircraftMasterId: master?.id,
-      });
     },
-    [onApplyDefaults]
+    [proposalId, aircraftId, onApplyDefaults, onDefaultsRefresh]
   );
 
   useEffect(() => {
@@ -107,15 +149,19 @@ export function AircraftSetupBar({
     if (assumptions.home_airport_icao) {
       void searchAirports(assumptions.home_airport_icao);
       setSelectedIcao(assumptions.home_airport_icao);
+      void loadFbos(assumptions.home_airport_icao);
     }
+    if (assumptions.fbo_name) setFboName(assumptions.fbo_name);
     setUsageType(assumptions.usage_type === "part_91_135" ? "part_91_135" : "part_91");
   }, [
     assumptions.aircraft_manufacturer,
     assumptions.aircraft_model,
     assumptions.home_airport_icao,
+    assumptions.fbo_name,
     assumptions.usage_type,
     searchAirports,
     searchMasters,
+    loadFbos,
   ]);
 
   const typeDisplay = getAircraftDisplayName(assumptions, {
@@ -131,14 +177,14 @@ export function AircraftSetupBar({
 
   return (
     <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/40 px-4 py-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SearchableSelect
           label="Aircraft type"
           placeholder="Search…"
           value={selectedMaster?.id ?? assumptions.aircraft_master_id ?? ""}
           displayValue={typeDisplay}
           options={masterOptions}
-          loading={masterLoading}
+          loading={masterLoading || applying}
           onSearch={searchMasters}
           compact
           onSelect={async (opt) => {
@@ -152,7 +198,7 @@ export function AircraftSetupBar({
             const json: MasterRow[] = await res.json();
             const row = json.find((r) => r.id === opt.id) ?? null;
             setSelectedMaster(row);
-            void applyBundle(row, selectedIcao, usageType);
+            void applyBundle(row, selectedIcao, fboName, usageType);
           }}
         />
         <SearchableSelect
@@ -165,23 +211,55 @@ export function AircraftSetupBar({
               : assumptions.home_airport_icao ?? ""
           }
           options={airportOptions}
-          loading={airportLoading}
+          loading={airportLoading || applying}
           onSearch={searchAirports}
           compact
           onSelect={(opt) => {
             const icao = opt?.id ?? "";
             setSelectedIcao(icao);
-            void applyBundle(selectedMaster, icao, usageType);
+            void loadFbos(icao);
+            void applyBundle(selectedMaster, icao, fboName, usageType);
           }}
         />
+        <div className="space-y-1">
+          <label className="atlas-kicker block">FBO</label>
+          {fboOptions.length > 0 ? (
+            <select
+              value={fboName}
+              disabled={applying}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFboName(next);
+                void applyBundle(selectedMaster, selectedIcao, next, usageType);
+              }}
+              className="atlas-input"
+            >
+              {fboOptions.map((f) => (
+                <option key={f.id} value={f.label}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={fboName}
+              disabled={applying}
+              onChange={(e) => setFboName(e.target.value)}
+              onBlur={() => void applyBundle(selectedMaster, selectedIcao, fboName, usageType)}
+              className="atlas-input"
+            />
+          )}
+        </div>
         <div className="space-y-1">
           <label className="atlas-kicker block">Usage type</label>
           <select
             value={usageType}
+            disabled={applying}
             onChange={(e) => {
               const v = e.target.value;
               setUsageType(v);
-              void applyBundle(selectedMaster, selectedIcao, v);
+              void applyBundle(selectedMaster, selectedIcao, fboName, v);
             }}
             className="atlas-input"
           >

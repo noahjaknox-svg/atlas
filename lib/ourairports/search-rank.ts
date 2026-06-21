@@ -1,6 +1,27 @@
 import { normalizeAirportCode } from "@/lib/ourairports/normalize-code";
 import type { AirportSearchHit } from "@/lib/ourairports/types";
 
+export function formatAirportSearchLabel(hit: Pick<AirportSearchHit, "icao" | "name" | "municipality">): string {
+  const code = hit.icao;
+  const place = hit.municipality ? `, ${hit.municipality}` : "";
+  return `${code} — ${hit.name}${place}`;
+}
+
+export function formatAirportSearchResult(hit: AirportSearchHit) {
+  return {
+    id: hit.ident,
+    icao: hit.icao,
+    label: formatAirportSearchLabel(hit),
+    airportName: hit.name,
+    city: hit.municipality,
+    state: null,
+    iata: hit.iata,
+    type: hit.type,
+    isoCountry: hit.isoCountry,
+    source: "ourairports" as const,
+  };
+}
+
 const US_BOOST = 200;
 const EXACT_CODE = 1000;
 const FAA_LID_MATCH = 900;

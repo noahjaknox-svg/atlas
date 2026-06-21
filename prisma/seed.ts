@@ -1,32 +1,38 @@
 import "./seed-env";
-import { PrismaClient, AircraftCategory, DataConfidence, FeatureCostType } from "@prisma/client";
+import { PrismaClient, AircraftCategory, FeatureCostType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const AIRCRAFT = [
-  { manufacturer: "Bombardier", model: "Challenger 300", category: "super_midsize_jet" as AircraftCategory, fuel: 220, charter: 6500 },
-  { manufacturer: "Bombardier", model: "Challenger 350", category: "super_midsize_jet" as AircraftCategory, fuel: 230, charter: 7000 },
-  { manufacturer: "Bombardier", model: "Challenger 604", category: "large_cabin_jet" as AircraftCategory, fuel: 280, charter: 8500 },
-  { manufacturer: "Bombardier", model: "Challenger 605", category: "large_cabin_jet" as AircraftCategory, fuel: 285, charter: 8800 },
-  { manufacturer: "Bombardier", model: "Lear 45XR", category: "midsize_jet" as AircraftCategory, fuel: 180, charter: 4500 },
-  { manufacturer: "Gulfstream", model: "G550", category: "ultra_long_range_jet" as AircraftCategory, fuel: 350, charter: 12000 },
-  { manufacturer: "Gulfstream", model: "G650", category: "ultra_long_range_jet" as AircraftCategory, fuel: 380, charter: 15000 },
-  { manufacturer: "Cessna", model: "Citation XLS", category: "midsize_jet" as AircraftCategory, fuel: 175, charter: 4200 },
-  { manufacturer: "Cessna", model: "Citation Sovereign", category: "super_midsize_jet" as AircraftCategory, fuel: 210, charter: 5800 },
-  { manufacturer: "Dassault", model: "Falcon 2000", category: "large_cabin_jet" as AircraftCategory, fuel: 260, charter: 7500 },
+type SeedAircraft = {
+  manufacturer: string;
+  model: string;
+  modelCode: string;
+  category: AircraftCategory;
+  pax: number;
+  sqft: number;
+  cruise: number;
+  emptyRange: number;
+  rangeAtMaxPax: number;
+  fuelGph: number;
+  charter: number;
+  averageCost: number;
+};
+
+const AIRCRAFT: SeedAircraft[] = [
+  { manufacturer: "Bombardier", model: "Challenger 300", modelCode: "CL30", category: "super_midsize_jet", pax: 9, sqft: 860, cruise: 470, emptyRange: 3100, rangeAtMaxPax: 2900, fuelGph: 220, charter: 6500, averageCost: 9000000 },
+  { manufacturer: "Bombardier", model: "Challenger 350", modelCode: "CL35", category: "super_midsize_jet", pax: 9, sqft: 930, cruise: 470, emptyRange: 3200, rangeAtMaxPax: 3000, fuelGph: 230, charter: 7000, averageCost: 11000000 },
+  { manufacturer: "Bombardier", model: "Challenger 605", modelCode: "CL60", category: "large_cabin_jet", pax: 10, sqft: 1150, cruise: 470, emptyRange: 4000, rangeAtMaxPax: 3700, fuelGph: 285, charter: 8800, averageCost: 13000000 },
+  { manufacturer: "Gulfstream", model: "G550", modelCode: "GLF5", category: "ultra_long_range_jet", pax: 16, sqft: 1670, cruise: 488, emptyRange: 6750, rangeAtMaxPax: 6000, fuelGph: 350, charter: 12000, averageCost: 22000000 },
+  { manufacturer: "Gulfstream", model: "G650", modelCode: "GLF6", category: "ultra_long_range_jet", pax: 18, sqft: 2138, cruise: 516, emptyRange: 7000, rangeAtMaxPax: 6500, fuelGph: 380, charter: 15000, averageCost: 45000000 },
+  { manufacturer: "Cessna", model: "Citation XLS", modelCode: "C56X", category: "midsize_jet", pax: 8, sqft: 461, cruise: 441, emptyRange: 2100, rangeAtMaxPax: 1800, fuelGph: 175, charter: 4200, averageCost: 6000000 },
+  { manufacturer: "Dassault", model: "Falcon 2000", modelCode: "F2TH", category: "large_cabin_jet", pax: 10, sqft: 1024, cruise: 470, emptyRange: 3350, rangeAtMaxPax: 3100, fuelGph: 260, charter: 7500, averageCost: 12000000 },
 ];
 
-const AIRPORTS = [
-  { icao: "KSDL", name: "Scottsdale Airport", city: "Scottsdale", state: "AZ" },
-  { icao: "KPHX", name: "Phoenix Sky Harbor", city: "Phoenix", state: "AZ" },
-  { icao: "KLAS", name: "Harry Reid International", city: "Las Vegas", state: "NV" },
-  { icao: "KTEB", name: "Teterboro Airport", city: "Teterboro", state: "NJ" },
-  { icao: "KVNY", name: "Van Nuys Airport", city: "Van Nuys", state: "CA" },
-  { icao: "KAPA", name: "Centennial Airport", city: "Denver", state: "CO" },
-  { icao: "KDAL", name: "Dallas Love Field", city: "Dallas", state: "TX" },
-  { icao: "KPBI", name: "Palm Beach International", city: "West Palm Beach", state: "FL" },
-  { icao: "KOPF", name: "Miami-Opa Locka Executive", city: "Opa-locka", state: "FL" },
-  { icao: "KHPN", name: "Westchester County Airport", city: "White Plains", state: "NY" },
+const FBOS = [
+  { fboName: "PrismJet", airportIcao: "KSDL", baseFuelRate: 5.25, hangarCostPerSqft: 24 },
+  { fboName: "Signature Flight Support", airportIcao: "KPHX", baseFuelRate: 5.95, hangarCostPerSqft: 22 },
+  { fboName: "Atlantic Aviation", airportIcao: "KTEB", baseFuelRate: 7.45, hangarCostPerSqft: 38 },
+  { fboName: "Clay Lacy Aviation", airportIcao: "KVNY", baseFuelRate: 6.85, hangarCostPerSqft: 34 },
 ];
 
 const FEATURES = [
@@ -50,6 +56,12 @@ const OPERATING_MODELS = [
 async function main() {
   console.log("Seeding Atlas reference data...");
 
+  await prisma.companySettings.upsert({
+    where: { id: "default" },
+    update: {},
+    create: { id: "default" },
+  });
+
   for (const m of OPERATING_MODELS) {
     const existing = await prisma.operatingModel.findFirst({ where: { name: m.name } });
     if (!existing) {
@@ -66,94 +78,64 @@ async function main() {
   }
 
   for (const a of AIRCRAFT) {
-    const existing = await prisma.aircraftMaster.findFirst({
-      where: { manufacturer: a.manufacturer, model: a.model },
-    });
-    if (existing) continue;
-
-    const master = await prisma.aircraftMaster.create({
-      data: {
+    const displayName = `${a.manufacturer} ${a.model}`;
+    await prisma.warehouseAircraft.upsert({
+      where: { displayName },
+      update: { status: "published" },
+      create: {
+        displayName,
+        status: "published",
         manufacturer: a.manufacturer,
         model: a.model,
+        modelCode: a.modelCode,
         aircraftCategory: a.category,
-        typicalFuelBurnGph: a.fuel,
-        typicalCharterRate: a.charter,
-        typicalCrewRequired: 2,
-        maxRecommendedUtilization: 600,
-        defaultEngineModel: "TBD",
-        defaultApuModel: "TBD",
-        dataConfidence: DataConfidence.medium,
-      },
-    });
-
-    await prisma.crewRate.createMany({
-      data: [
-        {
-          aircraftMasterId: master.id,
-          role: "pic",
-          salaryBase: 185000,
-          benefitsPercent: 28,
-          payrollTaxPercent: 8,
-          confidence: DataConfidence.medium,
-        },
-        {
-          aircraftMasterId: master.id,
-          role: "sic",
-          salaryBase: 120000,
-          benefitsPercent: 28,
-          payrollTaxPercent: 8,
-          confidence: DataConfidence.medium,
-        },
-      ],
-    });
-
-    await prisma.charterMarketRate.create({
-      data: {
-        aircraftMasterId: master.id,
-        retailRateBase: a.charter,
-        ownerPaybackPercent: 85,
-        fuelSurcharge: 45,
-        confidence: DataConfidence.medium,
+        passengerCapacity: a.pax,
+        emptyRange: a.emptyRange,
+        rangeAtMaxPassengers: a.rangeAtMaxPax,
+        crewCount: 2,
+        squareFootage: a.sqft,
+        averageCruiseSpeed: a.cruise,
+        wifi: true,
+        homeFuelPct: 70,
+        fuelGallonsPerHour: a.fuelGph,
+        partsProgram: 495,
+        engineProgram: 1150,
+        apuProgram: 90,
+        inspectionReserve: 75,
+        tripExpenseHourly: 250,
+        leadPilotCount: 1,
+        picCount: 0,
+        sicCount: 1,
+        leadPilotSalary: 240000,
+        picSalary: 200000,
+        sicSalary: 150000,
+        picTrainingCost: 15666,
+        sicTrainingCost: 15667,
+        maxUsage1Pilot: 200,
+        maxUsage2Pilots: 450,
+        maxUsage3Pilots: 600,
+        maxUsage4Pilots: 700,
+        maxUsage5Pilots: 800,
+        maxUsage6Pilots: 900,
+        averageCost: a.averageCost,
+        charterHourlyRate: a.charter,
+        fuelSurcharge: 600,
+        pilotCharterIncentive: 113,
       },
     });
   }
 
-  for (const ap of AIRPORTS) {
-    await prisma.airport.upsert({
-      where: { icao: ap.icao },
+  for (const f of FBOS) {
+    await prisma.fbo.upsert({
+      where: { fboName_airportIcao: { fboName: f.fboName, airportIcao: f.airportIcao } },
       update: {},
       create: {
-        icao: ap.icao,
-        airportName: ap.name,
-        city: ap.city,
-        state: ap.state,
-        country: "US",
-        timezone: "America/Phoenix",
+        fboName: f.fboName,
+        airportIcao: f.airportIcao,
+        baseFuelRate: f.baseFuelRate,
+        hangarCostPerSqft: f.hangarCostPerSqft,
       },
     });
-
-    const airport = await prisma.airport.findUniqueOrThrow({ where: { icao: ap.icao } });
-
-    await prisma.fuelPrice.create({
-      data: {
-        airportId: airport.id,
-        fuelType: "Jet-A",
-        homeFuelPrice: 5.25 + Math.random() * 0.5,
-        retailFuelPrice: 6.75 + Math.random() * 0.5,
-        confidence: DataConfidence.medium,
-        effectiveDate: new Date(),
-      },
-    }).catch(() => {});
-
-    await prisma.hangarCost.create({
-      data: {
-        airportId: airport.id,
-        aircraftCategory: "super_midsize_jet",
-        monthlyCostBase: 4500 + Math.floor(Math.random() * 2000),
-        confidence: DataConfidence.medium,
-        effectiveDate: new Date(),
-      },
-    }).catch(() => {});
   }
 
   for (const name of FEATURES) {
@@ -167,20 +149,9 @@ async function main() {
         defaultInstallCost: name === "Starlink" ? 150000 : null,
         defaultMonthlyCost: name === "Gogo Wi-Fi" ? 3500 : 500,
         clientVisibleDefault: true,
-        confidence: DataConfidence.medium,
       },
     });
   }
-
-  await prisma.stateCostFactor.upsert({
-    where: { state: "AZ" },
-    update: {},
-    create: {
-      state: "AZ",
-      registrationNotes: "Arizona registration applicable for home base.",
-      taxNotes: "Consult tax advisor for personal vs business use.",
-    },
-  });
 
   console.log("Seed complete.");
 }

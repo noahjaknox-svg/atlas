@@ -76,7 +76,7 @@ export function AircraftTabsPanel({
     [assumptions, defaults]
   );
 
-  const defaultsCacheKey = `${aircraftId}:${assumptions.aircraft_master_id ?? ""}:${assumptions.home_airport_icao ?? ""}`;
+  const defaultsCacheKey = `${aircraftId}:${assumptions.aircraft_master_id ?? ""}:${assumptions.home_airport_icao ?? ""}:${assumptions.fbo_name ?? ""}`;
 
   const loadDefaults = useCallback(async () => {
     const cached = defaultsCache.current.get(defaultsCacheKey);
@@ -97,6 +97,11 @@ export function AircraftTabsPanel({
       setDefaults(json.defaults);
     }
   }, [proposalId, aircraftId, defaultsCacheKey]);
+
+  const refreshDefaults = useCallback(() => {
+    defaultsCache.current.delete(defaultsCacheKey);
+    void loadDefaults();
+  }, [defaultsCacheKey, loadDefaults]);
 
   useEffect(() => {
     void loadDefaults();
@@ -229,8 +234,11 @@ export function AircraftTabsPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-atlas-bg">
       <AircraftSetupBar
+        proposalId={proposalId}
+        aircraftId={aircraftId}
         assumptions={assumptions}
         onApplyDefaults={onApplySetupDefaults}
+        onDefaultsRefresh={refreshDefaults}
       />
 
       <div className="atlas-workspace grid min-h-0 flex-1 grid-cols-2">

@@ -41,6 +41,7 @@ export function serializeAirportReference(
     longestRunwayFt: airport.longestRunwayFt,
     countryName: extras?.countryName ?? null,
     regionName: extras?.regionName ?? null,
+    sourceVersion: airport.sourceVersion,
     runways: airport.runways.map((r) => ({
       lengthFt: r.lengthFt,
       widthFt: r.widthFt,
@@ -51,6 +52,9 @@ export function serializeAirportReference(
       heIdent: r.heIdent,
       leHeadingDegT: r.leHeadingDegT,
       heHeadingDegT: r.heHeadingDegT,
+      gradientPctVerified: r.gradientPctVerified,
+      gradientHighEndVerified: r.gradientHighEndVerified,
+      gradientPctEstimated: r.gradientPctEstimated,
     })),
     frequencies: airport.frequencies.map((f) => ({
       type: f.type,
@@ -128,27 +132,39 @@ export async function searchAirportReference(
     );
   }
 
-  const rows = await db.airportReference.findMany({
-    where: {
-      airportType: { not: "closed_airport" },
-      OR: isAirportCode
-        ? codeClauses
-        : [
-            { municipality: { equals: q, mode: "insensitive" } },
-            { municipality: { contains: q, mode: "insensitive" } },
-            { name: { contains: q, mode: "insensitive" } },
-            { keywords: { contains: q, mode: "insensitive" } },
-          ],
-    },
-    orderBy: [
-      { scheduledService: "desc" },
-      { airportType: "asc" },
-      { name: "asc" },
-    ],
-    take: Math.max(limit * 4, 40),
-  });
+  const baseWhere = {
+    airportType: { not: "closed_airport" as const },
+    OR: isAirportCode
+      ? codeClauses
+      : [
+          { municipality: { equals: q, mode: "insensitive" as const } },
+          { municipality: { contains: q, mode: "insensitive" as const } },
+          { name: { contains: q, mode: "insensitive" as const } },
+          { keywords: { contains: q, mode: "insensitive" as const } },
+        ],
+  };
 
-  return rankAirportSearchHits(q, rows.map(serializeSearchHit)).slice(0, limit);
+  const candidateTake = Math.max(limit * 3, 30);
+  const orderBy = [
+    { scheduledService: "desc" as const },
+    { airportType: "asc" as const },
+    { name: "asc" as const },
+  ];
+
+  const [usRows, nonUsRows] = await Promise.all([
+    db.airportReference.findMany({
+      where: { AND: [baseWhere, { isoCountry: "US" }] },
+      orderBy,
+      take: candidateTake,
+    }),
+    db.airportReference.findMany({
+      where: { AND: [baseWhere, { isoCountry: { not: "US" } }] },
+      orderBy,
+      take: candidateTake,
+    }),
+  ]);
+
+  return rankAirportSearchHits(q, [...usRows, ...nonUsRows].map(serializeSearchHit)).slice(0, limit);
 }
 
 export async function enrichAirportReference(

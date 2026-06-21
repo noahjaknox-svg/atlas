@@ -61,8 +61,17 @@ function EntitySearchField({
         if (!url) return;
         const res = await fetch(url);
         if (!res.ok) return;
-        const rows = (await res.json()) as Array<{ id: string; label: string }>;
-        setOptions(rows.map((r) => ({ id: r.id, label: r.label })));
+        const rows = (await res.json()) as Array<{ id: string; label?: string; icao?: string; airportName?: string; city?: string | null }>;
+        setOptions(
+          rows.map((r) => ({
+            id: field.searchKind === "airport" ? (r.icao ?? r.id) : r.id,
+            label:
+              r.label ??
+              (field.searchKind === "airport"
+                ? `${r.icao ?? r.id} — ${r.airportName ?? ""}${r.city ? `, ${r.city}` : ""}`
+                : r.id),
+          }))
+        );
       } finally {
         setLoading(false);
       }

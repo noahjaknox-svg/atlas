@@ -119,22 +119,15 @@ export function getBrowserTimezone(): string {
 }
 
 export async function loadAirportTimezones(
-  db: { airport: { findMany: (args: object) => Promise<{ icao: string; timezone: string | null }[]> } },
+  _db: unknown,
   icaos: string[]
 ): Promise<Record<string, string>> {
   const unique = Array.from(new Set(icaos.map((c) => c.toUpperCase()).filter(Boolean)));
   if (unique.length === 0) return { ...FALLBACK_TIMEZONES };
 
-  const rows = await db.airport.findMany({
-    where: { icao: { in: unique } },
-    select: { icao: true, timezone: true },
-  });
-
-  const fromDb: Record<string, string | null> = {};
-  for (const row of rows) {
-    fromDb[row.icao.toUpperCase()] = row.timezone;
-  }
-  return mergeTimezoneMap(fromDb);
+  // AirportReference has no timezone column, so timezones resolve from the
+  // static fallback map keyed by ICAO until a reference timezone source exists.
+  return mergeTimezoneMap({});
 }
 
 export function collectIcaosFromSchedule(

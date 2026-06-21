@@ -58,10 +58,10 @@ export function getCardSubtitle(prospect: {
   companyName: string | null;
   aircraftInstance: {
     tailNumber?: string | null;
-    aircraftMaster: { manufacturer: string; model: string; category?: string | null } | null;
+    warehouseAircraft: { manufacturer: string | null; model: string | null; aircraftCategory?: string | null } | null;
   } | null;
 }): string | null {
-  const master = prospect.aircraftInstance?.aircraftMaster;
+  const master = prospect.aircraftInstance?.warehouseAircraft;
   const tail = prospect.aircraftInstance?.tailNumber;
   if (master) {
     const model = `${master.manufacturer} ${master.model}`;

@@ -6,32 +6,34 @@ export async function GET(request: Request) {
   try {
     await requireInternalUser();
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-    if (q.length < 1) return jsonOk([]);
 
-    const rows = await prisma.aircraftMaster.findMany({
+    const rows = await prisma.warehouseAircraft.findMany({
       where: {
-        OR: [
-          { model: { contains: q, mode: "insensitive" } },
-          { manufacturer: { contains: q, mode: "insensitive" } },
-          { variant: { contains: q, mode: "insensitive" } },
-        ],
+        status: "published",
+        ...(q
+          ? {
+              OR: [
+                { displayName: { contains: q, mode: "insensitive" } },
+                { manufacturer: { contains: q, mode: "insensitive" } },
+                { model: { contains: q, mode: "insensitive" } },
+                { modelCode: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {}),
       },
       take: 20,
-      orderBy: [{ manufacturer: "asc" }, { model: "asc" }],
+      orderBy: { displayName: "asc" },
     });
 
     return jsonOk(
       rows.map((r) => ({
         id: r.id,
-        label: `${r.manufacturer} ${r.model}${r.variant ? ` ${r.variant}` : ""}`.trim(),
+        label: r.displayName,
+        displayName: r.displayName,
         manufacturer: r.manufacturer,
         model: r.model,
+        modelCode: r.modelCode,
         aircraftCategory: r.aircraftCategory,
-        typicalFuelBurnGph: r.typicalFuelBurnGph?.toString() ?? null,
-        typicalCharterRate: r.typicalCharterRate?.toString() ?? null,
-        defaultEngineModel: r.defaultEngineModel,
-        defaultApuModel: r.defaultApuModel,
-        maxRecommendedUtilization: r.maxRecommendedUtilization,
       }))
     );
   } catch (e) {

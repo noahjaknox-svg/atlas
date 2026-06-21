@@ -15,7 +15,6 @@ import {
   AddAircraftModal,
   type AddAircraftPayload,
 } from "@/components/internal/workspace/add-aircraft-modal";
-import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
 import {
   aircraftAssumptionCategory,
@@ -502,68 +501,34 @@ export function ProposalWorkspace({
     if (!res.ok) throw new Error(json.error ?? "Failed to add aircraft");
 
     const ac = json.aircraft;
-    let airportDefaults = null;
-    const airportRes = await fetch(`/api/airports/${payload.proposedHomeBase}`);
-    if (airportRes.ok) {
-      airportDefaults = await airportRes.json();
-    }
 
-    let masterRow: {
-      id: string;
-      manufacturer: string;
-      model: string;
-      typicalFuelBurnGph: string | null;
-      typicalCharterRate: string | null;
-      maxRecommendedUtilization: number | null;
-    } | null = null;
-    if (payload.aircraftMasterId) {
-      const mRes = await fetch(
-        `/api/aircraft-master/search?q=${encodeURIComponent(payload.aircraftModel.split(" ")[0])}`
-      );
-      if (mRes.ok) {
-        const masters = await mRes.json();
-        masterRow = masters.find((m: { id: string }) => m.id === payload.aircraftMasterId) ?? null;
-      }
-    }
-
-    const basePatch = buildDefaultsFromReferences({
-      master: masterRow
-        ? {
-            id: masterRow.id,
-            manufacturer: masterRow.manufacturer,
-            model: masterRow.model,
-            typicalFuelBurnGph: masterRow.typicalFuelBurnGph,
-            typicalCharterRate: masterRow.typicalCharterRate,
-            maxRecommendedUtilization: masterRow.maxRecommendedUtilization,
-          }
-        : null,
-      airport: airportDefaults
-        ? {
-            icao: airportDefaults.icao,
-            airportName: airportDefaults.airportName,
-            fuelPrice: airportDefaults.fuelPrice,
-            hangarMonthly: airportDefaults.hangarMonthly,
-            fbos: airportDefaults.fbos ?? [],
-          }
-        : null,
-      fboId:
-        airportDefaults?.fbos?.find(
-          (f: { fboName: string }) =>
-            f.fboName.toLowerCase() === payload.fboName.toLowerCase()
-        )?.id ?? null,
+    const params = new URLSearchParams({
+      homeIcao: payload.proposedHomeBase,
+      fboName: payload.fboName,
       usageType: payload.usageType,
     });
+    if (payload.aircraftMasterId) params.set("warehouseAircraftId", payload.aircraftMasterId);
+
+    const defaultsRes = await fetch(
+      `/api/proposals/${data.id}/aircraft/${ac.id}/defaults?${params.toString()}`
+    );
+    const defaultsJson = await defaultsRes.json().catch(() => ({}));
+    const warehouseDefaults =
+      defaultsRes.ok && defaultsJson.defaults ? (defaultsJson.defaults as AssumptionMap) : {};
 
     const parts = payload.aircraftModel.split(" ");
     const assumptions: AssumptionMap = mergeWithDerived({
-      aircraft_manufacturer: masterRow?.manufacturer ?? parts[0] ?? "",
-      aircraft_model: masterRow?.model ?? (parts.slice(1).join(" ") || payload.aircraftModel),
+      ...warehouseDefaults,
+      aircraft_manufacturer:
+        warehouseDefaults.aircraft_manufacturer ?? parts[0] ?? "",
+      aircraft_model:
+        warehouseDefaults.aircraft_model ??
+        (parts.slice(1).join(" ") || payload.aircraftModel),
       proposed_home_base: payload.proposedHomeBase,
       home_airport_icao: payload.proposedHomeBase,
       fbo_name: payload.fboName,
       usage_type: payload.usageType,
       operating_model: usageTypeToOperatingModel(payload.usageType),
-      ...basePatch,
       ...(payload.aircraftMasterId ? { aircraft_master_id: payload.aircraftMasterId } : {}),
     });
 

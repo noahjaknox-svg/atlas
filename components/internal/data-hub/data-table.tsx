@@ -19,6 +19,7 @@ export function DataTable<T extends { id?: string }>({
   columns,
   onEdit,
   onDelete,
+  onCopy,
   emptyMessage = "No records yet.",
   fillHeight = false,
 }: {
@@ -27,6 +28,7 @@ export function DataTable<T extends { id?: string }>({
   columns: DataTableColumn<T>[];
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  onCopy?: (row: T) => void;
   emptyMessage?: string;
   fillHeight?: boolean;
 }) {
@@ -87,14 +89,14 @@ export function DataTable<T extends { id?: string }>({
                   )}
                 </th>
               ))}
-              {(onEdit || onDelete) && <th className="px-3 py-2">Actions</th>}
+              {(onEdit || onDelete || onCopy) && <th className="px-3 py-2">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
+                  colSpan={columns.length + (onEdit || onDelete || onCopy ? 1 : 0)}
                   className="px-3 py-6 text-center text-atlas-muted"
                 >
                   {emptyMessage}
@@ -110,12 +112,17 @@ export function DataTable<T extends { id?: string }>({
                         : String((row as Record<string, unknown>)[c.key as string] ?? "")}
                     </td>
                   ))}
-                  {(onEdit || onDelete) && (
+                  {(onEdit || onDelete || onCopy) && (
                     <td className="whitespace-nowrap px-3 py-2">
                       <div className="flex flex-wrap gap-1.5">
                         {onEdit ? (
                           <Button variant="secondary" size="sm" onClick={() => onEdit(row)}>
                             Edit
+                          </Button>
+                        ) : null}
+                        {onCopy && row.id ? (
+                          <Button variant="secondary" size="sm" onClick={() => onCopy(row)}>
+                            Copy
                           </Button>
                         ) : null}
                         {onDelete && row.id ? (

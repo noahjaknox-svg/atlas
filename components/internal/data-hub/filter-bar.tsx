@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import {
   buildDataHubQuery,
   clearDataHubFilters,
@@ -68,12 +67,6 @@ export function DataHubFilterSidebar({
   const searchParams = useSearchParams();
   const filters = parseDataHubFilters(searchParams);
 
-  const [aircraftOptions, setAircraftOptions] = useState<SearchableOption[]>([]);
-  const [airportOptions, setAirportOptions] = useState<SearchableOption[]>([]);
-  const [aircraftLabel, setAircraftLabel] = useState("");
-  const [airportLabel, setAirportLabel] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-
   const pushFilters = useCallback(
     (patch: Partial<Record<DataHubFilterKey, string | undefined>>) => {
       const current = parseDataHubFilters(searchParams);
@@ -88,73 +81,8 @@ export function DataHubFilterSidebar({
     [router, searchParams, tab]
   );
 
-  async function searchAircraft(query: string) {
-    setSearchLoading(true);
-    try {
-      const res = await fetch(
-        `/api/aircraft-master/search?q=${encodeURIComponent(query)}`
-      );
-      if (res.ok) {
-        const rows = (await res.json()) as Array<{ id: string; label: string }>;
-        setAircraftOptions(rows.map((r) => ({ id: r.id, label: r.label })));
-      }
-    } finally {
-      setSearchLoading(false);
-    }
-  }
-
-  async function searchAirport(query: string) {
-    setSearchLoading(true);
-    try {
-      const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const rows = (await res.json()) as Array<{
-          id: string;
-          icao: string;
-          airportName: string;
-        }>;
-        setAirportOptions(
-          rows.map((r) => ({
-            id: r.id,
-            label: `${r.icao} — ${r.airportName}`,
-          }))
-        );
-      }
-    } finally {
-      setSearchLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!filters.aircraftId) {
-      setAircraftLabel("");
-      return;
-    }
-    void (async () => {
-      const res = await fetch(`/api/data/aircraft-master/${filters.aircraftId}`);
-      if (!res.ok) return;
-      const match = (await res.json()) as { manufacturer: string; model: string };
-      setAircraftLabel(`${match.manufacturer} ${match.model}`);
-    })();
-  }, [filters.aircraftId]);
-
-  useEffect(() => {
-    if (!filters.airportId) {
-      setAirportLabel("");
-      return;
-    }
-    void (async () => {
-      const res = await fetch(`/api/data/airports/${filters.airportId}`);
-      if (!res.ok) return;
-      const match = (await res.json()) as { icao: string; airportName: string };
-      setAirportLabel(`${match.icao} — ${match.airportName}`);
-    })();
-  }, [filters.airportId]);
-
   function clearAll() {
     router.replace(`${ROUTES.dataWarehouse.data}?${clearDataHubFilters(tab).toString()}`);
-    setAircraftLabel("");
-    setAirportLabel("");
   }
 
   const active = hasActiveFilters(filters);
@@ -195,56 +123,6 @@ export function DataHubFilterSidebar({
                     </option>
                   ))}
                 </select>
-              </div>
-            );
-          }
-          if (f.type === "searchable" && f.searchKind === "aircraft") {
-            return (
-              <div key={f.key}>
-                <SearchableSelect
-                  compact
-                  label={f.label}
-                  placeholder="Search aircraft…"
-                  value={filters.aircraftId ?? ""}
-                  displayValue={aircraftLabel}
-                  options={aircraftOptions}
-                  loading={searchLoading}
-                  onSearch={(q) => void searchAircraft(q)}
-                  onSelect={(opt) => {
-                    if (opt) {
-                      setAircraftLabel(opt.label);
-                      pushFilters({ aircraftId: opt.id });
-                    } else {
-                      setAircraftLabel("");
-                      pushFilters({ aircraftId: undefined });
-                    }
-                  }}
-                />
-              </div>
-            );
-          }
-          if (f.type === "searchable" && f.searchKind === "airport") {
-            return (
-              <div key={f.key}>
-                <SearchableSelect
-                  compact
-                  label={f.label}
-                  placeholder="Search airport…"
-                  value={filters.airportId ?? ""}
-                  displayValue={airportLabel}
-                  options={airportOptions}
-                  loading={searchLoading}
-                  onSearch={(q) => void searchAirport(q)}
-                  onSelect={(opt) => {
-                    if (opt) {
-                      setAirportLabel(opt.label);
-                      pushFilters({ airportId: opt.id });
-                    } else {
-                      setAirportLabel("");
-                      pushFilters({ airportId: undefined });
-                    }
-                  }}
-                />
               </div>
             );
           }

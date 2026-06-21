@@ -3,6 +3,7 @@ import {
   serializeCrewAirport,
   type CrewAirportsPayload,
 } from "@/lib/ourairports/crew-wire";
+import { compareAirportsUsFirst } from "@/lib/ourairports/us-first-list";
 
 const CHARTER_AIRPORT_TYPES = [
   "large_airport",
@@ -43,6 +44,8 @@ export async function buildCrewAirportsPayloadFromDb(
     },
     orderBy: { icao: "asc" },
   });
+
+  rows.sort(compareAirportsUsFirst);
 
   const airports = rows.map(serializeCrewAirport);
 
