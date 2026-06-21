@@ -81,7 +81,10 @@ export function ProFormaClient({
   });
   const [aircraftLoading, setAircraftLoading] = useState(false);
 
-  const calculationAssumptions = snapshot.calculationAssumptions ?? {};
+  const calculationAssumptions = useMemo(
+    () => snapshot.calculationAssumptions ?? {},
+    [snapshot.calculationAssumptions]
+  );
   const canComputeLocally = Object.keys(calculationAssumptions).length > 0;
 
   const showAircraftSelector = snapshot.aircraftList.length > 1;

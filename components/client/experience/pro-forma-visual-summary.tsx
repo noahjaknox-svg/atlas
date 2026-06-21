@@ -41,7 +41,7 @@ export function ProFormaVisualSummary({
       .sort((a, b) => b.value - a.value)
       .slice(0, compact ? 4 : 6);
     return { fixed: fixedSum, variable: variableSum, total: t, topLines: sorted };
-  }, [lineItems, period]);
+  }, [lineItems, period, compact]);
 
   const fixedPct = total > 0 ? (fixed / total) * 100 : 50;
   const animatedTotal = useCountUp(total, shown);
