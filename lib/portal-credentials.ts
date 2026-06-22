@@ -36,6 +36,34 @@ export async function getPortalCredentials(proposalId: string) {
   };
 }
 
+/**
+ * Toggle whether clients can reach a published portal. Setting `active = false`
+ * "takes down" the proposal without touching the deal, snapshot, slug, or PIN, so
+ * it can be restored later with the exact same published version.
+ */
+export async function setPortalActive(proposalId: string, active: boolean) {
+  const portal = await prisma.clientPortal.findUnique({
+    where: { proposalId },
+    select: { slug: true },
+  });
+
+  if (!portal) {
+    throw new Error("Portal not found");
+  }
+
+  const updated = await prisma.clientPortal.update({
+    where: { proposalId },
+    data: { active },
+    select: { slug: true, active: true },
+  });
+
+  return {
+    slug: updated.slug,
+    active: updated.active,
+    portalUrl: getPortalUrl(updated.slug),
+  };
+}
+
 export async function regeneratePortalPin(proposalId: string) {
   const portal = await prisma.clientPortal.findUnique({
     where: { proposalId },

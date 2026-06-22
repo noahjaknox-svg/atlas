@@ -1,8 +1,15 @@
+import type { Prisma } from "@prisma/client";
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import type { ExperienceContentBlocks } from "@/lib/experience-content";
 
+/**
+ * Per-proposal section edits are limited to copy, page selection (visible),
+ * order, signatory, and the per-proposal aircraft market link. Structure, media,
+ * layout, and rich content blocks are owned globally by the Deck Builder
+ * (Proposal Design) and are intentionally ignored here.
+ */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,30 +29,36 @@ export async function PATCH(
       if (!item.id) return jsonError("Each section requires id");
       const existing = await prisma.proposalSection.findFirst({
         where: { id: item.id, proposalId },
+        select: { id: true, contentBlocks: true },
       });
       if (!existing) return jsonError("Section not found", 404);
+
+      const data: Prisma.ProposalSectionUpdateInput = {
+        title: item.title,
+        bodyCopy: item.bodyCopy,
+        visible: typeof item.visible === "boolean" ? item.visible : undefined,
+        sortOrder: typeof item.sortOrder === "number" ? item.sortOrder : undefined,
+        signatoryName: item.signatoryName !== undefined ? item.signatoryName : undefined,
+        signatoryTitle: item.signatoryTitle !== undefined ? item.signatoryTitle : undefined,
+      };
+
+      // Only the per-proposal aircraft market link is editable within contentBlocks.
+      if (item.contentBlocks && typeof item.contentBlocks === "object") {
+        const incoming = item.contentBlocks as ExperienceContentBlocks;
+        const current = (existing.contentBlocks as ExperienceContentBlocks | null) ?? {};
+        const merged: ExperienceContentBlocks = { ...current };
+        if ("aircraftMarketUrl" in incoming) {
+          merged.aircraftMarketUrl = incoming.aircraftMarketUrl ?? null;
+        }
+        if ("aircraftMarketButtonLabel" in incoming) {
+          merged.aircraftMarketButtonLabel = incoming.aircraftMarketButtonLabel ?? null;
+        }
+        data.contentBlocks = merged as unknown as Prisma.InputJsonValue;
+      }
+
       const result = await prisma.proposalSection.update({
         where: { id: item.id },
-        data: {
-          title: item.title,
-          bodyCopy: item.bodyCopy,
-          visible: typeof item.visible === "boolean" ? item.visible : undefined,
-          sortOrder: typeof item.sortOrder === "number" ? item.sortOrder : undefined,
-          imageUrl: item.imageUrl !== undefined ? item.imageUrl : undefined,
-          videoUrl: item.videoUrl !== undefined ? item.videoUrl : undefined,
-          posterUrl: item.posterUrl !== undefined ? item.posterUrl : undefined,
-          calloutMetricLabel:
-            item.calloutMetricLabel !== undefined ? item.calloutMetricLabel : undefined,
-          calloutMetricValue:
-            item.calloutMetricValue !== undefined ? item.calloutMetricValue : undefined,
-          layoutVariant: item.layoutVariant !== undefined ? item.layoutVariant : undefined,
-          contentBlocks:
-            item.contentBlocks !== undefined
-              ? (item.contentBlocks as ExperienceContentBlocks)
-              : undefined,
-          signatoryName: item.signatoryName !== undefined ? item.signatoryName : undefined,
-          signatoryTitle: item.signatoryTitle !== undefined ? item.signatoryTitle : undefined,
-        },
+        data,
       });
       results.push(result);
     }

@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/lib/routes";
 import { ProposalDesignEditor } from "@/components/internal/proposal-design-editor";
 import { ExperienceMasterEditor } from "@/components/internal/proposal-design/experience-master-editor";
 import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
@@ -26,9 +24,9 @@ export function ProposalDesignShell({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-4 border-b border-atlas-border px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-xl text-atlas-text">Proposal Design</h1>
+          <h1 className="font-serif text-xl text-atlas-text">Deck Builder</h1>
           <p className="mt-0.5 text-xs text-atlas-muted">
-            Master copy and branding for all client proposals
+            Page structure, layout, visuals, and master copy for every client proposal
           </p>
         </div>
         <nav className="flex gap-1 rounded-lg border border-atlas-border p-1">
@@ -42,7 +40,7 @@ export function ProposalDesignShell({
                 : "text-atlas-muted hover:text-atlas-text"
             )}
           >
-            Report pages
+            Pages &amp; layout
           </button>
           <button
             type="button"
@@ -66,19 +64,16 @@ export function ProposalDesignShell({
           <div className="h-full overflow-y-auto px-4 py-6 lg:px-6">
             <p className="mb-6 max-w-2xl text-sm text-atlas-muted">
               PIN gate clouds, logo, About/Services/Fleet/Contact blocks used across all portals.
-              Per-proposal report pages are edited under{" "}
+              Page structure, layout, animations, and default copy live under{" "}
               <button
                 type="button"
                 onClick={() => setTab("report")}
                 className="text-atlas-accent hover:underline"
               >
-                Report pages
+                Pages &amp; layout
               </button>
-              ; individual proposals can override in{" "}
-              <Link href={ROUTES.aircraftManagement.pipeline} className="text-atlas-accent hover:underline">
-                Design report
-              </Link>
-              .
+              . Each proposal then adjusts copy and chooses which pages to include from{" "}
+              <span className="text-atlas-text">Edit presentation</span> on the proposal workspace.
             </p>
             <ProposalDesignEditor initialContent={initialContent} initialFleet={initialFleet} />
           </div>
