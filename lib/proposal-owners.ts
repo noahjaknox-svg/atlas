@@ -4,6 +4,7 @@ import {
   OWNER_EXPENSE_ALLOCATION_KEY,
   type OwnerExpenseAllocationMode,
 } from "@/lib/owner-expense-allocation";
+import { patchAssumptionsWithCrewStep } from "@/lib/crew-step";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
 
 export type ProposalOwnerProfile = {
@@ -16,11 +17,119 @@ export type ProposalOwnerProfile = {
 
 export const MAX_OWNER_COUNT = 6;
 
+export const OWNER_PROFORMA_HOURS_KEY = "owner_proforma_hours_json";
+
 export function totalOwnerFlightHours(profiles: ProposalOwnerProfile[]): number {
   return profiles.reduce(
     (s, p) => s + (Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0),
     0
   );
+}
+
+export function parseProformaOwnerHoursJson(
+  assumptions: AssumptionMap,
+  profileCount: number
+): number[] | null {
+  const raw = assumptions[OWNER_PROFORMA_HOURS_KEY];
+  if (!raw?.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const nums = parsed.map((v) => {
+      const n = typeof v === "number" ? v : parseFloat(String(v));
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    });
+    if (profileCount > 0 && nums.length !== profileCount) return null;
+    return nums;
+  } catch {
+    return null;
+  }
+}
+
+/** Pro forma scenario hours per owner (aligned to profile sortOrder). */
+export function proformaHoursForProfiles(
+  profiles: ProposalOwnerProfile[],
+  assumptions: AssumptionMap
+): number[] {
+  const stored = parseProformaOwnerHoursJson(assumptions, profiles.length);
+  if (stored) return stored;
+
+  if (profiles.length === 1) {
+    const h = parseFloat(assumptions.owner_annual_hours ?? "");
+    if (Number.isFinite(h) && h >= 0) return [h];
+    return [profiles[0]?.annualFlightHours ?? 400];
+  }
+
+  return profiles.map((p) =>
+    Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0
+  );
+}
+
+/** Seed pro forma hours from owner profile defaults (Owners tab). */
+export function seedProformaHoursInAssumptions(
+  assumptions: AssumptionMap,
+  profiles: ProposalOwnerProfile[]
+): AssumptionMap {
+  const hours = profiles.map((p) =>
+    Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0
+  );
+  const total = hours.reduce((s, h) => s + h, 0);
+  const next: AssumptionMap = {
+    ...assumptions,
+    [OWNER_PROFORMA_HOURS_KEY]: JSON.stringify(hours),
+    owner_annual_hours: String(total),
+  };
+  return syncUtilizationHours(next);
+}
+
+export function patchProformaOwnerHoursAtIndex(
+  assumptions: AssumptionMap,
+  profiles: ProposalOwnerProfile[],
+  index: number,
+  hours: number
+): AssumptionMap {
+  const current = proformaHoursForProfiles(profiles, assumptions);
+  const next = [...current];
+  next[index] = Math.max(0, hours);
+  const total = next.reduce((s, h) => s + h, 0);
+  const updated: AssumptionMap = {
+    ...assumptions,
+    [OWNER_PROFORMA_HOURS_KEY]: JSON.stringify(next),
+    owner_annual_hours: String(total),
+  };
+  return syncUtilizationHours(updated);
+}
+
+/** Profiles with annualFlightHours replaced by pro forma scenario hours. */
+export function profilesWithProformaHours(
+  profiles: ProposalOwnerProfile[],
+  assumptions: AssumptionMap
+): ProposalOwnerProfile[] {
+  const hours = proformaHoursForProfiles(profiles, assumptions);
+  return profiles.map((p, i) => ({
+    ...p,
+    annualFlightHours: hours[i] ?? p.annualFlightHours,
+  }));
+}
+
+export function ownerDefaultHoursChanged(
+  prev: ProposalOwnerProfile[],
+  next: ProposalOwnerProfile[]
+): boolean {
+  if (prev.length !== next.length) return true;
+  return next.some((p, i) => {
+    const a = prev[i]?.annualFlightHours ?? 0;
+    const b = p.annualFlightHours ?? 0;
+    return a !== b;
+  });
+}
+
+/** Owner hours that drive crew step / utilization (from pro forma assumptions). */
+export function ownerHoursForUtilization(
+  profiles: ProposalOwnerProfile[],
+  assumptions: AssumptionMap
+): number {
+  return proformaHoursForProfiles(profiles, assumptions).reduce((s, h) => s + h, 0);
 }
 
 export function normalizeProfilesForCount(
@@ -108,22 +217,52 @@ export function validateOwnerProfiles(
   };
 }
 
-/** Merge owner profiles into assumptions and sync utilization hour keys. */
-export function syncOwnersIntoAssumptions(
-  assumptions: AssumptionMap,
+/** Validate pro forma scenario hours (not owner profile defaults). */
+export function validateProformaOwnerHours(
   profiles: ProposalOwnerProfile[],
-  allocationMode?: OwnerExpenseAllocationMode
+  assumptions: AssumptionMap,
+  maxAnnualUtilization: number
+): OwnerValidation {
+  return validateOwnerProfiles(
+    profilesWithProformaHours(profiles, assumptions),
+    maxAnnualUtilization,
+    false
+  );
+}
+
+/** Seed pro forma from owner defaults and recompute crew step / utilization. */
+export function assumptionsAfterOwnerDefaultsChange(
+  base: AssumptionMap,
+  profiles: ProposalOwnerProfile[],
+  allocationMode: OwnerExpenseAllocationMode | undefined,
+  warehouseDefaults: Record<string, string> = {},
+  seedProforma = true
 ): AssumptionMap {
-  const total = totalOwnerFlightHours(profiles);
-  let next: AssumptionMap = {
-    ...assumptions,
-    owner_annual_hours: String(total),
-  };
+  let next: AssumptionMap = { ...base };
   if (allocationMode) {
     next[OWNER_EXPENSE_ALLOCATION_KEY] = allocationMode;
   }
-  next = syncUtilizationHours(next);
-  return next;
+  if (seedProforma) {
+    next = seedProformaHoursInAssumptions(next, profiles);
+  }
+  const hours = ownerHoursForUtilization(profiles, next);
+  return patchAssumptionsWithCrewStep(next, warehouseDefaults, { ownerHours: hours });
+}
+
+/** @deprecated Use assumptionsAfterOwnerDefaultsChange */
+export function assumptionsAfterOwnerUpdate(
+  base: AssumptionMap,
+  profiles: ProposalOwnerProfile[],
+  allocationMode: OwnerExpenseAllocationMode | undefined,
+  warehouseDefaults: Record<string, string> = {}
+): AssumptionMap {
+  return assumptionsAfterOwnerDefaultsChange(
+    base,
+    profiles,
+    allocationMode,
+    warehouseDefaults,
+    true
+  );
 }
 
 export function serializeProfilesForApi(profiles: ProposalOwnerProfile[]) {

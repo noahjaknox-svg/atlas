@@ -43,6 +43,8 @@ export function scenarioInputsFromDb(
     charterBlockHours: { toString(): string } | null;
     charterFlightHours: { toString(): string } | null;
     ownerHours: { toString(): string } | null;
+    crewStepIndex?: number | null;
+    leadPilotEnabled?: boolean | null;
   }>
 ): ScenarioInput[] {
   const byName = Object.fromEntries(rows.map((r) => [r.scenarioName, r]));
@@ -61,6 +63,8 @@ export function scenarioInputsFromDb(
       ownerFlightHours: row?.ownerHours
         ? parseFloat(row.ownerHours.toString())
         : def.ownerFlightHours,
+      crewStepIndex: row?.crewStepIndex ?? null,
+      leadPilotEnabled: row?.leadPilotEnabled ?? null,
     });
   }
   return inputs;

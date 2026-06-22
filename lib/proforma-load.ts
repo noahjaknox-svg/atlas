@@ -41,9 +41,8 @@ export async function loadProFormaData(
   );
   map = await resolveEffectiveAssumptionsForInstance(aircraftInstanceId, map);
 
-  const baseInputs = assumptionsToProFormaInputs(map);
   const scenarioInputs = scenarioInputsFromDb(scenarioRows);
-  const results = calculateProFormaScenarios(baseInputs, scenarioInputs);
+  const results = calculateProFormaScenarios(map, scenarioInputs);
 
   return {
     scenarios: results,

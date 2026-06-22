@@ -16,7 +16,7 @@ import {
   PROFORMA_VISIBILITY_KEY,
   setProFormaLineVisible,
 } from "@/lib/proforma-line-visibility";
-import { utilizationPatchToAssumptions } from "@/lib/proforma-utilization";
+import { patchAssumptionsWithCrewStep } from "@/lib/crew-step";
 import { ProFormaScenarioPanel } from "@/components/internal/workspace/pro-forma-utilization-panel";
 import { isCharterProFormaRow } from "@/lib/usage-type";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import {
   buildPerOwnerFinancing,
   type PerOwnerEconomics,
 } from "@/lib/proforma-multi-owner";
+import { profilesWithProformaHours } from "@/lib/proposal-owners";
 
 const METRIC_KEYS_HIDDEN_FROM_TABLE = new Set(["cost_per_owner_hour"]);
 
@@ -55,6 +56,7 @@ function headersForLayout(layout: ProFormaColumnLayout): string[] {
 export function AircraftProFormaColumn({
   assumptions,
   rawAssumptions,
+  warehouseDefaults = {},
   charterEnabled = true,
   ownerProfiles = [],
   allocationMode = "hybrid",
@@ -62,6 +64,7 @@ export function AircraftProFormaColumn({
 }: {
   assumptions: AssumptionMap;
   rawAssumptions: AssumptionMap;
+  warehouseDefaults?: Record<string, string>;
   charterEnabled?: boolean;
   ownerProfiles?: ProposalOwnerProfile[];
   allocationMode?: OwnerExpenseAllocationMode;
@@ -104,13 +107,14 @@ export function AircraftProFormaColumn({
 
   const perOwnerEconomics = useMemo(() => {
     if (!multiOwner) return [];
+    const withProformaHours = profilesWithProformaHours(ownerProfiles, rawAssumptions);
     return buildPerOwnerEconomics(
       assumptions,
-      ownerProfiles,
+      withProformaHours,
       statement.rows,
       allocationMode
     );
-  }, [multiOwner, assumptions, ownerProfiles, statement.rows, allocationMode]);
+  }, [multiOwner, assumptions, ownerProfiles, rawAssumptions, statement.rows, allocationMode]);
 
   const perOwnerFinancing = useMemo(() => {
     if (!multiOwner) return [];
@@ -126,10 +130,11 @@ export function AircraftProFormaColumn({
 
   const applyOwnerHours = useCallback(
     (hours: number) => {
-      const next = utilizationPatchToAssumptions(assumptions, { ownerHours: hours });
-      onAssumptionsChange(next);
+      onAssumptionsChange(
+        patchAssumptionsWithCrewStep(rawAssumptions, warehouseDefaults, { ownerHours: hours })
+      );
     },
-    [assumptions, onAssumptionsChange]
+    [rawAssumptions, warehouseDefaults, onAssumptionsChange]
   );
 
   const toggleLine = useCallback(
@@ -152,6 +157,9 @@ export function AircraftProFormaColumn({
         charterEnabled={charterEnabled}
         ownerProfiles={ownerProfiles}
         onOwnerHoursChange={applyOwnerHours}
+        assumptions={rawAssumptions}
+        warehouseDefaults={warehouseDefaults}
+        onCrewChange={onAssumptionsChange}
       />
 
       <div className="min-w-0 rounded-lg border border-atlas-border/80 bg-atlas-surface/20">

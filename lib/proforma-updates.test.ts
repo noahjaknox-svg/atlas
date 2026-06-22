@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   resolveCrewTrainingTotal,
   formatTrainingCalculationHint,
+  computeLeadPilotCrewTotal,
+  computeCrewTotal,
 } from "@/lib/aircraft-calculated-fields";
 import {
   resolveHangarAnnual,
@@ -34,6 +36,39 @@ describe("resolveCrewTrainingTotal", () => {
     expect(formatTrainingCalculationHint(a, "total")).toBe(
       "$10,000 × 2 PIC + $8,000 × 1 SIC"
     );
+  });
+});
+
+describe("lead pilot crew total", () => {
+  it("returns zero when lead pilot is disabled", () => {
+    expect(
+      computeLeadPilotCrewTotal({
+        lead_pilot_enabled: "no",
+        lead_pilot_salary: "240000",
+        benefits_pct: "16",
+      })
+    ).toBe(0);
+  });
+
+  it("applies benefits to lead salary separately from PIC heads", () => {
+    const leadTotal = computeLeadPilotCrewTotal({
+      lead_pilot_enabled: "yes",
+      lead_pilot_salary: "240000",
+      benefits_pct: "16",
+    });
+    expect(leadTotal).toBe(278400);
+    const crewTotal = computeCrewTotal({
+      pic_count: "2",
+      pic_salary: "200000",
+      sic_count: "1",
+      sic_salary: "150000",
+      lead_pilot_enabled: "yes",
+      lead_pilot_salary: "240000",
+      benefits_pct: "16",
+    });
+    // Lead, PIC, and SIC each get benefits applied separately
+    // 240000*1.16 + 2*200000*1.16 + 150000*1.16 = 916400
+    expect(crewTotal).toBe(916400);
   });
 });
 

@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { ScenarioProFormaResult } from "@/lib/proforma";
 import type { ScenarioInput } from "@/lib/proforma";
 import type { ProFormaPayload } from "@/lib/proforma-load";
+import { totalPilotsAtStep } from "@/lib/crew-step";
 
 export function ProFormaView({
   proposalId,
@@ -66,10 +67,19 @@ export function ProFormaView({
     await load();
   }
 
-  function updateInput(index: number, field: keyof ScenarioInput, value: number) {
+  function updateInput(index: number, field: keyof ScenarioInput, value: number | boolean) {
     const next = inputs.map((s, i) =>
       i === index ? { ...s, [field]: value } : s
     );
+    void saveInputs(next);
+  }
+
+  function updateCrewStep(index: number, delta: number) {
+    const next = inputs.map((s, i) => {
+      if (i !== index) return s;
+      const current = s.crewStepIndex ?? 0;
+      return { ...s, crewStepIndex: Math.max(0, current + delta) };
+    });
     void saveInputs(next);
   }
 
@@ -124,24 +134,24 @@ export function ProFormaView({
           </thead>
           <tbody>
             <InputRow
-              label="Charter block hours"
-              values={inputs}
-              field="charterBlockHours"
-              onChange={updateInput}
-              highlightCol={1}
-            />
-            <InputRow
-              label="Charter flight hours"
-              values={inputs}
-              field="charterFlightHours"
-              onChange={updateInput}
-              highlightCol={1}
-            />
-            <InputRow
               label="Owner flight hours"
               values={inputs}
               field="ownerFlightHours"
               onChange={updateInput}
+              highlightCol={1}
+            />
+            <CrewStepRow values={inputs} onStep={updateCrewStep} highlightCol={1} />
+            <LeadPilotRow values={inputs} onChange={updateInput} highlightCol={1} />
+            <ReadOnlyRow
+              label="Charter flight hours (computed)"
+              values={results}
+              field="charterFlightHours"
+              highlightCol={1}
+            />
+            <ReadOnlyRow
+              label="Charter block hours (computed)"
+              values={results}
+              field="charterBlockHours"
               highlightCol={1}
             />
           </tbody>
@@ -291,8 +301,8 @@ function InputRow({
 }: {
   label: string;
   values: ScenarioInput[];
-  field: keyof ScenarioInput;
-  onChange: (index: number, field: keyof ScenarioInput, value: number) => void;
+  field: "ownerFlightHours";
+  onChange: (index: number, field: keyof ScenarioInput, value: number | boolean) => void;
   highlightCol: number;
 }) {
   return (
@@ -306,9 +316,107 @@ function InputRow({
           <input
             type="number"
             className="w-full rounded border border-atlas-border bg-atlas-bg px-2 py-1 font-mono text-sm"
-            value={s[field] as number}
+            value={s[field]}
             onChange={(e) => onChange(i, field, parseFloat(e.target.value) || 0)}
           />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function CrewStepRow({
+  values,
+  onStep,
+  highlightCol,
+}: {
+  values: ScenarioInput[];
+  onStep: (index: number, delta: number) => void;
+  highlightCol: number;
+}) {
+  return (
+    <tr className="border-b border-atlas-border/40">
+      <td className="py-2 text-atlas-muted">Total pilots</td>
+      {values.map((s, i) => (
+        <td
+          key={s.scenarioIndex}
+          className={`px-2 py-2 ${i === highlightCol ? "border-x-2 border-atlas-accent/50" : ""}`}
+        >
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="h-7 w-7 rounded border border-atlas-border text-sm"
+              onClick={() => onStep(i, -1)}
+            >
+              −
+            </button>
+            <span className="min-w-[1.5rem] text-center font-mono text-sm">
+              {totalPilotsAtStep(s.crewStepIndex ?? 0)}
+            </span>
+            <button
+              type="button"
+              className="h-7 w-7 rounded border border-atlas-border text-sm"
+              onClick={() => onStep(i, 1)}
+            >
+              +
+            </button>
+          </div>
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function LeadPilotRow({
+  values,
+  onChange,
+  highlightCol,
+}: {
+  values: ScenarioInput[];
+  onChange: (index: number, field: keyof ScenarioInput, value: number | boolean) => void;
+  highlightCol: number;
+}) {
+  return (
+    <tr className="border-b border-atlas-border/40">
+      <td className="py-2 text-atlas-muted">Lead pilot</td>
+      {values.map((s, i) => (
+        <td
+          key={s.scenarioIndex}
+          className={`px-2 py-2 text-center ${i === highlightCol ? "border-x-2 border-atlas-accent/50" : ""}`}
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(s.leadPilotEnabled)}
+            onChange={(e) => onChange(i, "leadPilotEnabled", e.target.checked)}
+            className="h-4 w-4 accent-atlas-accent"
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function ReadOnlyRow({
+  label,
+  values,
+  field,
+  highlightCol,
+}: {
+  label: string;
+  values: ScenarioProFormaResult[];
+  field: "charterBlockHours" | "charterFlightHours";
+  highlightCol: number;
+}) {
+  const byIndex = Object.fromEntries(values.map((r) => [r.scenarioIndex, r]));
+  return (
+    <tr className="border-b border-atlas-border/40">
+      <td className="py-2 text-atlas-muted">{label}</td>
+      {[0, 1, 2].map((i) => (
+        <td
+          key={i}
+          className={`px-2 py-2 text-right font-mono text-sm ${i === highlightCol ? "border-x-2 border-atlas-accent/50" : ""}`}
+        >
+          {byIndex[i]?.[field]?.toFixed?.(1) ?? byIndex[i]?.[field] ?? "—"}
         </td>
       ))}
     </tr>

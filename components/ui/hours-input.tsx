@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 function formatHours(n: number): string {
   if (!Number.isFinite(n)) return "";
@@ -25,43 +26,57 @@ export function HoursInput({
   id?: string;
   "aria-label"?: string;
 }) {
+  const autoId = useId();
+  const inputId = id ?? autoId;
   const [draft, setDraft] = useState(() => formatHours(value));
+  const focusedRef = useRef(false);
 
   useEffect(() => {
-    setDraft(formatHours(value));
+    if (!focusedRef.current) {
+      setDraft(formatHours(value));
+    }
   }, [value]);
+
+  function parseDraft(): number {
+    const trimmed = draft.trim();
+    if (trimmed === "" || trimmed === "-") return 0;
+    const n = parseFloat(trimmed);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function commit() {
+    const n = parseDraft();
+    setDraft(formatHours(n));
+    if (n !== value) onChange(n);
+  }
 
   return (
     <input
-      id={id}
+      id={inputId}
       type="number"
       min={min}
       step={step}
       aria-label={ariaLabel}
-      className={className}
+      className={cn(
+        "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+        className
+      )}
       value={draft}
-      onChange={(e) => {
-        const raw = e.target.value;
-        setDraft(raw);
-        if (raw === "" || raw === "-") return;
-        const n = parseFloat(raw);
-        if (Number.isFinite(n)) onChange(n);
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={(e) => {
+        focusedRef.current = true;
+        e.currentTarget.select();
       }}
       onBlur={() => {
-        const trimmed = draft.trim();
-        if (trimmed === "" || trimmed === "-") {
-          onChange(0);
-          setDraft("0");
-          return;
+        focusedRef.current = false;
+        queueMicrotask(commit);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+          (e.target as HTMLInputElement).blur();
         }
-        const n = parseFloat(trimmed);
-        if (!Number.isFinite(n)) {
-          onChange(0);
-          setDraft("0");
-          return;
-        }
-        onChange(n);
-        setDraft(formatHours(n));
       }}
     />
   );

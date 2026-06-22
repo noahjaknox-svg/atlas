@@ -15,6 +15,7 @@ import type { AircraftSnapshotEntry, AircraftSnapshotMetrics } from "./portal-ai
 import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
 import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
+import { applyScenarioCrewToAssumptions } from "./scenario-crew";
 
 type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
 
@@ -74,6 +75,18 @@ export async function buildAircraftSnapshotEntry(args: {
 
   let fullMap = { ...assumptionsFromInstance(meta), ...map };
   fullMap = await resolveEffectiveAssumptionsForInstance(aircraft.id, fullMap);
+
+  if (args.scenario) {
+    const ownerHours = args.scenario.ownerHours
+      ? parseFloat(args.scenario.ownerHours.toString())
+      : parseFloat(fullMap.owner_annual_hours ?? "400") || 400;
+    fullMap = applyScenarioCrewToAssumptions(fullMap, {
+      ownerFlightHours: ownerHours,
+      crewStepIndex: args.scenario.crewStepIndex,
+      leadPilotEnabled: args.scenario.leadPilotEnabled,
+    });
+  }
+
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
   const master = aircraft.warehouseAircraft;
@@ -108,9 +121,16 @@ export async function buildAircraftSnapshotList(args: {
   assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
   allAssumptions: ProposalAssumption[];
   prospectOpportunityType: string;
+  baseScenariosByAircraft?: Record<string, ProposalScenario | null>;
 }): Promise<AircraftSnapshotEntry[]> {
-  const { includedAircraft, primaryAircraftInstanceId, assumptionRows, allAssumptions, prospectOpportunityType } =
-    args;
+  const {
+    includedAircraft,
+    primaryAircraftInstanceId,
+    assumptionRows,
+    allAssumptions,
+    prospectOpportunityType,
+    baseScenariosByAircraft = {},
+  } = args;
 
   return Promise.all(
     includedAircraft.map((aircraft) =>
@@ -120,6 +140,7 @@ export async function buildAircraftSnapshotList(args: {
         allAssumptions,
         prospectOpportunityType,
         isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
+        scenario: baseScenariosByAircraft[aircraft.id] ?? null,
       })
     )
   );

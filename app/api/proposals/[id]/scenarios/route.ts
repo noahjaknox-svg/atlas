@@ -2,6 +2,9 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { ensureThreeScenarios, SCENARIO_NAMES } from "@/lib/scenarios";
+import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { resolveEffectiveAssumptionsForInstance } from "@/lib/resolve-aircraft-defaults";
+import { scenarioCharterHoursFromCrew } from "@/lib/scenario-crew";
 
 export async function POST(
   request: Request,
@@ -16,15 +19,36 @@ export async function POST(
 
     await ensureThreeScenarios(id, aircraftInstanceId);
 
+    const assumptionRows = await prisma.proposalAssumption.findMany({
+      where: { proposalId: id },
+    });
+    const category = aircraftAssumptionCategory(aircraftInstanceId);
+    let baseMap = mergeLegacyAssumptions(
+      assumptionRows.map((a) => ({
+        category: a.category,
+        assumptionName: a.assumptionName,
+        value: a.value,
+      })),
+      category
+    );
+    baseMap = await resolveEffectiveAssumptionsForInstance(aircraftInstanceId, baseMap);
+
     const scenarios = body.scenarios as Array<{
       scenarioIndex: number;
-      charterBlockHours: number;
-      charterFlightHours: number;
+      charterBlockHours?: number;
+      charterFlightHours?: number;
       ownerFlightHours: number;
+      crewStepIndex?: number | null;
+      leadPilotEnabled?: boolean | null;
     }>;
 
     for (const s of scenarios) {
       if (s.scenarioIndex < 0 || s.scenarioIndex > 2) continue;
+      const charter = scenarioCharterHoursFromCrew(baseMap, {
+        ownerFlightHours: s.ownerFlightHours,
+        crewStepIndex: s.crewStepIndex,
+        leadPilotEnabled: s.leadPilotEnabled,
+      });
       await prisma.proposalScenario.updateMany({
         where: {
           proposalId: id,
@@ -32,11 +56,54 @@ export async function POST(
           scenarioIndex: s.scenarioIndex,
         },
         data: {
-          charterBlockHours: s.charterBlockHours,
-          charterFlightHours: s.charterFlightHours,
+          charterBlockHours: charter.charterBlockHours,
+          charterFlightHours: charter.charterFlightHours,
           ownerHours: s.ownerFlightHours,
+          crewStepIndex: s.crewStepIndex ?? null,
+          leadPilotEnabled: s.leadPilotEnabled ?? null,
         },
       });
+
+      if (s.scenarioIndex === 1) {
+        await prisma.proposalAssumption.upsert({
+          where: {
+            proposalId_category_assumptionName: {
+              proposalId: id,
+              category,
+              assumptionName: "crew_step_index",
+            },
+          },
+          create: {
+            proposalId: id,
+            category,
+            assumptionName: "crew_step_index",
+            value: String(s.crewStepIndex ?? 0),
+            sourceType: "manual",
+          },
+          update: {
+            value: String(s.crewStepIndex ?? 0),
+          },
+        });
+        await prisma.proposalAssumption.upsert({
+          where: {
+            proposalId_category_assumptionName: {
+              proposalId: id,
+              category,
+              assumptionName: "lead_pilot_enabled",
+            },
+          },
+          create: {
+            proposalId: id,
+            category,
+            assumptionName: "lead_pilot_enabled",
+            value: s.leadPilotEnabled ? "yes" : "no",
+            sourceType: "manual",
+          },
+          update: {
+            value: s.leadPilotEnabled ? "yes" : "no",
+          },
+        });
+      }
     }
 
     return jsonOk({ ok: true });

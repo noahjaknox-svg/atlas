@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPerOwnerEconomics, buildPerOwnerFinancing } from "@/lib/proforma-multi-owner";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
-import { syncOwnersIntoAssumptions } from "@/lib/proposal-owners";
+import { seedProformaHoursInAssumptions, OWNER_PROFORMA_HOURS_KEY } from "@/lib/proposal-owners";
 import { computeUtilizationProfile } from "@/lib/proforma-utilization";
 
 const profiles: ProposalOwnerProfile[] = [
@@ -83,10 +83,11 @@ describe("buildPerOwnerFinancing", () => {
 });
 
 describe("shared charter hours", () => {
-  it("syncs owner_annual_hours to sum of profiles and reduces charter", () => {
-    const synced = syncOwnersIntoAssumptions(baseAssumptions, profiles);
-    expect(synced.owner_annual_hours).toBe("300");
-    const util = computeUtilizationProfile(synced);
+  it("seeds owner_annual_hours from profile defaults and reduces charter", () => {
+    const seeded = seedProformaHoursInAssumptions(baseAssumptions, profiles);
+    expect(seeded.owner_annual_hours).toBe("300");
+    expect(seeded[OWNER_PROFORMA_HOURS_KEY]).toBe(JSON.stringify([200, 100]));
+    const util = computeUtilizationProfile(seeded);
     expect(util.ownerFlightHours).toBe(300);
     expect(util.availableCharterFlightHours).toBe(200);
   });

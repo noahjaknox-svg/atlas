@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { type AircraftListItem } from "@/components/internal/workspace/aircraft-list-panel";
@@ -28,14 +28,23 @@ import {
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import {
+  assumptionsAfterOwnerDefaultsChange,
   mergeOwnerProfilesAfterPersist,
   normalizeProfilesForCount,
+  ownerDefaultHoursChanged,
+  ownerHoursForUtilization,
   profileFromLegacyAssumptions,
-  syncOwnersIntoAssumptions,
   validateOwnerProfiles,
+  validateProformaOwnerHours,
   type ProposalOwnerProfile,
 } from "@/lib/proposal-owners";
+import { OWNER_EXPENSE_ALLOCATION_KEY } from "@/lib/owner-expense-allocation";
+import { patchAssumptionsWithCrewStep } from "@/lib/crew-step";
 import { mergeWithDerived } from "@/lib/aircraft-calculated-fields";
+import {
+  mergeAssumptionsForCrewStep,
+  resolveCrewStepFromAssumptions,
+} from "@/lib/crew-step";
 import {
   applyWarehouseDefaults,
   warehouseDefaultsBaseline,
@@ -190,10 +199,15 @@ export function ProposalWorkspace({
   const persistInFlight = useRef(false);
   const persistQueued = useRef(false);
   const assumptionsByAircraftRef = useRef(assumptionsByAircraft);
+  const warehouseBaselineByAircraftRef = useRef(warehouseBaselineByAircraft);
 
   useEffect(() => {
     assumptionsByAircraftRef.current = assumptionsByAircraft;
   }, [assumptionsByAircraft]);
+
+  useEffect(() => {
+    warehouseBaselineByAircraftRef.current = warehouseBaselineByAircraft;
+  }, [warehouseBaselineByAircraft]);
 
   useEffect(() => {
     ownersByAircraftRef.current = ownersByAircraft;
@@ -290,8 +304,25 @@ export function ProposalWorkspace({
       const profiles = ownersByAircraftRef.current[aircraftId] ?? [];
       const mode = allocationModeByAircraft[aircraftId] ?? "hybrid";
       const map = assumptionsByAircraftRef.current[aircraftId] ?? {};
-      const max = parseFloat(map.max_annual_utilization ?? "0") || 0;
-      const validation = validateOwnerProfiles(profiles, max, profiles.length > 1);
+      const warehouseDefaults = warehouseBaselineByAircraftRef.current[aircraftId] ?? {};
+      const ownerHours = ownerHoursForUtilization(profiles, map);
+      const merged = mergeAssumptionsForCrewStep(map, warehouseDefaults);
+      const resolved = resolveCrewStepFromAssumptions(
+        merged,
+        { ownerHours },
+        warehouseDefaults
+      );
+      const validation = validateProformaOwnerHours(
+        profiles,
+        map,
+        resolved.maxAnnualUtilization
+      );
+      const profileValidation = validateOwnerProfiles(
+        profiles,
+        0,
+        profiles.length > 1
+      );
+      if (!profileValidation.ok) return;
       if (!validation.ok) return;
 
       const res = await fetch(
@@ -319,13 +350,17 @@ export function ProposalWorkspace({
       if (json.syncedAssumptions && applySavedValues) {
         setAssumptionsByAircraft((prev) => {
           const base = prev[aircraftId] ?? {};
-          const synced = syncOwnersIntoAssumptions(base, json.profiles ?? profiles, mode);
+          const savedProfiles = json.profiles ?? profiles;
           return {
             ...prev,
-            [aircraftId]: mergeWithDerived({
-              ...synced,
-              ...json.syncedAssumptions,
-            }),
+            [aircraftId]: mergeWithDerived(
+              assumptionsAfterOwnerDefaultsChange(
+                base,
+                savedProfiles,
+                mode,
+                warehouseBaselineByAircraftRef.current[aircraftId] ?? {}
+              )
+            ),
           };
         });
       }
@@ -339,6 +374,11 @@ export function ProposalWorkspace({
     profiles: ProposalOwnerProfile[],
     mode: OwnerExpenseAllocationMode
   ) {
+    const prevProfiles = ownersByAircraftRef.current[aircraftId] ?? [];
+    const seedProforma =
+      profiles.length !== prevProfiles.length ||
+      ownerDefaultHoursChanged(prevProfiles, profiles);
+
     ownersRevisionRef.current[aircraftId] =
       (ownersRevisionRef.current[aircraftId] ?? 0) + 1;
     setOwnersByAircraft((prev) => ({ ...prev, [aircraftId]: profiles }));
@@ -346,9 +386,23 @@ export function ProposalWorkspace({
     skipSave.current = true;
     setAssumptionsByAircraft((prev) => {
       const base = prev[aircraftId] ?? {};
+      const warehouseDefaults = warehouseBaselineByAircraftRef.current[aircraftId] ?? {};
+      let next: AssumptionMap = { ...base, [OWNER_EXPENSE_ALLOCATION_KEY]: mode };
+      if (seedProforma) {
+        next = assumptionsAfterOwnerDefaultsChange(
+          next,
+          profiles,
+          mode,
+          warehouseDefaults,
+          true
+        );
+      } else {
+        const hours = ownerHoursForUtilization(profiles, next);
+        next = patchAssumptionsWithCrewStep(next, warehouseDefaults, { ownerHours: hours });
+      }
       return {
         ...prev,
-        [aircraftId]: mergeWithDerived(syncOwnersIntoAssumptions(base, profiles, mode)),
+        [aircraftId]: mergeWithDerived(next),
       };
     });
   }
@@ -552,17 +606,6 @@ export function ProposalWorkspace({
       ...prev,
       [selectedId]: mergeWithDerived(syncUtilizationHours(next)),
     }));
-    const owners = ownersByAircraft[selectedId];
-    if (owners?.length === 1) {
-      const hours = parseFloat(next.owner_annual_hours ?? "0") || 0;
-      if (hours !== owners[0].annualFlightHours) {
-        applyOwnerChanges(
-          selectedId,
-          [{ ...owners[0], annualFlightHours: hours }],
-          allocationModeByAircraft[selectedId] ?? "hybrid"
-        );
-      }
-    }
   }
 
   async function handleSelect(id: string) {

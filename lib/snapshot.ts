@@ -103,7 +103,9 @@ export async function buildSnapshotPayload(
       },
       assumptions: true,
       sections: { orderBy: { sortOrder: "asc" } },
-      scenarios: { where: { isBaseCase: true }, take: 1 },
+      scenarios: {
+        where: { isBaseCase: true },
+      },
     },
   });
 
@@ -120,12 +122,20 @@ export async function buildSnapshotPayload(
         ? [proposal.aircraftInstance]
         : [];
 
+  const baseScenariosByAircraft: Record<string, (typeof proposal.scenarios)[number]> = {};
+  for (const s of proposal.scenarios) {
+    if (s.aircraftInstanceId) {
+      baseScenariosByAircraft[s.aircraftInstanceId] = s;
+    }
+  }
+
   const aircraftList = await buildAircraftSnapshotList({
     includedAircraft,
     primaryAircraftInstanceId: proposal.aircraftInstanceId,
     assumptionRows,
     allAssumptions: proposal.assumptions,
     prospectOpportunityType: proposal.prospect.opportunityType,
+    baseScenariosByAircraft,
   });
 
   const primaryEntry =

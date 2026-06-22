@@ -4,6 +4,7 @@
 
 import type { AssumptionMap } from "@/lib/assumptions";
 import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
+import { applyScenarioCrewToAssumptions } from "@/lib/scenario-crew";
 import {
   computeUtilizationProfile,
   syncUtilizationHours,
@@ -365,6 +366,8 @@ export interface ScenarioInput {
   charterBlockHours: number;
   charterFlightHours: number;
   ownerFlightHours: number;
+  crewStepIndex?: number | null;
+  leadPilotEnabled?: boolean | null;
 }
 
 export const DEFAULT_SCENARIO_INPUTS: ScenarioInput[] = [
@@ -403,20 +406,23 @@ export type ScenarioProFormaResult = ProFormaResult & {
 };
 
 export function calculateProFormaScenarios(
-  baseInputs: ProFormaInputs,
+  baseAssumptions: AssumptionMap,
   scenarios: ScenarioInput[]
 ): ScenarioProFormaResult[] {
   return scenarios.map((s) => {
-    const inputs: ProFormaInputs = {
-      ...baseInputs,
-      charterBlockHours: s.charterBlockHours,
-      charterFlightHours: s.charterFlightHours,
+    const effective = applyScenarioCrewToAssumptions(baseAssumptions, {
       ownerFlightHours: s.ownerFlightHours,
-    };
+      crewStepIndex: s.crewStepIndex,
+      leadPilotEnabled: s.leadPilotEnabled,
+    });
+    const inputs = assumptionsToProFormaInputs(effective);
+    inputs.totalFixedCosts = computeTotalFixedFromAssumptions(effective);
+    const profile = computeUtilizationProfile(effective);
+
     return {
       scenarioIndex: s.scenarioIndex,
-      charterBlockHours: s.charterBlockHours,
-      charterFlightHours: s.charterFlightHours,
+      charterBlockHours: profile.charterRevenueHours,
+      charterFlightHours: profile.availableCharterFlightHours,
       ownerFlightHours: s.ownerFlightHours,
       breakEvenCharterHours: breakEvenCharterHours(inputs),
       ...calculateProForma(inputs),

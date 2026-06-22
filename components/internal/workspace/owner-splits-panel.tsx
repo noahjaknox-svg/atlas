@@ -78,19 +78,17 @@ export function OwnerControlsStrip({
 
 export function OwnerSplitsTable({
   profiles,
-  maxAnnualUtilization,
   onProfilesChange,
   defaultHours = 400,
 }: {
   profiles: ProposalOwnerProfile[];
-  maxAnnualUtilization: number;
   onProfilesChange: (next: ProposalOwnerProfile[]) => void;
   defaultHours?: number;
 }) {
   const count = profiles.length;
   const validation = useMemo(
-    () => validateOwnerProfiles(profiles, maxAnnualUtilization, count > 1),
-    [profiles, maxAnnualUtilization, count]
+    () => validateOwnerProfiles(profiles, 0, count > 1),
+    [profiles, count]
   );
 
   function patchProfile(index: number, patch: Partial<ProposalOwnerProfile>) {
@@ -105,7 +103,7 @@ export function OwnerSplitsTable({
           <thead>
             <tr>
               <th>Owner</th>
-              <th className="text-right">Flight hours</th>
+              <th className="text-right">Default flight hours</th>
               <th className="text-right">Equity %</th>
             </tr>
           </thead>
@@ -132,7 +130,7 @@ export function OwnerSplitsTable({
                         annualFlightHours: hours,
                       })
                     }
-                    aria-label={`${p.displayName} flight hours`}
+                    aria-label={`${p.displayName} default flight hours`}
                   />
                 </td>
                 <td>
@@ -157,19 +155,6 @@ export function OwnerSplitsTable({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs leading-relaxed">
-        <p className="text-atlas-muted">
-          Total owner hours:{" "}
-          <span className="font-mono tabular-nums text-atlas-text">
-            {validation.totalHours}
-          </span>
-          {validation.maxHours > 0 ? (
-            <>
-              {" "}
-              / max{" "}
-              <span className="font-mono tabular-nums">{validation.maxHours}</span>
-            </>
-          ) : null}
-        </p>
         {count > 1 ? (
           <p
             className={cn(
@@ -183,7 +168,8 @@ export function OwnerSplitsTable({
           </p>
         ) : null}
         <p className="atlas-caption text-atlas-muted">
-          Owner hours reduce shared charter availability. Set max utilization in the Utilization tab.
+          Default hours seed the pro forma utilization scenario. Edit scenario hours in the
+          pro forma panel.
         </p>
       </div>
 

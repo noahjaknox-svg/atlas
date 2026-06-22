@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/company-settings";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
+import { warehouseMinStep } from "@/lib/crew-step";
 
 /**
  * Resolve database-backed pro forma defaults for a warehouse aircraft, plus the
@@ -46,15 +47,13 @@ export async function loadAircraftReferenceDefaults(params: {
     map.fuel_surcharge_payback_basis = aircraft.fuelSurchargePaybackBasis;
   }
 
-  // Crew — fully loaded salaries (base + benefits) become the fixed crew cost.
+  // Crew — baseline PIC/SIC from warehouse; lead pilot is proposal-level only.
   const benefitsFraction = Number(settings.crewBenefitsPercent);
   const cabinCount = aircraft.cabinAttendantCount ?? 0;
   const cabinSalary = aircraft.cabinAttendantSalary ?? 0;
-  const leadPilotCount = aircraft.leadPilotCount ?? 0;
-  const picCount = aircraft.picCount ?? 0;
-  const sicCount = aircraft.sicCount ?? 0;
+  const picCount = aircraft.picCount ?? 1;
+  const sicCount = aircraft.sicCount ?? 1;
   const baseCrewSalary =
-    leadPilotCount * (aircraft.leadPilotSalary ?? 0) +
     picCount * (aircraft.picSalary ?? 0) +
     sicCount * (aircraft.sicSalary ?? 0) +
     cabinCount * cabinSalary;
@@ -64,15 +63,26 @@ export async function loadAircraftReferenceDefaults(params: {
   set("sic_salary", aircraft.sicSalary);
   set("pic_training", aircraft.picTrainingCost);
   set("sic_training", aircraft.sicTrainingCost);
-  set("pic_count", leadPilotCount + picCount);
+  set("crew_baseline_pic", picCount);
+  set("crew_baseline_sic", sicCount);
+  set("pic_count", picCount);
   set("sic_count", sicCount);
   map.crew_model = "full_time";
+  map.lead_pilot_enabled = "no";
+  if (aircraft.leadPilotSalary != null) {
+    set("lead_pilot_salary", aircraft.leadPilotSalary);
+  } else if (aircraft.picSalary != null) {
+    set("lead_pilot_salary", aircraft.picSalary);
+  }
+  map.lead_pilot_count = "0";
 
-  // Max annual utilization keyed off total pilot headcount (1–6).
-  const totalPilots = Math.min(
-    6,
-    Math.max(1, leadPilotCount + picCount + sicCount)
-  );
+  set("max_usage_1_pilot", aircraft.maxUsage1Pilot);
+  set("max_usage_2_pilots", aircraft.maxUsage2Pilots);
+  set("max_usage_3_pilots", aircraft.maxUsage3Pilots);
+  set("max_usage_4_pilots", aircraft.maxUsage4Pilots);
+  set("max_usage_5_pilots", aircraft.maxUsage5Pilots);
+  set("max_usage_6_pilots", aircraft.maxUsage6Pilots);
+
   const usageByPilots = [
     aircraft.maxUsage1Pilot,
     aircraft.maxUsage2Pilots,
@@ -81,8 +91,11 @@ export async function loadAircraftReferenceDefaults(params: {
     aircraft.maxUsage5Pilots,
     aircraft.maxUsage6Pilots,
   ];
+  const totalPilots = Math.min(6, Math.max(1, picCount + sicCount));
   const maxUsage = usageByPilots[totalPilots - 1];
   if (maxUsage != null) set("max_annual_utilization", maxUsage);
+
+  set("crew_step_index", warehouseMinStep(picCount, sicCount));
 
   // Company-wide defaults
   set("management_fee", settings.annualManagementFee);

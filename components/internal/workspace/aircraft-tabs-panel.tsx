@@ -104,9 +104,12 @@ export function AircraftTabsPanel({
       if (name === "insurance_annual" || name === "insurance_premium_percent") {
         return !insuranceFieldActive(assumptions.insurance_mode, name);
       }
+      if (name === "lead_pilot_salary") {
+        return effective.lead_pilot_enabled !== "yes";
+      }
       return false;
     },
-    [assumptions]
+    [assumptions, effective]
   );
 
   function renderTabContent(tab: EditorTab) {
@@ -136,9 +139,6 @@ export function AircraftTabsPanel({
             <div className="atlas-workspace-section-body">
               <OwnerSplitsTable
               profiles={ownerProfiles}
-              maxAnnualUtilization={
-                parseFloat(assumptions.max_annual_utilization ?? "0") || 0
-              }
               defaultHours={defaultHours}
               onProfilesChange={onOwnerProfilesChange}
             />
@@ -241,6 +241,7 @@ export function AircraftTabsPanel({
           <AircraftProFormaColumn
             assumptions={effective}
             rawAssumptions={assumptions}
+            warehouseDefaults={warehouseDefaults}
             charterEnabled={charterEnabled}
             ownerProfiles={ownerProfiles}
             allocationMode={allocationMode}

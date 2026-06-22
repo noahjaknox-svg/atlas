@@ -149,8 +149,13 @@ function renderFieldRow(
     return stored;
   })();
   const scenarioVal = resolvedDisplayValue(field, effective, defaults);
+  const readOnlyValue =
+    field.readOnly && !isCalculatedField(name, effective)
+      ? effective[name]?.trim() || undefined
+      : undefined;
   const calcVal =
     scenarioVal ??
+    readOnlyValue ??
     (isCalculatedField(name, effective) ? formatCalculatedDisplay(name, effective) : undefined);
   const readOnlyScenario = field.proformaSource;
 

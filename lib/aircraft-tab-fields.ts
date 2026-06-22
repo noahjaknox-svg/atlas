@@ -180,9 +180,26 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
           fields: [field("benefits_pct", "Benefits percentage", { type: "number" })],
         },
         {
+          title: "Lead pilot",
+          fields: [
+            field("lead_pilot_enabled", "Include lead pilot", {
+              type: "select",
+              options: YES_NO_OPTIONS,
+            }),
+            currency("lead_pilot_salary", "Lead pilot salary (annual)"),
+          ],
+          proFormaRollup: {
+            label: "Lead pilot total",
+            type: "calculated",
+            valueKey: "lead_pilot_crew_total",
+            format: "currency",
+            proFormaHint: "Included in P&L: Crew Salaries & Benefits",
+          },
+        },
+        {
           title: "PIC",
           fields: [
-            field("pic_count", "PIC count", { type: "number" }),
+            field("pic_count", "PIC count (from crew step)", { type: "number", readOnly: true }),
             currency("pic_salary", "PIC salary (annual, per pilot)"),
           ],
           proFormaRollup: {
@@ -196,7 +213,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         {
           title: "SIC",
           fields: [
-            field("sic_count", "SIC count", { type: "number" }),
+            field("sic_count", "SIC count (from crew step)", { type: "number", readOnly: true }),
             currency("sic_salary", "SIC salary (annual, per pilot)"),
           ],
           proFormaRollup: {

@@ -37,6 +37,7 @@ export function isCalculatedField(name: string, assumptions?: AssumptionMap): bo
 export const CALCULATED_ASSUMPTION_KEYS = new Set([
   "blended_fuel_price",
   "fuel_cost_per_hour",
+  "lead_pilot_crew_total",
   "pic_crew_total",
   "sic_crew_total",
   "cabin_crew_total",
@@ -94,7 +95,8 @@ export function resolveCrewTrainingTotal(a: AssumptionMap): {
 } {
   const picPerPilot = num(a.pic_training);
   const sicPerPilot = num(a.sic_training);
-  const picHeads = count(a.pic_count, 1);
+  const leadHeads = a.lead_pilot_enabled === "yes" ? 1 : 0;
+  const picHeads = leadHeads > 0 ? count(a.pic_count, 0) + leadHeads : count(a.pic_count, 1);
   const sicHeads = count(a.sic_count, 1);
   let pic = picPerPilot > 0 && picHeads > 0 ? Math.round(picPerPilot * picHeads) : 0;
   let sic = sicPerPilot > 0 && sicHeads > 0 ? Math.round(sicPerPilot * sicHeads) : 0;
@@ -125,7 +127,8 @@ export function formatTrainingCalculationHint(
 ): string | undefined {
   const perPic = num(a.pic_training);
   const perSic = num(a.sic_training);
-  const picHeads = count(a.pic_count, 1);
+  const leadHeads = a.lead_pilot_enabled === "yes" ? 1 : 0;
+  const picHeads = leadHeads > 0 ? count(a.pic_count, 0) + leadHeads : count(a.pic_count, 1);
   const sicHeads = count(a.sic_count, 1);
   const { pic, sic } = resolveCrewTrainingTotal(a);
 
@@ -147,6 +150,14 @@ export function formatTrainingCalculationHint(
   }
   if (parts.length === 0) return undefined;
   return parts.join(" + ");
+}
+
+export function computeLeadPilotCrewTotal(a: AssumptionMap): number {
+  if (a.lead_pilot_enabled !== "yes") return 0;
+  const salary = num(a.lead_pilot_salary) || num(a.pic_salary);
+  const benefitsPct = num(a.benefits_pct, 16);
+  if (salary <= 0) return 0;
+  return Math.round(salary * (1 + benefitsPct / 100));
 }
 
 export function computePicCrewTotal(a: AssumptionMap): number {
@@ -176,7 +187,10 @@ export function computeCabinCrewTotal(a: AssumptionMap): number {
 
 export function computeCrewTotal(a: AssumptionMap): number {
   return (
-    computePicCrewTotal(a) + computeSicCrewTotal(a) + computeCabinCrewTotal(a)
+    computeLeadPilotCrewTotal(a) +
+    computePicCrewTotal(a) +
+    computeSicCrewTotal(a) +
+    computeCabinCrewTotal(a)
   );
 }
 
@@ -240,13 +254,15 @@ export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<A
     derived.variable_cost_per_hour = totalVariable.toFixed(2);
   }
 
+  const leadTotal = computeLeadPilotCrewTotal(assumptions);
   const picTotal = computePicCrewTotal(assumptions);
   const sicTotal = computeSicCrewTotal(assumptions);
   const cabinTotal = computeCabinCrewTotal(assumptions);
+  derived.lead_pilot_crew_total = String(leadTotal);
   derived.pic_crew_total = String(picTotal);
   derived.sic_crew_total = String(sicTotal);
   derived.cabin_crew_total = String(cabinTotal);
-  derived.crew_total = String(picTotal + sicTotal + cabinTotal);
+  derived.crew_total = String(leadTotal + picTotal + sicTotal + cabinTotal);
 
   const training = resolveCrewTrainingTotal(assumptions);
   derived.pic_training_total = String(training.pic);

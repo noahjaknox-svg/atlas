@@ -93,8 +93,12 @@ describe("loadAircraftReferenceDefaults", () => {
 
     const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
 
-    // (1*240000 + 1*150000) * 1.16 = 452400
-    expect(map.crew_total).toBe("452400");
+    // Warehouse baseline 0 PIC + 1 SIC (lead pilot is proposal-level, not folded in)
+    // (0*240000 + 1*150000) * 1.16 = 174000
+    expect(map.crew_total).toBe("174000");
+    expect(map.pic_count).toBe("0");
+    expect(map.sic_count).toBe("1");
+    expect(map.lead_pilot_enabled).toBe("no");
   });
 
   it("keeps insurance and taxes zeroed until that tab exists", async () => {

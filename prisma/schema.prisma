@@ -647,6 +647,8 @@ model ProposalScenario {
   isBaseCase           Boolean  @default(true) @map("is_base_case")
   aircraftValue        Decimal? @map("aircraft_value") @db.Decimal(14, 2)
   ownerHours           Decimal? @map("owner_hours") @db.Decimal(10, 2)
+  crewStepIndex        Int?     @map("crew_step_index")
+  leadPilotEnabled     Boolean? @map("lead_pilot_enabled")
   charterBlockHours    Decimal? @map("charter_block_hours") @db.Decimal(10, 2)
   charterFlightHours   Decimal? @map("charter_flight_hours") @db.Decimal(10, 2)
   totalFixedCosts      Decimal? @map("total_fixed_costs") @db.Decimal(14, 2)

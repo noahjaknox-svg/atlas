@@ -3,6 +3,7 @@ import {
   computeCabinCrewTotal,
   computeCrewTotal,
   computeCrewTrainingTotalAmount,
+  computeLeadPilotCrewTotal,
   computePicCrewTotal,
   computePicTrainingTotal,
   computeSicCrewTotal,
@@ -14,6 +15,11 @@ import {
   computeHangarCalculatedAnnual,
   stripLegacyEstimatedHangar,
 } from "@/lib/hangar-assumptions";
+import { mergeEstimatedDefaults } from "@/lib/aircraft-estimated-defaults";
+import {
+  applyCrewStepToAssumptions,
+  resolveCrewStepFromAssumptions,
+} from "@/lib/crew-step";
 
 /** Keys cleared to "0" for Part 91 — restore from defaults when charter is enabled again. */
 const CHARTER_ZERO_RESTORE_KEYS = new Set([
@@ -67,14 +73,20 @@ export function mergeAssumptionsWithDefaults(
 /** Defaults + derived fields used for P&L, footers, and read-only formula rows. */
 export function buildEffectiveAssumptions(
   assumptions: AssumptionMap,
-  defaults: Record<string, string>
+  defaults: Record<string, string>,
+  crewOverrides?: { userStep?: number; leadEnabled?: boolean; ownerHours?: number }
 ): AssumptionMap {
-  return mergeWithDerived(
-    mergeAssumptionsWithDefaults(stripLegacyEstimatedHangar(assumptions), defaults)
+  const merged = mergeAssumptionsWithDefaults(
+    stripLegacyEstimatedHangar(assumptions),
+    mergeEstimatedDefaults(defaults)
   );
+  const resolved = resolveCrewStepFromAssumptions(merged, crewOverrides, defaults);
+  const withCrew = applyCrewStepToAssumptions(merged, resolved);
+  return mergeWithDerived(withCrew);
 }
 
 const CALCULATED_DISPLAY: Record<string, (a: AssumptionMap) => number> = {
+  lead_pilot_crew_total: computeLeadPilotCrewTotal,
   pic_crew_total: computePicCrewTotal,
   sic_crew_total: computeSicCrewTotal,
   cabin_crew_total: computeCabinCrewTotal,
