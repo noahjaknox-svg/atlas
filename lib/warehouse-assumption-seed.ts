@@ -9,7 +9,7 @@ export const WAREHOUSE_SNAPSHOT_KEYS = new Set([
 
 /** @deprecated Use WAREHOUSE_SNAPSHOT_KEYS — kept for tests importing the old name. */
 export const WAREHOUSE_PULLED_KEYS = new Set([
-  ...WAREHOUSE_SNAPSHOT_KEYS,
+  ...Array.from(WAREHOUSE_SNAPSHOT_KEYS),
   "hangar_calculated_annual",
 ]);
 

@@ -10,7 +10,7 @@ function createPrismaClient(): PrismaClient {
 }
 
 function delegateReady(client: PrismaClient, key: string): boolean {
-  const delegate = (client as Record<string, unknown>)[key];
+  const delegate = (client as unknown as Record<string, unknown>)[key];
   return (
     typeof delegate === "object" &&
     delegate !== null &&

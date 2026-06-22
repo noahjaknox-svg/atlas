@@ -14,7 +14,7 @@ export function airportCodeVariants(code: string): string[] {
   if (upper.length === 4 && upper.startsWith("K")) {
     variants.add(upper.slice(1));
   }
-  return [...variants];
+  return Array.from(variants);
 }
 
 export async function findFbosAtAirport(icao: string): Promise<Fbo[]> {

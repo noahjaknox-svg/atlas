@@ -101,8 +101,8 @@ export async function validateAddAircraftBody(
       proposedHomeBase,
       fboName: fboMatch.fboName,
       usageType,
-      manufacturer: warehouse.manufacturer,
-      model: warehouse.model,
+      manufacturer: warehouse.manufacturer ?? "",
+      model: warehouse.model ?? "",
     },
   };
 }

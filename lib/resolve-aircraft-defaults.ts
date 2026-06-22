@@ -161,9 +161,8 @@ export async function resolveEffectiveAssumptionsForInstance(
   aircraftInstanceId: string,
   assumptions: AssumptionMap
 ): Promise<AssumptionMap> {
-  const { buildEffectiveAssumptions, stripLegacyEstimatedHangar } = await import(
-    "@/lib/resolve-effective-assumptions"
-  );
+  const { buildEffectiveAssumptions } = await import("@/lib/resolve-effective-assumptions");
+  const { stripLegacyEstimatedHangar } = await import("@/lib/hangar-assumptions");
   const cleaned = stripLegacyEstimatedHangar(assumptions);
   const defaults = await resolveAircraftDefaults({
     aircraftInstanceId,
