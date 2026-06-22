@@ -11,12 +11,14 @@ import { RevealOnScroll } from "./reveal-on-scroll";
 import { ProposalImage } from "./proposal-image";
 import { ExperienceImageLightbox } from "./experience-image-lightbox";
 import { LeadershipGrid } from "./leadership-grid";
+import { LeadershipRowGrid } from "./leadership-row-grid";
 import { EditorialImageGrid } from "./editorial-image-grid";
 
 export type ExperienceGalleryLayout =
   | "single"
   | "welcome"
   | "leadership"
+  | "leadershipRow"
   | "editorialPair"
   | "compact";
 
@@ -29,6 +31,7 @@ const LAYOUT_VARIANT: Record<ExperienceGalleryLayout, ProposalImageVariant> = {
   single: "landscape-wide",
   welcome: "portrait-featured",
   leadership: "portrait-standard",
+  leadershipRow: "portrait-standard",
   editorialPair: "editorial-large",
   compact: "editorial-small",
 };
@@ -66,6 +69,17 @@ export function ExperienceGallery({
         items={items}
         title={title}
         featuredIndex={featuredIndex ?? 0}
+        className={className}
+        slide={slide}
+      />
+    );
+  }
+
+  if (layout === "leadershipRow" && items.length >= 1) {
+    return (
+      <LeadershipRowGrid
+        items={items}
+        title={title}
         className={className}
         slide={slide}
       />

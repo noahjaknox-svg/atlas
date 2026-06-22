@@ -14,13 +14,15 @@ import {
   getFirstExperienceSlug,
   getSectionBySlug,
   SLUG_TO_SECTION_TYPE,
+  isExperienceRenderV2,
   type ExperienceSectionSnapshot,
 } from "@/lib/experience-content";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
-import { ExperienceShell } from "@/components/client/experience/experience-shell";
+import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
+import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
 
 type PortalBranding = {
@@ -58,7 +60,9 @@ async function loadDraftPreview(slug: string): Promise<{
     payload,
     branding: {
       heroCloudImageUrl: payload.branding?.heroCloudImageUrl ?? content.heroCloudImageUrl,
-      heroCloudVideoUrl: payload.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl,
+      heroCloudVideoUrl: resolveHeroCloudVideoUrl(
+        payload.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl
+      ),
       logoUrl: payload.branding?.logoUrl ?? content.logoUrl,
     },
     contactName: payload.prospect.contactName,
@@ -134,8 +138,25 @@ export default async function ExperiencePageRoute({
     });
   }
 
+  const renderV2 = isExperienceRenderV2(payload.renderSchemaVersion);
+
+  const pageContent = (
+    <ExperiencePageContent
+      pageSlug={page}
+      section={section}
+      payload={payload}
+      contactName={contactName}
+      branding={branding}
+      slug={slug}
+      client={client}
+      aircraftParam={aircraftParam}
+      renderV2={renderV2}
+    />
+  );
+
   return (
-    <ExperienceShell
+    <PortalShell
+      renderSchemaVersion={payload.renderSchemaVersion}
       slug={slug}
       sections={sections}
       logoUrl={branding.logoUrl ?? undefined}
@@ -144,16 +165,7 @@ export default async function ExperiencePageRoute({
       branding={branding}
       draftMode={isDraft}
     >
-      <ExperiencePageContent
-        pageSlug={page}
-        section={section}
-        payload={payload}
-        contactName={contactName}
-        branding={branding}
-        slug={slug}
-        client={client}
-        aircraftParam={aircraftParam}
-      />
-    </ExperienceShell>
+      {pageContent}
+    </PortalShell>
   );
 }

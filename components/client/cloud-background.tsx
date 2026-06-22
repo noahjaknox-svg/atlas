@@ -24,6 +24,7 @@ export function CloudBackground({
   fillContainer = false,
   fixed = false,
   kenBurns = false,
+  priorityVideo = false,
   className,
   children,
 }: {
@@ -37,14 +38,21 @@ export function CloudBackground({
   fixed?: boolean;
   /** Slow zoom on still/video hero (PIN gate, experience heroes). */
   kenBurns?: boolean;
+  /** Eagerly preload portal backdrop video (experience shell, PIN gate). */
+  priorityVideo?: boolean;
   className?: string;
   children?: React.ReactNode;
 }) {
   const reducedMotion = usePrefersReducedMotion();
+  const [videoFailed, setVideoFailed] = useState(false);
   const img = imageUrl || DEFAULT_CLOUD_IMAGE;
   const poster = posterUrl || img;
-  const showVideo = Boolean(videoUrl) && !reducedMotion;
-  const showKenBurns = kenBurns && !reducedMotion;
+  const showVideo = Boolean(videoUrl) && !reducedMotion && !videoFailed;
+  const showKenBurns = kenBurns && !reducedMotion && !showVideo;
+
+  useEffect(() => {
+    setVideoFailed(false);
+  }, [videoUrl]);
 
   return (
     <div
@@ -69,7 +77,8 @@ export function CloudBackground({
             loop
             playsInline
             poster={poster}
-            preload="metadata"
+            preload={priorityVideo ? "auto" : "metadata"}
+            onError={() => setVideoFailed(true)}
           >
             <source src={videoUrl!} type="video/mp4" />
           </video>

@@ -1,4 +1,5 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import { RevealOnScroll } from "./reveal-on-scroll";
@@ -7,6 +8,7 @@ import {
   ExperienceHero,
   ExperienceHeroTitle,
   ExperienceSlide,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -52,9 +54,11 @@ export function AircraftCharterPage({
           <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
             {quote ? <PullQuote text={quote.text} attribution={quote.attribution} slide /> : null}
             <RevealOnScroll delayMs={80}>
-              <p className="line-clamp-4 text-sm leading-relaxed text-white/80 sm:text-base">
-                {section.bodyCopy}
-              </p>
+              <div className={cn(experienceScrollCopy, "max-h-[28vh]")}>
+                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
+                  {section.bodyCopy}
+                </p>
+              </div>
             </RevealOnScroll>
             {bullets.length > 0 ? (
               <RevealOnScroll delayMs={120}>

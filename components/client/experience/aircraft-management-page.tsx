@@ -7,6 +7,7 @@ import {
   ExperienceHeroTitle,
   ExperienceSlide,
   experienceGlass,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -33,9 +34,11 @@ export function AircraftManagementPage({
         <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
           <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
             <RevealOnScroll>
-              <p className="line-clamp-5 text-sm leading-relaxed text-white/80 sm:text-base">
-                {section.bodyCopy}
-              </p>
+              <div className={cn(experienceScrollCopy, "max-h-[32vh]")}>
+                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
+                  {section.bodyCopy}
+                </p>
+              </div>
             </RevealOnScroll>
             <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2 sm:gap-3">
               {pillars.map((pillar, i) => (
@@ -45,7 +48,7 @@ export function AircraftManagementPage({
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <h3 className="mt-1 font-serif text-lg sm:text-xl">{pillar.title}</h3>
-                    <p className="mt-1 line-clamp-4 text-xs leading-relaxed text-white/75 sm:text-sm">
+                    <p className="mt-1 text-xs leading-relaxed text-white/75 sm:text-sm">
                       {pillar.body}
                     </p>
                   </div>

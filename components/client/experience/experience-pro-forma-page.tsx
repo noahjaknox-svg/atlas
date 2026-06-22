@@ -1,5 +1,6 @@
 import type { ClientSnapshotView } from "@/lib/client-serializer";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { interpolateExperienceCopy } from "@/lib/experience-defaults";
 import { ProFormaClient } from "@/components/client/pro-forma-client";
 import { RevealOnScroll } from "./reveal-on-scroll";
@@ -8,6 +9,7 @@ import {
   ExperienceHero,
   ExperienceHeroTitle,
   ExperienceSlide,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 
@@ -43,9 +45,11 @@ export function ExperienceProFormaPage({
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           {bodyCopy ? (
             <RevealOnScroll>
-              <p className="mb-2 line-clamp-2 max-w-3xl text-xs leading-relaxed text-white/65 sm:text-sm">
-                {bodyCopy}
-              </p>
+              <div className={cn(experienceScrollCopy, "mb-2 max-h-[12vh]")}>
+                <p className="max-w-3xl text-xs leading-relaxed text-white/65 sm:text-sm">
+                  {bodyCopy}
+                </p>
+              </div>
             </RevealOnScroll>
           ) : null}
           <div className="min-h-0 flex-1 overflow-hidden">

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { PinGate } from "@/components/client/pin-gate";
 import { getPortalContent } from "@/lib/portal-content";
+import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
 
 export default async function ClientPortalPinPage({
   params,
@@ -40,7 +41,7 @@ export default async function ClientPortalPinPage({
       slug={slug}
       title={title}
       heroCloudImageUrl={content.heroCloudImageUrl}
-      heroCloudVideoUrl={content.heroCloudVideoUrl}
+      heroCloudVideoUrl={resolveHeroCloudVideoUrl(content.heroCloudVideoUrl)}
       logoUrl={content.logoUrl}
     />
   );

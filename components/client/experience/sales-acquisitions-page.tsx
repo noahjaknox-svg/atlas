@@ -7,6 +7,7 @@ import {
   ExperienceHeroTitle,
   ExperienceSlide,
   experienceGlass,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -33,9 +34,11 @@ export function SalesAcquisitionsPage({
         <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
           <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
             <RevealOnScroll>
-              <p className="line-clamp-4 text-sm leading-relaxed text-white/80 sm:text-base">
-                {section.bodyCopy}
-              </p>
+              <div className={cn(experienceScrollCopy, "max-h-[28vh]")}>
+                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
+                  {section.bodyCopy}
+                </p>
+              </div>
             </RevealOnScroll>
             <div className="grid min-h-0 flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {tiles.map((tile, i) => (
@@ -48,7 +51,7 @@ export function SalesAcquisitionsPage({
                   >
                     <h3 className="font-serif text-base text-atlas-accent sm:text-lg">{tile.title}</h3>
                     {tile.description ? (
-                      <p className="mt-1 line-clamp-3 text-xs text-white/65 sm:text-sm">
+                      <p className="mt-1 text-xs text-white/65 sm:text-sm">
                         {tile.description}
                       </p>
                     ) : null}

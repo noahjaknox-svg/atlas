@@ -20,7 +20,12 @@ export type ExperienceSectionType = (typeof EXPERIENCE_SECTION_TYPES)[number];
  * global Proposal Design edits never alter an already-published proposal. Older
  * snapshots without it fall back to live master-template merging for compatibility.
  */
-export const RENDER_SCHEMA_VERSION = 1;
+export const RENDER_SCHEMA_VERSION = 2;
+
+/** Client portal uses the v2 presentation shell (prism stage, glass nav, bottom dock). */
+export function isExperienceRenderV2(renderSchemaVersion?: number): boolean {
+  return (renderSchemaVersion ?? 0) >= 2;
+}
 
 /** Global deck-template generation captured on each published snapshot. */
 export const DECK_VERSION = 1;

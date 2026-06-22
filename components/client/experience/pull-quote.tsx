@@ -21,7 +21,7 @@ export function PullQuote({
         <p
           className={
             slide
-              ? "line-clamp-3 font-serif text-sm leading-relaxed text-white/90 sm:text-base"
+              ? "font-serif text-sm leading-relaxed text-white/90 sm:text-base"
               : "font-serif text-xl leading-relaxed text-white/90 sm:text-2xl"
           }
         >
