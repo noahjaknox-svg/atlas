@@ -1,7 +1,16 @@
 import type { ProposalSnapshotPayload } from "./snapshot";
-import { buildClientProFormaSummary } from "./client-proforma-summary";
+import {
+  buildClientCrewSummary,
+  buildClientProFormaSummary,
+  deriveProformaOwnerHours,
+} from "./client-proforma-summary";
 import { findAircraftEntry, normalizeAircraftList } from "./portal-aircraft-types";
 import { resolvePortalCalculationMap } from "./portal-calculation-assumptions";
+import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
+import {
+  computeWorkspaceProFormaForClient,
+  stringsToAssumptionMap,
+} from "./workspace-proforma-client";
 
 /** Strip internal-only data from snapshot for client API responses. */
 export async function serializeClientSnapshot(
@@ -9,6 +18,7 @@ export async function serializeClientSnapshot(
   overrides?: {
     aircraftValue?: number;
     ownerHours?: number;
+    proformaOwnerHours?: number[];
     aircraftInstanceId?: string | null;
     proposalId?: string;
     prospectOpportunityType?: string;
@@ -17,8 +27,9 @@ export async function serializeClientSnapshot(
   const entry = findAircraftEntry(snapshot, overrides?.aircraftInstanceId);
 
   let calculationMap: Record<string, string> | undefined;
+  let resolvedInstanceId: string | null = null;
   if (overrides?.proposalId) {
-    const resolvedInstanceId =
+    resolvedInstanceId =
       overrides.aircraftInstanceId && overrides.aircraftInstanceId !== "legacy-primary"
         ? overrides.aircraftInstanceId
         : entry.id !== "legacy-primary"
@@ -33,11 +44,56 @@ export async function serializeClientSnapshot(
     );
   }
 
-  const summary = buildClientProFormaSummary(entry, {
+  const baseAssumptions = stringsToAssumptionMap(
+    calculationMap ?? entry.calculationAssumptions ?? {}
+  );
+
+  let ownerProfiles: Awaited<
+    ReturnType<typeof loadOwnerProfilesForAircraft>
+  >["profiles"] = [];
+  if (overrides?.proposalId && resolvedInstanceId) {
+    const loaded = await loadOwnerProfilesForAircraft(
+      overrides.proposalId,
+      resolvedInstanceId,
+      baseAssumptions
+    );
+    ownerProfiles = loaded.profiles;
+  }
+
+  const baselineProformaHours =
+    ownerProfiles.length > 0
+      ? deriveProformaOwnerHours(ownerProfiles, baseAssumptions)
+      : [parseFloat(baseAssumptions.owner_annual_hours ?? "0") || 0];
+
+  const proformaOwnerHours = overrides?.proformaOwnerHours ?? baselineProformaHours;
+
+  const summaryOverrides = {
     aircraftValue: overrides?.aircraftValue,
     ownerHours: overrides?.ownerHours,
+    proformaOwnerHours,
+    ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
     calculationMap,
+  };
+
+  const summary = buildClientProFormaSummary(entry, summaryOverrides);
+
+  const baselineSummary = buildClientProFormaSummary(entry, {
+    calculationMap,
+    proformaOwnerHours: baselineProformaHours,
+    ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
   });
+
+  const effectiveMap = computeWorkspaceProFormaForClient(baseAssumptions, {
+    aircraftValue: overrides?.aircraftValue,
+    ownerHours: overrides?.ownerHours,
+    proformaOwnerHours,
+    ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
+  }).calculationAssumptions;
+
+  const crewSummary = buildClientCrewSummary(
+    Object.fromEntries(Object.entries(effectiveMap).map(([k, v]) => [k, String(v)])),
+    ownerProfiles.length > 0 ? ownerProfiles : undefined
+  );
 
   const aircraftList = normalizeAircraftList(snapshot).map((a) => ({
     id: a.id,
@@ -66,6 +122,10 @@ export async function serializeClientSnapshot(
     },
     aircraftList,
     sections: snapshot.sections,
+    ownerProfiles,
+    proformaOwnerHours,
+    baseProformaOwnerHours: baselineProformaHours,
+    crewSummary,
     editableFields: {
       aircraftValue: {
         value: summary.metrics.aircraftValue,
@@ -78,7 +138,7 @@ export async function serializeClientSnapshot(
         editable: true,
       },
     },
-    baseMetrics: summary.metrics,
+    baseMetrics: baselineSummary.metrics,
     proForma: summary.proForma,
     fixedCostBreakdown: summary.fixedCostBreakdown,
     statementRows: summary.statementRows,
