@@ -135,3 +135,33 @@ export function serializeProfilesForApi(profiles: ProposalOwnerProfile[]) {
     ownershipPercent: p.ownershipPercent,
   }));
 }
+
+/** Parse equity % while editing; empty/invalid returns null (do not commit yet). */
+export function parseEquityPercentInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const n = parseFloat(trimmed);
+  if (!Number.isFinite(n)) return null;
+  return n;
+}
+
+export function formatEquityPercentDisplay(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "";
+  return String(value);
+}
+
+/**
+ * After a persist response: apply saved rows only if local state wasn't edited
+ * during the request; otherwise keep local values and merge server ids only.
+ */
+export function mergeOwnerProfilesAfterPersist(
+  local: ProposalOwnerProfile[],
+  saved: ProposalOwnerProfile[],
+  applySavedValues: boolean
+): ProposalOwnerProfile[] {
+  if (applySavedValues) return saved;
+  return local.map((profile, index) => ({
+    ...profile,
+    id: saved[index]?.id ?? profile.id,
+  }));
+}

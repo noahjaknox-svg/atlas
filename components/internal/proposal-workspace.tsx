@@ -28,6 +28,7 @@ import {
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import {
+  mergeOwnerProfilesAfterPersist,
   normalizeProfilesForCount,
   profileFromLegacyAssumptions,
   syncOwnersIntoAssumptions,
@@ -152,6 +153,8 @@ export function ProposalWorkspace({
   const [archiveLoading, setArchiveLoading] = useState(false);
   const ownersSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipOwnersSave = useRef(true);
+  const ownersRevisionRef = useRef<Record<string, number>>({});
+  const ownersByAircraftRef = useRef(ownersByAircraft);
   const warehouseSeedAttempted = useRef(new Set<string>());
 
   async function handleRegeneratePin() {
@@ -191,6 +194,10 @@ export function ProposalWorkspace({
   useEffect(() => {
     assumptionsByAircraftRef.current = assumptionsByAircraft;
   }, [assumptionsByAircraft]);
+
+  useEffect(() => {
+    ownersByAircraftRef.current = ownersByAircraft;
+  }, [ownersByAircraft]);
 
   function seedWarehouseBaseline(aircraftId: string, defaults: Record<string, string>) {
     setWarehouseBaselineByAircraft((prev) => ({
@@ -279,9 +286,10 @@ export function ProposalWorkspace({
 
   const persistOwners = useCallback(
     async (aircraftId: string) => {
-      const profiles = ownersByAircraft[aircraftId] ?? [];
+      const revisionAtStart = ownersRevisionRef.current[aircraftId] ?? 0;
+      const profiles = ownersByAircraftRef.current[aircraftId] ?? [];
       const mode = allocationModeByAircraft[aircraftId] ?? "hybrid";
-      const map = assumptionsByAircraft[aircraftId] ?? {};
+      const map = assumptionsByAircraftRef.current[aircraftId] ?? {};
       const max = parseFloat(map.max_annual_utilization ?? "0") || 0;
       const validation = validateOwnerProfiles(profiles, max, profiles.length > 1);
       if (!validation.ok) return;
@@ -296,10 +304,19 @@ export function ProposalWorkspace({
       );
       if (!res.ok) return;
       const json = await res.json();
+      const applySavedValues =
+        revisionAtStart === (ownersRevisionRef.current[aircraftId] ?? 0);
       if (json.profiles) {
-        setOwnersByAircraft((prev) => ({ ...prev, [aircraftId]: json.profiles }));
+        setOwnersByAircraft((prev) => ({
+          ...prev,
+          [aircraftId]: mergeOwnerProfilesAfterPersist(
+            prev[aircraftId] ?? profiles,
+            json.profiles,
+            applySavedValues
+          ),
+        }));
       }
-      if (json.syncedAssumptions) {
+      if (json.syncedAssumptions && applySavedValues) {
         setAssumptionsByAircraft((prev) => {
           const base = prev[aircraftId] ?? {};
           const synced = syncOwnersIntoAssumptions(base, json.profiles ?? profiles, mode);
@@ -314,7 +331,7 @@ export function ProposalWorkspace({
       }
       if (portal?.active) setNeedsRepublish(true);
     },
-    [data.id, ownersByAircraft, allocationModeByAircraft, assumptionsByAircraft, portal?.active]
+    [data.id, allocationModeByAircraft, portal?.active]
   );
 
   function applyOwnerChanges(
@@ -322,6 +339,8 @@ export function ProposalWorkspace({
     profiles: ProposalOwnerProfile[],
     mode: OwnerExpenseAllocationMode
   ) {
+    ownersRevisionRef.current[aircraftId] =
+      (ownersRevisionRef.current[aircraftId] ?? 0) + 1;
     setOwnersByAircraft((prev) => ({ ...prev, [aircraftId]: profiles }));
     setAllocationModeByAircraft((prev) => ({ ...prev, [aircraftId]: mode }));
     skipSave.current = true;

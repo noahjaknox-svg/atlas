@@ -10,15 +10,17 @@ export const COMPANY_SETTINGS_DEFAULTS = {
   fuelTaxRefund: 0.175,
 };
 
+type CompanySettingsDelegate = {
+  findUnique: (args: {
+    where: { id: string };
+  }) => Promise<CompanySettings | null>;
+  create: (args: { data: { id: string } }) => Promise<CompanySettings>;
+};
+
 /** Get the single company-settings row, creating it with defaults if missing. */
 export async function getCompanySettings(): Promise<CompanySettings> {
   const delegate = (
-    prisma as unknown as {
-      companySettings?: {
-        findUnique: typeof prisma.proposal.findUnique;
-        create: typeof prisma.proposal.create;
-      };
-    }
+    prisma as unknown as { companySettings?: CompanySettingsDelegate }
   ).companySettings;
 
   if (!delegate?.findUnique) {
@@ -26,8 +28,8 @@ export async function getCompanySettings(): Promise<CompanySettings> {
   }
 
   const existing = await delegate.findUnique({ where: { id: "default" } });
-  if (existing) return existing as CompanySettings;
-  return delegate.create({ data: { id: "default" } }) as Promise<CompanySettings>;
+  if (existing) return existing;
+  return delegate.create({ data: { id: "default" } });
 }
 
 function fallbackCompanySettings(): CompanySettings {

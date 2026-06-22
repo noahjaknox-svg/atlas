@@ -13,6 +13,7 @@ import {
   validateOwnerProfiles,
   type ProposalOwnerProfile,
 } from "@/lib/proposal-owners";
+import { EquityPercentInput } from "@/components/internal/workspace/equity-percent-input";
 
 export function OwnerControlsStrip({
   profiles,
@@ -110,7 +111,7 @@ export function OwnerSplitsTable({
           </thead>
           <tbody>
             {profiles.map((p, i) => (
-              <tr key={i}>
+              <tr key={p.id ?? `owner-${i}`}>
                 <td>
                   <input
                     type="text"
@@ -140,17 +141,10 @@ export function OwnerSplitsTable({
                       100%
                     </span>
                   ) : (
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.1}
-                      className="atlas-input atlas-input-mono w-full text-right"
-                      value={Number.isFinite(p.ownershipPercent) ? p.ownershipPercent : ""}
-                      onChange={(e) =>
-                        patchProfile(i, {
-                          ownershipPercent: parseFloat(e.target.value) || 0,
-                        })
+                    <EquityPercentInput
+                      value={Number.isFinite(p.ownershipPercent) ? p.ownershipPercent : 0}
+                      onChange={(ownershipPercent) =>
+                        patchProfile(i, { ownershipPercent })
                       }
                       aria-label={`${p.displayName} equity percent`}
                     />
