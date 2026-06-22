@@ -14,6 +14,17 @@ export const EXPERIENCE_SECTION_TYPES = [
 
 export type ExperienceSectionType = (typeof EXPERIENCE_SECTION_TYPES)[number];
 
+/**
+ * Bumped whenever the published-snapshot section shape or resolution logic changes.
+ * Snapshots that store this are rendered verbatim (frozen) on the client portal, so
+ * global Proposal Design edits never alter an already-published proposal. Older
+ * snapshots without it fall back to live master-template merging for compatibility.
+ */
+export const RENDER_SCHEMA_VERSION = 1;
+
+/** Global deck-template generation captured on each published snapshot. */
+export const DECK_VERSION = 1;
+
 /** URL slug under /[portal]/experience/[page] */
 export const SECTION_TYPE_TO_SLUG: Record<ExperienceSectionType, string> = {
   welcome: "welcome",

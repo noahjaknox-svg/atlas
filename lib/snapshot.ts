@@ -1,16 +1,26 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
-import { getPortalContent } from "./portal-content";
+import { getPortalContent, getExperienceMasterTemplates } from "./portal-content";
 import type { AssumptionMap } from "./assumptions";
 import { assumptionsToMap } from "./assumptions";
 import type { ProFormaResult } from "./proforma";
 import type { ExperienceContentBlocks } from "./experience-content";
+import { DECK_VERSION, RENDER_SCHEMA_VERSION } from "./experience-content";
+import { resolvePublishedSections } from "./experience-resolve";
 import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import { buildAircraftSnapshotList } from "./snapshot-aircraft";
 import { computeWorkspaceProFormaForClient } from "./workspace-proforma-client";
 
 export interface ProposalSnapshotPayload {
   version: number;
+  /**
+   * Section-resolution schema for this snapshot. When >= 1, the client portal
+   * renders `sections` verbatim and never merges live master templates, so the
+   * published proposal stays frozen until republished. Absent on legacy snapshots.
+   */
+  renderSchemaVersion?: number;
+  /** Global deck-template generation this snapshot was built from. */
+  deckVersion?: number;
   publishedAt: string;
   proposal: {
     id: string;
@@ -148,8 +158,32 @@ export async function buildSnapshotPayload(
   const portalBranding = await getPortalContent();
   const primaryAircraft = primaryEntry ?? null;
 
+  // Fully resolve experience sections against the current master templates at
+  // publish time so the snapshot is self-contained. Client rendering reads these
+  // verbatim — global Proposal Design edits afterwards never touch this proposal.
+  const masterTemplates = await getExperienceMasterTemplates();
+  const rawSections = proposal.sections.map((s) => ({
+    sectionType: s.sectionType,
+    title: s.title,
+    bodyCopy: s.bodyCopy,
+    visible: s.visible,
+    sortOrder: s.sortOrder,
+    imageUrl: s.imageUrl,
+    videoUrl: s.videoUrl ?? null,
+    posterUrl: s.posterUrl ?? null,
+    calloutMetricLabel: s.calloutMetricLabel,
+    calloutMetricValue: s.calloutMetricValue,
+    layoutVariant: s.layoutVariant ?? null,
+    contentBlocks: (s.contentBlocks as ExperienceContentBlocks | null) ?? null,
+    signatoryName: s.signatoryName ?? null,
+    signatoryTitle: s.signatoryTitle ?? null,
+  }));
+  const resolvedSections = resolvePublishedSections(rawSections, masterTemplates);
+
   return {
     version: 1,
+    renderSchemaVersion: RENDER_SCHEMA_VERSION,
+    deckVersion: DECK_VERSION,
     publishedAt: new Date().toISOString(),
     proposal: {
       id: proposal.id,
@@ -176,22 +210,7 @@ export async function buildSnapshotPayload(
         primaryAircraft?.clientSummary ?? proposal.aircraftInstance?.clientSummary ?? null,
     },
     assumptions: clientAssumptions,
-    sections: proposal.sections.map((s) => ({
-        sectionType: s.sectionType,
-        title: s.title,
-        bodyCopy: s.bodyCopy,
-        visible: s.visible,
-        sortOrder: s.sortOrder,
-        imageUrl: s.imageUrl,
-        videoUrl: s.videoUrl ?? null,
-        posterUrl: s.posterUrl ?? null,
-        calloutMetricLabel: s.calloutMetricLabel,
-        calloutMetricValue: s.calloutMetricValue,
-        layoutVariant: s.layoutVariant ?? null,
-        contentBlocks: (s.contentBlocks as ExperienceContentBlocks | null) ?? null,
-        signatoryName: s.signatoryName ?? null,
-        signatoryTitle: s.signatoryTitle ?? null,
-      })),
+    sections: resolvedSections,
     branding: {
       heroCloudImageUrl: portalBranding.heroCloudImageUrl,
       heroCloudVideoUrl: portalBranding.heroCloudVideoUrl,

@@ -36,6 +36,7 @@ export function ExperienceShell({
   clientDisplayName,
   disclaimer,
   branding,
+  draftMode = false,
 }: {
   slug: string;
   sections: ExperienceSectionSnapshot[];
@@ -44,10 +45,17 @@ export function ExperienceShell({
   clientDisplayName?: string;
   disclaimer?: string | null;
   branding: { heroCloudImageUrl: string; heroCloudVideoUrl: string | null; logoUrl?: string | null };
+  draftMode?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isDraft = draftMode;
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const withDraft = useCallback(
+    (href: string) => (isDraft ? `${href}${href.includes("?") ? "&" : "?"}draft=1` : href),
+    [isDraft]
+  );
 
   useExperiencePrefetch(slug, sections, branding);
 
@@ -86,9 +94,9 @@ export function ExperienceShell({
       if (index < 0) return;
       const next = pageSlugs[index + delta];
       if (!next) return;
-      router.push(experienceHref(slug, next), { scroll: false });
+      router.push(withDraft(experienceHref(slug, next)), { scroll: false });
     },
-    [pathname, pageSlugs, router, slug]
+    [pathname, pageSlugs, router, slug, withDraft]
   );
 
   useEffect(() => {
@@ -112,7 +120,7 @@ export function ExperienceShell({
 
   function tabHref(sectionType: string) {
     const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as keyof typeof SECTION_TYPE_TO_SLUG];
-    return experienceHref(slug, pageSlug);
+    return withDraft(experienceHref(slug, pageSlug));
   }
 
   function isActive(sectionType: string) {
@@ -154,7 +162,7 @@ export function ExperienceShell({
 
   const proFormaCta = (
     <Link
-      href={experienceHref(slug, "pro-forma")}
+      href={withDraft(experienceHref(slug, "pro-forma"))}
       prefetch
       scroll={false}
       className={cn(
@@ -193,6 +201,11 @@ export function ExperienceShell({
         fixed
         kenBurns={!branding.heroCloudVideoUrl}
       />
+      {isDraft ? (
+        <div className="fixed left-0 right-0 top-0 z-[60] bg-atlas-accent/90 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[#0a0d14]">
+          Draft preview — not visible to the client until published
+        </div>
+      ) : null}
       <header className="portal-nav fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#0a0d14]/75 backdrop-blur-md">
         <div
           className="pointer-events-none absolute bottom-0 left-0 h-0.5 bg-atlas-accent transition-[width] duration-150 ease-out"
@@ -202,7 +215,7 @@ export function ExperienceShell({
         {/* Mobile header */}
         <div className="flex h-[var(--portal-nav-height)] items-center gap-2 px-3 md:hidden">
           <Link
-            href={experienceHref(slug, "welcome")}
+            href={withDraft(experienceHref(slug, "welcome"))}
             prefetch
             scroll={false}
             className="flex shrink-0 items-center"
@@ -285,7 +298,7 @@ export function ExperienceShell({
         {/* Desktop: logo left | centered tabs | Pro Forma right */}
         <div className="hidden h-[var(--portal-nav-height)] grid-cols-[auto_1fr_auto] items-center gap-4 px-6 lg:px-10 md:grid">
           <Link
-            href={experienceHref(slug, "welcome")}
+            href={withDraft(experienceHref(slug, "welcome"))}
             prefetch
             scroll={false}
             className="flex shrink-0 items-center"

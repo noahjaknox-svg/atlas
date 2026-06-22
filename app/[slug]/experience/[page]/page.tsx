@@ -9,54 +9,128 @@ import {
   resolvePortalExperienceSection,
   resolvePortalExperienceSections,
 } from "@/lib/experience-portal-layout";
+import { resolveFrozenSections } from "@/lib/experience-resolve";
 import {
   getFirstExperienceSlug,
   getSectionBySlug,
   SLUG_TO_SECTION_TYPE,
+  type ExperienceSectionSnapshot,
 } from "@/lib/experience-content";
+import { getInternalUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
+import { getPortalContent } from "@/lib/portal-content";
 import { ExperienceShell } from "@/components/client/experience/experience-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
+
+type PortalBranding = {
+  heroCloudImageUrl: string;
+  heroCloudVideoUrl: string | null;
+  logoUrl: string | null;
+};
+
+/**
+ * Build the live (unpublished) payload for a staff-only draft preview. Reuses the
+ * same resolution as publishing so the preview matches exactly what would be sent.
+ */
+async function loadDraftPreview(slug: string): Promise<{
+  payload: ProposalSnapshotPayload;
+  branding: PortalBranding;
+  contactName: string;
+  clientDisplayName: string;
+  proposalId: string;
+} | null> {
+  const internal = await getInternalUser();
+  if (!internal) return null;
+
+  const portal = await prisma.clientPortal.findUnique({
+    where: { slug },
+    select: { proposalId: true },
+  });
+  if (!portal) return null;
+
+  const [payload, content] = await Promise.all([
+    buildSnapshotPayload(portal.proposalId),
+    getPortalContent(),
+  ]);
+
+  return {
+    payload,
+    branding: {
+      heroCloudImageUrl: payload.branding?.heroCloudImageUrl ?? content.heroCloudImageUrl,
+      heroCloudVideoUrl: payload.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl,
+      logoUrl: payload.branding?.logoUrl ?? content.logoUrl,
+    },
+    contactName: payload.prospect.contactName,
+    clientDisplayName: payload.prospect.contactName,
+    proposalId: portal.proposalId,
+  };
+}
 
 export default async function ExperiencePageRoute({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string; page: string }>;
-  searchParams: Promise<{ aircraft?: string }>;
+  searchParams: Promise<{ aircraft?: string; draft?: string }>;
 }) {
   const { slug, page } = await params;
-  const { aircraft: aircraftParam } = await searchParams;
+  const { aircraft: aircraftParam, draft } = await searchParams;
 
   if (!SLUG_TO_SECTION_TYPE[page]) notFound();
 
-  await requirePortalSession(slug);
-  const { portal, payload, branding, contactName, clientDisplayName } =
-    await loadActivePortal(slug);
+  const isDraft = draft === "1";
 
-  if (!payload) redirect(`/${slug}`);
+  let payload: ProposalSnapshotPayload | null;
+  let branding: PortalBranding;
+  let contactName: string;
+  let clientDisplayName: string;
+  let proposalId: string;
+  let sections: ExperienceSectionSnapshot[];
+  let disclaimer: string | null;
 
-  await trackPortalView(portal.id);
+  if (isDraft) {
+    const preview = await loadDraftPreview(slug);
+    if (!preview) redirect(`/${slug}`);
+    payload = preview.payload;
+    branding = preview.branding;
+    contactName = preview.contactName;
+    clientDisplayName = preview.clientDisplayName;
+    proposalId = preview.proposalId;
+    sections = resolveFrozenSections(payload);
+    disclaimer = sections.find((s) => s.sectionType === "disclaimer")?.bodyCopy ?? null;
+  } else {
+    await requirePortalSession(slug);
+    const data = await loadActivePortal(slug);
+    if (!data.payload) redirect(`/${slug}`);
+    await trackPortalView(data.portal.id);
+    payload = data.payload;
+    branding = data.branding;
+    contactName = data.contactName;
+    clientDisplayName = data.clientDisplayName;
+    proposalId = data.portal.proposalId;
+    sections = await resolvePortalExperienceSections(payload);
+    disclaimer = (await resolvePortalExperienceSection(payload, "disclaimer"))?.bodyCopy ?? null;
+  }
 
-  const sections = await resolvePortalExperienceSections(payload);
   const section = getSectionBySlug(sections, page);
 
   if (!section || !section.visible) {
     const fallbackSlug = getFirstExperienceSlug(sections);
-    const qs = aircraftParam ? `?aircraft=${encodeURIComponent(aircraftParam)}` : "";
+    const draftQs = isDraft ? "draft=1" : "";
+    const aircraftQs = aircraftParam ? `aircraft=${encodeURIComponent(aircraftParam)}` : "";
+    const qs = [draftQs, aircraftQs].filter(Boolean).join("&");
     if (page !== fallbackSlug) {
-      redirect(`/${slug}/experience/${fallbackSlug}${qs}`);
+      redirect(`/${slug}/experience/${fallbackSlug}${qs ? `?${qs}` : ""}`);
     }
     notFound();
   }
-
-  const disclaimer =
-    (await resolvePortalExperienceSection(payload, "disclaimer"))?.bodyCopy ?? null;
 
   let client;
   if (page === "pro-forma") {
     client = await serializeClientSnapshot(payload, {
       aircraftInstanceId: aircraftParam ?? null,
-      proposalId: portal.proposalId,
+      proposalId,
     });
   }
 
@@ -64,10 +138,11 @@ export default async function ExperiencePageRoute({
     <ExperienceShell
       slug={slug}
       sections={sections}
-      logoUrl={branding.logoUrl}
+      logoUrl={branding.logoUrl ?? undefined}
       clientDisplayName={clientDisplayName}
       disclaimer={disclaimer}
       branding={branding}
+      draftMode={isDraft}
     >
       <ExperiencePageContent
         pageSlug={page}

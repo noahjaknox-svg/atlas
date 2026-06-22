@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ROUTES } from "@/lib/routes";
 
 export function WorkspaceProposalFooter({
-  proposalId,
   portalSlug,
   portalUrl,
   portalPin,
+  portalActive,
+  portalExists,
   publishLoading,
   needsRepublish,
   isAdmin,
@@ -16,13 +15,16 @@ export function WorkspaceProposalFooter({
   onPreview,
   onPublish,
   onRepublish,
+  onTakeDown,
+  onRestorePortal,
   onRegeneratePin,
   onEditPresentation,
 }: {
-  proposalId: string;
   portalSlug: string | null;
   portalUrl: string | null;
   portalPin: string | null;
+  portalActive: boolean;
+  portalExists: boolean;
   publishLoading: boolean;
   needsRepublish: boolean;
   isAdmin: boolean;
@@ -30,6 +32,8 @@ export function WorkspaceProposalFooter({
   onPreview: () => void;
   onPublish: () => void;
   onRepublish: () => void;
+  onTakeDown: () => void;
+  onRestorePortal: () => void;
   onRegeneratePin: () => void;
   onEditPresentation: () => void;
 }) {
@@ -42,9 +46,11 @@ export function WorkspaceProposalFooter({
     }
   }
 
-  const showRepublish = isAdmin && portalSlug && needsRepublish;
-  const showPublish = isAdmin && !portalSlug;
-  const upToDate = isAdmin && portalSlug && !needsRepublish;
+  const showPublish = isAdmin && !portalExists;
+  const showRepublish = isAdmin && portalActive && needsRepublish;
+  const upToDate = isAdmin && portalActive && !needsRepublish;
+  const showTakeDown = isAdmin && portalActive;
+  const showRestore = isAdmin && portalExists && !portalActive;
 
   return (
     <div className="shrink-0 border-t border-atlas-border bg-atlas-surface/40 px-4 py-2.5">
@@ -64,23 +70,15 @@ export function WorkspaceProposalFooter({
           </Button>
 
           <Button
-            asChild
-            variant="secondary"
-            size="sm"
-            className="shrink-0 text-xs"
-          >
-            <Link href={ROUTES.aircraftManagement.proposalDesignView(proposalId)}>Design report</Link>
-          </Button>
-
-          <Button
             type="button"
             variant="secondary"
             size="sm"
             className="shrink-0 text-xs"
             disabled={!portalSlug}
             onClick={onPreview}
+            title="Preview the current draft as the client will see it"
           >
-            Preview proposal
+            Preview draft
           </Button>
 
           {showPublish ? (
@@ -114,12 +112,26 @@ export function WorkspaceProposalFooter({
             </span>
           ) : null}
 
+          {showRestore ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              className="shrink-0 text-xs"
+              disabled={publishLoading}
+              onClick={onRestorePortal}
+              title="Make this proposal viewable to the client again"
+            >
+              {publishLoading ? "Restoring…" : "Restore portal"}
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="shrink-0 text-xs"
-            disabled={!portalUrl}
+            disabled={!portalActive}
             onClick={() => void copyLink()}
           >
             Copy proposal link
@@ -134,12 +146,24 @@ export function WorkspaceProposalFooter({
           <button
             type="button"
             title="Regenerate access code"
-            disabled={!portalSlug}
+            disabled={!portalActive}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-atlas-border text-sm text-atlas-muted hover:border-atlas-accent hover:text-atlas-accent disabled:opacity-40"
             onClick={onRegeneratePin}
           >
             ↻
           </button>
+
+          {showTakeDown ? (
+            <button
+              type="button"
+              title="Take down — clients can no longer view this proposal"
+              disabled={publishLoading}
+              className="shrink-0 rounded border border-red-500/30 px-2 py-1 text-[10px] text-red-300/90 hover:border-red-500/60 hover:bg-red-500/10 disabled:opacity-40"
+              onClick={onTakeDown}
+            >
+              Take down
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

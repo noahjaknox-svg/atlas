@@ -74,7 +74,8 @@ export function ExperienceManagerForm({
   return (
     <div>
       <p className="text-xs leading-relaxed text-atlas-muted">
-        Toggle pages, edit copy and hero images. Clients see changes after publish.
+        Choose which pages to include and edit their copy. Layout, animations, and
+        visuals are set globally in the Deck Builder. Clients see changes after you publish.
       </p>
       {needsRepublish ? (
         <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-200/90">
@@ -126,14 +127,6 @@ export function ExperienceManagerForm({
                     className="w-full rounded border border-atlas-border/80 bg-atlas-bg px-2 py-1.5 text-xs"
                     placeholder="Body copy — use {contactName} on Welcome"
                   />
-                  <Input
-                    value={sec.imageUrl ?? ""}
-                    onChange={(e) =>
-                      updateSection(index, { imageUrl: e.target.value || null })
-                    }
-                    className="h-8 text-xs"
-                    placeholder="Hero image URL"
-                  />
                   {sec.sectionType === "welcome" ? (
                     <>
                       <Input
@@ -156,12 +149,12 @@ export function ExperienceManagerForm({
                   ) : null}
                   {portalSlug && sec.visible ? (
                     <a
-                      href={`/${portalSlug}/experience/${SECTION_TYPE_TO_SLUG[sec.sectionType as ExperienceSectionType] ?? sec.sectionType}`}
+                      href={`/${portalSlug}/experience/${SECTION_TYPE_TO_SLUG[sec.sectionType as ExperienceSectionType] ?? sec.sectionType}?draft=1`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block text-xs text-atlas-accent hover:underline"
                     >
-                      Preview (published)
+                      Preview (draft)
                     </a>
                   ) : null}
                 </div>

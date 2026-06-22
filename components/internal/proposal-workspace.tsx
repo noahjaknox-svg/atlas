@@ -738,6 +738,37 @@ export function ProposalWorkspace({
   }
 
   const portalSlug = portal?.active ? portal.slug : null;
+  const previewSlug = portal?.slug ?? null;
+  const portalActive = !!portal?.active;
+  const portalExists = !!portal;
+
+  async function handleSetPortalActive(active: boolean) {
+    if (
+      !active &&
+      !confirm(
+        "Take down this proposal? Clients with the link will no longer be able to open it. " +
+          "The deal stays in your pipeline and nothing is deleted — you can restore it anytime."
+      )
+    ) {
+      return;
+    }
+    setPublishLoading(true);
+    try {
+      const res = await fetch(`/api/proposals/${data.id}/portal/visibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "Could not update portal visibility");
+        return;
+      }
+      setPortal((p) => (p ? { ...p, active } : p));
+    } finally {
+      setPublishLoading(false);
+    }
+  }
 
   async function handleProposalNameChange(name: string) {
     if (isArchived) return;
@@ -847,19 +878,23 @@ export function ProposalWorkspace({
         footer={
           isArchived ? null : (
           <WorkspaceProposalFooter
-            proposalId={data.id}
-            portalSlug={portalSlug}
+            portalSlug={previewSlug}
             portalUrl={portal?.portalUrl ?? null}
             portalPin={portalPin}
+            portalActive={portalActive}
+            portalExists={portalExists}
             publishLoading={publishLoading}
             needsRepublish={needsRepublish}
             isAdmin={isAdmin}
             hasSelectedAircraft={!!selected}
             onPreview={() =>
-              portalSlug && window.open(`/${portalSlug}/experience/welcome`, "_blank")
+              previewSlug &&
+              window.open(`/${previewSlug}/experience/welcome?draft=1`, "_blank")
             }
             onPublish={() => void handlePublish(false)}
             onRepublish={() => void handlePublish(true)}
+            onTakeDown={() => void handleSetPortalActive(false)}
+            onRestorePortal={() => void handleSetPortalActive(true)}
             onRegeneratePin={() => void handleRegeneratePin()}
             onEditPresentation={() => setPortalPresentationOpen(true)}
           />
