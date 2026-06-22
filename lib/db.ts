@@ -9,11 +9,25 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
+function delegateReady(client: PrismaClient, key: string): boolean {
+  const delegate = (client as Record<string, unknown>)[key];
+  return (
+    typeof delegate === "object" &&
+    delegate !== null &&
+    typeof (delegate as { findUnique?: unknown }).findUnique === "function"
+  );
+}
+
 function modelsReady(client: PrismaClient): boolean {
   return (
-    "proposalOwnerProfile" in client &&
-    "portalContent" in client &&
-    "airportReference" in client
+    delegateReady(client, "proposalOwnerProfile") &&
+    delegateReady(client, "portalContent") &&
+    delegateReady(client, "airportReference") &&
+    delegateReady(client, "warehouseAircraft") &&
+    delegateReady(client, "fboHangarOverride") &&
+    delegateReady(client, "companySettings") &&
+    delegateReady(client, "fbo") &&
+    delegateReady(client, "proposalAssumption")
   );
 }
 

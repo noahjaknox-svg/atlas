@@ -14,7 +14,7 @@ export const REQUIRED_FIELD_CHECKS: {
   { key: "owner_annual_hours", label: "Owner annual hours" },
   { key: "home_airport_icao", label: "Home airport (ICAO)" },
   { key: "pic_salary", label: "PIC salary" },
-  { key: "hangar_monthly", label: "Hangar cost" },
+  { key: "hangar_annual", label: "Hangar cost" },
   { key: "insurance_annual", label: "Insurance estimate" },
   { key: "management_fee", label: "Management fee" },
   { key: "home_fuel_price", label: "Fuel price (home)" },
@@ -55,8 +55,11 @@ export function getMissingRequiredFields(assumptions: AssumptionLike[]): string[
   for (const check of REQUIRED_FIELD_CHECKS) {
     if (check.charterOnly && !charter) continue;
     const v = map[check.key];
-    if (check.key === "hangar_monthly") {
-      if (!v?.trim() && !map.hangar_annual?.trim()) missing.push(check.label);
+    if (check.key === "hangar_annual") {
+      if (v?.trim()) continue;
+      if (map.square_footage?.trim() && map.hangar_cost_per_sqft?.trim()) continue;
+      if (map.hangar_monthly?.trim()) continue;
+      missing.push(check.label);
       continue;
     }
     if (check.key === "insurance_annual") {

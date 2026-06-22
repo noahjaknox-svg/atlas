@@ -22,7 +22,10 @@ export function ProFormaScenarioPanel({
   const multiOwner = ownerProfiles.length > 1;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-atlas-border/80 bg-atlas-surface/25">
+    <section className="overflow-hidden rounded-lg border border-atlas-border/80 bg-atlas-surface/25">
+      <div className="atlas-workspace-section-header">
+        <h3 className="atlas-panel-title">Utilization scenario</h3>
+      </div>
       <div className="border-b border-atlas-border/50 px-4 py-4">
         {multiOwner ? (
           <div>
@@ -78,7 +81,7 @@ export function ProFormaScenarioPanel({
           </>
         ) : null}
       </div>
-    </div>
+    </section>
   );
 }
 

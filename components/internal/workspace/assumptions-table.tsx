@@ -16,6 +16,17 @@ import { groupVisibleForUsage, rollupForUsage } from "@/lib/usage-type";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
+function shouldShowGroupHeader(group: AircraftTabGroup, rows: WorkspaceField[]): boolean {
+  if (rows.length !== 1) return true;
+  if (!group.proFormaRollup) return false;
+  return group.proFormaRollup.type !== "line";
+}
+
+function shouldShowGroupFooter(group: AircraftTabGroup, rows: WorkspaceField[]): boolean {
+  if (rows.length !== 1) return true;
+  return group.proFormaRollup?.type !== "line";
+}
+
 function ConfigTableHeader() {
   return (
     <div className="atlas-config-th" role="row">
@@ -112,7 +123,7 @@ function ConfigTableFooter({
         </div>
       </div>
       {total.proFormaHint ? (
-        <p className="border-t border-atlas-border/10 px-3 py-1.5 text-right text-[10px] leading-snug text-atlas-muted">
+        <p className="border-t border-atlas-border/10 px-4 py-2 text-right text-xs leading-snug text-atlas-muted">
           {total.proFormaHint}
         </p>
       ) : null}
@@ -128,7 +139,7 @@ function renderFieldRow(
   onOverride: (name: string, raw: string) => void
 ) {
   const name = field.assumptionName!;
-  const def = defaults[name] ?? "";
+  const def = defaults[name]?.trim() || effective[name]?.trim() || "";
   const stored = assumptions[name] ?? "";
   const override = (() => {
     const d = def.trim();
@@ -190,14 +201,12 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
   );
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-atlas-border/80 bg-atlas-surface/10">
-      <div className="border-b border-atlas-border/60 bg-atlas-surface/25 px-3 py-2">
-        <h3 className="truncate font-serif text-base tracking-tight text-atlas-accent">
-          {section.title}
-        </h3>
+    <section className="atlas-workspace-section min-w-0 overflow-hidden">
+      <div className="atlas-workspace-section-header">
+        <h3 className="atlas-panel-title truncate">{section.title}</h3>
       </div>
 
-      <div className="atlas-config-table" role="table">
+      <div className="atlas-config-table py-1" role="table">
         <ConfigTableHeader />
 
         {visibleGroups.map((group) => {
@@ -209,24 +218,28 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
             effective
           );
           const isProForma = group.title.toLowerCase().includes("pro forma");
+          const showHeader = shouldShowGroupHeader(group, rows);
+          const showFooter = groupTotal && shouldShowGroupFooter(group, rows);
 
           return (
             <div key={group.title} className="min-w-0" role="rowgroup">
-              <div
-                className={cn(
-                  "atlas-config-group-header",
-                  isProForma && "bg-atlas-accent/10 text-atlas-accent"
-                )}
-                role="row"
-              >
-                {group.title}
-              </div>
+              {showHeader ? (
+                <div
+                  className={cn(
+                    "atlas-config-group-header",
+                    isProForma && "bg-atlas-accent/10 text-atlas-accent"
+                  )}
+                  role="row"
+                >
+                  {group.title}
+                </div>
+              ) : null}
 
               {rows.map((field) =>
                 renderFieldRow(field, defaults, assumptions, effective, onOverride)
               )}
 
-              {groupTotal ? <ConfigTableFooter total={groupTotal} /> : null}
+              {showFooter ? <ConfigTableFooter total={groupTotal!} /> : null}
             </div>
           );
         })}

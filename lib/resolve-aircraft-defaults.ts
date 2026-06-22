@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
+import { resolveValidWarehouseAircraftId } from "@/lib/resolve-warehouse-aircraft-id";
 import { computeDerivedAssumptions } from "@/lib/aircraft-calculated-fields";
 import { mergeEstimatedDefaults } from "@/lib/aircraft-estimated-defaults";
 import { DEFAULT_BLOCK_TO_FLIGHT_FACTOR } from "@/lib/proforma-utilization";
@@ -14,6 +15,28 @@ import {
   buildProFormaLineVisibilityFromWarehouse,
   parseWarehouseFieldVisibility,
 } from "@/lib/warehouse-aircraft-proforma-visibility";
+
+function buildDefaultsContext(
+  assumptions: AssumptionMap,
+  instance: {
+    warehouseAircraftId: string | null;
+    proposedHomeBaseIcao: string | null;
+    fboName: string | null;
+  } | null
+): AssumptionMap {
+  const ctx: AssumptionMap = { ...assumptions };
+  if (instance?.warehouseAircraftId) {
+    ctx.aircraft_master_id = instance.warehouseAircraftId;
+  }
+  if (instance?.proposedHomeBaseIcao) {
+    ctx.home_airport_icao = instance.proposedHomeBaseIcao;
+    ctx.proposed_home_base = instance.proposedHomeBaseIcao;
+  }
+  if (instance?.fboName) {
+    ctx.fbo_name = instance.fboName;
+  }
+  return ctx;
+}
 
 /** Resolve database-backed defaults for all tab fields on an aircraft instance. */
 export async function resolveAircraftDefaults(params: {
@@ -28,26 +51,40 @@ export async function resolveAircraftDefaults(params: {
     },
   });
 
+  const ctx = buildDefaultsContext(params.assumptions, instance);
+
   let map: Record<string, string> = mergeEstimatedDefaults({});
-  const usage =
-    params.assumptions.usage_type === "part_91_135" ? "part_91_135" : "part_91";
+  const usage = ctx.usage_type === "part_91_135" ? "part_91_135" : "part_91";
 
   const icao =
-    params.assumptions.home_airport_icao ||
-    params.assumptions.proposed_home_base ||
+    ctx.home_airport_icao ||
+    ctx.proposed_home_base ||
     instance?.proposedHomeBaseIcao ||
     null;
 
-  if (instance?.warehouseAircraftId) {
+  const warehouseResolution = await resolveValidWarehouseAircraftId({
+    instanceWarehouseId: instance?.warehouseAircraftId,
+    assumptionMasterId: ctx.aircraft_master_id,
+    manufacturer: ctx.aircraft_manufacturer ?? instance?.warehouseAircraft?.manufacturer,
+    model: ctx.aircraft_model ?? instance?.warehouseAircraft?.model,
+  });
+  const warehouseAircraftId = warehouseResolution.id;
+
+  if (warehouseAircraftId) {
     const refDefaults = await loadAircraftReferenceDefaults({
-      warehouseAircraftId: instance.warehouseAircraftId,
+      warehouseAircraftId,
       airportIcao: icao,
-      fboName: params.assumptions.fbo_name ?? instance.fboName,
+      fboName: ctx.fbo_name ?? instance?.fboName,
     });
     map = { ...map, ...refDefaults };
   }
 
-  const aircraft = instance?.warehouseAircraft;
+  let aircraft = instance?.warehouseAircraft ?? null;
+  if (!aircraft && warehouseAircraftId) {
+    aircraft = await prisma.warehouseAircraft.findUnique({
+      where: { id: warehouseAircraftId },
+    });
+  }
   if (aircraft) {
     map.aircraft_manufacturer = aircraft.manufacturer ?? "";
     map.aircraft_model = aircraft.model ?? "";
@@ -69,7 +106,7 @@ export async function resolveAircraftDefaults(params: {
 
     const fieldVisibility = parseWarehouseFieldVisibility(aircraft.proformaFieldVisibility);
     const lineVisibility = buildProFormaLineVisibilityFromWarehouse(fieldVisibility);
-    const existingVisibility = parseProFormaVisibility(params.assumptions);
+    const existingVisibility = parseProFormaVisibility(ctx);
     map[PROFORMA_VISIBILITY_KEY] = serializeProFormaVisibility({
       ...existingVisibility,
       ...lineVisibility,
@@ -81,7 +118,6 @@ export async function resolveAircraftDefaults(params: {
   if (icao) {
     map.home_airport_icao = icao.toUpperCase();
     map.proposed_home_base = icao.toUpperCase();
-    map.hangar_source = map.hangar_source ?? "data_hub";
     map.fuel_source = map.fuel_source ?? "fbo_base";
   }
 
@@ -118,4 +154,20 @@ export async function resolveAircraftDefaults(params: {
     if (v !== undefined) out[k] = String(v);
   }
   return out;
+}
+
+/** Resolve warehouse-backed defaults and merge with stored proposal assumptions. */
+export async function resolveEffectiveAssumptionsForInstance(
+  aircraftInstanceId: string,
+  assumptions: AssumptionMap
+): Promise<AssumptionMap> {
+  const { buildEffectiveAssumptions, stripLegacyEstimatedHangar } = await import(
+    "@/lib/resolve-effective-assumptions"
+  );
+  const cleaned = stripLegacyEstimatedHangar(assumptions);
+  const defaults = await resolveAircraftDefaults({
+    aircraftInstanceId,
+    assumptions: cleaned,
+  });
+  return buildEffectiveAssumptions(cleaned, defaults);
 }

@@ -59,8 +59,10 @@ export function buildDefaultsFromReferences(params: {
       map.away_fuel_price = params.airport.fuelPrice;
     }
     if (params.airport.hangarMonthly) {
-      map.hangar_monthly = params.airport.hangarMonthly;
-      map.hangar_source = "data_hub";
+      const monthly = parseFloat(params.airport.hangarMonthly);
+      if (Number.isFinite(monthly) && monthly > 0) {
+        map.hangar_annual = String(Math.round(monthly * 12));
+      }
     }
     map.fuel_source = map.fuel_source ?? "fbo_retail";
     const fbo =

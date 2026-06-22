@@ -9,6 +9,8 @@ import {
   PROFORMA_VISIBILITY_KEY,
   serializeProFormaVisibility,
 } from "@/lib/proforma-line-visibility";
+import { validateAddAircraftBody } from "@/lib/validate-add-aircraft";
+import { usageTypeToOperatingModel } from "@/lib/aircraft-workspace";
 
 export async function GET(
   _request: Request,
@@ -96,6 +98,11 @@ export async function POST(
     await requireInternalUser();
     const { id: proposalId } = await params;
     const body = await request.json().catch(() => ({}));
+    const validated = await validateAddAircraftBody(body as Record<string, unknown>);
+    if (!validated.ok) {
+      return jsonError(validated.error, 400);
+    }
+    const input = validated.data;
 
     const proposal = await prisma.proposal.findUnique({
       where: { id: proposalId },
@@ -103,70 +110,58 @@ export async function POST(
     });
     if (!proposal) throw new Error("NOT_FOUND");
 
-    const homeBase =
-      body.proposedHomeBase?.trim().toUpperCase() ||
-      body.proposedHomeBaseIcao?.trim().toUpperCase() ||
-      "SDL";
-    const usageType =
-      body.usageType === "part_91_135" ? "part_91_135" : "part_91";
-    const operatingModel =
-      usageType === "part_91_135"
-        ? "Part 91 plus Part 135 charter"
-        : "Part 91 management only";
+    const homeBase = input.proposedHomeBase;
+    const usageType = input.usageType;
+    const operatingModel = usageTypeToOperatingModel(usageType);
 
     const aircraft = await prisma.aircraftInstance.create({
       data: {
         prospectId: proposal.prospectId,
         proposalId,
         proposedHomeBaseIcao: homeBase,
-        fboName: body.fboName?.trim() || "PrismJet",
-        warehouseAircraftId: body.aircraftMasterId?.trim() || null,
+        fboName: input.fboName,
+        warehouseAircraftId: input.aircraftMasterId,
       },
       include: { warehouseAircraft: true },
     });
 
     const acCategory = aircraftAssumptionCategory(aircraft.id);
-    const assumptionRows: Array<{ assumptionName: string; value: string }> = [];
-    if (body.aircraftModel?.trim()) {
-      assumptionRows.push({
-        assumptionName: "aircraft_model",
-        value: String(body.aircraftModel).trim(),
-      });
-    }
-    if (body.aircraftMasterId) {
-      assumptionRows.push({
-        assumptionName: "aircraft_master_id",
-        value: String(body.aircraftMasterId),
-      });
-    }
-    assumptionRows.push(
-      { assumptionName: "proposed_home_base", value: homeBase },
-      { assumptionName: "home_airport_icao", value: homeBase },
-      { assumptionName: "fbo_name", value: body.fboName?.trim() || "PrismJet" },
-      { assumptionName: "usage_type", value: usageType },
-      { assumptionName: "operating_model", value: operatingModel },
-      // Insurance & Taxes tab is empty for now: hide insurance + registration/tax
-      // line items by default until that warehouse tab is built out.
-      {
-        assumptionName: PROFORMA_VISIBILITY_KEY,
-        value: serializeProFormaVisibility({
-          insurance_pl: false,
-          registration_pl: false,
-        }),
-      }
-    );
+    const initialAssumptions: Record<string, string> = {
+      aircraft_model: input.aircraftModel,
+      aircraft_manufacturer: input.manufacturer,
+      aircraft_master_id: input.aircraftMasterId,
+      proposed_home_base: homeBase,
+      home_airport_icao: homeBase,
+      fbo_name: input.fboName,
+      usage_type: usageType,
+      operating_model: operatingModel,
+      [PROFORMA_VISIBILITY_KEY]: serializeProFormaVisibility({
+        insurance_pl: false,
+        registration_pl: false,
+      }),
+    };
 
-    for (const row of assumptionRows) {
-      await prisma.proposalAssumption.create({
-        data: {
-          proposalId,
-          category: acCategory,
-          assumptionName: row.assumptionName,
-          value: row.value,
-          sourceType: "manual",
-        },
+    let seededAssumptions: Record<string, string>;
+    try {
+      const { seedAircraftWarehouseAssumptions } = await import(
+        "@/lib/seed-aircraft-warehouse-assumptions"
+      );
+      seededAssumptions = await seedAircraftWarehouseAssumptions({
+        proposalId,
+        category: acCategory,
+        aircraftInstanceId: aircraft.id,
+        initialAssumptions,
+        mode: "seed",
       });
+    } catch (seedError) {
+      await prisma.aircraftInstance.delete({ where: { id: aircraft.id } }).catch(() => {});
+      throw seedError;
     }
+
+    const refreshed = await prisma.aircraftInstance.findUnique({
+      where: { id: aircraft.id },
+      include: { warehouseAircraft: true },
+    });
 
     const { ensureThreeScenarios } = await import("@/lib/scenarios");
     await ensureThreeScenarios(proposalId, aircraft.id);
@@ -178,7 +173,7 @@ export async function POST(
       });
     }
 
-    return jsonOk({ aircraft }, 201);
+    return jsonOk({ aircraft: refreshed ?? aircraft, assumptions: seededAssumptions }, 201);
   } catch (e) {
     return handleApiError(e);
   }

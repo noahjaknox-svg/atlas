@@ -121,6 +121,12 @@ export default async function ProposalWorkspacePage({
     };
     if (ac.fboName) assumptionMap.fbo_name = ac.fboName;
     if (ac.warehouseAircraftId) assumptionMap.aircraft_master_id = ac.warehouseAircraftId;
+    if (ac.proposedHomeBaseIcao) {
+      assumptionMap.home_airport_icao =
+        assumptionMap.home_airport_icao ?? ac.proposedHomeBaseIcao;
+      assumptionMap.proposed_home_base =
+        assumptionMap.proposed_home_base ?? ac.proposedHomeBaseIcao;
+    }
 
     const portalFields = ac as typeof ac & {
       portalImageUrl?: string | null;

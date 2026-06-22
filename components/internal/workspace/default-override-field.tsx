@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { cn } from "@/lib/utils";
-import { formatFormattedNumber, parseFormattedNumber } from "@/lib/utils";
+import { formatCurrency, formatFormattedNumber, parseFormattedNumber } from "@/lib/utils";
 import { MoneyInput, moneyInputClassName } from "@/components/ui/money-input";
 import { getAssumptionRowState } from "@/lib/assumption-row-state";
 import type { WorkspaceField } from "@/lib/workspace-sections";
@@ -11,7 +11,8 @@ function formatDefaultDisplay(field: WorkspaceField, raw: string): string {
   const v = raw.trim();
   if (!v) return "—";
   if (field.type === "currency") {
-    return formatFormattedNumber(v) || "—";
+    const n = parseFloat(parseFormattedNumber(v));
+    return Number.isFinite(n) ? formatCurrency(n) : "—";
   }
   if (field.type === "number") {
     const n = parseFloat(parseFormattedNumber(v));
@@ -84,7 +85,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
 
   const inputCls = cn(
     "atlas-config-input",
-    hasOverride ? "atlas-config-input-override" : "text-atlas-muted/80 placeholder:italic placeholder:text-atlas-muted/60"
+    hasOverride ? "atlas-config-input-override" : "text-atlas-muted/90"
   );
 
   return (
@@ -103,7 +104,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
       <div className="atlas-config-col-value">
         {field.type === "textarea" ? (
           <textarea
-            className={cn(inputCls, "min-h-[2.75rem] resize-none py-1 text-[12px]")}
+            className={cn(inputCls, "min-h-[2.75rem] resize-none py-1.5 text-left text-sm")}
             value={value}
             placeholder="Use default."
             onChange={(e) => onChange(e.target.value)}
@@ -125,6 +126,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
           <MoneyInput
             className={moneyInputClassName(hasOverride)}
             value={value}
+            currency
             placeholder="Use default."
             onChange={onChange}
           />

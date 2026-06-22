@@ -127,7 +127,33 @@ describe("loadAircraftReferenceDefaults", () => {
 
     expect(map.home_fuel_price).toBe("6.25");
     expect(map.fuel_source).toBe("fbo_base");
+    expect(map.square_footage).toBe("930");
+    expect(map.hangar_cost_per_sqft).toBe("24");
     // 24 * 930 = 22320
+    expect(map.hangar_annual).toBe("22320");
+  });
+
+  it("matches FBO rows when home base uses FAA LID instead of ICAO", async () => {
+    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+    vi.mocked(prisma.fbo.findMany).mockResolvedValue([
+      {
+        id: "fbo-1",
+        fboName: "PrismJet",
+        airportIcao: "KSDL",
+        baseFuelRate: { toString: () => "6.25" },
+        hangarCostPerSqft: 24,
+      },
+    ] as never);
+    vi.mocked(prisma.fboHangarOverride.findUnique).mockResolvedValue(null as never);
+
+    const map = await loadAircraftReferenceDefaults({
+      warehouseAircraftId: "wa-1",
+      airportIcao: "SDL",
+      fboName: "PrismJet",
+    });
+
+    expect(map.square_footage).toBe("930");
+    expect(map.hangar_cost_per_sqft).toBe("24");
     expect(map.hangar_annual).toBe("22320");
   });
 

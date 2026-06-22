@@ -323,7 +323,6 @@ function buildAssumptionsUsedPanel(
       value: `$${resolveJetFuelTaxDifferentialPerGal(a).toFixed(3)}`,
     },
     { label: "Fuel source", value: a.fuel_source?.trim() || "—" },
-    { label: "Hangar source", value: a.hangar_source?.trim() || "—" },
   ];
 }
 

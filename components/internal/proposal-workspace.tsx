@@ -35,6 +35,12 @@ import {
   type ProposalOwnerProfile,
 } from "@/lib/proposal-owners";
 import { mergeWithDerived } from "@/lib/aircraft-calculated-fields";
+import {
+  applyWarehouseDefaults,
+  warehouseDefaultsBaseline,
+} from "@/lib/warehouse-assumption-seed";
+import { buildDefaultsQueryParams } from "@/lib/build-defaults-query";
+import { needsWarehouseSeed } from "@/lib/needs-warehouse-seed";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
 import { ROUTES } from "@/lib/routes";
@@ -112,6 +118,16 @@ export function ProposalWorkspace({
         data.aircraft.map((a) => [a.id, mergeAssumptions(a.assumptions, a)])
       )
   );
+  const [warehouseBaselineByAircraft, setWarehouseBaselineByAircraft] = useState<
+    Record<string, Record<string, string>>
+  >(() =>
+    Object.fromEntries(
+      data.aircraft.map((a) => [
+        a.id,
+        warehouseDefaultsBaseline(mergeAssumptions(a.assumptions, a) as Record<string, string>),
+      ])
+    )
+  );
   const [portal, setPortal] = useState(data.clientPortal);
   const [clientEditable, setClientEditable] = useState<Record<string, boolean>>(
     () => data.initialClientEditable ?? {}
@@ -136,6 +152,7 @@ export function ProposalWorkspace({
   const [archiveLoading, setArchiveLoading] = useState(false);
   const ownersSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipOwnersSave = useRef(true);
+  const warehouseSeedAttempted = useRef(new Set<string>());
 
   async function handleRegeneratePin() {
     if (
@@ -162,6 +179,61 @@ export function ProposalWorkspace({
       body: JSON.stringify({ includedOnProposal: included }),
     });
   }
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scenarioSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipSave = useRef(true);
+  const dirtyAircraftRef = useRef(new Set<string>());
+  const persistInFlight = useRef(false);
+  const persistQueued = useRef(false);
+  const assumptionsByAircraftRef = useRef(assumptionsByAircraft);
+
+  useEffect(() => {
+    assumptionsByAircraftRef.current = assumptionsByAircraft;
+  }, [assumptionsByAircraft]);
+
+  function seedWarehouseBaseline(aircraftId: string, defaults: Record<string, string>) {
+    setWarehouseBaselineByAircraft((prev) => ({
+      ...prev,
+      [aircraftId]: warehouseDefaultsBaseline(defaults),
+    }));
+  }
+
+  const applyWarehouseFromApi = useCallback(
+    async (aircraftId: string, mode: "seed" | "refresh") => {
+      const assumptions = assumptionsByAircraftRef.current[aircraftId] ?? {};
+      const params = buildDefaultsQueryParams(assumptions);
+
+      const res = await fetch(
+        `/api/proposals/${data.id}/aircraft/${aircraftId}/defaults?${params.toString()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.defaults) return false;
+
+      const defaults = json.defaults as Record<string, string>;
+      const baseline = warehouseDefaultsBaseline(defaults);
+      const nextAssumptions = mergeWithDerived(
+        applyWarehouseDefaults(assumptions, defaults, mode)
+      );
+
+      dirtyAircraftRef.current.add(aircraftId);
+      setAssumptionsByAircraft((prev) => ({ ...prev, [aircraftId]: nextAssumptions }));
+      setWarehouseBaselineByAircraft((prev) => ({ ...prev, [aircraftId]: baseline }));
+
+      const resolvedMaster = defaults.aircraft_master_id?.trim();
+      if (resolvedMaster && resolvedMaster !== assumptions.aircraft_master_id?.trim()) {
+        void fetch(`/api/proposals/${data.id}/aircraft/${aircraftId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ aircraftMasterId: resolvedMaster }),
+        });
+      }
+
+      return true;
+    },
+    [data.id]
+  );
 
   function applySetupDefaults(
     aircraftId: string,
@@ -195,18 +267,6 @@ export function ProposalWorkspace({
       });
     }
   }
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scenarioSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipSave = useRef(true);
-  const dirtyAircraftRef = useRef(new Set<string>());
-  const persistInFlight = useRef(false);
-  const persistQueued = useRef(false);
-  const assumptionsByAircraftRef = useRef(assumptionsByAircraft);
-
-  useEffect(() => {
-    assumptionsByAircraftRef.current = assumptionsByAircraft;
-  }, [assumptionsByAircraft]);
 
   const selected = aircraft.find((a) => a.id === selectedId) ?? aircraft[0] ?? null;
   const selectedAssumptions = selected ? (assumptionsByAircraft[selected.id] ?? {}) : {};
@@ -285,6 +345,16 @@ export function ProposalWorkspace({
         : saveStatus === "error"
           ? "Save failed — retrying on next edit"
           : "Autosave on";
+
+  useEffect(() => {
+    if (!selected || isArchived) return;
+    const assumptions = assumptionsByAircraft[selected.id];
+    if (!assumptions || !needsWarehouseSeed(assumptions)) return;
+    if (warehouseSeedAttempted.current.has(selected.id)) return;
+
+    warehouseSeedAttempted.current.add(selected.id);
+    void applyWarehouseFromApi(selected.id, "seed");
+  }, [selected, isArchived, assumptionsByAircraft, applyWarehouseFromApi]);
 
   const scheduleScenarioSync = useCallback(
     (aircraftId: string) => {
@@ -501,36 +571,9 @@ export function ProposalWorkspace({
     if (!res.ok) throw new Error(json.error ?? "Failed to add aircraft");
 
     const ac = json.aircraft;
-
-    const params = new URLSearchParams({
-      homeIcao: payload.proposedHomeBase,
-      fboName: payload.fboName,
-      usageType: payload.usageType,
-    });
-    if (payload.aircraftMasterId) params.set("warehouseAircraftId", payload.aircraftMasterId);
-
-    const defaultsRes = await fetch(
-      `/api/proposals/${data.id}/aircraft/${ac.id}/defaults?${params.toString()}`
-    );
-    const defaultsJson = await defaultsRes.json().catch(() => ({}));
-    const warehouseDefaults =
-      defaultsRes.ok && defaultsJson.defaults ? (defaultsJson.defaults as AssumptionMap) : {};
-
-    const parts = payload.aircraftModel.split(" ");
-    const assumptions: AssumptionMap = mergeWithDerived({
-      ...warehouseDefaults,
-      aircraft_manufacturer:
-        warehouseDefaults.aircraft_manufacturer ?? parts[0] ?? "",
-      aircraft_model:
-        warehouseDefaults.aircraft_model ??
-        (parts.slice(1).join(" ") || payload.aircraftModel),
-      proposed_home_base: payload.proposedHomeBase,
-      home_airport_icao: payload.proposedHomeBase,
-      fbo_name: payload.fboName,
-      usage_type: payload.usageType,
-      operating_model: usageTypeToOperatingModel(payload.usageType),
-      ...(payload.aircraftMasterId ? { aircraft_master_id: payload.aircraftMasterId } : {}),
-    });
+    const serverAssumptions = (json.assumptions ?? {}) as AssumptionMap;
+    const assumptions: AssumptionMap = mergeWithDerived(serverAssumptions);
+    const baseline = warehouseDefaultsBaseline(serverAssumptions);
 
     const item: AircraftListItem = {
       id: ac.id,
@@ -540,23 +583,28 @@ export function ProposalWorkspace({
       proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
       estimatedValue: ac.estimatedValue?.toString() ?? null,
       valueSource: ac.valueSource,
-      aircraftMaster: ac.aircraftMaster,
+      aircraftMaster: ac.warehouseAircraft ?? ac.aircraftMaster ?? null,
       assumptions,
     };
 
+    warehouseSeedAttempted.current.add(ac.id);
     setAircraft((list) => [...list, item]);
     setAssumptionsByAircraft((m) => ({ ...m, [ac.id]: assumptions }));
+    setWarehouseBaselineByAircraft((m) => ({ ...m, [ac.id]: baseline }));
     setOwnersByAircraft((m) => ({
       ...m,
       [ac.id]: profileFromLegacyAssumptions(assumptions),
     }));
     setAllocationModeByAircraft((m) => ({ ...m, [ac.id]: "hybrid" }));
     setSelectedId(ac.id);
-    applySetupDefaults(ac.id, assumptions, {
-      proposedHomeBaseIcao: payload.proposedHomeBase,
-      aircraftMasterId: payload.aircraftMasterId,
-      fboName: payload.fboName,
-    });
+    dirtyAircraftRef.current.add(ac.id);
+  }
+
+  async function handleRefreshWarehouseData(aircraftId: string) {
+    const ok = await applyWarehouseFromApi(aircraftId, "refresh");
+    if (!ok) {
+      alert("Could not refresh warehouse data. Check aircraft type and home base.");
+    }
   }
 
   async function handleDuplicate(id: string) {
@@ -584,6 +632,10 @@ export function ProposalWorkspace({
     };
     setAircraft((list) => [...list, item]);
     setAssumptionsByAircraft((m) => ({ ...m, [ac.id]: assumptions }));
+    setWarehouseBaselineByAircraft((m) => ({
+      ...m,
+      [ac.id]: warehouseBaselineByAircraft[id] ?? warehouseDefaultsBaseline(assumptions),
+    }));
     const srcOwners = ownersByAircraft[id] ?? profileFromLegacyAssumptions(src);
     setOwnersByAircraft((m) => ({
       ...m,
@@ -611,6 +663,11 @@ export function ProposalWorkspace({
     }
     setAircraft((list) => list.filter((a) => a.id !== id));
     setAssumptionsByAircraft((m) => {
+      const next = { ...m };
+      delete next[id];
+      return next;
+    });
+    setWarehouseBaselineByAircraft((m) => {
       const next = { ...m };
       delete next[id];
       return next;
@@ -749,6 +806,7 @@ export function ProposalWorkspace({
         onAddAircraft={() => setAddModalOpen(true)}
         onRemoveAircraft={(id) => void handleRemove(id)}
         onDuplicateAircraft={(id) => void handleDuplicate(id)}
+        onRefreshWarehouseData={(id) => void handleRefreshWarehouseData(id)}
         onToggleIncluded={handleToggleIncluded}
         assumptionsByAircraft={assumptionsByAircraft}
         prospect={prospect}
@@ -795,6 +853,7 @@ export function ProposalWorkspace({
             proposalId={data.id}
             aircraftId={selected.id}
             assumptions={selectedAssumptions}
+            warehouseDefaults={warehouseBaselineByAircraft[selected.id] ?? {}}
             onAssumptionsChange={setAssumptionsMap}
             ownerProfiles={selectedOwners}
             allocationMode={selectedAllocationMode}
@@ -806,6 +865,9 @@ export function ProposalWorkspace({
             }
             onApplySetupDefaults={(patch, instancePatch) =>
               applySetupDefaults(selected.id, patch, instancePatch)
+            }
+            onWarehouseDefaultsSeeded={(defaults) =>
+              seedWarehouseBaseline(selected.id, defaults)
             }
           />
         ) : (

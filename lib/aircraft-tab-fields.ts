@@ -5,8 +5,6 @@ import {
   CREW_MODEL_OPTIONS,
   FET_TREATMENT_OPTIONS,
   FUEL_SOURCE_OPTIONS,
-  HANGAR_SOURCE_OPTIONS,
-  HANGAR_PRICING_MODE_OPTIONS,
   INSURANCE_MODE_OPTIONS,
 } from "@/lib/aircraft-constants";
 import { CALCULATED_ASSUMPTION_KEYS } from "@/lib/aircraft-calculated-fields";
@@ -156,18 +154,6 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         },
       ],
     },
-    {
-      title: "Client-Facing Summary",
-      groups: [
-        {
-          title: "Summary",
-          fields: [
-            field("features_notes", "Feature notes", { type: "textarea", colSpan: 2 }),
-            field("aircraft_summary", "Client aircraft summary", { type: "textarea", colSpan: 2 }),
-          ],
-        },
-      ],
-    },
   ],
   owners: [
     {
@@ -292,46 +278,25 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
   ],
   base_hangar: [
     {
-      title: "Base Airport",
-      groups: [
-        {
-          title: "Home base",
-          fields: [
-            field("proposed_home_base", "Home base / airport"),
-            field("fbo_name", "FBO"),
-          ],
-        },
-      ],
-    },
-    {
       title: "Hangar",
       groups: [
         {
-          title: "Hangar",
+          title: "Hangar cost",
           fields: [
-            field("hangar_pricing_mode", "Hangar price input", {
-              type: "select",
-              options: HANGAR_PRICING_MODE_OPTIONS,
+            field("square_footage", "Square footage", {
+              type: "number",
+              reference: true,
             }),
-            currency("hangar_monthly", "Monthly hangar"),
-            currency("hangar_annual", "Annual hangar"),
+            field("hangar_cost_per_sqft", "Hangar cost ($/sqft/yr)", {
+              type: "number",
+              reference: true,
+            }),
+            currency("hangar_calculated_annual", "Calculated annual hangar", {
+              calculated: true,
+            }),
+            currency("hangar_annual", "Annual hangar override"),
           ],
           proFormaRollup: lineRollup("Hangar", "hangar_pl"),
-        },
-      ],
-    },
-    {
-      title: "Source & Confidence",
-      groups: [
-        {
-          title: "Sources",
-          fields: [
-            field("hangar_source", "Hangar source", {
-              type: "select",
-              options: HANGAR_SOURCE_OPTIONS,
-              demoted: true,
-            }),
-          ],
         },
       ],
     },
@@ -669,7 +634,7 @@ export const TAB_LABELS: Record<AircraftWorkspaceTab, string> = {
   aircraft: "Aircraft",
   owners: "Owners",
   crew_training: "Crew & Training",
-  base_hangar: "Base & Hangar",
+  base_hangar: "Hangar",
   utilization_costs: "Utilization & Operating Costs",
   financing_fees: "Financing & Fees",
   revenue: "Revenue",
@@ -684,7 +649,7 @@ export const TAB_STRIP_LABELS: Record<
   aircraft: "Aircraft",
   owners: "Owners",
   crew_training: "Crew",
-  base_hangar: "Base",
+  base_hangar: "Hangar",
   utilization_costs: "Util. & Costs",
   financing_fees: "Finance",
   revenue: "Revenue",
@@ -709,8 +674,6 @@ export function sectionsForTab(
 ): AircraftTabSection[] {
   return AIRCRAFT_TAB_SECTIONS[tab];
 }
-
-export { hangarFieldActive } from "@/lib/hangar-assumptions";
 
 export function insuranceFieldActive(
   mode: string | undefined,

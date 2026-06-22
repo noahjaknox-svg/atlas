@@ -27,7 +27,17 @@ export function handleApiError(error: unknown) {
     if (error.message === "NOT_FOUND" || error.message === "NO_AIRCRAFT") {
       return jsonError("Not found", 404);
     }
-    return jsonError(error.message, 400);
+    if (isUserFacingErrorMessage(error.message)) {
+      return jsonError(error.message, 400);
+    }
+    console.error(error);
+    return jsonError("Something went wrong. Please try again.", 500);
   }
   return jsonError("Internal server error", 500);
+}
+
+function isUserFacingErrorMessage(message: string): boolean {
+  if (message.length > 240) return false;
+  if (/findUnique|undefined|prisma|TypeError/i.test(message)) return false;
+  return true;
 }

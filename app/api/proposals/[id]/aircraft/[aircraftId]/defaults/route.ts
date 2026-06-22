@@ -5,6 +5,8 @@ import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircra
 import { resolveAircraftDefaults } from "@/lib/resolve-aircraft-defaults";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; aircraftId: string }> }

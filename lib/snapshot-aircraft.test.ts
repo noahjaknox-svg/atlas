@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/resolve-aircraft-defaults", () => ({
+  resolveAircraftDefaults: vi.fn(async () => ({})),
+  resolveEffectiveAssumptionsForInstance: vi.fn(
+    async (_id: string, assumptions: Record<string, string>) => assumptions
+  ),
+}));
+
 import { buildAircraftSnapshotEntry, buildAircraftSnapshotList } from "@/lib/snapshot-aircraft";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
@@ -136,8 +144,8 @@ const visibleAssumptions = baseAssumptionRows.map((row, i) => ({
 }));
 
 describe("buildAircraftSnapshotList", () => {
-  it("returns empty list when no aircraft included", () => {
-    expect(
+  it("returns empty list when no aircraft included", async () => {
+    await expect(
       buildAircraftSnapshotList({
         includedAircraft: [],
         primaryAircraftInstanceId: null,
@@ -145,11 +153,11 @@ describe("buildAircraftSnapshotList", () => {
         allAssumptions: [],
         prospectOpportunityType: "aircraft_management",
       })
-    ).toEqual([]);
+    ).resolves.toEqual([]);
   });
 
-  it("builds one entry for a single included aircraft", () => {
-    const list = buildAircraftSnapshotList({
+  it("builds one entry for a single included aircraft", async () => {
+    const list = await buildAircraftSnapshotList({
       includedAircraft: [mockAircraft("a1", "N123AB")],
       primaryAircraftInstanceId: "a1",
       assumptionRows: baseAssumptionRows.filter((r) => r.category === "ac_a1"),
@@ -164,8 +172,8 @@ describe("buildAircraftSnapshotList", () => {
     expect(list[0]?.metrics.ownerHours).toBe(250);
   });
 
-  it("builds separate entries for multiple aircraft", () => {
-    const list = buildAircraftSnapshotList({
+  it("builds separate entries for multiple aircraft", async () => {
+    const list = await buildAircraftSnapshotList({
       includedAircraft: [mockAircraft("a1", "N111"), mockAircraft("a2", "N222")],
       primaryAircraftInstanceId: "a1",
       assumptionRows: baseAssumptionRows,
@@ -181,7 +189,14 @@ describe("buildAircraftSnapshotList", () => {
 });
 
 describe("normalizeAircraftList", () => {
-  it("synthesizes legacy single-aircraft snapshot", () => {
+  it("synthesizes legacy single-aircraft snapshot", async () => {
+    const entry = await buildAircraftSnapshotEntry({
+      aircraft: mockAircraft("a1", "N99"),
+      assumptionRows: baseAssumptionRows.filter((r) => r.category === "ac_a1"),
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+      isPrimaryLegacy: true,
+    });
     const legacy = {
       version: 1,
       publishedAt: new Date().toISOString(),
@@ -198,13 +213,7 @@ describe("normalizeAircraftList", () => {
       },
       assumptions: {},
       sections: [],
-      proForma: buildAircraftSnapshotEntry({
-        aircraft: mockAircraft("a1", "N99"),
-        assumptionRows: baseAssumptionRows.filter((r) => r.category === "ac_a1"),
-        allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
-        prospectOpportunityType: "aircraft_management",
-        isPrimaryLegacy: true,
-      }).proForma,
+      proForma: entry.proForma,
       metrics: {
         netAnnualCost: 1_000_000,
         netMonthlyCost: 83_333,

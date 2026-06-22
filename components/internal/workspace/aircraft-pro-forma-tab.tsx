@@ -155,14 +155,10 @@ export function AircraftProFormaColumn({
       />
 
       <div className="min-w-0 rounded-lg border border-atlas-border/80 bg-atlas-surface/20">
+        <div className="atlas-workspace-section-header">
+          <h3 className="atlas-panel-title">Operating statement</h3>
+        </div>
         <div className="min-w-0">
-          <div className={cn(COLS, "border-b border-atlas-border/60 bg-atlas-bg/50 px-3 py-2 sm:px-4")}>
-            <span />
-            <span className="atlas-kicker whitespace-nowrap">Operating statement</span>
-            <span />
-            <span />
-            <span />
-          </div>
           <div className="divide-y divide-atlas-border/25">
             {rows.map((row) => {
               if (row.kind === "section") {
@@ -185,7 +181,7 @@ export function AircraftProFormaColumn({
                         <span
                           key={`${row.key}-h-${i}`}
                           className={cn(
-                            "atlas-kicker whitespace-nowrap text-[10px]",
+                            "text-[11px] font-semibold uppercase tracking-wide text-atlas-muted whitespace-nowrap",
                             i >= 2 && "text-right"
                           )}
                         >
@@ -220,29 +216,33 @@ export function AircraftProFormaColumn({
       </div>
 
       {multiOwner ? (
-        <div className="flex flex-col gap-3">
-          <p className="atlas-section-title text-sm">Per-owner economics</p>
+        <div className="flex flex-col gap-4">
+          <h3 className="atlas-panel-title">Per-owner economics</h3>
           {perOwnerEconomics.map((e) => (
             <PerOwnerEconomicsCard key={e.profile.sortOrder} economics={e} />
           ))}
           {perOwnerFinancing.length > 0 ? (
-            <div className="rounded-lg border border-atlas-border/70 bg-atlas-surface/15 p-3">
-              <p className="atlas-kicker mb-2">Financing allocation</p>
-              <ul className="space-y-2 text-sm">
-                {perOwnerFinancing.map((f) => (
-                  <li
-                    key={f.profile.sortOrder}
-                    className="flex flex-wrap justify-between gap-2 border-b border-atlas-border/30 pb-2 last:border-b-0 last:pb-0"
-                  >
-                    <span className="font-medium">{f.profile.displayName}</span>
-                    <span className="font-mono tabular-nums text-atlas-muted">
-                      {formatCurrency(f.monthlyDebtService)}/mo ·{" "}
-                      {formatCurrency(f.impliedEquity)} equity
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <section className="atlas-workspace-section">
+              <div className="atlas-workspace-section-header">
+                <h3 className="atlas-panel-title">Financing allocation</h3>
+              </div>
+              <div className="atlas-workspace-section-body py-3">
+                <ul className="space-y-2 text-sm">
+                  {perOwnerFinancing.map((f) => (
+                    <li
+                      key={f.profile.sortOrder}
+                      className="flex flex-wrap justify-between gap-2 border-b border-atlas-border/30 pb-2 last:border-b-0 last:pb-0"
+                    >
+                      <span className="font-medium">{f.profile.displayName}</span>
+                      <span className="font-mono tabular-nums text-atlas-muted">
+                        {formatCurrency(f.monthlyDebtService)}/mo ·{" "}
+                        {formatCurrency(f.impliedEquity)} equity
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
           ) : null}
         </div>
       ) : null}
@@ -293,7 +293,7 @@ function PerOwnerEconomicsCard({ economics }: { economics: PerOwnerEconomics }) 
       : "—";
 
   return (
-    <div className="rounded-lg border border-atlas-border/80 bg-atlas-surface/20">
+    <section className="atlas-workspace-section overflow-hidden">
       <div className="border-b border-atlas-border/50 px-4 py-3">
         <p className="font-medium text-atlas-text">{economics.profile.displayName}</p>
         <p className="atlas-caption text-atlas-muted">
@@ -324,7 +324,7 @@ function PerOwnerEconomicsCard({ economics }: { economics: PerOwnerEconomics }) 
           </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

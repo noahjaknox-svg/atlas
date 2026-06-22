@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { USAGE_TYPE_OPTIONS, usageTypeToOperatingModel } from "@/lib/aircraft-workspace";
+import { USAGE_TYPE_OPTIONS } from "@/lib/aircraft-workspace";
 
 const DEFAULT_BASE = "SDL";
 const DEFAULT_FBO = "PrismJet";
@@ -84,9 +83,26 @@ export function AddAircraftModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedMaster) {
-      setError("Select an aircraft model");
+      setError("Select an aircraft model from the warehouse.");
       return;
     }
+
+    const base = homeBase.trim().toUpperCase();
+    if (!/^[A-Z0-9]{3,4}$/.test(base)) {
+      setError("Enter a valid home base code (3–4 characters, e.g. SDL or KSDL).");
+      return;
+    }
+
+    if (!fboName.trim()) {
+      setError("Select an FBO at the home base.");
+      return;
+    }
+
+    if (fboOptions.length > 0 && !fboOptions.some((f) => f.label === fboName)) {
+      setError("Choose an FBO from the list for this airport.");
+      return;
+    }
+
     const modelLabel = `${selectedMaster.manufacturer} ${selectedMaster.model}`.trim();
 
     setLoading(true);
@@ -95,8 +111,8 @@ export function AddAircraftModal({
       await onSubmit({
         aircraftModel: modelLabel,
         aircraftMasterId: selectedMaster.id,
-        proposedHomeBase: homeBase.toUpperCase(),
-        fboName,
+        proposedHomeBase: base,
+        fboName: fboName.trim(),
         usageType,
       });
       onOpenChange(false);
@@ -112,14 +128,14 @@ export function AddAircraftModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-atlas-border bg-atlas-surface p-6 shadow-2xl focus:outline-none">
-          <Dialog.Title className="font-serif text-xl">Add aircraft</Dialog.Title>
-          <Dialog.Description className="mt-1 text-sm text-atlas-muted">
+          <Dialog.Title className="atlas-dialog-title">Add aircraft</Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm leading-relaxed text-atlas-muted">
             Model, home base, FBO, and usage — other fields fill from defaults in the editor.
           </Dialog.Description>
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="mt-5 space-y-4">
+          <form onSubmit={(e) => void handleSubmit(e)} className="atlas-form-stack mt-6">
             <SearchableSelect
-              label="Aircraft model *"
+              label="Aircraft model"
               placeholder="Search make & model…"
               value={selectedMaster?.id ?? ""}
               displayValue={
@@ -143,9 +159,12 @@ export function AddAircraftModal({
               }}
             />
 
-            <div className="space-y-1">
-              <Label className="text-xs text-atlas-muted">Home base</Label>
+            <div className="atlas-form-field">
+              <label className="atlas-field-label" htmlFor="add-aircraft-base">
+                Home base
+              </label>
               <input
+                id="add-aircraft-base"
                 type="text"
                 value={homeBase}
                 onChange={(e) => {
@@ -153,18 +172,21 @@ export function AddAircraftModal({
                   setHomeBase(v);
                   if (v.length >= 3) void loadFbos(v);
                 }}
-                className="h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm uppercase focus:border-atlas-accent focus:outline-none"
+                className="atlas-input atlas-input-mono uppercase"
                 placeholder="SDL"
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs text-atlas-muted">FBO</Label>
+            <div className="atlas-form-field">
+              <label className="atlas-field-label" htmlFor="add-aircraft-fbo">
+                FBO
+              </label>
               {fboOptions.length > 0 ? (
                 <select
+                  id="add-aircraft-fbo"
                   value={fboName}
                   onChange={(e) => setFboName(e.target.value)}
-                  className="h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm focus:border-atlas-accent focus:outline-none"
+                  className="atlas-input"
                 >
                   {fboOptions.map((f) => (
                     <option key={f.id} value={f.label}>
@@ -174,20 +196,24 @@ export function AddAircraftModal({
                 </select>
               ) : (
                 <input
+                  id="add-aircraft-fbo"
                   type="text"
                   value={fboName}
                   onChange={(e) => setFboName(e.target.value)}
-                  className="h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm focus:border-atlas-accent focus:outline-none"
+                  className="atlas-input"
                 />
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs text-atlas-muted">Usage type</Label>
+            <div className="atlas-form-field">
+              <label className="atlas-field-label" htmlFor="add-aircraft-usage">
+                Usage type
+              </label>
               <select
+                id="add-aircraft-usage"
                 value={usageType}
                 onChange={(e) => setUsageType(e.target.value)}
-                className="h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm focus:border-atlas-accent focus:outline-none"
+                className="atlas-input"
               >
                 {USAGE_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -197,8 +223,12 @@ export function AddAircraftModal({
               </select>
             </div>
 
-            {error && <p className="text-sm text-atlas-danger">{error}</p>}
-            <div className="flex justify-end gap-2 pt-2">
+            {error ? (
+              <p className="rounded-md border border-atlas-danger/30 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">
+                {error}
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2 border-t border-atlas-border/60 pt-4">
               <Dialog.Close asChild>
                 <Button type="button" variant="secondary">
                   Cancel

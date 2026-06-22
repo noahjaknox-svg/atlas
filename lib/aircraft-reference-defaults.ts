@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/company-settings";
+import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
 
 /**
  * Resolve database-backed pro forma defaults for a warehouse aircraft, plus the
@@ -35,6 +36,7 @@ export async function loadAircraftReferenceDefaults(params: {
 
   // General / finances
   set("passenger_capacity", aircraft.passengerCapacity);
+  set("square_footage", aircraft.squareFootage);
   set("aircraft_value", aircraft.averageCost);
   set("charter_rate", aircraft.charterHourlyRate);
   set("fuel_surcharge", aircraft.fuelSurcharge);
@@ -103,10 +105,7 @@ export async function loadAircraftReferenceDefaults(params: {
 
   const icao = params.airportIcao?.toUpperCase();
   if (icao) {
-    const fbos = await prisma.fbo.findMany({
-      where: { airportIcao: { equals: icao, mode: "insensitive" } },
-      orderBy: { fboName: "asc" },
-    });
+    const fbos = await findFbosAtAirport(icao);
 
     let fboPick = fbos[0] ?? null;
     const wantedFbo = params.fboName?.trim();
@@ -119,6 +118,9 @@ export async function loadAircraftReferenceDefaults(params: {
       map.fbo_name = fboPick.fboName;
       map.home_fuel_price = fboPick.baseFuelRate.toString();
       map.fuel_source = "fbo_base";
+      if (fboPick.hangarCostPerSqft != null) {
+        set("hangar_cost_per_sqft", Number(fboPick.hangarCostPerSqft));
+      }
 
       const override = await prisma.fboHangarOverride.findUnique({
         where: {

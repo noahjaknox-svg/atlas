@@ -5,7 +5,7 @@ import {
 } from "@/lib/aircraft-calculated-fields";
 import {
   resolveHangarAnnual,
-  resolveHangarPricingMode,
+  computeHangarCalculatedAnnual,
 } from "@/lib/hangar-assumptions";
 import { calculateProForma } from "@/lib/proforma";
 
@@ -38,26 +38,37 @@ describe("resolveCrewTrainingTotal", () => {
 });
 
 describe("resolveHangarAnnual", () => {
-  it("uses monthly × 12 in monthly mode", () => {
-    expect(
-      resolveHangarAnnual({
-        hangar_pricing_mode: "monthly",
-        hangar_monthly: "5000",
-      })
-    ).toBe(60000);
+  it("uses annual override when set", () => {
+    expect(resolveHangarAnnual({ hangar_annual: "72000" })).toBe(72000);
   });
 
-  it("uses annual total in annual mode", () => {
+  it("computes from square footage and FBO rate", () => {
     expect(
       resolveHangarAnnual({
-        hangar_pricing_mode: "annual",
+        square_footage: "4550",
+        hangar_cost_per_sqft: "4.91",
+      })
+    ).toBe(22341);
+  });
+
+  it("prefers explicit annual override over calculated sqft rate", () => {
+    expect(
+      resolveHangarAnnual({
         hangar_annual: "72000",
+        square_footage: "4550",
+        hangar_cost_per_sqft: "4.91",
       })
     ).toBe(72000);
   });
 
-  it("defaults to monthly mode", () => {
-    expect(resolveHangarPricingMode(undefined)).toBe("monthly");
+  it("falls back to monthly × 12 for legacy data", () => {
+    expect(resolveHangarAnnual({ hangar_monthly: "5000" })).toBe(60000);
+  });
+});
+
+describe("computeHangarCalculatedAnnual", () => {
+  it("returns zero when inputs are missing", () => {
+    expect(computeHangarCalculatedAnnual({})).toBe(0);
   });
 });
 

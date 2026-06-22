@@ -15,7 +15,7 @@ import {
   computeUtilizationProfile,
   syncUtilizationHours,
 } from "@/lib/proforma-utilization";
-import { resolveHangarAnnual, resolveHangarPricingMode } from "@/lib/hangar-assumptions";
+import { computeHangarCalculatedAnnual, resolveHangarAnnual } from "@/lib/hangar-assumptions";
 import { formatCurrency } from "@/lib/utils";
 
 function num(v: string | undefined, fallback = 0): number {
@@ -31,10 +31,6 @@ function count(v: string | undefined, fallback = 1): number {
 /** Fields auto-computed in the workspace (shown read-only). */
 export function isCalculatedField(name: string, assumptions?: AssumptionMap): boolean {
   if (CALCULATED_ASSUMPTION_KEYS.has(name)) return true;
-  if (!assumptions) return false;
-  const hangarMode = resolveHangarPricingMode(assumptions.hangar_pricing_mode);
-  if (name === "hangar_annual") return hangarMode === "monthly";
-  if (name === "hangar_monthly") return hangarMode === "annual";
   return false;
 }
 
@@ -53,6 +49,7 @@ export const CALCULATED_ASSUMPTION_KEYS = new Set([
   "registration_annual",
   "fet_refund_amount",
   "jet_fuel_tax_credit_per_hour",
+  "hangar_calculated_annual",
 ]);
 
 /** Legacy keys kept in DB but not shown in the UI. */
@@ -84,6 +81,9 @@ export const HIDDEN_LEGACY_ASSUMPTION_KEYS = new Set([
   "pilot_charter_incentive",
   "charter_block_hours",
   "charter_flight_hours",
+  "hangar_pricing_mode",
+  "hangar_source",
+  "hangar_monthly",
 ]);
 
 /** Per-pilot training annual × headcount; falls back to legacy crew_training if unset. */
@@ -204,18 +204,12 @@ export function computeMonthlyDebtService(a: AssumptionMap): number | null {
 export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<AssumptionMap> {
   const derived: Partial<AssumptionMap> = {};
 
-  const hangarMode = resolveHangarPricingMode(assumptions.hangar_pricing_mode);
-  if (hangarMode === "monthly") {
-    const hangarMonthly = num(assumptions.hangar_monthly);
-    if (hangarMonthly > 0) {
-      derived.hangar_annual = String(Math.round(hangarMonthly * 12));
-    }
-  } else {
-    const hangarAnnual = num(assumptions.hangar_annual);
-    if (hangarAnnual > 0) {
-      derived.hangar_monthly = String(Math.round(hangarAnnual / 12));
-    }
+  const hangarAnnual = resolveHangarAnnual(assumptions);
+  if (hangarAnnual > 0) {
+    derived.hangar_monthly = String(Math.round(hangarAnnual / 12));
   }
+
+  derived.hangar_calculated_annual = String(computeHangarCalculatedAnnual(assumptions));
 
   const homeFuel = num(assumptions.home_fuel_price);
   const awayFuel = num(assumptions.away_fuel_price);

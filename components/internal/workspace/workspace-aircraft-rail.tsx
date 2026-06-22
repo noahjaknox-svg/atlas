@@ -15,6 +15,7 @@ export function WorkspaceAircraftRail({
   onToggleIncluded,
   onRemove,
   onDuplicate,
+  onRefreshWarehouse,
   readOnly = false,
 }: {
   aircraft: AircraftListItem[];
@@ -25,6 +26,7 @@ export function WorkspaceAircraftRail({
   onToggleIncluded: (id: string, included: boolean) => void;
   onRemove?: (id: string) => void;
   onDuplicate?: (id: string) => void;
+  onRefreshWarehouse?: (id: string) => void;
   readOnly?: boolean;
 }) {
   return (
@@ -91,6 +93,9 @@ export function WorkspaceAircraftRail({
                   {!readOnly ? (
                     <AircraftChipActionsMenu
                       onDuplicate={onDuplicate ? () => onDuplicate(ac.id) : undefined}
+                      onRefreshWarehouse={
+                        onRefreshWarehouse ? () => onRefreshWarehouse(ac.id) : undefined
+                      }
                       onRemove={onRemove ? () => onRemove(ac.id) : undefined}
                       triggerClassName="opacity-70 group-hover/chip:opacity-100 data-[open]:opacity-100"
                     />

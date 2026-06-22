@@ -47,8 +47,8 @@ export function SearchableSelect({
   }, []);
 
   return (
-    <div ref={wrapRef} className="relative space-y-1">
-      <label className="atlas-kicker block">{label}</label>
+    <div ref={wrapRef} className="atlas-form-field relative">
+      <label className="atlas-field-label">{label}</label>
       <input
         type="text"
         disabled={disabled}
@@ -63,10 +63,7 @@ export function SearchableSelect({
           setOpen(true);
           if (!query) onSearch("");
         }}
-        className={cn(
-          "atlas-input",
-          compact && "h-9"
-        )}
+        className={cn("atlas-input", compact && "h-9")}
       />
       {open && (options.length > 0 || loading) && (
         <ul className="atlas-scroll absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg">

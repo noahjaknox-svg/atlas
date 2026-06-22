@@ -34,16 +34,16 @@ export function OwnerControlsStrip({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      <div className="flex items-center gap-2">
-        <label className="atlas-kicker shrink-0" htmlFor="owner-count">
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-8 sm:gap-y-3">
+      <div className="atlas-form-field min-w-[8rem]">
+        <label className="atlas-field-label" htmlFor="owner-count">
           Owner count
         </label>
         <select
           id="owner-count"
           value={count}
           onChange={(e) => setCount(parseInt(e.target.value, 10))}
-          className="atlas-input w-[5.5rem]"
+          className="atlas-input w-full sm:w-[5.5rem]"
         >
           {Array.from({ length: MAX_OWNER_COUNT }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>
@@ -52,8 +52,8 @@ export function OwnerControlsStrip({
           ))}
         </select>
       </div>
-      <div className="flex min-w-0 items-center gap-2">
-        <label className="atlas-kicker shrink-0" htmlFor="allocation-mode">
+      <div className="atlas-form-field min-w-0 flex-1 sm:max-w-md">
+        <label className="atlas-field-label" htmlFor="allocation-mode">
           Expense allocation
         </label>
         <select
@@ -62,7 +62,7 @@ export function OwnerControlsStrip({
           onChange={(e) =>
             onAllocationModeChange(e.target.value as OwnerExpenseAllocationMode)
           }
-          className="atlas-input min-w-[12rem] max-w-md"
+          className="atlas-input w-full"
         >
           {ALLOCATION_MODE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -79,13 +79,11 @@ export function OwnerSplitsTable({
   profiles,
   maxAnnualUtilization,
   onProfilesChange,
-  fullWidth = false,
   defaultHours = 400,
 }: {
   profiles: ProposalOwnerProfile[];
   maxAnnualUtilization: number;
   onProfilesChange: (next: ProposalOwnerProfile[]) => void;
-  fullWidth?: boolean;
   defaultHours?: number;
 }) {
   const count = profiles.length;
@@ -100,25 +98,20 @@ export function OwnerSplitsTable({
   }
 
   return (
-    <div className={cn("space-y-3", !fullWidth && "border-t border-atlas-border/60 pt-3")}>
-      <div
-        className={cn(
-          "overflow-hidden rounded-md border border-atlas-border/70",
-          fullWidth && "bg-atlas-surface/20"
-        )}
-      >
-        <table className="w-full text-sm">
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-md border border-atlas-border/70 bg-atlas-bg/20">
+        <table className="atlas-data-table">
           <thead>
-            <tr className="border-b border-atlas-border/60 bg-atlas-bg/40">
-              <th className="px-3 py-2 text-left atlas-kicker font-normal">Owner</th>
-              <th className="w-32 px-3 py-2 text-right atlas-kicker font-normal">Flight hours</th>
-              <th className="w-28 px-3 py-2 text-right atlas-kicker font-normal">Equity %</th>
+            <tr>
+              <th>Owner</th>
+              <th className="text-right">Flight hours</th>
+              <th className="text-right">Equity %</th>
             </tr>
           </thead>
           <tbody>
             {profiles.map((p, i) => (
-              <tr key={i} className="border-b border-atlas-border/40 last:border-b-0">
-                <td className="px-3 py-2">
+              <tr key={i}>
+                <td>
                   <input
                     type="text"
                     className="atlas-input w-full"
@@ -127,11 +120,11 @@ export function OwnerSplitsTable({
                     aria-label={`Owner ${i + 1} name`}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td>
                   <HoursInput
                     min={0}
                     step={1}
-                    className="atlas-input w-full text-right"
+                    className="atlas-input atlas-input-mono w-full text-right"
                     value={Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0}
                     onChange={(hours) =>
                       patchProfile(i, {
@@ -141,9 +134,9 @@ export function OwnerSplitsTable({
                     aria-label={`${p.displayName} flight hours`}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td>
                   {count === 1 ? (
-                    <span className="block text-right font-mono tabular-nums text-atlas-muted">
+                    <span className="block text-right font-mono text-sm tabular-nums text-atlas-muted">
                       100%
                     </span>
                   ) : (
@@ -152,7 +145,7 @@ export function OwnerSplitsTable({
                       min={0}
                       max={100}
                       step={0.1}
-                      className="atlas-input w-full text-right"
+                      className="atlas-input atlas-input-mono w-full text-right"
                       value={Number.isFinite(p.ownershipPercent) ? p.ownershipPercent : ""}
                       onChange={(e) =>
                         patchProfile(i, {
@@ -169,7 +162,7 @@ export function OwnerSplitsTable({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs leading-relaxed">
         <p className="text-atlas-muted">
           Total owner hours:{" "}
           <span className="font-mono tabular-nums text-atlas-text">

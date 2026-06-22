@@ -7,6 +7,8 @@ import {
   USAGE_TYPE_OPTIONS,
   usageTypeToOperatingModel,
 } from "@/lib/aircraft-workspace";
+import { applyWarehouseDefaults, warehouseDefaultsBaseline } from "@/lib/warehouse-assumption-seed";
+import { buildDefaultsQueryParams } from "@/lib/build-defaults-query";
 import type { AssumptionMap } from "@/lib/assumptions";
 
 type MasterRow = {
@@ -23,13 +25,13 @@ export function AircraftSetupBar({
   aircraftId,
   assumptions,
   onApplyDefaults,
-  onDefaultsRefresh,
+  onWarehouseDefaultsSeeded,
 }: {
   proposalId: string;
   aircraftId: string;
   assumptions: AssumptionMap;
   onApplyDefaults: (patch: Partial<AssumptionMap>, instancePatch?: Record<string, unknown>) => void;
-  onDefaultsRefresh?: () => void;
+  onWarehouseDefaultsSeeded?: (defaults: Record<string, string>) => void;
 }) {
   const [masterOptions, setMasterOptions] = useState<{ id: string; label: string }[]>([]);
   const [airportOptions, setAirportOptions] = useState<{ id: string; label: string }[]>([]);
@@ -105,11 +107,14 @@ export function AircraftSetupBar({
           }),
         });
 
-        const params = new URLSearchParams();
-        if (icao) params.set("homeIcao", icao);
-        if (fbo) params.set("fboName", fbo);
-        if (usage) params.set("usageType", usage);
-        if (master?.id) params.set("warehouseAircraftId", master.id);
+        const params = buildDefaultsQueryParams({
+          ...assumptions,
+          home_airport_icao: icao.toUpperCase(),
+          proposed_home_base: icao.toUpperCase(),
+          fbo_name: fbo,
+          usage_type: usage,
+          ...(master?.id ? { aircraft_master_id: master.id } : {}),
+        });
 
         const res = await fetch(
           `/api/proposals/${proposalId}/aircraft/${aircraftId}/defaults?${params.toString()}`
@@ -117,14 +122,23 @@ export function AircraftSetupBar({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json.defaults) return;
 
+        const defaults = json.defaults as Record<string, string>;
+        const baseline = warehouseDefaultsBaseline(defaults);
+        const seeded = applyWarehouseDefaults(assumptions, defaults, "seed");
+
         onApplyDefaults(
           {
-            ...json.defaults,
+            ...seeded,
             usage_type: usage,
             operating_model: usageTypeToOperatingModel(usage),
             fbo_name: fbo,
             home_airport_icao: icao.toUpperCase(),
             proposed_home_base: icao.toUpperCase(),
+            ...(master?.id ? { aircraft_master_id: master.id } : {}),
+            hangar_annual: "",
+            hangar_monthly: "",
+            hangar_pricing_mode: "",
+            hangar_source: "",
           },
           {
             proposedHomeBaseIcao: icao || undefined,
@@ -132,12 +146,12 @@ export function AircraftSetupBar({
             aircraftMasterId: master?.id,
           }
         );
-        onDefaultsRefresh?.();
+        onWarehouseDefaultsSeeded?.(baseline);
       } finally {
         setApplying(false);
       }
     },
-    [proposalId, aircraftId, onApplyDefaults, onDefaultsRefresh]
+    [proposalId, aircraftId, assumptions, onApplyDefaults, onWarehouseDefaultsSeeded]
   );
 
   useEffect(() => {
@@ -176,8 +190,8 @@ export function AircraftSetupBar({
   });
 
   return (
-    <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/40 px-4 py-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/40 px-4 py-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SearchableSelect
           label="Aircraft type"
           placeholder="Search…"
@@ -221,10 +235,13 @@ export function AircraftSetupBar({
             void applyBundle(selectedMaster, icao, fboName, usageType);
           }}
         />
-        <div className="space-y-1">
-          <label className="atlas-kicker block">FBO</label>
+        <div className="atlas-form-field">
+          <label className="atlas-field-label" htmlFor="setup-fbo">
+            FBO
+          </label>
           {fboOptions.length > 0 ? (
             <select
+              id="setup-fbo"
               value={fboName}
               disabled={applying}
               onChange={(e) => {
@@ -251,9 +268,12 @@ export function AircraftSetupBar({
             />
           )}
         </div>
-        <div className="space-y-1">
-          <label className="atlas-kicker block">Usage type</label>
+        <div className="atlas-form-field">
+          <label className="atlas-field-label" htmlFor="setup-usage">
+            Usage type
+          </label>
           <select
+            id="setup-usage"
             value={usageType}
             disabled={applying}
             onChange={(e) => {

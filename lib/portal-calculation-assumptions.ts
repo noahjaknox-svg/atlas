@@ -10,6 +10,7 @@ import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import { normalizeAircraftList } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
 import { buildEffectiveAssumptions } from "./resolve-effective-assumptions";
+import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 import { resolveAircraftDefaults } from "./resolve-aircraft-defaults";
 
 const CLIENT_OVERRIDE_KEYS = new Set(["aircraft_value", "owner_annual_hours"]);
@@ -110,11 +111,7 @@ export async function resolvePortalCalculationMap(
   }
 
   if (resolvedInstanceId) {
-    const defaults = await resolveAircraftDefaults({
-      aircraftInstanceId: resolvedInstanceId,
-      assumptions: full,
-    });
-    full = buildEffectiveAssumptions(full, defaults);
+    full = await resolveEffectiveAssumptionsForInstance(resolvedInstanceId, full);
   } else {
     full = buildEffectiveAssumptions(full, {});
   }

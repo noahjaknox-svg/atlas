@@ -1,6 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
 import {
   enrichAirportReference,
   findAirportReferenceByCode,
@@ -21,10 +22,7 @@ export async function GET(
     const reference = await findAirportReferenceByCode(prisma, icao);
     if (!reference) return jsonError("Airport not found", 404);
 
-    const fbos = await prisma.fbo.findMany({
-      where: { airportIcao: { equals: code, mode: "insensitive" } },
-      orderBy: { fboName: "asc" },
-    });
+    const fbos = await findFbosAtAirport(code);
 
     // Cheapest base fuel rate at the field, if any FBOs are on file.
     const fuelPrice =

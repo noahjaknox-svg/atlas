@@ -14,6 +14,7 @@ import {
 import type { AircraftSnapshotEntry, AircraftSnapshotMetrics } from "./portal-aircraft-types";
 import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
+import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 
 type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
 
@@ -38,14 +39,14 @@ function clientVisibleAssumptions(
   return clientAssumptions;
 }
 
-export function buildAircraftSnapshotEntry(args: {
+export async function buildAircraftSnapshotEntry(args: {
   aircraft: AircraftWithMaster;
   assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
   allAssumptions: ProposalAssumption[];
   prospectOpportunityType: string;
   isPrimaryLegacy: boolean;
   scenario?: ProposalScenario | null;
-}): AircraftSnapshotEntry {
+}): Promise<AircraftSnapshotEntry> {
   const { aircraft, assumptionRows, allAssumptions, prospectOpportunityType, isPrimaryLegacy } =
     args;
   const category = aircraftAssumptionCategory(aircraft.id);
@@ -71,7 +72,8 @@ export function buildAircraftSnapshotEntry(args: {
       : null,
   };
 
-  const fullMap = { ...assumptionsFromInstance(meta), ...map };
+  let fullMap = { ...assumptionsFromInstance(meta), ...map };
+  fullMap = await resolveEffectiveAssumptionsForInstance(aircraft.id, fullMap);
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
   const master = aircraft.warehouseAircraft;
@@ -100,23 +102,25 @@ export function buildAircraftSnapshotEntry(args: {
   };
 }
 
-export function buildAircraftSnapshotList(args: {
+export async function buildAircraftSnapshotList(args: {
   includedAircraft: AircraftWithMaster[];
   primaryAircraftInstanceId: string | null;
   assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
   allAssumptions: ProposalAssumption[];
   prospectOpportunityType: string;
-}): AircraftSnapshotEntry[] {
+}): Promise<AircraftSnapshotEntry[]> {
   const { includedAircraft, primaryAircraftInstanceId, assumptionRows, allAssumptions, prospectOpportunityType } =
     args;
 
-  return includedAircraft.map((aircraft) =>
-    buildAircraftSnapshotEntry({
-      aircraft,
-      assumptionRows,
-      allAssumptions,
-      prospectOpportunityType,
-      isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
-    })
+  return Promise.all(
+    includedAircraft.map((aircraft) =>
+      buildAircraftSnapshotEntry({
+        aircraft,
+        assumptionRows,
+        allAssumptions,
+        prospectOpportunityType,
+        isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
+      })
+    )
   );
 }

@@ -32,13 +32,10 @@ export const ESTIMATED_DEFAULTS: Record<string, string> = {
 
   proposed_home_base: "SDL",
   fbo_name: "PrismJet",
-  hangar_monthly: "4500",
   home_fuel_price: "6.85",
   away_fuel_price: "7.25",
   home_fuel_pct: "70",
   fuel_source: "fbo_retail",
-  hangar_source: "data_hub",
-  hangar_pricing_mode: "monthly",
 
   default_owner_hours: "400",
   owner_annual_hours: "400",

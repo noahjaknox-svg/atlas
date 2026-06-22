@@ -4,15 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
-const MENU_WIDTH = 132;
+const MENU_WIDTH = 168;
 
 export function AircraftChipActionsMenu({
   onDuplicate,
+  onRefreshWarehouse,
   onRemove,
   className,
   triggerClassName,
 }: {
   onDuplicate?: () => void;
+  onRefreshWarehouse?: () => void;
   onRemove?: () => void;
   className?: string;
   triggerClassName?: string;
@@ -45,7 +47,7 @@ export function AircraftChipActionsMenu({
     };
   }, [menuOpen]);
 
-  if (!onDuplicate && !onRemove) return null;
+  if (!onDuplicate && !onRefreshWarehouse && !onRemove) return null;
 
   const menu =
     menuOpen && mounted ? (
@@ -58,25 +60,43 @@ export function AircraftChipActionsMenu({
         />
         <div
           role="menu"
-          className="fixed z-[201] min-w-[8.25rem] overflow-hidden rounded-md border border-atlas-border bg-atlas-surface py-1 text-xs shadow-2xl ring-1 ring-black/40"
+          className="fixed z-[201] min-w-[10.5rem] overflow-hidden rounded-md border border-atlas-border bg-atlas-surface py-1 text-xs shadow-2xl ring-1 ring-black/40"
           style={{ top: menuPos.top, left: menuPos.left, width: MENU_WIDTH }}
         >
-          {onDuplicate ? (
+          {onRefreshWarehouse ? (
             <button
               type="button"
               role="menuitem"
               className="block w-full px-3 py-2 text-left text-atlas-text transition-colors hover:bg-atlas-border/60"
               onClick={() => {
                 setMenuOpen(false);
-                onDuplicate();
+                onRefreshWarehouse();
               }}
             >
-              Duplicate
+              Refresh warehouse data
             </button>
+          ) : null}
+          {onDuplicate ? (
+            <>
+              {onRefreshWarehouse ? (
+                <div className="my-1 border-t border-atlas-border/70" aria-hidden />
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-atlas-text transition-colors hover:bg-atlas-border/60"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDuplicate();
+                }}
+              >
+                Duplicate
+              </button>
+            </>
           ) : null}
           {onRemove ? (
             <>
-              {onDuplicate ? (
+              {onDuplicate || onRefreshWarehouse ? (
                 <div className="my-1 border-t border-atlas-border/70" aria-hidden />
               ) : null}
               <button

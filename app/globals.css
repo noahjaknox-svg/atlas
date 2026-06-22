@@ -155,7 +155,35 @@
   }
 
   .atlas-kicker {
-    @apply text-xs font-semibold uppercase tracking-wide text-atlas-muted;
+    @apply text-xs font-medium leading-none text-atlas-muted;
+  }
+
+  .atlas-field-label {
+    @apply block text-xs font-medium leading-none text-atlas-muted;
+  }
+
+  .atlas-panel-title {
+    @apply text-sm font-semibold leading-snug tracking-tight text-atlas-accent;
+  }
+
+  .atlas-workspace-section {
+    @apply rounded-lg border border-atlas-border/80 bg-atlas-surface/10;
+  }
+
+  .atlas-workspace-section-header {
+    @apply border-b border-atlas-border/60 bg-atlas-surface/25 px-4 py-2.5;
+  }
+
+  .atlas-workspace-section-body {
+    @apply p-4;
+  }
+
+  .atlas-form-stack {
+    @apply space-y-4;
+  }
+
+  .atlas-form-field {
+    @apply space-y-1.5;
   }
 
   .atlas-caption {
@@ -183,7 +211,11 @@
   }
 
   .atlas-input {
-    @apply h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm tabular-nums text-atlas-text shadow-sm focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/25;
+    @apply h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm text-atlas-text shadow-sm placeholder:text-atlas-muted/50 focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/25;
+  }
+
+  .atlas-input-mono {
+    @apply font-mono tabular-nums;
   }
 
   /** Configurator assumption table (Field | Pulled / Default | Override) */
@@ -192,12 +224,12 @@
   }
 
   .atlas-field-grid {
-    @apply grid h-9 items-center gap-x-2 px-3;
-    grid-template-columns: minmax(0, 1fr) 6.75rem 6.75rem;
+    @apply grid min-h-10 items-center gap-x-3 px-4 py-1;
+    grid-template-columns: minmax(0, 1.35fr) minmax(7.5rem, 1fr) minmax(7.5rem, 1fr);
   }
 
   .atlas-config-th {
-    @apply atlas-field-grid border-b border-atlas-border/70 bg-atlas-surface/40 text-[10px] font-semibold uppercase tracking-wider text-atlas-muted;
+    @apply atlas-field-grid min-h-9 border-b border-atlas-border/70 bg-atlas-surface/40 py-2 text-[11px] font-semibold uppercase tracking-wide text-atlas-muted;
   }
 
   .atlas-config-th-value {
@@ -209,11 +241,11 @@
   }
 
   .atlas-config-group-header {
-    @apply block w-full border-b border-atlas-border/50 bg-atlas-surface/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-atlas-text;
+    @apply block w-full border-b border-atlas-border/50 bg-atlas-surface/25 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-atlas-text;
   }
 
   .atlas-config-row {
-    @apply atlas-field-grid border-b border-atlas-border/15 transition-colors;
+    @apply atlas-field-grid border-b border-atlas-border/15 transition-colors hover:bg-atlas-surface/5;
   }
 
   .atlas-config-row-calculated {
@@ -229,11 +261,11 @@
   }
 
   .atlas-config-col-value {
-    @apply flex h-9 min-w-0 items-center justify-end;
+    @apply flex min-h-9 min-w-0 items-center justify-end;
   }
 
   .atlas-config-value {
-    @apply max-w-full truncate text-right font-mono text-[13px] tabular-nums leading-none text-atlas-muted;
+    @apply max-w-full truncate text-right font-mono text-sm tabular-nums leading-none text-atlas-muted;
   }
 
   .atlas-config-value-active {
@@ -241,15 +273,15 @@
   }
 
   .atlas-config-use-default {
-    @apply text-right text-[12px] italic text-atlas-muted/70;
+    @apply text-right text-xs text-atlas-muted/70;
   }
 
   .atlas-config-calc-pill {
-    @apply inline-flex max-w-full items-center justify-end rounded border border-atlas-accent/25 bg-atlas-accent/10 px-2 py-0.5 font-mono text-[13px] tabular-nums leading-none text-atlas-accent;
+    @apply inline-flex max-w-full items-center justify-end rounded border border-atlas-accent/25 bg-atlas-accent/10 px-2 py-0.5 font-mono text-sm tabular-nums leading-none text-atlas-accent;
   }
 
   .atlas-config-input {
-    @apply h-7 w-full max-w-[6.75rem] rounded border border-atlas-border/80 bg-atlas-bg px-2 text-right font-mono text-[13px] tabular-nums text-atlas-text shadow-none focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
+    @apply h-8 w-full max-w-[7.5rem] rounded-md border border-atlas-border/80 bg-atlas-bg px-2.5 text-right font-mono text-sm tabular-nums text-atlas-text shadow-none placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:not-italic placeholder:text-atlas-muted/45 focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
   }
 
   .atlas-config-input-override {
@@ -257,7 +289,47 @@
   }
 
   .atlas-config-select {
-    @apply h-7 w-full max-w-[6.75rem] cursor-pointer rounded border border-atlas-border/80 bg-atlas-bg px-1.5 text-right text-[12px] text-atlas-text focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
+    @apply h-8 w-full max-w-[7.5rem] cursor-pointer rounded-md border border-atlas-border/80 bg-atlas-bg px-2 text-right text-sm text-atlas-text focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
+  }
+
+  .atlas-section-title {
+    @apply font-serif text-lg tracking-tight text-atlas-accent;
+  }
+
+  .atlas-dialog-title {
+    @apply text-lg font-semibold leading-snug tracking-tight text-atlas-text;
+  }
+
+  .atlas-group-title {
+    @apply text-sm font-semibold leading-snug text-atlas-text;
+  }
+
+  .atlas-tab {
+    @apply shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors;
+  }
+
+  .atlas-tab-strip {
+    @apply flex w-full min-w-0 items-stretch justify-between gap-0 border-b border-atlas-border bg-atlas-surface/20;
+  }
+
+  .atlas-tab-strip .atlas-tab {
+    @apply min-w-0 flex-1 whitespace-nowrap px-2 py-2.5 text-center text-xs sm:text-sm;
+  }
+
+  .atlas-data-table {
+    @apply w-full text-sm;
+  }
+
+  .atlas-data-table thead tr {
+    @apply border-b border-atlas-border/60 bg-atlas-bg/40;
+  }
+
+  .atlas-data-table th {
+    @apply px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-atlas-muted;
+  }
+
+  .atlas-data-table td {
+    @apply border-b border-atlas-border/30 px-4 py-2 align-middle last:border-b-0;
   }
 
   .atlas-proforma-grid {
@@ -266,26 +338,6 @@
 
   .atlas-proforma-line {
     @apply min-w-0 truncate whitespace-nowrap text-sm leading-none;
-  }
-
-  .atlas-section-title {
-    @apply font-serif text-xl tracking-tight text-atlas-accent;
-  }
-
-  .atlas-group-title {
-    @apply text-sm font-semibold tracking-wide text-atlas-text;
-  }
-
-  .atlas-tab {
-    @apply shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors;
-  }
-
-  .atlas-tab-strip {
-    @apply flex w-full min-w-0 items-stretch justify-between gap-0 border-b border-atlas-border;
-  }
-
-  .atlas-tab-strip .atlas-tab {
-    @apply min-w-0 flex-1 whitespace-nowrap px-1.5 text-center text-xs sm:px-2 sm:text-sm;
   }
 }
 

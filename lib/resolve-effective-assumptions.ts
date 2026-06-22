@@ -10,6 +10,10 @@ import {
   mergeWithDerived,
 } from "@/lib/aircraft-calculated-fields";
 import { isCharterUsageEnabled } from "@/lib/usage-type";
+import {
+  computeHangarCalculatedAnnual,
+  stripLegacyEstimatedHangar,
+} from "@/lib/hangar-assumptions";
 
 /** Keys cleared to "0" for Part 91 — restore from defaults when charter is enabled again. */
 const CHARTER_ZERO_RESTORE_KEYS = new Set([
@@ -65,7 +69,9 @@ export function buildEffectiveAssumptions(
   assumptions: AssumptionMap,
   defaults: Record<string, string>
 ): AssumptionMap {
-  return mergeWithDerived(mergeAssumptionsWithDefaults(assumptions, defaults));
+  return mergeWithDerived(
+    mergeAssumptionsWithDefaults(stripLegacyEstimatedHangar(assumptions), defaults)
+  );
 }
 
 const CALCULATED_DISPLAY: Record<string, (a: AssumptionMap) => number> = {
@@ -76,6 +82,7 @@ const CALCULATED_DISPLAY: Record<string, (a: AssumptionMap) => number> = {
   pic_training_total: computePicTrainingTotal,
   sic_training_total: computeSicTrainingTotal,
   crew_training_total: computeCrewTrainingTotalAmount,
+  hangar_calculated_annual: computeHangarCalculatedAnnual,
 };
 
 /** Numeric value for a derived key (always recomputed from resolved inputs). */

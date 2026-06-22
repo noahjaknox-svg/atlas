@@ -7,6 +7,7 @@ import {
 } from "@/lib/proforma";
 import { ensureThreeScenarios, scenarioInputsFromDb } from "@/lib/scenarios";
 import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { resolveEffectiveAssumptionsForInstance } from "@/lib/resolve-aircraft-defaults";
 
 export type ProFormaPayload = {
   scenarios: ScenarioProFormaResult[];
@@ -30,7 +31,7 @@ export async function loadProFormaData(
   ]);
 
   const category = aircraftAssumptionCategory(aircraftInstanceId);
-  const map = mergeLegacyAssumptions(
+  let map = mergeLegacyAssumptions(
     assumptions.map((a) => ({
       category: a.category,
       assumptionName: a.assumptionName,
@@ -38,6 +39,7 @@ export async function loadProFormaData(
     })),
     category
   );
+  map = await resolveEffectiveAssumptionsForInstance(aircraftInstanceId, map);
 
   const baseInputs = assumptionsToProFormaInputs(map);
   const scenarioInputs = scenarioInputsFromDb(scenarioRows);

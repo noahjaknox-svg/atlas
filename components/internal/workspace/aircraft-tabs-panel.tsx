@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { AircraftSetupBar } from "@/components/internal/workspace/aircraft-setup-panel";
@@ -12,7 +12,6 @@ import { AssumptionsSectionTable } from "@/components/internal/workspace/assumpt
 import { effectiveFieldValue } from "@/components/internal/workspace/default-override-field";
 import { AircraftProFormaColumn } from "@/components/internal/workspace/aircraft-pro-forma-tab";
 import { isCalculatedField } from "@/lib/aircraft-calculated-fields";
-import { hangarFieldActive } from "@/lib/hangar-assumptions";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 import { OwnerFinancingSplitPanel } from "@/components/internal/workspace/owner-financing-split-panel";
@@ -44,8 +43,10 @@ export function AircraftTabsPanel({
   proposalId,
   aircraftId,
   assumptions,
+  warehouseDefaults,
   onAssumptionsChange,
   onApplySetupDefaults,
+  onWarehouseDefaultsSeeded,
   ownerProfiles,
   allocationMode,
   onOwnerProfilesChange,
@@ -54,11 +55,13 @@ export function AircraftTabsPanel({
   proposalId: string;
   aircraftId: string;
   assumptions: AssumptionMap;
+  warehouseDefaults: Record<string, string>;
   onAssumptionsChange: (next: AssumptionMap) => void;
   onApplySetupDefaults: (
     patch: Partial<AssumptionMap>,
     instancePatch?: Record<string, unknown>
   ) => void;
+  onWarehouseDefaultsSeeded: (defaults: Record<string, string>) => void;
   ownerProfiles: ProposalOwnerProfile[];
   allocationMode: OwnerExpenseAllocationMode;
   onOwnerProfilesChange: (profiles: ProposalOwnerProfile[]) => void;
@@ -67,57 +70,23 @@ export function AircraftTabsPanel({
   const tabs = useMemo(() => editorTabsForAssumptions(assumptions), [assumptions]);
   type EditorTab = (typeof tabs)[number];
   const [activeTab, setActiveTab] = useState<EditorTab>("aircraft");
-  const [defaults, setDefaults] = useState<Record<string, string>>({});
-  const [loadingDefaults, setLoadingDefaults] = useState(false);
-  const defaultsCache = useRef(new Map<string, Record<string, string>>());
 
   const effective = useMemo(
-    () => buildEffectiveAssumptions(assumptions, defaults),
-    [assumptions, defaults]
+    () => buildEffectiveAssumptions(assumptions, warehouseDefaults),
+    [assumptions, warehouseDefaults]
   );
-
-  const defaultsCacheKey = `${aircraftId}:${assumptions.aircraft_master_id ?? ""}:${assumptions.home_airport_icao ?? ""}:${assumptions.fbo_name ?? ""}`;
-
-  const loadDefaults = useCallback(async () => {
-    const cached = defaultsCache.current.get(defaultsCacheKey);
-    if (cached) {
-      setDefaults(cached);
-      setLoadingDefaults(false);
-      return;
-    }
-
-    setLoadingDefaults(true);
-    const res = await fetch(
-      `/api/proposals/${proposalId}/aircraft/${aircraftId}/defaults`
-    );
-    const json = await res.json();
-    setLoadingDefaults(false);
-    if (res.ok && json.defaults) {
-      defaultsCache.current.set(defaultsCacheKey, json.defaults);
-      setDefaults(json.defaults);
-    }
-  }, [proposalId, aircraftId, defaultsCacheKey]);
-
-  const refreshDefaults = useCallback(() => {
-    defaultsCache.current.delete(defaultsCacheKey);
-    void loadDefaults();
-  }, [defaultsCacheKey, loadDefaults]);
-
-  useEffect(() => {
-    void loadDefaults();
-  }, [loadDefaults]);
 
   const handleOverride = useCallback(
     (name: string, overrideRaw: string) => {
       if (isCalculatedField(name, assumptions)) return;
-      const def = defaults[name] ?? "";
+      const def = warehouseDefaults[name] ?? "";
       let next = { ...assumptions, [name]: effectiveFieldValue(def, overrideRaw) };
       if (UTILIZATION_SYNC_KEYS.has(name)) {
-        next = syncUtilizationHours(mergeAssumptionsWithDefaults(next, defaults));
+        next = syncUtilizationHours(mergeAssumptionsWithDefaults(next, warehouseDefaults));
       }
       onAssumptionsChange(next);
     },
-    [assumptions, defaults, onAssumptionsChange]
+    [assumptions, warehouseDefaults, onAssumptionsChange]
   );
 
   const charterEnabled = isCharterUsageEnabled(assumptions);
@@ -135,9 +104,6 @@ export function AircraftTabsPanel({
       if (name === "insurance_annual" || name === "insurance_premium_percent") {
         return !insuranceFieldActive(assumptions.insurance_mode, name);
       }
-      if (name === "hangar_monthly" || name === "hangar_annual") {
-        return !hangarFieldActive(assumptions.hangar_pricing_mode, name);
-      }
       return false;
     },
     [assumptions]
@@ -149,47 +115,46 @@ export function AircraftTabsPanel({
         parseFloat(assumptions.default_owner_hours ?? "400") || 400;
       return (
         <div className="flex flex-col gap-6">
-          <section className="rounded-lg border border-atlas-border/80 bg-atlas-surface/10 p-4">
-            <h3 className="mb-4 font-serif text-base tracking-tight text-atlas-accent">
-              Ownership structure
-            </h3>
-            <OwnerControlsStrip
+          <section className="atlas-workspace-section">
+            <div className="atlas-workspace-section-header">
+              <h3 className="atlas-panel-title">Ownership structure</h3>
+            </div>
+            <div className="atlas-workspace-section-body">
+              <OwnerControlsStrip
               profiles={ownerProfiles}
               allocationMode={allocationMode}
               onProfilesChange={onOwnerProfilesChange}
               onAllocationModeChange={onAllocationModeChange}
               defaultHours={defaultHours}
             />
+            </div>
           </section>
-          <section className="rounded-lg border border-atlas-border/80 bg-atlas-surface/10 p-4">
-            <h3 className="mb-4 font-serif text-base tracking-tight text-atlas-accent">
-              Owner flight hours & equity
-            </h3>
-            <OwnerSplitsTable
+          <section className="atlas-workspace-section">
+            <div className="atlas-workspace-section-header">
+              <h3 className="atlas-panel-title">Owner flight hours & equity</h3>
+            </div>
+            <div className="atlas-workspace-section-body">
+              <OwnerSplitsTable
               profiles={ownerProfiles}
               maxAnnualUtilization={
                 parseFloat(assumptions.max_annual_utilization ?? "0") || 0
               }
               defaultHours={defaultHours}
               onProfilesChange={onOwnerProfilesChange}
-              fullWidth
             />
+            </div>
           </section>
-          {loadingDefaults && Object.keys(defaults).length === 0 ? (
-            <p className="atlas-caption py-2 text-center">Loading defaults…</p>
-          ) : (
-            sectionsForTab("owners").map((section) => (
-              <AssumptionsSectionTable
-                key={section.title}
-                section={section}
-                defaults={defaults}
-                assumptions={assumptions}
-                effective={effective}
-                fieldHidden={fieldHidden}
-                onOverride={handleOverride}
-              />
-            ))
-          )}
+          {sectionsForTab("owners").map((section) => (
+            <AssumptionsSectionTable
+              key={section.title}
+              section={section}
+              defaults={warehouseDefaults}
+              assumptions={assumptions}
+              effective={effective}
+              fieldHidden={fieldHidden}
+              onOverride={handleOverride}
+            />
+          ))}
         </div>
       );
     }
@@ -198,9 +163,6 @@ export function AircraftTabsPanel({
     const visibleSections = sections.filter((s) =>
       sectionVisibleForUsage(s, assumptions, fieldHidden)
     );
-    if (loadingDefaults && Object.keys(defaults).length === 0) {
-      return <p className="atlas-caption py-6 text-center">Loading defaults from data hub…</p>;
-    }
 
     const showOwnerFinancing =
       tab === "financing_fees" &&
@@ -208,7 +170,7 @@ export function AircraftTabsPanel({
       ownerProfiles.length > 1;
 
     return (
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         {showOwnerFinancing ? (
           <OwnerFinancingSplitPanel
             assumptions={effective}
@@ -220,7 +182,7 @@ export function AircraftTabsPanel({
           <AssumptionsSectionTable
             key={section.title}
             section={section}
-            defaults={defaults}
+            defaults={warehouseDefaults}
             assumptions={assumptions}
             effective={effective}
             fieldHidden={fieldHidden}
@@ -238,7 +200,7 @@ export function AircraftTabsPanel({
         aircraftId={aircraftId}
         assumptions={assumptions}
         onApplyDefaults={onApplySetupDefaults}
-        onDefaultsRefresh={refreshDefaults}
+        onWarehouseDefaultsSeeded={onWarehouseDefaultsSeeded}
       />
 
       <div className="atlas-workspace grid min-h-0 flex-1 grid-cols-2">
@@ -270,8 +232,8 @@ export function AircraftTabsPanel({
 
       {/* Pro Forma — equal width */}
       <aside className="flex min-h-0 min-w-0 flex-col bg-atlas-surface/10">
-        <div className="shrink-0 border-b border-atlas-border px-4 py-2.5">
-          <p className="atlas-section-title whitespace-nowrap text-lg">
+        <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/30 px-4 py-2.5">
+          <p className="atlas-panel-title whitespace-nowrap">
             {TAB_LABELS.pro_forma}
           </p>
         </div>

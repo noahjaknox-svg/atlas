@@ -284,6 +284,7 @@ export function getAllAircraftEditorFields(category: string): WorkspaceField[] {
     field(category, "aircraft_master_id", "Aircraft master id"),
     field(category, "home_airport_icao", "Home airport ICAO", { required: true }),
     field(category, "proposed_home_base", "Proposed home base"),
+    field(category, "fbo_name", "FBO"),
     field(category, "usage_type", "Usage type", { required: true }),
     field(category, "operating_model", "Operating model"),
   ];
@@ -485,6 +486,7 @@ export function instancePatchFromAssumptions(assumptions: AssumptionMap) {
       assumptions.proposed_home_base || assumptions.home_airport_icao || null,
     estimatedValue: assumptions.aircraft_value || null,
     valueSource: assumptions.value_source || null,
+    aircraftMasterId: assumptions.aircraft_master_id?.trim() || null,
   };
 }
 

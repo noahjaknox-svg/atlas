@@ -28,6 +28,7 @@ export function WorkspaceLayout({
   onAddAircraft,
   onRemoveAircraft,
   onDuplicateAircraft,
+  onRefreshWarehouseData,
   onToggleIncluded,
   assumptionsByAircraft,
   prospect,
@@ -59,6 +60,7 @@ export function WorkspaceLayout({
   onAddAircraft: () => void;
   onRemoveAircraft: (id: string) => void;
   onDuplicateAircraft: (id: string) => void;
+  onRefreshWarehouseData: (id: string) => void;
   onToggleIncluded: (id: string, included: boolean) => void;
   assumptionsByAircraft: Record<string, AssumptionMap>;
   prospect: ProspectFormState;
@@ -183,6 +185,7 @@ export function WorkspaceLayout({
           onToggleIncluded={onToggleIncluded}
           onRemove={onRemoveAircraft}
           onDuplicate={onDuplicateAircraft}
+          onRefreshWarehouse={onRefreshWarehouseData}
           readOnly={isArchived}
         />
 
