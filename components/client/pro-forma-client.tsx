@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn, parseFormattedNumber } from "@/lib/utils";
 import { MoneyInput } from "@/components/ui/money-input";
 import { HoursInput } from "@/components/ui/hours-input";
-import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
+import { ClientProFormaStatement, type ClientProFormaStatementHandle } from "@/components/client/client-proforma-statement";
+import { ProFormaMetricsRow } from "@/components/client/experience/v2/pro-forma-hero";
 import { ProFormaVisualSummary } from "@/components/client/experience/pro-forma-visual-summary";
 import { ProFormaUtilizationSummary } from "@/components/client/pro-forma-utilization-summary";
 import type { ClientSnapshotView } from "@/lib/client-serializer";
@@ -22,9 +23,20 @@ type ClientProFormaData = ClientSnapshotView;
 const inputClass =
   "mt-1.5 w-full rounded border border-white/20 bg-white/10 px-3 py-2.5 font-mono text-sm text-white backdrop-blur focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/30";
 
+const proFormaSegmentGroup = "flex shrink-0 rounded-lg border border-white/15 p-0.5";
+const proFormaSegmentBtn =
+  "rounded-md px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:py-1.5 text-white/60 hover:bg-white/5 hover:text-white";
+const proFormaSegmentBtnActive = "bg-atlas-accent text-[#0B0F1A] hover:bg-atlas-accent hover:text-[#0B0F1A]";
+
 function totalProformaHours(hours: number[]): number {
   return hours.reduce((s, h) => s + (Number.isFinite(h) && h >= 0 ? h : 0), 0);
 }
+
+export type ProFormaLiveMetrics = {
+  netAnnualCost: number;
+  costPerOwnerHour: number;
+  charterRevenueOffset: number;
+};
 
 export function ProFormaClient({
   slug,
@@ -33,6 +45,12 @@ export function ProFormaClient({
   embedded = false,
   experiencePath = true,
   slide = false,
+  hideVisualSummary = false,
+  splitScroll = false,
+  onMetricsChange,
+  className,
+  pageTitle,
+  pageIntro,
 }: {
   slug: string;
   initial: ClientProFormaData;
@@ -40,6 +58,12 @@ export function ProFormaClient({
   embedded?: boolean;
   experiencePath?: boolean;
   slide?: boolean;
+  hideVisualSummary?: boolean;
+  splitScroll?: boolean;
+  onMetricsChange?: (metrics: ProFormaLiveMetrics) => void;
+  className?: string;
+  pageTitle?: string;
+  pageIntro?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -78,6 +102,7 @@ export function ProFormaClient({
 
   const showAircraftSelector = snapshot.aircraftList.length > 1;
   const userEditedRef = useRef(false);
+  const statementRef = useRef<ClientProFormaStatementHandle>(null);
 
   const applySnapshot = useCallback((next: ClientProFormaData, resetEdits = true) => {
     setSnapshot(next);
@@ -185,6 +210,66 @@ export function ProFormaClient({
       }));
     return fromRows.length > 0 ? fromRows : snapshot.proForma.lineItems;
   }, [statementRows, snapshot.proForma.lineItems]);
+
+  const metrics = useMemo(() => {
+    if (localCalc) {
+      return {
+        netAnnualCost: localCalc.metrics.netAnnualCost,
+        costPerOwnerHour: localCalc.metrics.costPerOwnerHour,
+        charterRevenueOffset: localCalc.metrics.charterRevenueOffset,
+      };
+    }
+    return {
+      netAnnualCost: snapshot.proForma.netAnnualCost,
+      costPerOwnerHour: snapshot.proForma.costPerOwnerHour,
+      charterRevenueOffset: snapshot.proForma.totalRevenue ?? 0,
+    };
+  }, [localCalc, snapshot.proForma]);
+
+  useEffect(() => {
+    onMetricsChange?.(metrics);
+  }, [metrics, onMetricsChange]);
+
+  const periodToggle = (
+    <div className={proFormaSegmentGroup}>
+      {(["annual", "monthly"] as const).map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setPeriod(p)}
+          className={cn(
+            proFormaSegmentBtn,
+            "capitalize",
+            period === p && proFormaSegmentBtnActive
+          )}
+        >
+          {p}
+        </button>
+      ))}
+    </div>
+  );
+
+  const statementToolbar = splitScroll ? (
+    <div className="flex shrink-0 items-center justify-between gap-3">
+      <div className={proFormaSegmentGroup}>
+        <button
+          type="button"
+          onClick={() => statementRef.current?.expandAll()}
+          className={cn(proFormaSegmentBtn, "uppercase tracking-wide")}
+        >
+          Expand all
+        </button>
+        <button
+          type="button"
+          onClick={() => statementRef.current?.collapseAll()}
+          className={cn(proFormaSegmentBtn, "uppercase tracking-wide")}
+        >
+          Collapse all
+        </button>
+      </div>
+      {periodToggle}
+    </div>
+  ) : null;
 
   const scenarioPayload = useMemo(
     () => ({
@@ -329,7 +414,20 @@ export function ProFormaClient({
 
   const inputsPanel = (
     <div className={cn(slide ? "space-y-3" : "space-y-6")}>
-      {embedded ? (
+      {splitScroll && pageTitle ? (
+        <header className="space-y-2 border-b border-white/10 pb-3">
+          <h1 className="font-serif text-xl leading-tight text-white sm:text-2xl">
+            {pageTitle}
+          </h1>
+          {pageIntro ? (
+            <p className="text-xs leading-relaxed text-white/65 sm:text-sm">{pageIntro}</p>
+          ) : null}
+        </header>
+      ) : null}
+      {embedded && !splitScroll ? (
+        <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
+      ) : null}
+      {splitScroll ? (
         <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
       ) : null}
       {aircraftSelector}
@@ -361,6 +459,12 @@ export function ProFormaClient({
           compact={slide}
         />
       ) : null}
+      {splitScroll ? (
+        <ProFormaMetricsRow
+          netAnnualCost={metrics.netAnnualCost}
+          costPerOwnerHour={metrics.costPerOwnerHour}
+        />
+      ) : null}
       <button
         type="button"
         onClick={restore}
@@ -371,17 +475,41 @@ export function ProFormaClient({
     </div>
   );
 
-  const proFormaPanel = (
-    <div className={cn(slide ? "flex min-h-0 flex-col gap-3 overflow-hidden" : "space-y-6")}>
-      <ProFormaVisualSummary
-        lineItems={lineItemsForViz}
-        period={period}
-        onPeriodChange={setPeriod}
-        compact={slide}
-      />
-      <div className={slide ? "min-h-0 flex-1 overflow-hidden" : undefined}>
-        <ClientProFormaStatement rows={statementRows} period={period} compact={slide} />
+  const proFormaPanel = splitScroll ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+      {statementToolbar}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-gutter:stable]">
+        <ClientProFormaStatement
+          ref={statementRef}
+          rows={statementRows}
+          period={period}
+          compact={slide}
+          collapsible
+          defaultExpanded
+          hideToolbar
+        />
       </div>
+    </div>
+  ) : (
+    <div className={cn(slide ? "flex flex-col gap-4" : "space-y-6")}>
+      {embedded && slide ? (
+        <>
+          <ProFormaMetricsRow
+            netAnnualCost={metrics.netAnnualCost}
+            costPerOwnerHour={metrics.costPerOwnerHour}
+          />
+          <div className="flex items-center justify-end gap-3">{periodToggle}</div>
+        </>
+      ) : null}
+      {!hideVisualSummary ? (
+        <ProFormaVisualSummary
+          lineItems={lineItemsForViz}
+          period={period}
+          onPeriodChange={setPeriod}
+          compact={slide}
+        />
+      ) : null}
+      <ClientProFormaStatement rows={statementRows} period={period} compact={slide} />
     </div>
   );
 
@@ -389,7 +517,10 @@ export function ProFormaClient({
     <div
       className={cn(
         "text-white",
-        embedded ? (slide ? "h-full" : "space-y-8") : "space-y-10"
+        splitScroll && "flex min-h-0 flex-1 flex-col overflow-hidden",
+        !splitScroll && embedded && (slide ? "space-y-4" : "space-y-8"),
+        !splitScroll && !embedded && "space-y-10",
+        className
       )}
     >
       {!embedded ? (
@@ -430,12 +561,16 @@ export function ProFormaClient({
       {embedded ? (
         <div
           className={cn(
-            "grid items-start gap-6 lg:grid-cols-[minmax(240px,320px)_1fr] lg:gap-8 xl:gap-10",
-            slide && "h-full min-h-0 items-stretch gap-4 lg:gap-6",
+            splitScroll
+              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden lg:grid lg:grid-cols-[minmax(260px,340px)_1fr] lg:items-stretch lg:gap-8"
+              : "grid items-start gap-6 lg:grid-cols-[minmax(260px,340px)_1fr] lg:gap-8 xl:gap-10",
+            slide && !splitScroll && "gap-5 lg:gap-8",
             aircraftLoading && "opacity-70 transition-opacity"
           )}
         >
-          {inputsPanel}
+          <div className={cn(splitScroll && "shrink-0 lg:overflow-visible")}>
+            {inputsPanel}
+          </div>
           {proFormaPanel}
         </div>
       ) : (

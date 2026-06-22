@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+"use client";
+
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { SLUG_TO_SECTION_TYPE } from "@/lib/experience-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
@@ -44,7 +45,7 @@ export function ExperiencePageContent({
   /** Use v2 presentation layouts (prism stage shell). */
   renderV2?: boolean;
 }) {
-  if (!section.visible) notFound();
+  if (!section.visible) return null;
 
   const sectionType = SLUG_TO_SECTION_TYPE[pageSlug] ?? section.sectionType;
 
@@ -69,7 +70,7 @@ export function ExperiencePageContent({
       case "conformity_process":
         return <ConformityPageV2 section={section} branding={branding} />;
       case "pro_forma":
-        if (!client) notFound();
+        if (!client) return null;
         return (
           <ExperienceProFormaPageV2
             slug={slug}
@@ -81,7 +82,7 @@ export function ExperiencePageContent({
           />
         );
       default:
-        notFound();
+        return null;
     }
   }
 
@@ -109,7 +110,7 @@ export function ExperiencePageContent({
     case "conformity_process":
       return <ConformityPage section={section} branding={branding} />;
     case "pro_forma":
-      if (!client) notFound();
+      if (!client) return null;
       return (
         <ExperienceProFormaPage
           slug={slug}
@@ -121,6 +122,6 @@ export function ExperiencePageContent({
         />
       );
     default:
-      notFound();
+      return null;
   }
 }

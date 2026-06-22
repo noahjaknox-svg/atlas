@@ -25,8 +25,8 @@ export function WelcomePageV2({
 
   return (
     <ExperienceSlideV2>
-      <ChapterStagger className="flex h-full w-full max-w-4xl flex-col justify-center gap-4">
-        <ChapterStaggerItem className="shrink-0">
+      <ChapterStagger className="mx-auto flex w-full max-w-3xl flex-col gap-4 lg:gap-6">
+        <ChapterStaggerItem>
           <h1 className="font-serif text-2xl leading-tight text-white drop-shadow-lg sm:text-4xl lg:text-5xl">
             {section.title}
           </h1>
@@ -41,20 +41,13 @@ export function WelcomePageV2({
           </p>
         </ChapterStaggerItem>
 
-        <ChapterStaggerItem className="flex min-h-0 max-h-[min(52vh,28rem)] flex-1 flex-col sm:max-h-[min(58vh,32rem)]">
-          <div
-            className={cn(
-              experienceGlassV2,
-              "flex min-h-0 flex-1 flex-col p-5 sm:p-6"
-            )}
-          >
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85 sm:text-base">
-                {letter}
-              </p>
-            </div>
+        <ChapterStaggerItem>
+          <div className={cn(experienceGlassV2, "p-5 sm:p-6")}>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85 sm:text-base">
+              {letter}
+            </p>
             {(section.signatoryName || section.signatoryTitle) && (
-              <div className="mt-4 shrink-0 border-t border-white/10 pt-4">
+              <div className="mt-4 border-t border-white/10 pt-4">
                 <p className="text-xs text-white/50">Sincerely,</p>
                 {section.signatoryName ? (
                   <p className="mt-1 font-serif text-lg text-white">{section.signatoryName}</p>
@@ -67,7 +60,7 @@ export function WelcomePageV2({
           </div>
         </ChapterStaggerItem>
 
-        <ChapterStaggerItem className="shrink-0 text-center">
+        <ChapterStaggerItem className="text-center">
           <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">
             {payload.proposal.name}
           </p>
