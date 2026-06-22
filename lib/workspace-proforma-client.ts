@@ -7,6 +7,17 @@ import {
   parseProFormaVisibility,
 } from "@/lib/proforma-line-visibility";
 import { isCharterProFormaRow, isCharterUsageEnabled } from "@/lib/usage-type";
+import {
+  formatCrewComposition,
+  patchAssumptionsWithCrewStep,
+  resolveCrewStepFromAssumptions,
+} from "@/lib/crew-step";
+import { computeUtilizationProfile } from "@/lib/proforma-utilization";
+import {
+  OWNER_PROFORMA_HOURS_KEY,
+  ownerHoursForUtilization,
+  type ProposalOwnerProfile,
+} from "@/lib/proposal-owners";
 
 const CLIENT_HIDDEN_METRIC_KEYS = new Set(["cost_per_owner_hour"]);
 
@@ -17,6 +28,25 @@ export type WorkspaceProFormaClientResult = {
   summaryRows: Array<{ key: string; label: string; annual: number }>;
   statementRows: ProFormaStatementRow[];
   calculationAssumptions: AssumptionMap;
+};
+
+export type ClientProFormaOverrides = {
+  aircraftValue?: number;
+  /** Aggregate owner hours (single-owner or legacy callers). */
+  ownerHours?: number;
+  /** Per-owner pro forma hours aligned to ownerProfiles. */
+  proformaOwnerHours?: number[];
+  ownerProfiles?: ProposalOwnerProfile[];
+  warehouseDefaults?: Record<string, string>;
+};
+
+export type ClientCrewSummary = {
+  composition: string;
+  totalPilots: number;
+  maxAnnualUtilization: number;
+  ownerHours: number;
+  charterFlightHours: number;
+  requiredByOwnerHours: boolean;
 };
 
 /** Rows shown on client portal — respects workspace visibility toggles and charter mode. */
@@ -41,18 +71,114 @@ function findRow(rows: ProFormaStatementRow[], key: string) {
   return rows.find((r) => r.key === key);
 }
 
+function patchProformaOwnerHoursAll(
+  assumptions: AssumptionMap,
+  profiles: ProposalOwnerProfile[],
+  hours: number[]
+): AssumptionMap {
+  const next = hours.map((h, i) =>
+    Math.max(0, Number.isFinite(h) ? h : profiles[i]?.annualFlightHours ?? 0)
+  );
+  const total = next.reduce((s, h) => s + h, 0);
+  return {
+    ...assumptions,
+    [OWNER_PROFORMA_HOURS_KEY]: JSON.stringify(next),
+    owner_annual_hours: String(total),
+  };
+}
+
+function resolveOwnerHoursForPatch(
+  assumptions: AssumptionMap,
+  overrides: ClientProFormaOverrides
+): number | null {
+  const profiles = overrides.ownerProfiles ?? [];
+  if (overrides.proformaOwnerHours != null && profiles.length > 0) {
+    return overrides.proformaOwnerHours.reduce(
+      (s, h) => s + (Number.isFinite(h) && h >= 0 ? h : 0),
+      0
+    );
+  }
+  if (overrides.ownerHours != null) return overrides.ownerHours;
+  return null;
+}
+
+/** Apply client-editable overrides and sync crew step + utilization like workspace. */
+export function applyClientProFormaOverrides(
+  assumptions: AssumptionMap,
+  overrides?: ClientProFormaOverrides
+): AssumptionMap {
+  if (!overrides) return { ...assumptions };
+
+  let map: AssumptionMap = { ...assumptions };
+  const warehouseDefaults = overrides.warehouseDefaults ?? {};
+  const profiles = overrides.ownerProfiles ?? [];
+
+  if (overrides.aircraftValue != null) {
+    map.aircraft_value = String(overrides.aircraftValue);
+  }
+
+  if (overrides.proformaOwnerHours != null && profiles.length > 0) {
+    map = patchProformaOwnerHoursAll(map, profiles, overrides.proformaOwnerHours);
+  } else if (overrides.ownerHours != null) {
+    if (profiles.length === 1) {
+      map = patchProformaOwnerHoursAll(map, profiles, [overrides.ownerHours]);
+    } else if (profiles.length === 0) {
+      map.owner_annual_hours = String(overrides.ownerHours);
+    }
+  }
+
+  const ownerHours = resolveOwnerHoursForPatch(map, overrides);
+
+  if (ownerHours != null) {
+    map = patchAssumptionsWithCrewStep(map, warehouseDefaults, { ownerHours });
+  }
+
+  return map;
+}
+
+/** Read-only crew + utilization summary for client portal UI. */
+export function resolveClientCrewSummary(
+  assumptions: AssumptionMap,
+  options?: {
+    ownerProfiles?: ProposalOwnerProfile[];
+    warehouseDefaults?: Record<string, string>;
+  }
+): ClientCrewSummary {
+  const warehouseDefaults = options?.warehouseDefaults ?? {};
+  const profiles = options?.ownerProfiles ?? [];
+  const ownerHours =
+    profiles.length > 0
+      ? ownerHoursForUtilization(profiles, assumptions)
+      : num(assumptions.owner_annual_hours);
+
+  const resolved = resolveCrewStepFromAssumptions(
+    assumptions,
+    { ownerHours },
+    warehouseDefaults
+  );
+  const effective = patchAssumptionsWithCrewStep(assumptions, warehouseDefaults, {
+    ownerHours,
+  });
+  const profile = computeUtilizationProfile(effective);
+
+  return {
+    composition: formatCrewComposition(resolved),
+    totalPilots: resolved.totalPilots,
+    maxAnnualUtilization: resolved.maxAnnualUtilization,
+    ownerHours,
+    charterFlightHours: profile.availableCharterFlightHours,
+    requiredByOwnerHours:
+      resolved.requiredStep > resolved.minStep &&
+      resolved.stepIndex === resolved.requiredStep,
+  };
+}
+
 /** Align client/deck pro forma with internal workspace `buildProFormaStatement`. */
 export function computeWorkspaceProFormaForClient(
   assumptions: AssumptionMap,
-  overrides?: { aircraftValue?: number; ownerHours?: number }
+  overrides?: ClientProFormaOverrides
 ): WorkspaceProFormaClientResult {
-  const map: AssumptionMap = { ...assumptions };
-  if (overrides?.aircraftValue != null) {
-    map.aircraft_value = String(overrides.aircraftValue);
-  }
-  if (overrides?.ownerHours != null) {
-    map.owner_annual_hours = String(overrides.ownerHours);
-  }
+  const map = applyClientProFormaOverrides(assumptions, overrides);
 
   const statement = buildProFormaStatement(map);
   const visibility = parseProFormaVisibility(map);

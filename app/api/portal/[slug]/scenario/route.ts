@@ -19,6 +19,8 @@ export async function POST(
     const body = await request.json();
     const aircraftValue = body.aircraftValue ?? body.aircraft_value;
     const ownerHours = body.ownerHours ?? body.owner_annual_hours;
+    const proformaOwnerHours =
+      body.proformaOwnerHours ?? body.ownerProformaHours ?? body.proforma_owner_hours;
     const aircraftInstanceId =
       body.aircraftInstanceId ?? body.aircraft_instance_id ?? body.aircraft ?? null;
 
@@ -42,6 +44,9 @@ export async function POST(
     const clientView = await serializeClientSnapshot(payload, {
       aircraftValue: aircraftValue != null ? Number(aircraftValue) : undefined,
       ownerHours: ownerHours != null ? Number(ownerHours) : undefined,
+      proformaOwnerHours: Array.isArray(proformaOwnerHours)
+        ? proformaOwnerHours.map((h: unknown) => Number(h))
+        : undefined,
       aircraftInstanceId:
         aircraftInstanceId != null && aircraftInstanceId !== ""
           ? String(aircraftInstanceId)
@@ -50,12 +55,21 @@ export async function POST(
     });
 
     if (body.persistScenario === true) {
+      const persistedOwnerHours =
+        ownerHours != null
+          ? Number(ownerHours)
+          : Array.isArray(proformaOwnerHours)
+            ? proformaOwnerHours.reduce(
+                (s: number, h: unknown) => s + (Number(h) || 0),
+                0
+              )
+            : null;
       await prisma.clientScenario.create({
         data: {
           proposalId: portal.proposalId,
           portalId: portal.id,
           aircraftValue: aircraftValue != null ? Number(aircraftValue) : null,
-          ownerHours: ownerHours != null ? Number(ownerHours) : null,
+          ownerHours: persistedOwnerHours,
           calculatedNetAnnualCost: clientView.proForma.netAnnualCost,
           calculatedMonthlyCost: clientView.proForma.netMonthlyCost,
           calculatedCostPerOwnerHour: clientView.proForma.costPerOwnerHour,

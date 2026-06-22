@@ -48,6 +48,12 @@ const entry: AircraftSnapshotEntry = {
     charter_block_to_flight_ratio: { value: "1.13", unit: null, visibleToClient: true, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
     variable_cost_per_hour: { value: "1200", unit: null, visibleToClient: true, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
     crew_total: { value: "500000", unit: null, visibleToClient: true, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    max_usage_2_pilots: { value: "450", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    max_usage_3_pilots: { value: "600", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    crew_step_index: { value: "0", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    lead_pilot_enabled: { value: "no", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    pic_count: { value: "1", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
+    sic_count: { value: "1", unit: null, visibleToClient: false, editableByClient: false, clientExplanation: null, category: "ac_ac-1" },
   },
   calculationAssumptions: {
     aircraft_value: "25000000",
@@ -61,6 +67,13 @@ const entry: AircraftSnapshotEntry = {
     charter_block_to_flight_ratio: "1.13",
     variable_cost_per_hour: "1200",
     crew_total: "500000",
+    max_usage_1_pilot: "0",
+    max_usage_2_pilots: "450",
+    max_usage_3_pilots: "600",
+    crew_step_index: "0",
+    lead_pilot_enabled: "no",
+    pic_count: "1",
+    sic_count: "1",
   },
   metrics: {
     netAnnualCost: 1_200_000,
@@ -109,5 +122,15 @@ describe("buildClientProFormaSummary", () => {
       )
     ).toBe(true);
     expect(summary.statementRows.some((r) => r.key === "net_annual_owner")).toBe(true);
+  });
+
+  it("recalculates crew step when owner hours override exceeds capacity", () => {
+    const summary = buildClientProFormaSummary(entry, { ownerHours: 500 });
+    expect(summary.metrics.ownerHours).toBe(500);
+    expect(
+      summary.statementRows.some(
+        (r) => r.kind === "line" && r.label === "Crew Salaries & Benefits"
+      )
+    ).toBe(true);
   });
 });

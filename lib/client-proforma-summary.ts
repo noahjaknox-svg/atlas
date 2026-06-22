@@ -1,11 +1,17 @@
 import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import {
   computeWorkspaceProFormaForClient,
+  resolveClientCrewSummary,
   stringsToAssumptionMap,
+  type ClientCrewSummary,
 } from "./workspace-proforma-client";
 import type { ProFormaResult } from "./proforma";
 import type { ProFormaStatementRow } from "./proforma-statement";
+import type { ProposalOwnerProfile } from "./proposal-owners";
+import { proformaHoursForProfiles } from "./proposal-owners";
 import { toNumber } from "./utils";
+
+export type { ClientCrewSummary };
 
 export type ClientProFormaLineItem = {
   key: string;
@@ -84,16 +90,19 @@ export function buildClientProFormaSummary(
   overrides?: {
     aircraftValue?: number;
     ownerHours?: number;
+    proformaOwnerHours?: number[];
+    ownerProfiles?: ProposalOwnerProfile[];
     calculationMap?: Record<string, string>;
   }
 ): ClientProFormaSummary {
-  const calc = computeWorkspaceProFormaForClient(
-    stringsToAssumptionMap(resolveCalculationMap(entry, overrides?.calculationMap)),
-    {
-      aircraftValue: overrides?.aircraftValue,
-      ownerHours: overrides?.ownerHours,
-    }
-  );
+  const baseMap = stringsToAssumptionMap(resolveCalculationMap(entry, overrides?.calculationMap));
+  const profiles = overrides?.ownerProfiles ?? [];
+  const calc = computeWorkspaceProFormaForClient(baseMap, {
+    aircraftValue: overrides?.aircraftValue,
+    ownerHours: overrides?.ownerHours,
+    proformaOwnerHours: overrides?.proformaOwnerHours,
+    ownerProfiles: profiles.length > 0 ? profiles : undefined,
+  });
 
   const lineItems = toClientLineItems(calc.proForma);
 
@@ -172,4 +181,22 @@ export function buildFixedBreakdown(assumptions: Record<string, number | string>
   } satisfies AircraftSnapshotEntry;
 
   return buildClientProFormaSummary(entry).fixedCostBreakdown;
+}
+
+/** Derive per-owner pro forma hours from assumptions + profiles. */
+export function deriveProformaOwnerHours(
+  profiles: ProposalOwnerProfile[],
+  assumptions: Record<string, string>
+): number[] {
+  return proformaHoursForProfiles(profiles, assumptions);
+}
+
+/** Crew + utilization summary for client portal display. */
+export function buildClientCrewSummary(
+  assumptions: Record<string, string>,
+  ownerProfiles?: ProposalOwnerProfile[]
+): ClientCrewSummary {
+  return resolveClientCrewSummary(stringsToAssumptionMap(assumptions), {
+    ownerProfiles,
+  });
 }
