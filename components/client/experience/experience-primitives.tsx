@@ -16,9 +16,16 @@ export const experienceSectionGap = "mt-8 sm:mt-10";
 /** Tighter gap when an image follows related content directly above. */
 export const experienceSectionGapTight = "mt-6 sm:mt-8";
 
+/** Scrollable copy region with bottom fade (replaces line-clamp truncation). */
+export const experienceScrollCopy =
+  "portal-v2-scroll-fade min-h-0 overflow-y-auto";
+
 /** Glass panel for readable content over cloud backdrop. */
 export const experienceGlass =
   "rounded-xl border border-white/10 bg-[#0B0F1A]/55 backdrop-blur-sm";
+
+/** Stronger liquid-glass panel for v2 presentation slides. */
+export { experienceGlassV2 } from "./v2/experience-tokens";
 
 export function SectionNumber({ n }: { n: string }) {
   return (

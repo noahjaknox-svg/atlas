@@ -23,6 +23,7 @@ export function PinGate({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [entered, setEntered] = useState(false);
+  const [lightSweep, setLightSweep] = useState(false);
 
   async function verifyAndEnter() {
     if (pin.length < 4) {
@@ -46,22 +47,34 @@ export function PinGate({
     }
 
     setEntered(true);
+    setLightSweep(true);
     setTimeout(() => {
       router.push(data.redirect ?? `/${slug}/experience/welcome`);
       router.refresh();
-    }, 700);
+    }, 900);
   }
 
   return (
     <CloudBackground
       imageUrl={heroCloudImageUrl}
       videoUrl={heroCloudVideoUrl}
+      priorityVideo
       kenBurns
       className={cn(
-        "flex min-h-screen flex-col items-center justify-center transition-opacity duration-700",
+        "relative flex min-h-screen flex-col items-center justify-center transition-opacity duration-700",
         entered && "opacity-0"
       )}
     >
+      {lightSweep ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-20 motion-safe:animate-[lightSweep_0.8s_ease-out_forwards]"
+          style={{
+            background:
+              "linear-gradient(105deg, transparent 30%, rgba(201,168,76,0.35) 50%, transparent 70%)",
+          }}
+          aria-hidden
+        />
+      ) : null}
       <div className="flex w-full max-w-lg flex-col items-center px-6 text-center text-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

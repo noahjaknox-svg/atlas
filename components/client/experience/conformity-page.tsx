@@ -7,6 +7,7 @@ import {
   ExperienceHeroTitle,
   ExperienceSlide,
   experienceGlass,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -40,9 +41,11 @@ export function ConformityPage({
         <div className="grid h-full min-h-0 gap-3 lg:grid-cols-3 lg:gap-4">
           <RevealOnScroll className="flex min-h-0 flex-col gap-2 overflow-hidden">
             <h2 className="font-serif text-base sm:text-lg">What to expect</h2>
-            <p className="line-clamp-4 text-xs leading-relaxed text-white/80 sm:text-sm">
-              {section.bodyCopy}
-            </p>
+            <div className={cn(experienceScrollCopy, "max-h-[22vh]")}>
+              <p className="text-xs leading-relaxed text-white/80 sm:text-sm">
+                {section.bodyCopy}
+              </p>
+            </div>
             {introBullets.length > 0 ? (
               <ul className="space-y-1">
                 {introBullets.slice(0, 4).map((b) => (
@@ -78,7 +81,7 @@ export function ConformityPage({
                   {checklist.slice(0, 6).map((item, i) => (
                     <li key={item.label} className="flex gap-2 text-xs text-white/80">
                       <span className="font-mono text-atlas-accent">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="line-clamp-2">{item.label}</span>
+                      <span>{item.label}</span>
                     </li>
                   ))}
                 </ol>
@@ -109,7 +112,7 @@ export function ConformityPage({
                         {phase.window}
                       </p>
                       <h3 className="font-serif text-sm">{phase.phase}</h3>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-white/65">
+                      <p className="mt-0.5 text-xs text-white/65">
                         {[...phase.ownerActions.slice(0, 1), ...phase.prismjetActions.slice(0, 1)].join(
                           " · "
                         )}
@@ -125,7 +128,7 @@ export function ConformityPage({
                   <RevealOnScroll key={card.title} delayMs={i * 60}>
                     <div className={cn(experienceGlass, "p-2.5 sm:p-3")}>
                       <h3 className="font-serif text-sm text-atlas-accent">{card.title}</h3>
-                      <p className="mt-1 line-clamp-2 text-xs text-white/70">{card.body}</p>
+                      <p className="mt-1 text-xs text-white/70">{card.body}</p>
                     </div>
                   </RevealOnScroll>
                 ))}

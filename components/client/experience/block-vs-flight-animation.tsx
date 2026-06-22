@@ -53,7 +53,7 @@ export function BlockVsFlightAnimation({
       <p
         className={
           slide
-            ? "mx-auto mt-1 line-clamp-2 max-w-xl text-center text-xs text-white/60"
+            ? "mx-auto mt-1 max-w-xl text-center text-xs text-white/60"
             : "mx-auto mt-3 max-w-xl text-center text-sm text-white/60"
         }
       >

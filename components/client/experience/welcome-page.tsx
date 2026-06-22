@@ -12,6 +12,7 @@ import {
   ExperienceHero,
   ExperienceSlide,
   experienceGlass,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -52,8 +53,8 @@ export function WelcomePage({
       <ExperienceBody>
         <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-6">
           <RevealOnScroll delayMs={80} className="flex min-h-0 flex-col overflow-hidden">
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <p className="line-clamp-[12] whitespace-pre-wrap text-sm leading-relaxed text-white/85 sm:line-clamp-[14] sm:text-base">
+            <div className={cn(experienceGlass, experienceScrollCopy, "min-h-0 flex-1 p-4 sm:p-5")}>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85 sm:text-base">
                 {letter}
               </p>
             </div>

@@ -10,29 +10,41 @@ import {
   prefetchExperienceRoute,
 } from "@/lib/prefetch-experience-routes";
 
+/** Warm all experience routes + media so chapter navigation feels instant. */
 export function useExperiencePrefetch(
   slug: string,
   sections: ExperienceSectionSnapshot[],
-  branding: { heroCloudImageUrl: string; logoUrl?: string | null }
+  branding: {
+    heroCloudImageUrl: string;
+    heroCloudVideoUrl?: string | null;
+    logoUrl?: string | null;
+  },
+  draftMode = false
 ): void {
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    prefetchAllExperienceRoutes(router, slug, sections);
+    prefetchAllExperienceRoutes(router, slug, sections, draftMode);
     prefetchExperienceMedia(sections, branding);
-  }, [router, slug, sections, branding]);
+    router.prefetch(`/${slug}/aircraft`);
+  }, [router, slug, sections, branding, draftMode]);
 
   useEffect(() => {
     const slugs = getExperiencePageSlugs(sections);
-    const match = pathname?.match(/\/experience\/([^/?]+)/);
-    const current = match?.[1];
-    if (!current) return;
+    for (const pageSlug of slugs) {
+      prefetchExperienceRoute(router, slug, pageSlug, draftMode);
+    }
+  }, [pathname, router, slug, sections, draftMode]);
+}
 
-    const index = slugs.indexOf(current);
-    if (index < 0) return;
-
-    if (index > 0) prefetchExperienceRoute(router, slug, slugs[index - 1]!);
-    if (index < slugs.length - 1) prefetchExperienceRoute(router, slug, slugs[index + 1]!);
-  }, [pathname, router, slug, sections]);
+/** Call from nav links on hover/focus to warm a single chapter ahead of click. */
+export function usePrefetchExperienceChapter(
+  slug: string,
+  draftMode = false
+): (pageSlug: string) => void {
+  const router = useRouter();
+  return (pageSlug: string) => {
+    prefetchExperienceRoute(router, slug, pageSlug, draftMode);
+  };
 }

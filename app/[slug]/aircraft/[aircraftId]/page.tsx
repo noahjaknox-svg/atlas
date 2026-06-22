@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { loadExperiencePortalLayout } from "@/lib/experience-portal-layout";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
-import { ExperienceShell } from "@/components/client/experience/experience-shell";
+import { PortalShell } from "@/components/client/experience/portal-shell";
 import { experiencePageX } from "@/components/client/experience/experience-primitives";
+import { experiencePageXV2 } from "@/components/client/experience/v2/experience-tokens";
+import { isExperienceRenderV2 } from "@/lib/experience-content";
 import { AircraftPortalDetail } from "@/components/client/aircraft-portal-detail";
 import { PrismJetFleetSection } from "@/components/client/prismjet-fleet-section";
 import { cn } from "@/lib/utils";
@@ -20,8 +22,11 @@ export default async function ClientAircraftDetailPage({
   const aircraft = aircraftList.find((a) => a.id === aircraftId);
   if (!aircraft) notFound();
 
+  const renderV2 = isExperienceRenderV2(payload!.renderSchemaVersion);
+
   return (
-    <ExperienceShell
+    <PortalShell
+      renderSchemaVersion={payload!.renderSchemaVersion}
       slug={slug}
       sections={sections}
       logoUrl={branding.logoUrl}
@@ -29,7 +34,7 @@ export default async function ClientAircraftDetailPage({
       disclaimer={disclaimer}
       branding={branding}
     >
-      <div className={cn("py-12", experiencePageX)}>
+      <div className={cn(renderV2 ? "overflow-y-auto py-4" : "py-12", renderV2 ? experiencePageXV2 : experiencePageX)}>
         <AircraftPortalDetail
           slug={slug}
           aircraft={aircraft}
@@ -41,6 +46,6 @@ export default async function ClientAircraftDetailPage({
           items={fleet}
         />
       </div>
-    </ExperienceShell>
+    </PortalShell>
   );
 }

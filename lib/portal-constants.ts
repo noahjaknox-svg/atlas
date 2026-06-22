@@ -48,7 +48,14 @@ export type FleetShowcaseItem = {
 };
 
 export const DEFAULT_CLOUD_IMAGE = PRISMJET_MEDIA.clouds;
-export const DEFAULT_LOGO = "/images/prismjet-logo.svg";
+
+/** Bundled loop — drop `cloud-flight-loop.mp4` in public/videos/ to enable. */
+export const DEFAULT_CLOUD_VIDEO = "/videos/cloud-flight-loop.mp4";
+
+export function resolveHeroCloudVideoUrl(url: string | null | undefined): string {
+  return url ?? DEFAULT_CLOUD_VIDEO;
+}
+export const DEFAULT_LOGO = "/images/prismjet-logo.png";
 
 export const DEFAULT_SERVICES_PILLARS: ServicePillar[] = [
   {
@@ -76,7 +83,7 @@ export const DEFAULT_SERVICES_PILLARS: ServicePillar[] = [
 export const DEFAULT_PORTAL_CONTENT: PortalContentData = {
   id: "default",
   heroCloudImageUrl: DEFAULT_CLOUD_IMAGE,
-  heroCloudVideoUrl: null,
+  heroCloudVideoUrl: DEFAULT_CLOUD_VIDEO,
   logoUrl: DEFAULT_LOGO,
   aboutTitle: "About PrismJet",
   aboutBody:

@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { loadExperiencePortalLayout } from "@/lib/experience-portal-layout";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
-import { ExperienceShell } from "@/components/client/experience/experience-shell";
+import { PortalShell } from "@/components/client/experience/portal-shell";
 import { experiencePageX } from "@/components/client/experience/experience-primitives";
+import { experiencePageXV2 } from "@/components/client/experience/v2/experience-tokens";
+import { isExperienceRenderV2 } from "@/lib/experience-content";
 import { AircraftPortalList } from "@/components/client/aircraft-portal-list";
 import { PrismJetFleetSection } from "@/components/client/prismjet-fleet-section";
 import { cn } from "@/lib/utils";
@@ -22,8 +24,11 @@ export default async function ClientAircraftPage({
     redirect(`/${slug}/aircraft/${aircraftList[0]!.id}`);
   }
 
+  const renderV2 = isExperienceRenderV2(payload!.renderSchemaVersion);
+
   return (
-    <ExperienceShell
+    <PortalShell
+      renderSchemaVersion={payload!.renderSchemaVersion}
       slug={slug}
       sections={sections}
       logoUrl={branding.logoUrl}
@@ -31,7 +36,7 @@ export default async function ClientAircraftPage({
       disclaimer={disclaimer}
       branding={branding}
     >
-      <div className={cn("py-12", experiencePageX)}>
+      <div className={cn(renderV2 ? "overflow-y-auto py-4" : "py-12", renderV2 ? experiencePageXV2 : experiencePageX)}>
         <AircraftPortalList slug={slug} aircraft={aircraftList} />
         <PrismJetFleetSection
           title={content.fleetTitle}
@@ -39,6 +44,6 @@ export default async function ClientAircraftPage({
           items={fleet}
         />
       </div>
-    </ExperienceShell>
+    </PortalShell>
   );
 }

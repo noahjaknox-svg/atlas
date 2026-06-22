@@ -11,6 +11,16 @@ import { MaintenancePage } from "./maintenance-page";
 import { SalesAcquisitionsPage } from "./sales-acquisitions-page";
 import { ConformityPage } from "./conformity-page";
 import { ExperienceProFormaPage } from "./experience-pro-forma-page";
+import { WelcomePageV2 } from "./v2/layouts/welcome-page-v2";
+import { ExperienceProFormaPageV2 } from "./v2/layouts/experience-pro-forma-page-v2";
+import {
+  AboutUsPageV2,
+  AircraftCharterPageV2,
+  AircraftManagementPageV2,
+  ConformityPageV2,
+  MaintenancePageV2,
+  SalesAcquisitionsPageV2,
+} from "./v2/layouts/chapter-pages-v2";
 
 export function ExperiencePageContent({
   pageSlug,
@@ -21,6 +31,7 @@ export function ExperiencePageContent({
   slug,
   client,
   aircraftParam,
+  renderV2 = false,
 }: {
   pageSlug: string;
   section: ExperienceSectionSnapshot;
@@ -30,10 +41,49 @@ export function ExperiencePageContent({
   slug: string;
   client?: ClientSnapshotView;
   aircraftParam?: string | null;
+  /** Use v2 presentation layouts (prism stage shell). */
+  renderV2?: boolean;
 }) {
   if (!section.visible) notFound();
 
   const sectionType = SLUG_TO_SECTION_TYPE[pageSlug] ?? section.sectionType;
+
+  if (renderV2) {
+    switch (sectionType) {
+      case "welcome":
+        return (
+          <WelcomePageV2 section={section} payload={payload} contactName={contactName} />
+        );
+      case "about_us":
+        return <AboutUsPageV2 section={section} branding={branding} />;
+      case "aircraft_management":
+        return <AircraftManagementPageV2 section={section} branding={branding} />;
+      case "aircraft_charter":
+        return (
+          <AircraftCharterPageV2 section={section} branding={branding} payload={payload} />
+        );
+      case "maintenance":
+        return <MaintenancePageV2 section={section} branding={branding} />;
+      case "sales_acquisitions":
+        return <SalesAcquisitionsPageV2 section={section} branding={branding} />;
+      case "conformity_process":
+        return <ConformityPageV2 section={section} branding={branding} />;
+      case "pro_forma":
+        if (!client) notFound();
+        return (
+          <ExperienceProFormaPageV2
+            slug={slug}
+            section={section}
+            client={client}
+            aircraftParam={aircraftParam}
+            contactName={contactName}
+            payloadMetrics={payload.metrics}
+          />
+        );
+      default:
+        notFound();
+    }
+  }
 
   switch (sectionType) {
     case "welcome":

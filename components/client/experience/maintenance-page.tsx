@@ -1,10 +1,12 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { cn } from "@/lib/utils";
 import { RevealOnScroll } from "./reveal-on-scroll";
 import {
   ExperienceBody,
   ExperienceHero,
   ExperienceHeroTitle,
   ExperienceSlide,
+  experienceScrollCopy,
   SectionNumber,
 } from "./experience-primitives";
 import { ExperienceGallery } from "./experience-gallery";
@@ -32,9 +34,11 @@ export function MaintenancePage({
         <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-6">
           <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
             <RevealOnScroll>
-              <p className="line-clamp-3 text-sm leading-relaxed text-white/80 sm:text-base">
-                {section.bodyCopy}
-              </p>
+              <div className={cn(experienceScrollCopy, "max-h-[24vh]")}>
+                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
+                  {section.bodyCopy}
+                </p>
+              </div>
             </RevealOnScroll>
             {callout ? <PullQuote text={callout.value} slide /> : null}
             {rows.length > 0 ? (
