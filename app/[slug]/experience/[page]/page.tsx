@@ -140,19 +140,17 @@ export default async function ExperiencePageRoute({
 
   const renderV2 = isExperienceRenderV2(payload.renderSchemaVersion);
 
-  const pageContent = (
-    <ExperiencePageContent
-      pageSlug={page}
-      section={section}
-      payload={payload}
-      contactName={contactName}
-      branding={branding}
-      slug={slug}
-      client={client}
-      aircraftParam={aircraftParam}
-      renderV2={renderV2}
-    />
-  );
+  let initialClientSnapshot = null;
+  if (renderV2) {
+    if (page === "pro-forma" && client) {
+      initialClientSnapshot = client;
+    } else if (isDraft) {
+      initialClientSnapshot = await serializeClientSnapshot(payload, {
+        aircraftInstanceId: aircraftParam ?? null,
+        proposalId,
+      });
+    }
+  }
 
   return (
     <PortalShell
@@ -164,8 +162,32 @@ export default async function ExperiencePageRoute({
       disclaimer={disclaimer}
       branding={branding}
       draftMode={isDraft}
+      experienceBootstrap={
+        renderV2
+          ? {
+              payload,
+              contactName,
+              initialPageSlug: page,
+              aircraftParam: aircraftParam ?? null,
+              initialClientSnapshot,
+              proposalId,
+            }
+          : undefined
+      }
     >
-      {pageContent}
+      {!renderV2 ? (
+        <ExperiencePageContent
+          pageSlug={page}
+          section={section}
+          payload={payload}
+          contactName={contactName}
+          branding={branding}
+          slug={slug}
+          client={client}
+          aircraftParam={aircraftParam}
+          renderV2={false}
+        />
+      ) : null}
     </PortalShell>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -46,40 +46,95 @@ function groupRowsBySection(rows: ProFormaStatementRow[]) {
   return groups;
 }
 
-export function ClientProFormaStatement({
-  rows,
-  period = "annual",
-  compact = false,
-  className,
-  collapsible = false,
-}: {
-  rows: ProFormaStatementRow[];
-  period?: "annual" | "monthly";
-  compact?: boolean;
-  className?: string;
-  /** When true, section groups collapse by default with expand/collapse all controls. */
-  collapsible?: boolean;
-}) {
+/** Owner cost summary stays visible — not affected by collapse all. */
+function isPinnedSection(section: ProFormaStatementRow) {
+  return section.layout === "owner_summary";
+}
+
+function resolveSectionTotal(
+  lines: ProFormaStatementRow[],
+  period: "annual" | "monthly"
+): number | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const row = lines[i];
+    if (row.kind === "subtotal" || row.kind === "total") {
+      return displayAmount(row, period);
+    }
+  }
+
+  let sum = 0;
+  let hasValue = false;
+  for (const row of lines) {
+    if (row.kind !== "line") continue;
+    const amt = displayAmount(row, period);
+    if (amt == null) continue;
+    sum += amt;
+    hasValue = true;
+  }
+  return hasValue ? sum : null;
+}
+
+export type ClientProFormaStatementHandle = {
+  expandAll: () => void;
+  collapseAll: () => void;
+};
+
+export const ClientProFormaStatement = forwardRef<
+  ClientProFormaStatementHandle,
+  {
+    rows: ProFormaStatementRow[];
+    period?: "annual" | "monthly";
+    compact?: boolean;
+    className?: string;
+    collapsible?: boolean;
+    defaultExpanded?: boolean;
+    /** Hide built-in expand/collapse toolbar (use external controls + ref). */
+    hideToolbar?: boolean;
+  }
+>(function ClientProFormaStatement(
+  {
+    rows,
+    period = "annual",
+    compact = false,
+    className,
+    collapsible = false,
+    defaultExpanded = false,
+    hideToolbar = false,
+  },
+  ref
+) {
   const displayRows = useMemo(() => rows.filter((r) => r.kind !== "info"), [rows]);
   const groups = useMemo(() => groupRowsBySection(displayRows), [displayRows]);
-  const sectionKeys = useMemo(
-    () => groups.map((g) => g.section.key),
-    [groups]
-  );
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const isExpanded = (key: string) => (collapsible ? (expanded[key] ?? false) : true);
+  const isExpanded = (section: ProFormaStatementRow) => {
+    if (!collapsible || isPinnedSection(section)) return true;
+    return expanded[section.key] ?? defaultExpanded;
+  };
 
-  function expandAll() {
+  const collapsibleSectionKeys = useMemo(
+    () => groups.filter((g) => !isPinnedSection(g.section)).map((g) => g.section.key),
+    [groups]
+  );
+
+  const expandAllSections = useCallback(() => {
     const next: Record<string, boolean> = {};
-    for (const key of sectionKeys) next[key] = true;
+    for (const key of collapsibleSectionKeys) next[key] = true;
     setExpanded(next);
-  }
+  }, [collapsibleSectionKeys]);
 
-  function collapseAll() {
-    setExpanded({});
-  }
+  const collapseAllSections = useCallback(() => {
+    const next: Record<string, boolean> = {};
+    for (const key of collapsibleSectionKeys) next[key] = false;
+    setExpanded(next);
+  }, [collapsibleSectionKeys]);
+
+  useImperativeHandle(
+    ref,
+    () => ({ expandAll: expandAllSections, collapseAll: collapseAllSections }),
+    [expandAllSections, collapseAllSections]
+  );
 
   if (!collapsible) {
     return (
@@ -93,54 +148,78 @@ export function ClientProFormaStatement({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={expandAll}
-          className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
-        >
-          Expand all
-        </button>
-        <button
-          type="button"
-          onClick={collapseAll}
-          className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
-        >
-          Collapse all
-        </button>
-      </div>
+    <div className={cn(!hideToolbar && "space-y-3", className)}>
+      {!hideToolbar ? (
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={expandAllSections}
+            className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
+          >
+            Expand all
+          </button>
+          <button
+            type="button"
+            onClick={collapseAllSections}
+            className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
+          >
+            Collapse all
+          </button>
+        </div>
+      ) : null}
 
-      <div
-        className={cn(
-          "overflow-x-auto rounded-lg border border-white/15 bg-white/5 backdrop-blur",
-          compact && "max-h-[28rem] overflow-y-auto"
-        )}
-      >
+      <div className="overflow-x-auto rounded-lg border border-white/15 bg-white/5 backdrop-blur">
         <div className="divide-y divide-white/10">
           {groups.map(({ section, lines }) => {
-            const open = isExpanded(section.key);
+            const pinned = isPinnedSection(section);
+            const open = isExpanded(section);
             const colMode = colModeForLayout(section.layout);
             const showRateHours = colMode === "full";
+            const sectionTotal = resolveSectionTotal(lines, period);
+
+            const headerClassName =
+              "flex w-full items-center gap-2 border-t border-white/10 bg-atlas-accent/10 px-4 py-2 text-left first:border-t-0";
 
             return (
               <div key={section.key}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpanded((prev) => ({ ...prev, [section.key]: !open }))
-                  }
-                  className="flex w-full items-center gap-2 border-t border-white/10 bg-atlas-accent/10 px-4 py-2 text-left first:border-t-0 hover:bg-atlas-accent/15"
-                >
-                  {open ? (
-                    <ChevronDown className="h-4 w-4 shrink-0 text-atlas-accent" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 shrink-0 text-atlas-accent" />
-                  )}
-                  <p className="text-xs font-semibold uppercase tracking-wide text-atlas-accent">
-                    {section.label}
-                  </p>
-                </button>
+                {pinned ? (
+                  <div className={headerClassName}>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-atlas-accent">
+                      {section.label}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpanded((prev) => ({ ...prev, [section.key]: !open }))
+                    }
+                    className={cn(headerClassName, "hover:bg-atlas-accent/15")}
+                  >
+                    <span className="flex min-w-0 flex-1 items-center gap-2">
+                      {open ? (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-atlas-accent" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-atlas-accent" />
+                      )}
+                      <span className="text-xs font-semibold uppercase tracking-wide text-atlas-accent">
+                        {section.label}
+                      </span>
+                    </span>
+                    {!open && sectionTotal != null ? (
+                      <span
+                        className={cn(
+                          "shrink-0 font-mono text-xs tabular-nums sm:text-sm",
+                          sectionTotal > 0 && section.layout === "revenue"
+                            ? "text-emerald-400/90"
+                            : "text-white/85"
+                        )}
+                      >
+                        {formatCurrency(sectionTotal)}
+                      </span>
+                    ) : null}
+                  </button>
+                )}
 
                 {open ? (
                   <>
@@ -169,6 +248,7 @@ export function ClientProFormaStatement({
                         row={row}
                         period={period}
                         colMode={colMode}
+                        compact={compact}
                       />
                     ))}
                   </>
@@ -180,7 +260,7 @@ export function ClientProFormaStatement({
       </div>
     </div>
   );
-}
+});
 
 function FlatStatement({
   displayRows,
@@ -199,9 +279,7 @@ function FlatStatement({
     <div
       className={cn(
         "overflow-x-auto rounded-lg border border-white/15 bg-white/5 backdrop-blur",
-        compact ? "h-full max-h-full overflow-hidden" : undefined,
-        !compact && className,
-        compact && className
+        className
       )}
     >
       <div className="divide-y divide-white/10">

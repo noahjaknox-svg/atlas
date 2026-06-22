@@ -1,50 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-
-export function ChapterTransition({
-  children,
-  direction = 0,
-}: {
-  children: React.ReactNode;
-  direction?: number;
-}) {
-  const pathname = usePathname();
-  const reducedMotion = useReducedMotion();
-  const enterX = direction >= 0 ? 28 : -28;
-  const exitX = direction >= 0 ? -20 : 20;
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        className="h-full min-h-0"
-        initial={
-          reducedMotion
-            ? { opacity: 0 }
-            : { opacity: 0, x: enterX, y: 14, filter: "blur(4px)" }
-        }
-        animate={
-          reducedMotion
-            ? { opacity: 1 }
-            : { opacity: 1, x: 0, y: 0, filter: "blur(0px)" }
-        }
-        exit={
-          reducedMotion
-            ? { opacity: 0 }
-            : { opacity: 0, x: exitX, y: -10, filter: "blur(4px)" }
-        }
-        transition={{
-          duration: reducedMotion ? 0.12 : 0.38,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-}
+import { motion, useReducedMotion } from "framer-motion";
+import { useChapterStaggerMode } from "./chapter-stagger-context";
 
 export function ChapterStagger({
   children,
@@ -54,8 +11,10 @@ export function ChapterStagger({
   className?: string;
 }) {
   const reducedMotion = useReducedMotion();
+  const mode = useChapterStaggerMode();
+  const playEntrance = mode === "enter" && !reducedMotion;
 
-  if (reducedMotion) {
+  if (!playEntrance) {
     return <div className={className}>{children}</div>;
   }
 
@@ -84,8 +43,10 @@ export function ChapterStaggerItem({
   className?: string;
 }) {
   const reducedMotion = useReducedMotion();
+  const mode = useChapterStaggerMode();
+  const playEntrance = mode === "enter" && !reducedMotion;
 
-  if (reducedMotion) {
+  if (!playEntrance) {
     return <div className={className}>{children}</div>;
   }
 
@@ -105,3 +66,6 @@ export function ChapterStaggerItem({
     </motion.div>
   );
 }
+
+// Re-export for v1 shell
+export { ChapterTransition } from "./chapter-page-transition";
