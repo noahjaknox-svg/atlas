@@ -21,7 +21,7 @@ import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
-import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
+import { resolvePortalBranding } from "@/lib/portal-constants";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
 
@@ -58,13 +58,7 @@ async function loadDraftPreview(slug: string): Promise<{
 
   return {
     payload,
-    branding: {
-      heroCloudImageUrl: payload.branding?.heroCloudImageUrl ?? content.heroCloudImageUrl,
-      heroCloudVideoUrl: resolveHeroCloudVideoUrl(
-        payload.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl
-      ),
-      logoUrl: payload.branding?.logoUrl ?? content.logoUrl,
-    },
+    branding: resolvePortalBranding(content, payload.branding),
     contactName: payload.prospect.contactName,
     clientDisplayName: payload.prospect.contactName,
     proposalId: portal.proposalId,
