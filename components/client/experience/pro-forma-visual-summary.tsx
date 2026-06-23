@@ -74,7 +74,7 @@ export function ProFormaVisualSummary({
           <div
             className={cn(
               "relative rounded-full transition-[background] duration-500",
-              compact ? "h-24 w-24" : "h-36 w-36"
+              compact ? "h-28 w-28" : "h-36 w-36"
             )}
             style={{
               background: `conic-gradient(#C9A227 0% ${fixedPct}%, rgba(255,255,255,0.15) ${fixedPct}% 100%)`,
@@ -83,8 +83,10 @@ export function ProFormaVisualSummary({
           >
             <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-[#0B0F1A] text-center">
               <span className="text-[10px] uppercase tracking-wider text-white/50">Total</span>
-              <span className="mt-1 font-mono text-sm tabular-nums text-atlas-accent">
-                {total > 0 ? formatCurrency(animatedTotal) : "—"}
+              <span className="mt-1 font-mono text-xs tabular-nums text-atlas-accent sm:text-sm">
+                {total > 0
+                  ? formatCurrency(animatedTotal, compact ? { compact: true } : undefined)
+                  : "—"}
               </span>
             </div>
           </div>
