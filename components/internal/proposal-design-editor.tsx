@@ -26,6 +26,10 @@ export function ProposalDesignEditor({
   const [fleet, setFleet] = useState(initialFleet);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [uploadingField, setUploadingField] = useState<
+    "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl" | null
+  >(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const save = useCallback(async () => {
     setSaving(true);
@@ -40,7 +44,7 @@ export function ProposalDesignEditor({
     if (res.ok) {
       setContent(json.content);
       setFleet(json.fleet);
-      setMessage("Saved");
+      setMessage("Saved — cloud video updates live on all client portals.");
     } else {
       setMessage(json.error ?? "Save failed");
     }
@@ -62,8 +66,17 @@ export function ProposalDesignEditor({
     field: "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl",
     file: File
   ) {
-    const url = await uploadFile(file);
-    patchContent({ [field]: url });
+    setUploadingField(field);
+    setUploadError(null);
+    setMessage("");
+    try {
+      const url = await uploadFile(file);
+      patchContent({ [field]: url });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingField(null);
+    }
   }
 
   return (
@@ -79,20 +92,29 @@ export function ProposalDesignEditor({
             value={content.heroCloudImageUrl}
             onChange={(v) => patchContent({ heroCloudImageUrl: v })}
             onUpload={(f) => void handleUpload("heroCloudImageUrl", f)}
+            uploading={uploadingField === "heroCloudImageUrl"}
+            error={uploadingField === "heroCloudImageUrl" ? uploadError : null}
           />
           <Field
             label="Cloud video URL (optional)"
             value={content.heroCloudVideoUrl ?? ""}
             onChange={(v) => patchContent({ heroCloudVideoUrl: v || null })}
             onUpload={(f) => void handleUpload("heroCloudVideoUrl", f)}
+            uploading={uploadingField === "heroCloudVideoUrl"}
+            error={uploadingField === "heroCloudVideoUrl" ? uploadError : null}
           />
           <Field
             label="Logo URL"
             value={content.logoUrl}
             onChange={(v) => patchContent({ logoUrl: v })}
             onUpload={(f) => void handleUpload("logoUrl", f)}
+            uploading={uploadingField === "logoUrl"}
+            error={uploadingField === "logoUrl" ? uploadError : null}
           />
         </div>
+        {uploadError && !uploadingField ? (
+          <p className="mt-3 text-sm text-red-400">{uploadError}</p>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
@@ -229,7 +251,7 @@ export function ProposalDesignEditor({
       </section>
 
       <div className="flex items-center gap-4">
-        <Button type="button" onClick={() => void save()} disabled={saving}>
+        <Button type="button" onClick={() => void save()} disabled={saving || uploadingField !== null}>
           {saving ? "Saving…" : "Save portal content"}
         </Button>
         {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
@@ -243,11 +265,15 @@ function Field({
   value,
   onChange,
   onUpload,
+  uploading = false,
+  error = null,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   onUpload: (f: File) => void;
+  uploading?: boolean;
+  error?: string | null;
 }) {
   return (
     <div>
@@ -256,12 +282,15 @@ function Field({
       <input
         type="file"
         accept="image/*,video/mp4,video/webm"
-        className="mt-2 block text-xs text-atlas-muted"
+        disabled={uploading}
+        className="mt-2 block text-xs text-atlas-muted disabled:opacity-50"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) onUpload(f);
         }}
       />
+      {uploading ? <p className="mt-1 text-xs text-atlas-muted">Uploading…</p> : null}
+      {error ? <p className="mt-1 text-xs text-red-400">{error}</p> : null}
     </div>
   );
 }

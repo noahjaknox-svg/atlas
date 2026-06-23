@@ -68,15 +68,12 @@ export type PortalBrandingSnapshot = {
 /** Live Proposal Design branding wins over published snapshot for global portal assets. */
 export function resolvePortalBranding(
   content: Pick<PortalContentData, "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl">,
-  snapshot?: PortalBrandingSnapshot | null
+  _snapshot?: PortalBrandingSnapshot | null
 ) {
   return {
-    heroCloudImageUrl:
-      content.heroCloudImageUrl || snapshot?.heroCloudImageUrl || DEFAULT_CLOUD_IMAGE,
-    heroCloudVideoUrl: resolveHeroCloudVideoUrl(
-      content.heroCloudVideoUrl ?? snapshot?.heroCloudVideoUrl
-    ),
-    logoUrl: content.logoUrl || snapshot?.logoUrl || DEFAULT_LOGO,
+    heroCloudImageUrl: content.heroCloudImageUrl || DEFAULT_CLOUD_IMAGE,
+    heroCloudVideoUrl: resolveHeroCloudVideoUrl(content.heroCloudVideoUrl),
+    logoUrl: content.logoUrl || DEFAULT_LOGO,
   };
 }
 export const DEFAULT_LOGO = "/images/prismjet-logo.png";
