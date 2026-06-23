@@ -52,8 +52,32 @@ export const DEFAULT_CLOUD_IMAGE = PRISMJET_MEDIA.clouds;
 /** Bundled loop — drop `cloud-flight-loop.mp4` in public/videos/ to enable. */
 export const DEFAULT_CLOUD_VIDEO = "/videos/cloud-flight-loop.mp4";
 
-export function resolveHeroCloudVideoUrl(url: string | null | undefined): string {
-  return url ?? DEFAULT_CLOUD_VIDEO;
+/** Normalize cloud video URL — empty and bundled placeholder paths resolve to null (still image). */
+export function resolveHeroCloudVideoUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed || trimmed === DEFAULT_CLOUD_VIDEO) return null;
+  return trimmed;
+}
+
+export type PortalBrandingSnapshot = {
+  heroCloudImageUrl?: string | null;
+  heroCloudVideoUrl?: string | null;
+  logoUrl?: string | null;
+};
+
+/** Live Proposal Design branding wins over published snapshot for global portal assets. */
+export function resolvePortalBranding(
+  content: Pick<PortalContentData, "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl">,
+  snapshot?: PortalBrandingSnapshot | null
+) {
+  return {
+    heroCloudImageUrl:
+      content.heroCloudImageUrl || snapshot?.heroCloudImageUrl || DEFAULT_CLOUD_IMAGE,
+    heroCloudVideoUrl: resolveHeroCloudVideoUrl(
+      content.heroCloudVideoUrl ?? snapshot?.heroCloudVideoUrl
+    ),
+    logoUrl: content.logoUrl || snapshot?.logoUrl || DEFAULT_LOGO,
+  };
 }
 export const DEFAULT_LOGO = "/images/prismjet-logo.png";
 
