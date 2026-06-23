@@ -4,6 +4,8 @@ import {
   requirePortalSession,
   loadActivePortal,
   trackPortalView,
+  resolveLivePortalBranding,
+  type PortalBranding,
 } from "@/lib/client-portal-load";
 import {
   resolvePortalExperienceSection,
@@ -21,15 +23,8 @@ import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
-import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
-
-type PortalBranding = {
-  heroCloudImageUrl: string;
-  heroCloudVideoUrl: string | null;
-  logoUrl: string | null;
-};
 
 /**
  * Build the live (unpublished) payload for a staff-only draft preview. Reuses the
@@ -58,13 +53,7 @@ async function loadDraftPreview(slug: string): Promise<{
 
   return {
     payload,
-    branding: {
-      heroCloudImageUrl: payload.branding?.heroCloudImageUrl ?? content.heroCloudImageUrl,
-      heroCloudVideoUrl: resolveHeroCloudVideoUrl(
-        payload.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl
-      ),
-      logoUrl: payload.branding?.logoUrl ?? content.logoUrl,
-    },
+    branding: resolveLivePortalBranding(content),
     contactName: payload.prospect.contactName,
     clientDisplayName: payload.prospect.contactName,
     proposalId: portal.proposalId,

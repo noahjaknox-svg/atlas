@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CLOUD_IMAGE } from "@/lib/portal-constants";
 
+function videoMimeType(url: string): string {
+  if (/\.webm(\?|$)/i.test(url)) return "video/webm";
+  return "video/mp4";
+}
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -78,9 +83,14 @@ export function CloudBackground({
             playsInline
             poster={poster}
             preload={priorityVideo ? "auto" : "metadata"}
-            onError={() => setVideoFailed(true)}
+            onError={() => {
+              if (process.env.NODE_ENV === "development") {
+                console.warn("[CloudBackground] Video failed to load:", videoUrl);
+              }
+              setVideoFailed(true);
+            }}
           >
-            <source src={videoUrl!} type="video/mp4" />
+            <source src={videoUrl!} type={videoMimeType(videoUrl!)} />
           </video>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element

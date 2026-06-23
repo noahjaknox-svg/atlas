@@ -2,8 +2,11 @@ import { redirect } from "next/navigation";
 import { getInternalUser, getPortalSession, type PortalSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPortalContent, getFleetShowcase } from "@/lib/portal-content";
-import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
+import { resolveLivePortalBranding } from "@/lib/client-portal-branding";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+
+export type { PortalBranding } from "@/lib/client-portal-branding";
+export { resolveLivePortalBranding } from "@/lib/client-portal-branding";
 
 export async function requirePortalSession(slug: string): Promise<PortalSession> {
   const session = await getPortalSession();
@@ -50,14 +53,7 @@ export async function loadActivePortal(slug: string) {
 
   const [content, fleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
 
-  const branding = {
-    heroCloudImageUrl:
-      payload?.branding?.heroCloudImageUrl ?? content.heroCloudImageUrl,
-    heroCloudVideoUrl: resolveHeroCloudVideoUrl(
-      payload?.branding?.heroCloudVideoUrl ?? content.heroCloudVideoUrl
-    ),
-    logoUrl: payload?.branding?.logoUrl ?? content.logoUrl,
-  };
+  const branding = resolveLivePortalBranding(content);
 
   return {
     portal,
