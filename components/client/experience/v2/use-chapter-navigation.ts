@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useContext, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   SECTION_TYPE_TO_SLUG,
   type ExperienceSectionSnapshot,
+  type ExperienceSectionType,
 } from "@/lib/experience-content";
 import {
   experienceHref,
   getExperiencePageSlugs,
 } from "@/lib/prefetch-experience-routes";
+import { ExperienceBootstrapContext } from "./experience-bootstrap-context";
 
 export function useChapterNavigation({
   slug,
@@ -20,6 +22,7 @@ export function useChapterNavigation({
   sections: ExperienceSectionSnapshot[];
   draftMode?: boolean;
 }) {
+  const deck = useContext(ExperienceBootstrapContext);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -30,16 +33,19 @@ export function useChapterNavigation({
 
   const pageSlugs = useMemo(() => getExperiencePageSlugs(sections), [sections]);
 
-  const currentSlug = useMemo(() => {
+  const pathnameSlug = useMemo(() => {
     const match = pathname?.match(/\/experience\/([^/?]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
 
+  const currentSlug = deck?.activeSlug ?? pathnameSlug;
+
   const slideIndex = useMemo(() => {
+    if (deck) return deck.slideIndex;
     if (!currentSlug) return 0;
     const index = pageSlugs.indexOf(currentSlug);
     return index >= 0 ? index : 0;
-  }, [currentSlug, pageSlugs]);
+  }, [currentSlug, deck, pageSlugs]);
 
   const slideProgress = useMemo(() => {
     if (pageSlugs.length <= 1) return 0;
@@ -48,6 +54,10 @@ export function useChapterNavigation({
 
   const goToAdjacentSlide = useCallback(
     (delta: number) => {
+      if (deck) {
+        deck.goToAdjacentSlide(delta);
+        return;
+      }
       if (!currentSlug) return;
       const index = pageSlugs.indexOf(currentSlug);
       if (index < 0) return;
@@ -55,10 +65,12 @@ export function useChapterNavigation({
       if (!next) return;
       router.push(withDraft(experienceHref(slug, next)), { scroll: false });
     },
-    [currentSlug, pageSlugs, router, slug, withDraft]
+    [currentSlug, deck, pageSlugs, router, slug, withDraft]
   );
 
   useEffect(() => {
+    if (deck) return;
+
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (
@@ -75,15 +87,16 @@ export function useChapterNavigation({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goToAdjacentSlide]);
+  }, [deck, goToAdjacentSlide]);
 
   function tabHref(sectionType: string) {
-    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as keyof typeof SECTION_TYPE_TO_SLUG];
+    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
     return withDraft(experienceHref(slug, pageSlug));
   }
 
   function isActive(sectionType: string) {
-    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as keyof typeof SECTION_TYPE_TO_SLUG];
+    if (deck) return deck.isActive(sectionType);
+    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
     return currentSlug === pageSlug;
   }
 
@@ -96,5 +109,6 @@ export function useChapterNavigation({
     tabHref,
     isActive,
     withDraft,
+    navigate: deck?.navigate,
   };
 }

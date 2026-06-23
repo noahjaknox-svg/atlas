@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_CLOUD_IMAGE } from "@/lib/portal-constants";
 
 function videoMimeType(url: string): string {
-  if (/\.webm(\?|$)/i.test(url)) return "video/webm";
+  const path = url.split("?")[0]?.split("#")[0]?.toLowerCase() ?? "";
+  if (path.endsWith(".webm")) return "video/webm";
+  if (path.endsWith(".mov")) return "video/quicktime";
   return "video/mp4";
 }
 
@@ -83,12 +85,7 @@ export function CloudBackground({
             playsInline
             poster={poster}
             preload={priorityVideo ? "auto" : "metadata"}
-            onError={() => {
-              if (process.env.NODE_ENV === "development") {
-                console.warn("[CloudBackground] Video failed to load:", videoUrl);
-              }
-              setVideoFailed(true);
-            }}
+            onError={() => setVideoFailed(true)}
           >
             <source src={videoUrl!} type={videoMimeType(videoUrl!)} />
           </video>

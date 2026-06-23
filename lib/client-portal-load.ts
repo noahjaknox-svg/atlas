@@ -2,11 +2,8 @@ import { redirect } from "next/navigation";
 import { getInternalUser, getPortalSession, type PortalSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPortalContent, getFleetShowcase } from "@/lib/portal-content";
-import { resolveLivePortalBranding } from "@/lib/client-portal-branding";
+import { resolvePortalBranding } from "@/lib/portal-constants";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
-
-export type { PortalBranding } from "@/lib/client-portal-branding";
-export { resolveLivePortalBranding } from "@/lib/client-portal-branding";
 
 export async function requirePortalSession(slug: string): Promise<PortalSession> {
   const session = await getPortalSession();
@@ -53,7 +50,7 @@ export async function loadActivePortal(slug: string) {
 
   const [content, fleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
 
-  const branding = resolveLivePortalBranding(content);
+  const branding = resolvePortalBranding(content, payload?.branding);
 
   return {
     portal,

@@ -4,8 +4,6 @@ import {
   requirePortalSession,
   loadActivePortal,
   trackPortalView,
-  resolveLivePortalBranding,
-  type PortalBranding,
 } from "@/lib/client-portal-load";
 import {
   resolvePortalExperienceSection,
@@ -23,8 +21,15 @@ import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
+import { resolvePortalBranding } from "@/lib/portal-constants";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
+
+type PortalBranding = {
+  heroCloudImageUrl: string;
+  heroCloudVideoUrl: string | null;
+  logoUrl: string | null;
+};
 
 /**
  * Build the live (unpublished) payload for a staff-only draft preview. Reuses the
@@ -53,7 +58,7 @@ async function loadDraftPreview(slug: string): Promise<{
 
   return {
     payload,
-    branding: resolveLivePortalBranding(content),
+    branding: resolvePortalBranding(content, payload.branding),
     contactName: payload.prospect.contactName,
     clientDisplayName: payload.prospect.contactName,
     proposalId: portal.proposalId,
@@ -129,19 +134,17 @@ export default async function ExperiencePageRoute({
 
   const renderV2 = isExperienceRenderV2(payload.renderSchemaVersion);
 
-  const pageContent = (
-    <ExperiencePageContent
-      pageSlug={page}
-      section={section}
-      payload={payload}
-      contactName={contactName}
-      branding={branding}
-      slug={slug}
-      client={client}
-      aircraftParam={aircraftParam}
-      renderV2={renderV2}
-    />
-  );
+  let initialClientSnapshot = null;
+  if (renderV2) {
+    if (page === "pro-forma" && client) {
+      initialClientSnapshot = client;
+    } else if (isDraft) {
+      initialClientSnapshot = await serializeClientSnapshot(payload, {
+        aircraftInstanceId: aircraftParam ?? null,
+        proposalId,
+      });
+    }
+  }
 
   return (
     <PortalShell
@@ -153,8 +156,32 @@ export default async function ExperiencePageRoute({
       disclaimer={disclaimer}
       branding={branding}
       draftMode={isDraft}
+      experienceBootstrap={
+        renderV2
+          ? {
+              payload,
+              contactName,
+              initialPageSlug: page,
+              aircraftParam: aircraftParam ?? null,
+              initialClientSnapshot,
+              proposalId,
+            }
+          : undefined
+      }
     >
-      {pageContent}
+      {!renderV2 ? (
+        <ExperiencePageContent
+          pageSlug={page}
+          section={section}
+          payload={payload}
+          contactName={contactName}
+          branding={branding}
+          slug={slug}
+          client={client}
+          aircraftParam={aircraftParam}
+          renderV2={false}
+        />
+      ) : null}
     </PortalShell>
   );
 }
