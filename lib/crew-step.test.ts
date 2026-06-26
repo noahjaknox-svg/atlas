@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCrewLadder,
   crewAtStep,
+  crewLadderReferenceRungs,
   inferStepFromCounts,
   maxUsageForPilots,
   requiredStepForOwnerHours,
@@ -22,6 +23,26 @@ describe("buildCrewLadder", () => {
     expect(ladder[1]).toEqual({ pic: 2, sic: 1 });
     expect(ladder[2]).toEqual({ pic: 2, sic: 2 });
     expect(ladder[3]).toEqual({ pic: 3, sic: 2 });
+  });
+});
+
+describe("crewLadderReferenceRungs", () => {
+  it("returns static max usage per ladder step from utilization tiers", () => {
+    const rungs = crewLadderReferenceRungs(
+      {
+        max_usage_1_pilot: "450",
+        max_usage_2_pilots: "600",
+        max_usage_3_pilots: "700",
+        max_usage_4_pilots: "800",
+        lead_pilot_enabled: "no",
+      },
+      {},
+      3
+    );
+    expect(rungs).toHaveLength(3);
+    expect(rungs[0]).toMatchObject({ stepIndex: 0, pilots: 2, maxUsage: 600 });
+    expect(rungs[1]).toMatchObject({ stepIndex: 1, pilots: 3, maxUsage: 700 });
+    expect(rungs[2]).toMatchObject({ stepIndex: 2, pilots: 4, maxUsage: 800 });
   });
 });
 
@@ -104,10 +125,49 @@ describe("totalPilotsAtStep", () => {
   });
 });
 
+describe("default minimum pilots", () => {
+  it("maps 3 total pilots to ladder step 1", async () => {
+    const {
+      parseDefaultMinimumCrewMinStep,
+      stepIndexForTotalPilots,
+      resolveCrewStepFromAssumptions,
+    } = await import("@/lib/crew-step");
+    expect(stepIndexForTotalPilots(3)).toBe(1);
+    expect(parseDefaultMinimumCrewMinStep({ default_minimum_crew: "3" })).toBe(1);
+    const resolved = resolveCrewStepFromAssumptions(
+      {
+        default_minimum_crew: "3",
+        owner_annual_hours: "100",
+        max_usage_1_pilot: "0",
+        max_usage_2_pilots: "450",
+        max_usage_3_pilots: "600",
+        max_usage_4_pilots: "700",
+        max_usage_5_pilots: "800",
+        max_usage_6_pilots: "900",
+        lead_pilot_enabled: "no",
+      },
+      undefined,
+      {}
+    );
+    expect(resolved.minStep).toBe(1);
+    expect(resolved.stepIndex).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("patchAssumptionsWithCrewStep", () => {
   it("auto-steps crew when owner hours exceed 2-pilot capacity", () => {
     const next = patchAssumptionsWithCrewStep(
-      { owner_annual_hours: "500", crew_step_index: "0", lead_pilot_enabled: "no" },
+      {
+        owner_annual_hours: "500",
+        crew_step_index: "0",
+        lead_pilot_enabled: "no",
+        max_usage_1_pilot: "0",
+        max_usage_2_pilots: "450",
+        max_usage_3_pilots: "600",
+        max_usage_4_pilots: "700",
+        max_usage_5_pilots: "800",
+        max_usage_6_pilots: "900",
+      },
       {},
       { ownerHours: 500 }
     );

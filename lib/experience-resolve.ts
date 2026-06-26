@@ -1,5 +1,9 @@
 import type { ExperienceContentBlocks, ExperienceSectionSnapshot } from "./experience-content";
-import { EXPERIENCE_SECTION_TYPES, mergeSectionWithDefaults } from "./experience-content";
+import {
+  EXPERIENCE_SECTION_TYPES,
+  mergeSectionWithDefaults,
+  sanitizeExperiencePageLinks,
+} from "./experience-content";
 import { getExperienceDefaultFromMaster } from "./experience-master";
 import type { ExperienceMasterTemplate } from "./experience-master";
 import type { ProposalSnapshotPayload } from "./snapshot";
@@ -91,6 +95,9 @@ export function resolvePublishedSections(
     if (pcb?.aircraftMarketUrl != null) marketOverrides.aircraftMarketUrl = pcb.aircraftMarketUrl;
     if (pcb?.aircraftMarketButtonLabel != null) {
       marketOverrides.aircraftMarketButtonLabel = pcb.aircraftMarketButtonLabel;
+    }
+    if (pcb?.navLinks != null) {
+      marketOverrides.navLinks = sanitizeExperiencePageLinks(pcb.navLinks);
     }
 
     return {

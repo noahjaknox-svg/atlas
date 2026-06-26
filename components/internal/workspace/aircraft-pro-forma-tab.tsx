@@ -27,7 +27,7 @@ import {
   buildPerOwnerFinancing,
   type PerOwnerEconomics,
 } from "@/lib/proforma-multi-owner";
-import { profilesWithProformaHours } from "@/lib/proposal-owners";
+import { profilesWithProformaHours, seedProformaHoursInAssumptions, ownerHoursForUtilization } from "@/lib/proposal-owners";
 
 const METRIC_KEYS_HIDDEN_FROM_TABLE = new Set(["cost_per_owner_hour"]);
 
@@ -128,14 +128,24 @@ export function AircraftProFormaColumn({
       .filter((r) => charterEnabled || !isCharterProFormaRow(r));
   }, [visibleStatement, charterEnabled]);
 
-  const applyOwnerHours = useCallback(
-    (hours: number) => {
-      onAssumptionsChange(
-        patchAssumptionsWithCrewStep(rawAssumptions, warehouseDefaults, { ownerHours: hours })
-      );
-    },
-    [rawAssumptions, warehouseDefaults, onAssumptionsChange]
-  );
+  const resetOwnerDefaults = useCallback(() => {
+    const profiles =
+      ownerProfiles.length > 0
+        ? ownerProfiles
+        : [
+            {
+              sortOrder: 0,
+              displayName: "Owner",
+              annualFlightHours: parseFloat(rawAssumptions.owner_annual_hours ?? "400") || 400,
+              ownershipPercent: 100,
+            },
+          ];
+    const withDefaults = seedProformaHoursInAssumptions(rawAssumptions, profiles);
+    const hours = ownerHoursForUtilization(profiles, withDefaults);
+    onAssumptionsChange(
+      patchAssumptionsWithCrewStep(withDefaults, warehouseDefaults, { ownerHours: hours })
+    );
+  }, [rawAssumptions, warehouseDefaults, onAssumptionsChange, ownerProfiles]);
 
   const toggleLine = useCallback(
     (key: string, visible: boolean) => {
@@ -153,10 +163,9 @@ export function AircraftProFormaColumn({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <ProFormaScenarioPanel
-        profile={utilization}
         charterEnabled={charterEnabled}
         ownerProfiles={ownerProfiles}
-        onOwnerHoursChange={applyOwnerHours}
+        onResetOwnerDefaults={resetOwnerDefaults}
         assumptions={rawAssumptions}
         warehouseDefaults={warehouseDefaults}
         onCrewChange={onAssumptionsChange}

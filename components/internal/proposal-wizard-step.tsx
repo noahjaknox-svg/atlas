@@ -13,6 +13,10 @@ import { parseFormattedNumber } from "@/lib/utils";
 import type { Proposal, Prospect, AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalScenario, ClientPortal } from "@prisma/client";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
 import { ROUTES } from "@/lib/routes";
+import {
+  PREVIEW_PROSPECT_PORTAL,
+  PUBLISH_PROSPECT_PORTAL,
+} from "@/lib/product-terminology";
 
 type ProposalWithRelations = Proposal & {
   prospect: Prospect;
@@ -304,12 +308,12 @@ function ReviewStep({
         </Button>
         {proposal.clientPortal?.active && (
           <Link href={`/${proposal.clientPortal.slug}/experience/welcome`} target="_blank">
-            <Button variant="secondary">Client Preview</Button>
+            <Button variant="secondary">{PREVIEW_PROSPECT_PORTAL}</Button>
           </Link>
         )}
         {isAdmin && !publishResult && (
           <Button onClick={handlePublish} disabled={loading}>
-            {loading ? "Publishing…" : "Publish"}
+            {loading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
           </Button>
         )}
       </div>
@@ -390,7 +394,7 @@ export function ProposalWizardStep({
       },
       { category: "aircraft", name: "proposed_home_base", label: "Proposed home base (ICAO)", required: true },
       { category: "aircraft", name: "fuel_burn_gph", label: "Fuel burn (GPH)", type: "number" },
-      { category: "aircraft", name: "aircraft_summary", label: "Client aircraft summary", type: "textarea" },
+      { category: "aircraft", name: "aircraft_summary", label: "Prospect aircraft summary", type: "textarea" },
     ],
     3: [
       { category: "base", name: "home_airport_icao", label: "Home airport ICAO", required: true },

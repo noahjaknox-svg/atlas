@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const {
+      clientName,
       prospectName,
       aircraftModel,
       contactName,
@@ -34,26 +35,23 @@ export async function POST(request: Request) {
       proposalName,
     } = body;
 
-    if (!prospectName?.trim()) {
+    const resolvedClientName = (clientName ?? prospectName)?.trim();
+    if (!resolvedClientName) {
       return jsonError("Prospect name is required");
     }
 
-    const resolvedContactName = contactName?.trim() || prospectName.trim();
-    const resolvedEmail =
-      contactEmail?.trim() || user.email || "pending@prismjet.internal";
-
     const prospect = await prisma.prospect.create({
       data: {
-        prospectName: prospectName.trim(),
+        prospectName: resolvedClientName,
         companyName: null,
-        contactName: resolvedContactName,
-        contactEmail: resolvedEmail,
+        contactName: contactName?.trim() ?? "",
+        contactEmail: contactEmail?.trim() ?? "",
         contactPhone: contactPhone?.trim() || null,
         prospectType: prospectType || "other",
         opportunityType: "aircraft_management",
         createdById: user.id,
-        internalNotes: body.internalNotes,
-        clientSummary: body.clientSummary,
+        internalNotes: body.internalNotes ?? null,
+        clientSummary: body.clientSummary ?? null,
       },
     });
 
@@ -61,7 +59,7 @@ export async function POST(request: Request) {
       data: {
         prospectId: prospect.id,
         aircraftInstanceId: null as string | null,
-        proposalName: proposalName ?? `${prospectName} — Atlas Proposal`,
+        proposalName: proposalName ?? `${resolvedClientName} — Atlas Proposal`,
         preparedById: user.id,
         preparedDate: new Date(),
       },
@@ -100,6 +98,20 @@ export async function POST(request: Request) {
 
     const { ensureThreeScenarios } = await import("@/lib/scenarios");
     await ensureThreeScenarios(proposal.id, aircraft.id);
+
+    const { ensureDraftPortalForProposal } = await import("@/lib/draft-portal");
+    await ensureDraftPortalForProposal(proposal.id);
+
+    const acCategory = aircraftAssumptionCategory(aircraft.id);
+    await prisma.proposalAssumption.create({
+      data: {
+        proposalId: proposal.id,
+        category: acCategory,
+        assumptionName: "aircraft_profile_mode",
+        value: "general",
+        sourceType: "manual",
+      },
+    });
 
     if (aircraftModel?.trim()) {
       const acCategory = aircraftAssumptionCategory(aircraft.id);

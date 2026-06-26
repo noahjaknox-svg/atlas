@@ -3,6 +3,7 @@
  */
 
 import type { AssumptionMap } from "@/lib/assumptions";
+import { computeCrewTrainingTotalAmount } from "@/lib/aircraft-calculated-fields";
 import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
 import { applyScenarioCrewToAssumptions } from "@/lib/scenario-crew";
 import {
@@ -305,23 +306,7 @@ export function assumptionsToProFormaInputs(
 function resolveCrewTrainingTotalFromAssumptions(
   assumptions: AssumptionMap
 ): { total: number } {
-  const get = (key: string, fallback = 0) => {
-    const v = assumptions[key];
-    if (v == null || v === "") return fallback;
-    return typeof v === "number" ? v : parseFloat(String(v).replace(/,/g, "")) || fallback;
-  };
-  const picPer = get("pic_training");
-  const sicPer = get("sic_training");
-  const picHeads = Math.max(0, Math.round(get("pic_count", 1)));
-  const sicHeads = Math.max(0, Math.round(get("sic_count", 1)));
-  let pic = picPer > 0 && picHeads > 0 ? Math.round(picPer * picHeads) : 0;
-  let sic = sicPer > 0 && sicHeads > 0 ? Math.round(sicPer * sicHeads) : 0;
-  const legacy = get("crew_training");
-  if (pic === 0 && sic === 0 && legacy > 0) {
-    pic = Math.round(legacy / 2);
-    sic = legacy - pic;
-  }
-  return { total: pic + sic };
+  return { total: computeCrewTrainingTotalAmount(assumptions) };
 }
 
 export function computeTotalFixedFromAssumptions(

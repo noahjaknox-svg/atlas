@@ -2,11 +2,10 @@ import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
 /**
- * The per-proposal "Design report" editor has been consolidated into the single
- * "Edit presentation" flow on the proposal workspace. Page structure, layout, and
- * visuals are now owned globally by the Deck Builder (Proposal Design), while each
- * proposal edits copy and page selection from the workspace. This route redirects
- * any existing links/bookmarks to the workspace.
+ * The per-proposal "Design report" editor has been consolidated into Edit prospect portal
+ * in the Proposal Workspace. Page structure, layout, and visuals are owned globally by
+ * the Prospect Portal Designer, while each proposal edits copy and page selection from the
+ * workspace. This route redirects any existing links/bookmarks to the workspace.
  */
 export default async function ProposalDesignRedirect({
   params,

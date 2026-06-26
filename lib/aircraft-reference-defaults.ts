@@ -1,120 +1,30 @@
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/company-settings";
+import { loadCompanySettingsDefaults } from "@/lib/company-settings-defaults";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
-import { warehouseMinStep } from "@/lib/crew-step";
+import {
+  loadWarehouseAircraftDefaults,
+  stripExcludedWarehouseKeys,
+} from "@/lib/warehouse-assumption-map";
 
 /**
- * Resolve database-backed pro forma defaults for a warehouse aircraft, plus the
- * single CompanySettings row and (optionally) the FBO at the proposed home base.
- * Produces a flat assumption-key map consumed by the pro forma engine.
+ * Resolve database-backed defaults for a warehouse aircraft plus company settings
+ * and (when ICAO is known) FBO fuel/hangar. Only non-null Data Hub values are included.
  */
 export async function loadAircraftReferenceDefaults(params: {
   warehouseAircraftId: string;
   airportIcao?: string | null;
   fboName?: string | null;
 }): Promise<Record<string, string>> {
-  const map: Record<string, string> = {};
-
   const aircraft = await prisma.warehouseAircraft.findUnique({
     where: { id: params.warehouseAircraftId },
   });
-  if (!aircraft) return map;
+  if (!aircraft) return {};
 
-  const settings = await getCompanySettings();
-
-  const set = (key: string, value: number | null | undefined) => {
-    if (value == null) return;
-    map[key] = String(value);
+  const map: Record<string, string> = {
+    ...stripExcludedWarehouseKeys(loadWarehouseAircraftDefaults(aircraft)),
+    ...loadCompanySettingsDefaults(await getCompanySettings()),
   };
-
-  // Hourly rates
-  set("fuel_burn_gph", aircraft.fuelGallonsPerHour);
-  set("engine_program_rate", aircraft.engineProgram);
-  set("apu_program_rate", aircraft.apuProgram);
-  set("parts_program_rate", aircraft.partsProgram);
-  set("inspection_reserve_rate", aircraft.inspectionReserve);
-  set("trip_expense_per_hour", aircraft.tripExpenseHourly);
-
-  // General / finances
-  set("passenger_capacity", aircraft.passengerCapacity);
-  set("square_footage", aircraft.squareFootage);
-  set("aircraft_value", aircraft.averageCost);
-  set("charter_rate", aircraft.charterHourlyRate);
-  set("fuel_surcharge", aircraft.fuelSurcharge);
-  set("pilot_charter_incentive_per_hour", aircraft.pilotCharterIncentive);
-  if (aircraft.charterPaybackBasis) map.charter_payback_basis = aircraft.charterPaybackBasis;
-  if (aircraft.fuelSurchargePaybackBasis) {
-    map.fuel_surcharge_payback_basis = aircraft.fuelSurchargePaybackBasis;
-  }
-
-  // Crew — baseline PIC/SIC from warehouse; lead pilot is proposal-level only.
-  const benefitsFraction = Number(settings.crewBenefitsPercent);
-  const cabinCount = aircraft.cabinAttendantCount ?? 0;
-  const cabinSalary = aircraft.cabinAttendantSalary ?? 0;
-  const picCount = aircraft.picCount ?? 1;
-  const sicCount = aircraft.sicCount ?? 1;
-  const baseCrewSalary =
-    picCount * (aircraft.picSalary ?? 0) +
-    sicCount * (aircraft.sicSalary ?? 0) +
-    cabinCount * cabinSalary;
-  set("crew_total", Math.round(baseCrewSalary * (1 + benefitsFraction)));
-  set("benefits_pct", benefitsFraction * 100);
-  set("pic_salary", aircraft.picSalary);
-  set("sic_salary", aircraft.sicSalary);
-  set("pic_training", aircraft.picTrainingCost);
-  set("sic_training", aircraft.sicTrainingCost);
-  set("crew_baseline_pic", picCount);
-  set("crew_baseline_sic", sicCount);
-  set("pic_count", picCount);
-  set("sic_count", sicCount);
-  map.crew_model = "full_time";
-  map.lead_pilot_enabled = "no";
-  if (aircraft.leadPilotSalary != null) {
-    set("lead_pilot_salary", aircraft.leadPilotSalary);
-  } else if (aircraft.picSalary != null) {
-    set("lead_pilot_salary", aircraft.picSalary);
-  }
-  map.lead_pilot_count = "0";
-
-  set("max_usage_1_pilot", aircraft.maxUsage1Pilot);
-  set("max_usage_2_pilots", aircraft.maxUsage2Pilots);
-  set("max_usage_3_pilots", aircraft.maxUsage3Pilots);
-  set("max_usage_4_pilots", aircraft.maxUsage4Pilots);
-  set("max_usage_5_pilots", aircraft.maxUsage5Pilots);
-  set("max_usage_6_pilots", aircraft.maxUsage6Pilots);
-
-  const usageByPilots = [
-    aircraft.maxUsage1Pilot,
-    aircraft.maxUsage2Pilots,
-    aircraft.maxUsage3Pilots,
-    aircraft.maxUsage4Pilots,
-    aircraft.maxUsage5Pilots,
-    aircraft.maxUsage6Pilots,
-  ];
-  const totalPilots = Math.min(6, Math.max(1, picCount + sicCount));
-  const maxUsage = usageByPilots[totalPilots - 1];
-  if (maxUsage != null) set("max_annual_utilization", maxUsage);
-
-  set("crew_step_index", warehouseMinStep(picCount, sicCount));
-
-  // Company-wide defaults
-  set("management_fee", settings.annualManagementFee);
-  set("maintenance_management_fee", settings.annualMaintenanceManagementFee);
-  set("charter_payback_pct", Number(settings.charterPaybackPercent));
-  set("fuel_tax_refund", Number(settings.fuelTaxRefund));
-  set("home_fuel_pct", aircraft.homeFuelPct);
-  map.home_fuel_pct = map.home_fuel_pct ?? "70";
-
-  // Insurance & Taxes tab is intentionally empty for now — zero + hidden.
-  map.insurance_annual = "0";
-  map.insurance_mode = "annual";
-  map.registration_annual = "0";
-
-  // Fuel + hangar from the FBO at the proposed home base, else company fallback.
-  const usAverageFuel = Number(settings.usAverageFuelCost);
-  set("away_fuel_price", usAverageFuel);
-  map.home_fuel_price = String(usAverageFuel);
-  map.fuel_source = "us_average";
 
   const icao = params.airportIcao?.toUpperCase();
   if (icao) {
@@ -132,7 +42,7 @@ export async function loadAircraftReferenceDefaults(params: {
       map.home_fuel_price = fboPick.baseFuelRate.toString();
       map.fuel_source = "fbo_base";
       if (fboPick.hangarCostPerSqft != null) {
-        set("hangar_cost_per_sqft", Number(fboPick.hangarCostPerSqft));
+        map.hangar_cost_per_sqft = String(Number(fboPick.hangarCostPerSqft));
       }
 
       const override = await prisma.fboHangarOverride.findUnique({
@@ -143,16 +53,22 @@ export async function loadAircraftReferenceDefaults(params: {
           },
         },
       });
-      if (override) {
-        set("hangar_annual", override.annualRate);
+      if (override?.annualRate != null) {
+        map.hangar_annual = String(override.annualRate);
       } else if (fboPick.hangarCostPerSqft != null && aircraft.squareFootage != null) {
-        set(
-          "hangar_annual",
+        map.hangar_annual = String(
           Math.round(Number(fboPick.hangarCostPerSqft) * aircraft.squareFootage)
         );
       }
+    } else if (map.away_fuel_price) {
+      map.home_fuel_price = map.away_fuel_price;
+      map.fuel_source = "us_average";
     }
   }
 
-  return map;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(map)) {
+    if (v?.trim()) out[k] = v.trim();
+  }
+  return out;
 }

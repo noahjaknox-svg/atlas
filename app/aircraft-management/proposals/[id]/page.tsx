@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -17,7 +18,13 @@ import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import { ensureExperienceSections } from "@/lib/ensure-experience-sections";
+import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { parseSpecHighlights } from "@/lib/portal-aircraft-types";
+import { PROPOSAL_WORKSPACE } from "@/lib/product-terminology";
+
+export const metadata: Metadata = {
+  title: `${PROPOSAL_WORKSPACE} · Atlas`,
+};
 
 const ProposalWorkspace = dynamic(
   () =>
@@ -52,19 +59,27 @@ export default async function ProposalWorkspacePage({
     () =>
       Promise.all([
         getInternalUser(),
-        ensureExperienceSections(id).then(() =>
-          prisma.proposal.findUnique({
-            where: { id },
-            include: {
-              prospect: true,
-              aircraftInstance: { include: { warehouseAircraft: true } },
-              assumptions: true,
-              sections: { orderBy: { sortOrder: "asc" } },
-              scenarios: true,
-              clientPortal: true,
-            },
-          })
-        ),
+        ensureExperienceSections(id)
+          .then(() => import("@/lib/draft-portal"))
+          .then(({ ensureDraftPortalForProposal }) => ensureDraftPortalForProposal(id))
+          .then(() =>
+            prisma.proposal.findUnique({
+              where: { id },
+              include: {
+                prospect: true,
+                aircraftInstance: { include: { warehouseAircraft: true } },
+                assumptions: true,
+                sections: { orderBy: { sortOrder: "asc" } },
+                scenarios: true,
+                clientPortal: true,
+                snapshots: {
+                  orderBy: { publishedAt: "desc" },
+                  take: 1,
+                  select: { publishedAt: true },
+                },
+              },
+            })
+          ),
         prisma.user.findMany({
           where: { active: true },
           select: { id: true, name: true },
@@ -201,6 +216,7 @@ export default async function ProposalWorkspacePage({
       posterUrl: s.posterUrl ?? null,
       signatoryName: s.signatoryName ?? null,
       signatoryTitle: s.signatoryTitle ?? null,
+      contentBlocks: (s.contentBlocks as ExperienceSectionRow["contentBlocks"]) ?? null,
     })),
     scenarios: proposal.scenarios.map((s) => ({
       aircraftInstanceId: s.aircraftInstanceId ?? null,
@@ -224,6 +240,7 @@ export default async function ProposalWorkspacePage({
     ),
     ownersByAircraft,
     allocationModeByAircraft,
+    lastPublishedAt: proposal.snapshots[0]?.publishedAt?.toISOString() ?? null,
   };
 
   return (

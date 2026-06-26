@@ -3,6 +3,7 @@ import {
   applyClientProFormaOverrides,
   computeWorkspaceProFormaForClient,
   resolveClientCrewSummary,
+  resolvePortalCrewStepFloor,
 } from "@/lib/workspace-proforma-client";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 
@@ -24,6 +25,39 @@ const USAGE_TIERS = {
   sic_count: "1",
   crew_total: "400000",
 };
+
+describe("resolvePortalCrewStepFloor", () => {
+  it("ignores a higher workspace crew step when defaulting portal crew", () => {
+    const assumptions = {
+      ...USAGE_TIERS,
+      crew_step_index: "3",
+      pic_count: "3",
+      sic_count: "2",
+    };
+    expect(resolvePortalCrewStepFloor(assumptions, 250)).toBe(0);
+
+    const calc = computeWorkspaceProFormaForClient(assumptions, {
+      ownerHours: 250,
+      crewStepIndex: resolvePortalCrewStepFloor(assumptions, 250),
+    });
+    expect(calc.calculationAssumptions.crew_step_index).toBe("0");
+    expect(calc.calculationAssumptions.pic_count).toBe("1");
+    expect(calc.calculationAssumptions.sic_count).toBe("1");
+  });
+
+  it("respects default minimum crew from warehouse", () => {
+    const assumptions = {
+      ...USAGE_TIERS,
+      default_minimum_crew: "3",
+      owner_annual_hours: "100",
+    };
+    expect(resolvePortalCrewStepFloor(assumptions, 100)).toBe(1);
+  });
+
+  it("steps up when owner hours require more crew than the minimum", () => {
+    expect(resolvePortalCrewStepFloor(USAGE_TIERS, 500)).toBe(1);
+  });
+});
 
 describe("applyClientProFormaOverrides", () => {
   it("auto-steps crew when owner hours exceed 2-pilot capacity", () => {

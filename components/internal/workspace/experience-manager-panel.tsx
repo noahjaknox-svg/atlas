@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { EXPERIENCE_SECTION_TYPES, EXPERIENCE_TAB_LABELS, SECTION_TYPE_TO_SLUG } from "@/lib/experience-content";
-import type { ExperienceContentBlocks, ExperienceSectionType } from "@/lib/experience-content";
+import {
+  PROSPECT_PORTAL_DESIGNER,
+  PREVIEW_PROSPECT_PORTAL,
+} from "@/lib/product-terminology";
+import type {
+  ExperienceContentBlocks,
+  ExperienceSectionType,
+} from "@/lib/experience-content";
 
 export type ExperienceSectionRow = {
   id: string;
@@ -22,46 +29,21 @@ export type ExperienceSectionRow = {
 };
 
 export function ExperienceManagerForm({
-  proposalId,
   sections,
   onSectionsChange,
   portalSlug,
-  needsRepublish,
-  onSaved,
 }: {
-  proposalId: string;
   sections: ExperienceSectionRow[];
   onSectionsChange: (next: ExperienceSectionRow[]) => void;
   portalSlug?: string | null;
-  needsRepublish?: boolean;
-  onSaved?: () => void;
 }) {
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>("welcome");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const experienceSections = sections
     .filter((s) =>
       EXPERIENCE_SECTION_TYPES.includes(s.sectionType as ExperienceSectionType)
     )
     .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  async function save() {
-    setSaving(true);
-    setMessage(null);
-    const res = await fetch(`/api/proposals/${proposalId}/sections`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sections: experienceSections }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setMessage("Saved. Publish to update the client portal.");
-      onSaved?.();
-    } else {
-      setMessage("Could not save experience pages.");
-    }
-  }
 
   function updateSection(index: number, patch: Partial<ExperienceSectionRow>) {
     const globalIndex = sections.findIndex((s) => s.id === experienceSections[index]!.id);
@@ -74,14 +56,9 @@ export function ExperienceManagerForm({
   return (
     <div>
       <p className="text-xs leading-relaxed text-atlas-muted">
-        Choose which pages to include and edit their copy. Layout, animations, and
-        visuals are set globally in the Deck Builder. Clients see changes after you publish.
+        Choose which pages to include and edit their copy. Layout, animations, and visuals are
+        set globally in the {PROSPECT_PORTAL_DESIGNER}. Prospects see changes after you publish.
       </p>
-      {needsRepublish ? (
-        <p className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-200/90">
-          Unpublished changes — republish to update the live portal.
-        </p>
-      ) : null}
 
       <div className="mt-3 space-y-2">
         {experienceSections.map((sec, index) => {
@@ -120,10 +97,10 @@ export function ExperienceManagerForm({
                     className="h-8 text-xs"
                     placeholder="Title"
                   />
-                  <textarea
+                  <AutoResizeTextarea
                     value={sec.bodyCopy ?? ""}
-                    onChange={(e) => updateSection(index, { bodyCopy: e.target.value })}
-                    rows={4}
+                    onChange={(value) => updateSection(index, { bodyCopy: value })}
+                    minRows={2}
                     className="w-full rounded border border-atlas-border/80 bg-atlas-bg px-2 py-1.5 text-xs"
                     placeholder="Body copy — use {contactName} on Welcome"
                   />
@@ -147,14 +124,14 @@ export function ExperienceManagerForm({
                       />
                     </>
                   ) : null}
-                  {portalSlug && sec.visible ? (
+                  {portalSlug ? (
                     <a
                       href={`/${portalSlug}/experience/${SECTION_TYPE_TO_SLUG[sec.sectionType as ExperienceSectionType] ?? sec.sectionType}?draft=1`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block text-xs text-atlas-accent hover:underline"
                     >
-                      Preview (draft)
+                      {PREVIEW_PROSPECT_PORTAL}
                     </a>
                   ) : null}
                 </div>
@@ -163,17 +140,6 @@ export function ExperienceManagerForm({
           );
         })}
       </div>
-
-      <Button
-        type="button"
-        size="sm"
-        className="mt-3 w-full text-xs"
-        disabled={saving}
-        onClick={() => void save()}
-      >
-        {saving ? "Saving…" : "Save experience pages"}
-      </Button>
-      {message ? <p className="mt-2 text-xs text-atlas-muted">{message}</p> : null}
     </div>
   );
 }

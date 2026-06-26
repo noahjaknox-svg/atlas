@@ -1,6 +1,7 @@
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import {
-  getExperienceNavSections,
+  getExperienceChapterSections,
+  isProFormaSectionVisible,
   SECTION_TYPE_TO_SLUG,
   type ExperienceSectionType,
 } from "@/lib/experience-content";
@@ -19,13 +20,21 @@ export function withExperienceDraftQuery(href: string, draftMode = false): strin
 }
 
 export function getExperiencePageSlugs(sections: ExperienceSectionSnapshot[]): string[] {
-  const nav = getExperienceNavSections(sections);
-  const slugs = nav.map(
-    (s) => SECTION_TYPE_TO_SLUG[s.sectionType as ExperienceSectionType] ?? s.sectionType
-  );
-  if (!slugs.includes("pro-forma")) {
+  const slugs: string[] = [];
+
+  const welcome = sections.find((s) => s.sectionType === "welcome" && s.visible);
+  if (welcome) slugs.push("welcome");
+
+  for (const chapter of getExperienceChapterSections(sections)) {
+    slugs.push(
+      SECTION_TYPE_TO_SLUG[chapter.sectionType as ExperienceSectionType] ?? chapter.sectionType
+    );
+  }
+
+  if (isProFormaSectionVisible(sections)) {
     slugs.push("pro-forma");
   }
+
   return slugs;
 }
 

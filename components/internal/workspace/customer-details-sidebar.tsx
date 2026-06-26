@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
+import { PROSPECT_NAME_LABEL, EDIT_PROSPECT } from "@/lib/product-terminology";
 
 const inputClass = "atlas-input";
 
@@ -67,7 +68,7 @@ export function CustomerDetailsSidebar({
           disabled={archiveLoading}
           onClick={() => setArchiveDialogOpen(true)}
         >
-          Archive customer
+          Archive prospect
         </Button>
         <ArchiveCustomerDialog
           open={archiveDialogOpen}
@@ -82,8 +83,8 @@ export function CustomerDetailsSidebar({
   if (editing) {
     return (
       <div className="shrink-0 space-y-2 px-3 py-2">
-        <p className="atlas-kicker text-atlas-accent">Edit customer</p>
-        <Field label="Prospect name *">
+        <p className="atlas-kicker text-atlas-accent">{EDIT_PROSPECT}</p>
+        <Field label={`${PROSPECT_NAME_LABEL} *`}>
           <Input
             className={inputClass}
             value={draft.prospectName}
@@ -147,11 +148,11 @@ export function CustomerDetailsSidebar({
 
   return (
     <div className="shrink-0 px-3 py-2">
-      <p className="atlas-kicker">Customer</p>
+      <p className="atlas-kicker">Prospect</p>
       <dl className="mt-3 space-y-2.5 text-sm">
         <DetailRow label="Prospect" value={prospect.prospectName || "—"} />
-        <DetailRow label="Contact" value={prospect.contactName} />
-        <DetailRow label="Email" value={prospect.contactEmail} />
+        <DetailRow label="Contact" value={prospect.contactName || "—"} />
+        <DetailRow label="Email" value={prospect.contactEmail || "—"} />
         <DetailRow label="Phone" value={prospect.contactPhone || "—"} />
         <DetailRow label="Manager" value={currentManager || "—"} />
         <DetailRow label="Assigned" value={assignedToName ?? "Unassigned"} />
@@ -164,7 +165,7 @@ export function CustomerDetailsSidebar({
         disabled={readOnly}
         onClick={() => setEditing(true)}
       >
-        Edit customer
+        {EDIT_PROSPECT}
       </Button>
     </div>
   );
@@ -189,11 +190,11 @@ function ArchiveCustomerDialog({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-atlas-border bg-atlas-surface p-6 shadow-xl">
           <Dialog.Title className="font-serif text-lg text-atlas-text">
-            Archive customer?
+            Archive prospect?
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-atlas-muted">
-            Archive {customerName || "this customer"}? This removes the deal from the pipeline and
-            deactivates the client portal.
+            Archive {customerName || "this prospect"}? This removes the deal from the pipeline and
+            deactivates the prospect portal.
           </Dialog.Description>
           <div className="mt-6 flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>

@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ProposalDesignShell } from "@/components/internal/proposal-design/proposal-design-shell";
 import { getPortalContent, getFleetShowcase, getExperienceMasterTemplates } from "@/lib/portal-content";
+import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
+
+export const metadata: Metadata = {
+  title: `${PROSPECT_PORTAL_DESIGNER} · Atlas`,
+};
 
 export default async function ProposalDesignPage() {
   const user = await getInternalUser();

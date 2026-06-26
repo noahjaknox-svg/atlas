@@ -5,10 +5,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import {
-  CLIENT_EDITABLE_ASSUMPTIONS,
+  PROSPECT_EDITABLE_ASSUMPTIONS,
   type WorkspaceFormState,
 } from "@/lib/workspace-sections";
 import { ROUTES } from "@/lib/routes";
+import {
+  OPEN_PROSPECT_PORTAL,
+  PREVIEW_PROSPECT_PORTAL,
+  PUBLISH_PROSPECT_PORTAL,
+} from "@/lib/product-terminology";
 
 type ScenarioSummary = {
   netAnnualCost: string | number | null;
@@ -137,13 +142,13 @@ export function WorkspaceSidebar({
 
         <div>
           <p className="text-xs uppercase tracking-wider text-atlas-muted">
-            Client-editable assumptions
+            Prospect-editable assumptions
           </p>
           <p className="mt-1 text-xs text-atlas-muted">
-            Allow the client to adjust these on the portal.
+            Allow the prospect to adjust these on the portal.
           </p>
           <ul className="mt-3 space-y-2">
-            {CLIENT_EDITABLE_ASSUMPTIONS.map((item) => (
+            {PROSPECT_EDITABLE_ASSUMPTIONS.map((item) => (
               <li key={item.name} className="flex items-center justify-between gap-2 text-sm">
                 <span>{item.label}</span>
                 <input
@@ -170,24 +175,24 @@ export function WorkspaceSidebar({
         {portalSlug && (
           <Link href={`/${portalSlug}/experience/welcome`} target="_blank" className="block">
             <Button variant="secondary" className="w-full">
-              Preview proposal
+              {PREVIEW_PROSPECT_PORTAL}
             </Button>
           </Link>
         )}
         {!portalSlug && (
           <Button variant="secondary" className="w-full" disabled>
-            Preview (publish first)
+            Preview prospect portal (publish first)
           </Button>
         )}
         {isAdmin && (
           <Button className="w-full" onClick={handlePublish} disabled={publishLoading}>
-            {publishLoading ? "Publishing…" : "Publish"}
+            {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
           </Button>
         )}
         {portalUrl && portalSlug && (
           <Link href={`/${portalSlug}/experience/welcome`} target="_blank" className="block">
             <Button variant="ghost" className="w-full">
-              Client portal
+              {OPEN_PROSPECT_PORTAL}
             </Button>
           </Link>
         )}

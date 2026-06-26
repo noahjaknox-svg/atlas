@@ -232,6 +232,19 @@ describe("ownerHoursForUtilization", () => {
       })
     ).toBe(500);
   });
+
+  it("uses patched pro forma hours for single owner, not stale JSON alone", () => {
+    const profiles: ProposalOwnerProfile[] = [
+      { sortOrder: 0, displayName: "Owner", annualFlightHours: 400, ownershipPercent: 100 },
+    ];
+    const assumptions = {
+      [OWNER_PROFORMA_HOURS_KEY]: JSON.stringify([400]),
+      owner_annual_hours: "400",
+    };
+    const patched = patchProformaOwnerHoursAtIndex(assumptions, profiles, 0, 50);
+    expect(ownerHoursForUtilization(profiles, patched)).toBe(50);
+    expect(parseProformaOwnerHoursJson(patched, 1)).toEqual([50]);
+  });
 });
 
 describe("assumptionsAfterOwnerDefaultsChange", () => {
@@ -250,5 +263,26 @@ describe("assumptionsAfterOwnerDefaultsChange", () => {
     expect(parseProformaOwnerHoursJson(next, 2)).toEqual([300, 200]);
     expect(next.crew_step_index).toBe("1");
     expect(next.max_annual_utilization).toBe("600");
+  });
+
+  it("preserves pro forma scenario hours when not seeding from owner defaults", () => {
+    const profiles: ProposalOwnerProfile[] = [
+      { sortOrder: 0, displayName: "Owner", annualFlightHours: 400, ownershipPercent: 100 },
+    ];
+    const next = assumptionsAfterOwnerDefaultsChange(
+      {
+        owner_annual_hours: "50",
+        owner_proforma_hours_json: "[50]",
+        crew_step_index: "0",
+        max_annual_utilization: "450",
+      },
+      profiles,
+      "hybrid",
+      {},
+      false
+    );
+    expect(next.owner_annual_hours).toBe("50");
+    expect(next.owner_proforma_hours_json).toBe("[50]");
+    expect(next.crew_step_index).toBe("0");
   });
 });

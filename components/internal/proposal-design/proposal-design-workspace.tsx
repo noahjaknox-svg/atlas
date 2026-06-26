@@ -19,6 +19,11 @@ import type {
 } from "@/lib/experience-content";
 import type { ExperienceMasterTemplate } from "@/lib/experience-master";
 import { ROUTES } from "@/lib/routes";
+import { PROSPECT_PORTAL_REPUBLISH_SAVE_HINT } from "@/lib/product-terminology";
+import {
+  PROSPECT_PORTAL_DESIGNER,
+  PROPOSAL_WORKSPACE,
+} from "@/lib/product-terminology";
 import { getMasterTemplateForSection } from "@/lib/experience-master";
 import { cn } from "@/lib/utils";
 
@@ -140,7 +145,7 @@ export function ProposalDesignWorkspace({
         throw new Error(json.error ?? "Save failed");
       }
       setDirty(false);
-      setMessage("Saved. Publish or republish to update the client portal.");
+      setMessage(PROSPECT_PORTAL_REPUBLISH_SAVE_HINT);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -170,14 +175,14 @@ export function ProposalDesignWorkspace({
             href={ROUTES.aircraftManagement.proposal(proposalId)}
             className="text-xs text-atlas-accent hover:underline"
           >
-            ← Back to workspace
+            ← Back to {PROPOSAL_WORKSPACE}
           </Link>
           <h1 className="mt-2 font-serif text-lg leading-tight">Design report</h1>
           <p className="mt-0.5 truncate text-xs text-atlas-muted">{proposalName}</p>
           <p className="mt-2 text-[11px] leading-snug text-atlas-muted">
-            Master copy lives at{" "}
+            Master copy lives in the{" "}
             <Link href={ROUTES.aircraftManagement.proposalDesign} className="text-atlas-accent hover:underline">
-              Proposal Design
+              {PROSPECT_PORTAL_DESIGNER}
             </Link>
             . Reset a page below to restore the master version.
           </p>

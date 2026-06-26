@@ -139,7 +139,7 @@ function renderFieldRow(
   onOverride: (name: string, raw: string) => void
 ) {
   const name = field.assumptionName!;
-  const def = defaults[name]?.trim() || effective[name]?.trim() || "";
+  const def = defaults[name]?.trim() ?? "";
   const stored = assumptions[name] ?? "";
   const override = (() => {
     const d = def.trim();
@@ -200,10 +200,13 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
   );
   if (visibleGroups.length === 0) return null;
 
-  const sectionTotal = computeSectionProFormaTotal(
-    rollupForUsage(section.proFormaRollup, assumptions),
-    effective
-  );
+  const sectionTotal =
+    section.hideProFormaRollup
+      ? null
+      : computeSectionProFormaTotal(
+          rollupForUsage(section.proFormaRollup, assumptions),
+          effective
+        );
 
   return (
     <section className="atlas-workspace-section min-w-0 overflow-hidden">
@@ -218,10 +221,12 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
           const rows = group.fields.filter((f) => !fieldHidden(f));
           if (rows.length === 0) return null;
 
-          const groupTotal = computeSectionProFormaTotal(
-            rollupForUsage(group.proFormaRollup, assumptions),
-            effective
-          );
+          const groupTotal = section.hideProFormaRollup
+            ? null
+            : computeSectionProFormaTotal(
+                rollupForUsage(group.proFormaRollup, assumptions),
+                effective
+              );
           const isProForma = group.title.toLowerCase().includes("pro forma");
           const showHeader = shouldShowGroupHeader(group, rows);
           const showFooter = groupTotal && shouldShowGroupFooter(group, rows);

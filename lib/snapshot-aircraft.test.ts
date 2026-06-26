@@ -7,7 +7,16 @@ vi.mock("@/lib/resolve-aircraft-defaults", () => ({
   ),
 }));
 
+vi.mock("@/lib/proposal-owners-db", () => ({
+  loadOwnerProfilesForAircraft: vi.fn(async () => ({
+    profiles: [],
+    allocationMode: "hybrid",
+  })),
+}));
+
+import type { ProposalScenario } from "@prisma/client";
 import { buildAircraftSnapshotEntry, buildAircraftSnapshotList } from "@/lib/snapshot-aircraft";
+import { loadOwnerProfilesForAircraft } from "@/lib/proposal-owners-db";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
@@ -94,11 +103,9 @@ function mockAircraft(id: string, tail: string) {
       apuProgram: null,
       inspectionReserve: null,
       tripExpenseHourly: null,
-      leadPilotCount: 1,
-      picCount: 1,
-      sicCount: 1,
-      cabinAttendantCount: null,
+      defaultMinimumCrew: 0,
       leadPilotSalary: 240000,
+      leadPilotTrainingCost: 15666,
       picSalary: 240000,
       sicSalary: 150000,
       cabinAttendantSalary: null,
@@ -170,6 +177,61 @@ describe("buildAircraftSnapshotList", () => {
     expect(list[0]?.portalImageUrl).toContain("a1");
     expect(list[0]?.portalSpecHighlights).toEqual(["8 pax", "3,200 nm"]);
     expect(list[0]?.metrics.ownerHours).toBe(250);
+  });
+
+  it("prefers assumption owner hours over stale base scenario row", async () => {
+    vi.mocked(loadOwnerProfilesForAircraft).mockResolvedValueOnce({
+      profiles: [
+        {
+          sortOrder: 0,
+          displayName: "Owner",
+          annualFlightHours: 150,
+          ownershipPercent: 100,
+        },
+      ],
+      allocationMode: "hybrid",
+    });
+
+    const rows = baseAssumptionRows.map((row) =>
+      row.assumptionName === "owner_annual_hours" && row.category === "ac_a1"
+        ? { ...row, value: "150" }
+        : row
+    );
+
+    const entry = await buildAircraftSnapshotEntry({
+      proposalId: "prop1",
+      aircraft: mockAircraft("a1", "N123AB"),
+      assumptionRows: rows.filter((r) => r.category === "ac_a1"),
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+      isPrimaryLegacy: true,
+      scenario: {
+        id: "sc1",
+        proposalId: "prop1",
+        aircraftInstanceId: "a1",
+        scenarioName: "Scenario B (Base)",
+        scenarioIndex: 1,
+        isBaseCase: true,
+        ownerHours: { toString: () => "125" } as ProposalScenario["ownerHours"],
+        charterBlockHours: null,
+        charterFlightHours: null,
+        aircraftValue: null,
+        crewStepIndex: null,
+        leadPilotEnabled: null,
+        totalFixedCosts: null,
+        ownerVariableCosts: null,
+        charterVariableCosts: null,
+        totalRevenue: null,
+        netAnnualCost: null,
+        netMonthlyCost: null,
+        costPerOwnerHour: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    expect(entry.metrics.ownerHours).toBe(150);
+    expect(entry.calculationAssumptions?.owner_annual_hours).toBe("150");
   });
 
   it("builds separate entries for multiple aircraft", async () => {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "./motion-lite";
 import { cn } from "@/lib/utils";
@@ -11,9 +10,12 @@ import { DEFAULT_LOGO } from "@/lib/portal-constants";
 import {
   EXPERIENCE_TAB_LABELS,
   SECTION_TYPE_TO_SLUG,
+  resolvePortalNavLinks,
   type ExperienceSectionSnapshot,
   type ExperienceSectionType,
-  getExperienceNavSections,
+  getExperienceChapterSections,
+  getExperienceHomeSlug,
+  isProFormaSectionVisible,
 } from "@/lib/experience-content";
 import { useExperiencePrefetch, usePrefetchExperienceChapter } from "../use-experience-prefetch";
 import {
@@ -23,6 +25,7 @@ import {
 } from "./experience-bootstrap-context";
 import { ExperienceChapterDeck } from "./experience-chapter-deck";
 import { experienceNavPillV2 } from "./experience-tokens";
+import { PortalNavExtraLinks } from "../portal-nav-extra-links";
 
 const CLOUDS_PREF_KEY = "portal-v2-clouds-enabled";
 
@@ -115,6 +118,7 @@ function ExperienceShellV2Frame({
   onChapterClick,
   proFormaHref,
   onProFormaClick,
+  showProForma,
   prefetchChapter,
   main,
   onTouchStart,
@@ -130,6 +134,7 @@ function ExperienceShellV2Frame({
   onChapterClick?: (e: React.MouseEvent, pageSlug: string) => void;
   proFormaHref: string;
   onProFormaClick?: (e: React.MouseEvent) => void;
+  showProForma: boolean;
   prefetchChapter: (pageSlug: string) => void;
   main: ReactNode;
   onTouchStart?: (e: React.TouchEvent) => void;
@@ -138,14 +143,12 @@ function ExperienceShellV2Frame({
 }) {
   const [cloudsEnabled, setCloudsEnabled] = useCloudsToggle();
 
-  const navSections = getExperienceNavSections(sections).filter(
-    (s) => s.sectionType !== "pro_forma" && s.sectionType !== "welcome"
-  );
+  const navSections = getExperienceChapterSections(sections);
+  const hasChapterTabs = navSections.length > 0;
+  const showProFormaButton = showProForma;
 
   const welcome = sections.find((s) => s.sectionType === "welcome");
-  const marketUrl = welcome?.contentBlocks?.aircraftMarketUrl?.trim();
-  const marketLabel =
-    welcome?.contentBlocks?.aircraftMarketButtonLabel?.trim() || "Available aircraft";
+  const navExtraLinks = resolvePortalNavLinks(welcome?.contentBlocks);
 
   const resolvedLogo = logoUrl ?? branding.logoUrl ?? DEFAULT_LOGO;
   const draftBannerOffset = draftMode ? "1.5rem" : "0px";
@@ -205,70 +208,65 @@ function ExperienceShellV2Frame({
             />
           </a>
 
-          <NavDivider />
+          {hasChapterTabs ? <NavDivider /> : null}
 
-          <nav
-            className="scrollbar-none portal-v2-scroll-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 sm:gap-1.5 sm:px-3 md:[mask-image:none] md:[-webkit-mask-image:none]"
-            aria-label="Chapters"
-          >
-            {navSections.map((s) => {
-              const active = isActive(s.sectionType);
-              const pageSlug =
-                SECTION_TYPE_TO_SLUG[s.sectionType as ExperienceSectionType] ?? s.sectionType;
-              return (
-                <a
-                  key={s.sectionType}
-                  href={chapterHref(s.sectionType)}
-                  onClick={
-                    onChapterClick
-                      ? (e) => onChapterClick(e, pageSlug)
-                      : undefined
-                  }
-                  onMouseEnter={() => prefetchChapter(pageSlug)}
-                  onFocus={() => prefetchChapter(pageSlug)}
-                  className={cn(
-                    "shrink-0 rounded-full px-3.5 py-2.5 text-sm font-medium tracking-wide transition-colors sm:px-5 sm:py-3 sm:text-base",
-                    active
-                      ? "bg-atlas-accent/20 text-atlas-accent"
-                      : "text-white/60 hover:bg-white/5 hover:text-white"
-                  )}
-                >
-                  {tabLabel(s.sectionType, s.title)}
-                </a>
-              );
-            })}
-          </nav>
-
-          <NavDivider />
-
-          <div className="flex shrink-0 items-center gap-1.5 py-1 pl-1 pr-2 sm:gap-2 sm:pl-2 sm:pr-3">
-            <a
-              href={proFormaHref}
-              onClick={onProFormaClick}
-              onMouseEnter={() => prefetchChapter("pro-forma")}
-              onFocus={() => prefetchChapter("pro-forma")}
-              className={navActionClass(proFormaActive, true)}
+          {hasChapterTabs ? (
+            <nav
+              className="scrollbar-none portal-v2-scroll-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 sm:gap-1.5 sm:px-3 md:[mask-image:none] md:[-webkit-mask-image:none]"
+              aria-label="Chapters"
             >
-              Pro Forma
-            </a>
-            {marketUrl ? (
-              <a
-                href={marketUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={navActionClass(false)}
-              >
-                <span className="max-w-[8rem] truncate sm:max-w-[11rem]">{marketLabel}</span>
-              </a>
-            ) : (
-              <Link
-                href={`/${slug}/aircraft`}
-                prefetch
-                className={navActionClass(false)}
-              >
-                Your aircraft
-              </Link>
+              {navSections.map((s) => {
+                const active = isActive(s.sectionType);
+                const pageSlug =
+                  SECTION_TYPE_TO_SLUG[s.sectionType as ExperienceSectionType] ?? s.sectionType;
+                return (
+                  <a
+                    key={s.sectionType}
+                    href={chapterHref(s.sectionType)}
+                    onClick={
+                      onChapterClick
+                        ? (e) => onChapterClick(e, pageSlug)
+                        : undefined
+                    }
+                    onMouseEnter={() => prefetchChapter(pageSlug)}
+                    onFocus={() => prefetchChapter(pageSlug)}
+                    className={cn(
+                      "shrink-0 rounded-full px-3.5 py-2.5 text-sm font-medium tracking-wide transition-colors sm:px-5 sm:py-3 sm:text-base",
+                      active
+                        ? "bg-atlas-accent/20 text-atlas-accent"
+                        : "text-white/60 hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    {tabLabel(s.sectionType, s.title)}
+                  </a>
+                );
+              })}
+            </nav>
+          ) : null}
+
+          {hasChapterTabs ? <NavDivider /> : null}
+
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 py-1 pl-1 pr-2 sm:gap-2 sm:pl-2 sm:pr-3",
+              !hasChapterTabs && "ml-auto"
             )}
+          >
+            {showProFormaButton ? (
+              <a
+                href={proFormaHref}
+                onClick={onProFormaClick}
+                onMouseEnter={() => prefetchChapter("pro-forma")}
+                onFocus={() => prefetchChapter("pro-forma")}
+                className={navActionClass(proFormaActive, true)}
+              >
+                Pro Forma
+              </a>
+            ) : null}
+            <PortalNavExtraLinks
+              links={navExtraLinks}
+              buttonClassName={navActionClass(false)}
+            />
           </div>
         </div>
       </div>
@@ -390,6 +388,8 @@ function ExperienceShellV2DeckInner(props: ShellCommonProps) {
 
   const welcomeActive = activeSlug === "welcome" || isActive("welcome");
   const proFormaActive = activeSlug === "pro-forma" || isActive("pro_forma");
+  const homeSlug = getExperienceHomeSlug(props.sections);
+  const showProForma = isProFormaSectionVisible(props.sections);
 
   return (
     <ExperienceShellV2Frame
@@ -397,12 +397,13 @@ function ExperienceShellV2DeckInner(props: ShellCommonProps) {
       welcomeActive={welcomeActive}
       proFormaActive={proFormaActive}
       isActive={isActive}
-      welcomeHref={withDraft(experienceHref(props.slug, "welcome"))}
-      onWelcomeClick={(e) => handleChapterClick(e, "welcome")}
+      welcomeHref={withDraft(experienceHref(props.slug, homeSlug))}
+      onWelcomeClick={(e) => handleChapterClick(e, homeSlug)}
       chapterHref={tabHref}
       onChapterClick={handleChapterClick}
       proFormaHref={withDraft(experienceHref(props.slug, "pro-forma"))}
       onProFormaClick={(e) => handleChapterClick(e, "pro-forma")}
+      showProForma={showProForma}
       prefetchChapter={prefetchChapter}
       main={<ExperienceChapterDeck />}
       onTouchStart={handleSwipeStart}
@@ -439,6 +440,8 @@ function ExperienceShellV2StaticInner({
 
   const welcomeActive = currentSlug === "welcome" || isActive("welcome");
   const proFormaActive = currentSlug === "pro-forma" || isActive("pro_forma");
+  const homeSlug = getExperienceHomeSlug(props.sections);
+  const showProForma = isProFormaSectionVisible(props.sections);
 
   return (
     <ExperienceShellV2Frame
@@ -446,9 +449,10 @@ function ExperienceShellV2StaticInner({
       welcomeActive={welcomeActive}
       proFormaActive={proFormaActive}
       isActive={isActive}
-      welcomeHref={withDraft(experienceHref(props.slug, "welcome"))}
+      welcomeHref={withDraft(experienceHref(props.slug, homeSlug))}
       chapterHref={chapterHref}
       proFormaHref={withDraft(experienceHref(props.slug, "pro-forma"))}
+      showProForma={showProForma}
       prefetchChapter={prefetchChapter}
       main={children}
     />

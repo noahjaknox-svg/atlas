@@ -2,10 +2,12 @@ import type { AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalS
 import {
   aircraftAssumptionCategory,
   getAircraftDisplayName,
+  getAircraftCardSubtitle,
   mergeLegacyAssumptions,
   assumptionsFromInstance,
   applyProspectOpportunityFallback,
 } from "./aircraft-workspace";
+import { getAircraftTypeLabel, normalizeAircraftProfileMode } from "./aircraft-profile-mode";
 import type { ProFormaResult } from "./proforma";
 import {
   assumptionMapToStrings,
@@ -16,8 +18,44 @@ import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
 import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 import { applyScenarioCrewToAssumptions } from "./scenario-crew";
+import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
+import {
+  ownerHoursForUtilization,
+  parseProformaOwnerHoursJson,
+  totalOwnerFlightHours,
+  type ProposalOwnerProfile,
+} from "./proposal-owners";
 
 type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
+
+function resolveOwnerHoursForSnapshot(
+  fullMap: Record<string, string>,
+  scenario: ProposalScenario | null | undefined,
+  profiles: ProposalOwnerProfile[]
+): number {
+  if (profiles.length > 0) {
+    const fromProforma = ownerHoursForUtilization(profiles, fullMap);
+    const fromProfiles = totalOwnerFlightHours(profiles);
+    const hasStoredProforma =
+      parseProformaOwnerHoursJson(fullMap, profiles.length) != null;
+    if (!hasStoredProforma && fromProfiles !== fromProforma) {
+      return fromProfiles;
+    }
+    return fromProforma;
+  }
+
+  const fromAssumptions = parseFloat(fullMap.owner_annual_hours ?? "");
+  if (Number.isFinite(fromAssumptions) && fromAssumptions >= 0) {
+    return fromAssumptions;
+  }
+  if (scenario?.ownerHours != null) {
+    const fromScenario = parseFloat(scenario.ownerHours.toString());
+    if (Number.isFinite(fromScenario) && fromScenario >= 0) {
+      return fromScenario;
+    }
+  }
+  return 400;
+}
 
 function clientVisibleAssumptions(
   all: ProposalAssumption[],
@@ -41,6 +79,7 @@ function clientVisibleAssumptions(
 }
 
 export async function buildAircraftSnapshotEntry(args: {
+  proposalId?: string;
   aircraft: AircraftWithMaster;
   assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
   allAssumptions: ProposalAssumption[];
@@ -76,10 +115,18 @@ export async function buildAircraftSnapshotEntry(args: {
   let fullMap = { ...assumptionsFromInstance(meta), ...map };
   fullMap = await resolveEffectiveAssumptionsForInstance(aircraft.id, fullMap);
 
+  let profiles: Awaited<ReturnType<typeof loadOwnerProfilesForAircraft>>["profiles"] = [];
+  if (args.proposalId) {
+    const loaded = await loadOwnerProfilesForAircraft(
+      args.proposalId,
+      aircraft.id,
+      fullMap
+    );
+    profiles = loaded.profiles;
+  }
+
   if (args.scenario) {
-    const ownerHours = args.scenario.ownerHours
-      ? parseFloat(args.scenario.ownerHours.toString())
-      : parseFloat(fullMap.owner_annual_hours ?? "400") || 400;
+    const ownerHours = resolveOwnerHoursForSnapshot(fullMap, args.scenario, profiles);
     fullMap = applyScenarioCrewToAssumptions(fullMap, {
       ownerFlightHours: ownerHours,
       crewStepIndex: args.scenario.crewStepIndex,
@@ -90,10 +137,17 @@ export async function buildAircraftSnapshotEntry(args: {
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
   const master = aircraft.warehouseAircraft;
+  const profileMode = normalizeAircraftProfileMode(fullMap);
+  const typeLabel =
+    getAircraftTypeLabel(fullMap) ??
+    (master ? [master.manufacturer, master.model].filter(Boolean).join(" ") || null : null);
 
   return {
     id: aircraft.id,
     label: getAircraftDisplayName(fullMap, meta),
+    aircraftProfileMode: profileMode,
+    aircraftTypeLabel: typeLabel,
+    portalSubtitle: getAircraftCardSubtitle(fullMap, meta),
     manufacturer: master?.manufacturer ?? fullMap.aircraft_manufacturer ?? null,
     model: master?.model ?? fullMap.aircraft_model ?? null,
     tailNumber: aircraft.tailNumber,
@@ -116,6 +170,7 @@ export async function buildAircraftSnapshotEntry(args: {
 }
 
 export async function buildAircraftSnapshotList(args: {
+  proposalId?: string;
   includedAircraft: AircraftWithMaster[];
   primaryAircraftInstanceId: string | null;
   assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
@@ -124,6 +179,7 @@ export async function buildAircraftSnapshotList(args: {
   baseScenariosByAircraft?: Record<string, ProposalScenario | null>;
 }): Promise<AircraftSnapshotEntry[]> {
   const {
+    proposalId,
     includedAircraft,
     primaryAircraftInstanceId,
     assumptionRows,
@@ -135,6 +191,7 @@ export async function buildAircraftSnapshotList(args: {
   return Promise.all(
     includedAircraft.map((aircraft) =>
       buildAircraftSnapshotEntry({
+        proposalId,
         aircraft,
         assumptionRows,
         allAssumptions,

@@ -80,11 +80,7 @@ export function AircraftPortalDetail({
         <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10">
           <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your aircraft</p>
           <h1 className="mt-2 font-serif text-4xl sm:text-5xl">{aircraft.label}</h1>
-          <p className="mt-2 text-white/60">
-            {[aircraft.tailNumber, aircraft.year ? String(aircraft.year) : null, aircraft.proposedHomeBase]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+          <p className="mt-2 text-white/60">{aircraft.portalSubtitle ?? ""}</p>
         </div>
       </div>
 

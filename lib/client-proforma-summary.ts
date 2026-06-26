@@ -6,7 +6,7 @@ import {
   type ClientCrewSummary,
 } from "./workspace-proforma-client";
 import type { ProFormaResult } from "./proforma";
-import type { ProFormaStatementRow } from "./proforma-statement";
+import type { ProFormaStatementRow, ProFormaAssumptionUsedItem } from "./proforma-statement";
 import type { ProposalOwnerProfile } from "./proposal-owners";
 import { proformaHoursForProfiles } from "./proposal-owners";
 import { toNumber } from "./utils";
@@ -42,6 +42,7 @@ export type ClientProFormaSummary = {
   fixedCostBreakdown: Array<{ label: string; annual: number; monthly: number }>;
   summaryRows: Array<{ key: string; label: string; annual: number }>;
   statementRows: ProFormaStatementRow[];
+  assumptionsUsed: ProFormaAssumptionUsedItem[];
 };
 
 function visibleAssumptionMap(entry: AircraftSnapshotEntry): Record<string, string> {
@@ -93,6 +94,7 @@ export function buildClientProFormaSummary(
     proformaOwnerHours?: number[];
     ownerProfiles?: ProposalOwnerProfile[];
     calculationMap?: Record<string, string>;
+    crewStepIndex?: number;
   }
 ): ClientProFormaSummary {
   const baseMap = stringsToAssumptionMap(resolveCalculationMap(entry, overrides?.calculationMap));
@@ -102,6 +104,7 @@ export function buildClientProFormaSummary(
     ownerHours: overrides?.ownerHours,
     proformaOwnerHours: overrides?.proformaOwnerHours,
     ownerProfiles: profiles.length > 0 ? profiles : undefined,
+    crewStepIndex: overrides?.crewStepIndex,
   });
 
   const lineItems = toClientLineItems(calc.proForma);
@@ -120,6 +123,7 @@ export function buildClientProFormaSummary(
     fixedCostBreakdown: calc.fixedCostBreakdown,
     summaryRows: calc.summaryRows,
     statementRows: calc.statementRows,
+    assumptionsUsed: calc.assumptionsUsed,
   };
 }
 
@@ -128,6 +132,9 @@ export function buildFixedBreakdown(assumptions: Record<string, number | string>
   const entry = {
     id: "",
     label: "",
+    aircraftProfileMode: "general" as const,
+    aircraftTypeLabel: null,
+    portalSubtitle: null,
     manufacturer: null,
     model: null,
     tailNumber: null,

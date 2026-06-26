@@ -5,6 +5,9 @@ import type { AircraftSnapshotEntry } from "@/lib/portal-aircraft-types";
 const entry: AircraftSnapshotEntry = {
   id: "ac-1",
   label: "Gulfstream G550",
+  aircraftProfileMode: "general",
+  aircraftTypeLabel: "Gulfstream G550",
+  portalSubtitle: "SDL",
   manufacturer: "Gulfstream",
   model: "G550",
   tailNumber: "N123AB",

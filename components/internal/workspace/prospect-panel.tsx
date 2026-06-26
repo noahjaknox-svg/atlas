@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
+import { PROSPECT_NAME_LABEL, EDIT_PROSPECT } from "@/lib/product-terminology";
 
 const inputClass =
   "h-8 w-full rounded border border-atlas-border/80 bg-atlas-bg px-2 text-xs focus:border-atlas-accent focus:outline-none";
@@ -133,7 +134,7 @@ export function ProspectPanel({
       >
         {editing ? (
           <div className="space-y-3">
-            <Field label="Prospect name *">
+            <Field label={`${PROSPECT_NAME_LABEL} *`}>
               <Input
                 className={inputClass}
                 value={draft.prospectName}
@@ -191,7 +192,7 @@ export function ProspectPanel({
                 rows={3}
               />
             </Field>
-            <Field label="Client-facing summary">
+            <Field label="Prospect-facing summary">
               <textarea
                 className={`${inputClass} min-h-[72px] py-2`}
                 value={draft.clientSummary}
@@ -202,13 +203,13 @@ export function ProspectPanel({
           </div>
         ) : compact ? (
           <dl className="space-y-1.5">
-            <ViewRow label="Contact" value={savedProspect.contactName} compact />
-            <ViewRow label="Email" value={savedProspect.contactEmail} compact />
+            <ViewRow label="Contact" value={savedProspect.contactName || "—"} compact />
+            <ViewRow label="Email" value={savedProspect.contactEmail || "—"} compact />
           </dl>
         ) : (
           <dl className="space-y-3">
-            <ViewRow label="Contact" value={savedProspect.contactName} />
-            <ViewRow label="Email" value={savedProspect.contactEmail} />
+            <ViewRow label="Contact" value={savedProspect.contactName || "—"} />
+            <ViewRow label="Email" value={savedProspect.contactEmail || "—"} />
             <ViewRow label="Phone" value={savedProspect.contactPhone || "—"} />
             <ViewRow label="Current manager" value={savedCurrentManager || "—"} />
             <ViewRow label="Lead assigned" value={assignedToName ?? "Unassigned"} />
@@ -253,7 +254,7 @@ export function ProspectPanel({
           ) : (
             !embedded && (
               <Button type="button" variant="secondary" size="sm" className="w-full text-xs" onClick={startEdit}>
-                Edit prospect
+                {EDIT_PROSPECT}
               </Button>
             )
           )}

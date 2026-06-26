@@ -107,6 +107,11 @@ export type ExperienceGalleryItem = {
   caption?: string;
 };
 
+export type ExperiencePageLink = {
+  label: string;
+  url: string;
+};
+
 export type ExperienceContentBlocks = {
   pillars?: ExperiencePillar[];
   timeline?: ExperienceTimelinePhase[];
@@ -123,6 +128,8 @@ export type ExperienceContentBlocks = {
   serviceTiles?: ExperienceServiceTile[];
   /** Photo gallery rendered on the page body (uploaded via the design editor). */
   gallery?: ExperienceGalleryItem[];
+  /** Custom buttons in the portal nav (Edit presentation → Nav menu buttons). */
+  navLinks?: ExperiencePageLink[];
   contactEmail?: string;
   contactPhone?: string;
   contactWebsite?: string;
@@ -131,6 +138,8 @@ export type ExperienceContentBlocks = {
   aircraftMarketUrl?: string | null;
   aircraftMarketButtonLabel?: string | null;
 };
+
+export type ExperienceNavLink = ExperiencePageLink;
 
 export type ExperienceSectionSnapshot = {
   sectionType: string;
@@ -149,8 +158,67 @@ export type ExperienceSectionSnapshot = {
   signatoryTitle: string | null;
 };
 
+/** Normalize raw link-button input into clean, renderable entries. */
+export function sanitizeExperiencePageLinks(value: unknown): ExperiencePageLink[] {
+  if (!Array.isArray(value)) return [];
+  const cleaned: ExperiencePageLink[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const label =
+      typeof (item as ExperiencePageLink).label === "string"
+        ? (item as ExperiencePageLink).label.trim()
+        : "";
+    const url =
+      typeof (item as ExperiencePageLink).url === "string"
+        ? (item as ExperiencePageLink).url.trim()
+        : "";
+    if (!label || !url) continue;
+    cleaned.push({ label, url });
+  }
+  return cleaned;
+}
+
+const DEFAULT_NAV_LINK_LABEL = "Available aircraft";
+
+/** Nav menu buttons for the portal header (supports legacy single market link). */
+export function resolvePortalNavLinks(
+  blocks: ExperienceContentBlocks | null | undefined
+): ExperiencePageLink[] {
+  const navLinks = sanitizeExperiencePageLinks(blocks?.navLinks);
+  if (navLinks.length > 0) return navLinks;
+
+  const legacyUrl = blocks?.aircraftMarketUrl?.trim();
+  if (!legacyUrl) return [];
+
+  return [
+    {
+      label: blocks?.aircraftMarketButtonLabel?.trim() || DEFAULT_NAV_LINK_LABEL,
+      url: legacyUrl,
+    },
+  ];
+}
+
 export function isExperienceNavSection(sectionType: string): boolean {
-  return sectionType !== "disclaimer";
+  return sectionType !== "disclaimer" && sectionType !== "pro_forma";
+}
+
+/** Visible story chapters (not welcome, pro forma, or disclaimer). */
+export function getExperienceChapterSections(
+  sections: ExperienceSectionSnapshot[]
+): ExperienceSectionSnapshot[] {
+  return sections
+    .filter(
+      (s) =>
+        s.visible &&
+        s.sectionType !== "disclaimer" &&
+        s.sectionType !== "pro_forma" &&
+        s.sectionType !== "welcome"
+    )
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function isProFormaSectionVisible(sections: ExperienceSectionSnapshot[]): boolean {
+  return sections.some((s) => s.sectionType === "pro_forma" && s.visible);
 }
 
 export function getExperienceNavSections(
@@ -171,10 +239,27 @@ export function getSectionBySlug(
 }
 
 export function getFirstExperienceSlug(sections: ExperienceSectionSnapshot[]): string {
-  const nav = getExperienceNavSections(sections);
-  const first = nav[0];
-  if (!first) return "welcome";
-  return SECTION_TYPE_TO_SLUG[first.sectionType as ExperienceSectionType] ?? "welcome";
+  const welcome = sections.find((s) => s.sectionType === "welcome" && s.visible);
+  if (welcome) return "welcome";
+
+  const chapters = getExperienceChapterSections(sections);
+  if (chapters[0]) {
+    return (
+      SECTION_TYPE_TO_SLUG[chapters[0].sectionType as ExperienceSectionType] ??
+      chapters[0].sectionType
+    );
+  }
+
+  if (isProFormaSectionVisible(sections)) return "pro-forma";
+
+  return "welcome";
+}
+
+/** Logo / home target: welcome when on, otherwise the first page clients would see. */
+export function getExperienceHomeSlug(sections: ExperienceSectionSnapshot[]): string {
+  const welcome = sections.find((s) => s.sectionType === "welcome" && s.visible);
+  if (welcome) return "welcome";
+  return getFirstExperienceSlug(sections);
 }
 
 export function mergeSectionWithDefaults(

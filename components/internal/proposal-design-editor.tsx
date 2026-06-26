@@ -44,7 +44,7 @@ export function ProposalDesignEditor({
     if (res.ok) {
       setContent(json.content);
       setFleet(json.fleet);
-      setMessage("Saved — cloud video updates live on all client portals.");
+      setMessage("Saved — cloud video updates live on all prospect portals.");
     } else {
       setMessage(json.error ?? "Save failed");
     }

@@ -9,6 +9,7 @@ import {
   OwnerSplitsTable,
 } from "@/components/internal/workspace/owner-splits-panel";
 import { AssumptionsSectionTable } from "@/components/internal/workspace/assumptions-table";
+import { CrewLadderExplainer } from "@/components/internal/workspace/crew-ladder-explainer";
 import { effectiveFieldValue } from "@/components/internal/workspace/default-override-field";
 import { AircraftProFormaColumn } from "@/components/internal/workspace/aircraft-pro-forma-tab";
 import { isCalculatedField } from "@/lib/aircraft-calculated-fields";
@@ -20,6 +21,12 @@ import {
   mergeAssumptionsWithDefaults,
 } from "@/lib/resolve-effective-assumptions";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
+import {
+  clearFieldsForProfileModeSwitch,
+  fieldVisibleForProfileMode,
+  instancePatchForProfileModeSwitch,
+  normalizeAircraftProfileMode,
+} from "@/lib/aircraft-profile-mode";
 import {
   TAB_LABELS,
   TAB_STRIP_LABELS,
@@ -76,17 +83,27 @@ export function AircraftTabsPanel({
     [assumptions, warehouseDefaults]
   );
 
+  const profileMode = useMemo(
+    () => normalizeAircraftProfileMode(assumptions),
+    [assumptions]
+  );
+
   const handleOverride = useCallback(
     (name: string, overrideRaw: string) => {
       if (isCalculatedField(name, assumptions)) return;
       const def = warehouseDefaults[name] ?? "";
       let next = { ...assumptions, [name]: effectiveFieldValue(def, overrideRaw) };
+      if (name === "aircraft_profile_mode") {
+        const mode = normalizeAircraftProfileMode(next);
+        Object.assign(next, clearFieldsForProfileModeSwitch(mode));
+        onApplySetupDefaults({}, instancePatchForProfileModeSwitch(mode));
+      }
       if (UTILIZATION_SYNC_KEYS.has(name)) {
         next = syncUtilizationHours(mergeAssumptionsWithDefaults(next, warehouseDefaults));
       }
       onAssumptionsChange(next);
     },
-    [assumptions, warehouseDefaults, onAssumptionsChange]
+    [assumptions, warehouseDefaults, onAssumptionsChange, onApplySetupDefaults]
   );
 
   const charterEnabled = isCharterUsageEnabled(assumptions);
@@ -99,17 +116,18 @@ export function AircraftTabsPanel({
 
   const fieldHidden = useCallback(
     (field: WorkspaceField): boolean => {
+      if (!fieldVisibleForProfileMode(field, profileMode)) return true;
       if (!fieldVisibleForUsage(field, assumptions)) return true;
       const name = field.assumptionName!;
       if (name === "insurance_annual" || name === "insurance_premium_percent") {
         return !insuranceFieldActive(assumptions.insurance_mode, name);
       }
-      if (name === "lead_pilot_salary") {
+      if (name === "lead_pilot_salary" || name === "lead_pilot_training") {
         return effective.lead_pilot_enabled !== "yes";
       }
       return false;
     },
-    [assumptions, effective]
+    [assumptions, effective, profileMode]
   );
 
   function renderTabContent(tab: EditorTab) {
@@ -178,6 +196,12 @@ export function AircraftTabsPanel({
             allocationMode={allocationMode}
           />
         ) : null}
+        {tab === "crew_training" ? (
+          <CrewLadderExplainer
+            assumptions={assumptions}
+            warehouseDefaults={warehouseDefaults}
+          />
+        ) : null}
         {visibleSections.map((section) => (
           <AssumptionsSectionTable
             key={section.title}
@@ -230,7 +254,7 @@ export function AircraftTabsPanel({
         </div>
       </div>
 
-      {/* Pro Forma — equal width */}
+      {/* Demo Pro Forma — equal width */}
       <aside className="flex min-h-0 min-w-0 flex-col bg-atlas-surface/10">
         <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/30 px-4 py-2.5">
           <p className="atlas-panel-title whitespace-nowrap">

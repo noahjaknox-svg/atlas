@@ -15,6 +15,7 @@ import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
 import { ROUTES } from "@/lib/routes";
+import { PROPOSAL_WORKSPACE } from "@/lib/product-terminology";
 import type { AircraftListItem } from "./aircraft-list-panel";
 
 export function WorkspaceLayout({
@@ -110,6 +111,9 @@ export function WorkspaceLayout({
           <Link href={ROUTES.aircraftManagement.pipeline} className="atlas-caption hover:text-atlas-accent">
             ← Pipeline
           </Link>
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-atlas-muted">
+            {PROPOSAL_WORKSPACE}
+          </p>
           <input
             type="text"
             value={proposalName}
@@ -132,7 +136,7 @@ export function WorkspaceLayout({
           {isArchived ? (
             <div className="mt-2 rounded border border-atlas-border/80 bg-atlas-bg/50 px-2 py-2">
               <p className="text-[11px] text-atlas-muted">
-                This deal is archived and hidden from the pipeline. Client portal access is
+                This deal is archived and hidden from the pipeline. Prospect portal access is
                 deactivated.
               </p>
               {onRestore ? (

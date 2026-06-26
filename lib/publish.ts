@@ -9,6 +9,7 @@ export interface PublishResult {
   pin: string;
   portalId: string;
   snapshotId: string;
+  publishedAt: string;
 }
 
 export async function publishProposal(
@@ -28,7 +29,8 @@ export async function publishProposal(
   const pin = generatePin();
   const pinHash = await hashPin(pin);
   const pinCiphertext = encryptPinForStorage(pin);
-  const slug = generatePortalSlug(proposal.prospect.prospectName);
+  const slug =
+    proposal.clientPortal?.slug ?? generatePortalSlug(proposal.prospect.prospectName);
 
   const portal = await prisma.$transaction(async (tx) => {
     await tx.proposal.update({
@@ -64,6 +66,7 @@ export async function publishProposal(
     pin,
     portalId: portal.id,
     snapshotId: snapshot.id,
+    publishedAt: snapshot.publishedAt.toISOString(),
   };
 }
 
@@ -71,7 +74,7 @@ export async function publishProposal(
 export async function republishProposal(
   proposalId: string,
   publishedById: string
-): Promise<{ slug: string; snapshotId: string }> {
+): Promise<{ slug: string; snapshotId: string; publishedAt: string }> {
   const proposal = await prisma.proposal.findUniqueOrThrow({
     where: { id: proposalId },
     include: { clientPortal: true },
@@ -91,5 +94,6 @@ export async function republishProposal(
   return {
     slug: proposal.clientPortal.slug,
     snapshotId: snapshot.id,
+    publishedAt: snapshot.publishedAt.toISOString(),
   };
 }

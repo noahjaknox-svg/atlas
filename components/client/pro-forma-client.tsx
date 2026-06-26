@@ -2,19 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cn, parseFormattedNumber } from "@/lib/utils";
+import { cn, formatCurrency, parseFormattedNumber } from "@/lib/utils";
 import { MoneyInput } from "@/components/ui/money-input";
 import { HoursInput } from "@/components/ui/hours-input";
-import { ClientProFormaStatement, type ClientProFormaStatementHandle } from "@/components/client/client-proforma-statement";
-import { ProFormaMetricsRow } from "@/components/client/experience/v2/pro-forma-hero";
-import { ProFormaVisualSummary } from "@/components/client/experience/pro-forma-visual-summary";
+import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
+import { ProFormaAssumptionsList } from "@/components/client/pro-forma-assumptions";
 import { ProFormaUtilizationSummary } from "@/components/client/pro-forma-utilization-summary";
+import { CrewLadderStepper } from "@/components/shared/crew-ladder-stepper";
 import type { ClientSnapshotView } from "@/lib/client-serializer";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 import {
   computeWorkspaceProFormaForClient,
   resolveClientCrewSummary,
+  resolvePortalCrewStepFloor,
   stringsToAssumptionMap,
 } from "@/lib/workspace-proforma-client";
 
@@ -23,20 +24,62 @@ type ClientProFormaData = ClientSnapshotView;
 const inputClass =
   "mt-1.5 w-full rounded border border-white/20 bg-white/10 px-3 py-2.5 font-mono text-sm text-white backdrop-blur focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/30";
 
-const proFormaSegmentGroup = "flex shrink-0 rounded-lg border border-white/15 p-0.5";
-const proFormaSegmentBtn =
-  "rounded-md px-3 py-1 text-xs font-medium transition-colors sm:px-4 sm:py-1.5 text-white/60 hover:bg-white/5 hover:text-white";
-const proFormaSegmentBtnActive = "bg-atlas-accent text-[#0B0F1A] hover:bg-atlas-accent hover:text-[#0B0F1A]";
+/** Shared width for aircraft value + owner hours (fits up to 99,999,999). */
+const proFormaNumericInputClass = cn(
+  inputClass,
+  "mt-0 w-[11rem] max-w-full shrink-0 text-right tabular-nums"
+);
+
+const sectionTitleClass =
+  "text-xs font-medium uppercase tracking-[0.3em] text-atlas-accent";
+
+function ProFormaSectionTitle({ children }: { children: React.ReactNode }) {
+  return <p className={sectionTitleClass}>{children}</p>;
+}
+
+const DEFAULT_DESCRIPTION =
+  "Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to model scenarios — crew and utilization update live.";
+
+/** Scrollable column wrapper for the embedded pro forma grid. */
+function ProFormaColumn({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "min-h-0 min-w-0",
+        "max-xl:overflow-visible xl:overflow-y-auto xl:overscroll-y-contain xl:pr-1",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 function totalProformaHours(hours: number[]): number {
   return hours.reduce((s, h) => s + (Number.isFinite(h) && h >= 0 ? h : 0), 0);
 }
 
-export type ProFormaLiveMetrics = {
-  netAnnualCost: number;
-  costPerOwnerHour: number;
-  charterRevenueOffset: number;
-};
+function parseCrewStepIndex(raw: string | undefined): number | undefined {
+  const n = parseInt(raw ?? "", 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function initialCrewStepForSnapshot(
+  snapshot: ClientProFormaData,
+  ownerHours: number
+): number {
+  if (snapshot.defaultCrewStepIndex != null) {
+    return snapshot.defaultCrewStepIndex;
+  }
+  const assumptions = stringsToAssumptionMap(snapshot.calculationAssumptions ?? {});
+  return resolvePortalCrewStepFloor(assumptions, ownerHours);
+}
 
 export function ProFormaClient({
   slug,
@@ -44,26 +87,23 @@ export function ProFormaClient({
   initialAircraftId,
   embedded = false,
   experiencePath = true,
-  slide = false,
-  hideVisualSummary = false,
-  splitScroll = false,
-  onMetricsChange,
+  title,
+  description,
+  showTitleColumn = true,
   className,
-  pageTitle,
-  pageIntro,
 }: {
   slug: string;
   initial: ClientProFormaData;
   initialAircraftId?: string | null;
   embedded?: boolean;
   experiencePath?: boolean;
-  slide?: boolean;
-  hideVisualSummary?: boolean;
-  splitScroll?: boolean;
-  onMetricsChange?: (metrics: ProFormaLiveMetrics) => void;
+  /** Title shown in the first column (defaults to "Pro Forma"). */
+  title?: string;
+  /** Descriptive paragraph shown under the title in the first column. */
+  description?: string;
+  /** When false, the title/description column is omitted (host already shows it). */
+  showTitleColumn?: boolean;
   className?: string;
-  pageTitle?: string;
-  pageIntro?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -78,13 +118,19 @@ export function ProFormaClient({
   const [proformaOwnerHours, setProformaOwnerHours] = useState<number[]>(
     initial.proformaOwnerHours ?? [initial.editableFields.ownerAnnualHours.value]
   );
+  const initialTotalOwnerHours = totalProformaHours(
+    initial.proformaOwnerHours ?? [initial.editableFields.ownerAnnualHours.value]
+  );
+  const initialCrewStep = initialCrewStepForSnapshot(initial, initialTotalOwnerHours);
   const [baseline, setBaseline] = useState({
     aircraftValue: initial.baseMetrics.aircraftValue,
     proformaOwnerHours:
       initial.baseProformaOwnerHours ??
       initial.proformaOwnerHours ??
       [initial.baseMetrics.ownerHours],
+    crewStepIndex: initialCrewStep,
   });
+  const [crewStepIndex, setCrewStepIndex] = useState<number>(() => initialCrewStep);
   const [aircraftLoading, setAircraftLoading] = useState(false);
 
   const ownerProfiles: ProposalOwnerProfile[] = snapshot.ownerProfiles ?? [];
@@ -100,24 +146,44 @@ export function ProFormaClient({
   );
   const canComputeLocally = Object.keys(calculationAssumptions).length > 0;
 
+  const crewStepFloor = useMemo(() => {
+    if (!canComputeLocally) return undefined;
+    return resolvePortalCrewStepFloor(
+      stringsToAssumptionMap(calculationAssumptions),
+      totalOwnerHours
+    );
+  }, [canComputeLocally, calculationAssumptions, totalOwnerHours]);
+
+  useEffect(() => {
+    if (crewStepFloor == null) return;
+    setCrewStepIndex((prev) => (prev < crewStepFloor ? crewStepFloor : prev));
+  }, [crewStepFloor]);
+
   const showAircraftSelector = snapshot.aircraftList.length > 1;
   const userEditedRef = useRef(false);
-  const statementRef = useRef<ClientProFormaStatementHandle>(null);
 
   const applySnapshot = useCallback((next: ClientProFormaData, resetEdits = true) => {
     setSnapshot(next);
     setAircraftValue(String(next.editableFields.aircraftValue.value));
-    setProformaOwnerHours(
-      next.proformaOwnerHours ?? [next.editableFields.ownerAnnualHours.value]
+    const nextProformaHours =
+      next.proformaOwnerHours ?? [next.editableFields.ownerAnnualHours.value];
+    setProformaOwnerHours(nextProformaHours);
+    const nextCrewStep = initialCrewStepForSnapshot(
+      next,
+      totalProformaHours(nextProformaHours)
     );
-    setBaseline({
-      aircraftValue: next.baseMetrics.aircraftValue,
-      proformaOwnerHours:
-        next.baseProformaOwnerHours ??
-        next.proformaOwnerHours ??
-        [next.baseMetrics.ownerHours],
-    });
-    if (resetEdits) userEditedRef.current = false;
+    if (resetEdits) {
+      setBaseline({
+        aircraftValue: next.baseMetrics.aircraftValue,
+        proformaOwnerHours:
+          next.baseProformaOwnerHours ??
+          next.proformaOwnerHours ??
+          [next.baseMetrics.ownerHours],
+        crewStepIndex: nextCrewStep,
+      });
+      setCrewStepIndex(nextCrewStep);
+      userEditedRef.current = false;
+    }
   }, []);
 
   const loadAircraftData = useCallback(
@@ -167,6 +233,7 @@ export function ProFormaClient({
         proformaOwnerHours,
         ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
         ownerHours: multiOwner ? undefined : totalOwnerHours,
+        crewStepIndex,
       }
     );
   }, [
@@ -177,6 +244,7 @@ export function ProFormaClient({
     ownerProfiles,
     multiOwner,
     totalOwnerHours,
+    crewStepIndex,
   ]);
 
   const statementRows: ProFormaStatementRow[] = useMemo(() => {
@@ -193,92 +261,27 @@ export function ProFormaClient({
     return snapshot.crewSummary;
   }, [localCalc, ownerProfiles, snapshot.crewSummary]);
 
-  const lineItemsForViz = useMemo(() => {
-    const fromRows = statementRows
-      .filter((r) => r.kind === "line" && r.annual != null && Math.abs(r.annual) > 0)
-      .map((r) => ({
-        key: r.key,
-        label: r.label,
-        category:
-          r.layout === "fixed"
-            ? "fixed"
-            : r.layout === "hourly_variable" || r.layout === "revenue"
-              ? "variable"
-              : "other",
-        annual: Math.abs(r.annual!),
-        monthly: Math.abs(r.annual!) / 12,
-      }));
-    return fromRows.length > 0 ? fromRows : snapshot.proForma.lineItems;
-  }, [statementRows, snapshot.proForma.lineItems]);
+  // Net annual cost comes from the shared workspace metric helpers; hourly cost is
+  // |net annual cost| ÷ owner annual hours (guarded against divide-by-zero).
+  const netAnnualCost = localCalc?.metrics.netAnnualCost ?? snapshot.proForma.netAnnualCost;
+  const hourlyNetCost =
+    totalOwnerHours > 0 ? Math.abs(netAnnualCost) / totalOwnerHours : 0;
 
-  const metrics = useMemo(() => {
-    if (localCalc) {
-      return {
-        netAnnualCost: localCalc.metrics.netAnnualCost,
-        costPerOwnerHour: localCalc.metrics.costPerOwnerHour,
-        charterRevenueOffset: localCalc.metrics.charterRevenueOffset,
-      };
-    }
-    return {
-      netAnnualCost: snapshot.proForma.netAnnualCost,
-      costPerOwnerHour: snapshot.proForma.costPerOwnerHour,
-      charterRevenueOffset: snapshot.proForma.totalRevenue ?? 0,
-    };
-  }, [localCalc, snapshot.proForma]);
-
-  useEffect(() => {
-    onMetricsChange?.(metrics);
-  }, [metrics, onMetricsChange]);
-
-  const periodToggle = (
-    <div className={proFormaSegmentGroup}>
-      {(["annual", "monthly"] as const).map((p) => (
-        <button
-          key={p}
-          type="button"
-          onClick={() => setPeriod(p)}
-          className={cn(
-            proFormaSegmentBtn,
-            "capitalize",
-            period === p && proFormaSegmentBtnActive
-          )}
-        >
-          {p}
-        </button>
-      ))}
-    </div>
+  // Assumptions shown off-statement — same panel as the internal workspace pro forma.
+  const assumptionsUsed = useMemo(
+    () => localCalc?.assumptionsUsed ?? snapshot.assumptionsUsed ?? [],
+    [localCalc, snapshot.assumptionsUsed]
   );
-
-  const statementToolbar = splitScroll ? (
-    <div className="flex shrink-0 items-center justify-between gap-3">
-      <div className={proFormaSegmentGroup}>
-        <button
-          type="button"
-          onClick={() => statementRef.current?.expandAll()}
-          className={cn(proFormaSegmentBtn, "uppercase tracking-wide")}
-        >
-          Expand all
-        </button>
-        <button
-          type="button"
-          onClick={() => statementRef.current?.collapseAll()}
-          className={cn(proFormaSegmentBtn, "uppercase tracking-wide")}
-        >
-          Collapse all
-        </button>
-      </div>
-      {periodToggle}
-    </div>
-  ) : null;
 
   const scenarioPayload = useMemo(
     () => ({
       aircraftValue: parsedAircraftValue,
       proformaOwnerHours,
       ownerHours: totalOwnerHours,
+      crewStepIndex,
       aircraftInstanceId: selectedAircraftId || undefined,
     }),
-    [parsedAircraftValue, proformaOwnerHours, totalOwnerHours, selectedAircraftId]
+    [parsedAircraftValue, proformaOwnerHours, totalOwnerHours, crewStepIndex, selectedAircraftId]
   );
 
   const persistScenario = useCallback(async () => {
@@ -339,6 +342,7 @@ export function ProFormaClient({
     userEditedRef.current = true;
     setAircraftValue(String(baseline.aircraftValue));
     setProformaOwnerHours([...baseline.proformaOwnerHours]);
+    setCrewStepIndex(baseline.crewStepIndex);
   }
 
   function patchOwnerHoursAtIndex(index: number, hours: number) {
@@ -350,6 +354,7 @@ export function ProFormaClient({
     });
   }
 
+  // Aircraft selector only renders when the proposal has more than one aircraft.
   const aircraftSelector = showAircraftSelector ? (
     <div className="flex flex-wrap gap-2">
       {snapshot.aircraftList.map((ac) => (
@@ -376,13 +381,13 @@ export function ProFormaClient({
   ) : null;
 
   const ownerHoursInputs = multiOwner ? (
-    <div className="sm:col-span-2">
+    <div>
       <p className="text-sm text-white/70">Owner flight hours</p>
       <ul className="mt-3 space-y-3">
         {ownerProfiles.map((profile, index) => (
           <li
             key={profile.id ?? profile.sortOrder}
-            className="flex items-center justify-between gap-3 border-b border-white/10 pb-3 last:border-b-0 last:pb-0"
+            className="flex items-center justify-between gap-3"
           >
             <span className="min-w-0 truncate text-sm text-white/80">
               {profile.displayName}
@@ -390,7 +395,7 @@ export function ProFormaClient({
             <HoursInput
               min={0}
               step={1}
-              className={cn(inputClass, "mt-0 max-w-[8rem] shrink-0 text-center")}
+              className={proFormaNumericInputClass}
               value={Number.isFinite(proformaOwnerHours[index])
                 ? proformaOwnerHours[index]!
                 : 0}
@@ -402,69 +407,82 @@ export function ProFormaClient({
       </ul>
     </div>
   ) : (
-    <label className="block text-sm text-white/70">
-      Owner annual hours
+    <div className="flex items-center justify-between gap-3">
+      <label htmlFor="owner-annual-hours" className="text-sm text-white/70">
+        Owner annual hours
+      </label>
       <HoursInput
+        id="owner-annual-hours"
         value={proformaOwnerHours[0] ?? totalOwnerHours}
         onChange={(hours) => patchOwnerHoursAtIndex(0, hours)}
-        className={inputClass}
+        className={proFormaNumericInputClass}
       />
-    </label>
+    </div>
   );
 
-  const inputsPanel = (
-    <div className={cn(slide ? "space-y-3" : "space-y-6")}>
-      {splitScroll && pageTitle ? (
-        <header className="space-y-2 border-b border-white/10 pb-3">
-          <h1 className="font-serif text-xl leading-tight text-white sm:text-2xl">
-            {pageTitle}
-          </h1>
-          {pageIntro ? (
-            <p className="text-xs leading-relaxed text-white/65 sm:text-sm">{pageIntro}</p>
-          ) : null}
-        </header>
-      ) : null}
-      {embedded && !splitScroll ? (
-        <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
-      ) : null}
-      {splitScroll ? (
-        <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Your assumptions</p>
-      ) : null}
+  const resolvedTitle = title ?? "Pro Forma";
+  const resolvedDescription = description ?? DEFAULT_DESCRIPTION;
+
+  // Column 1 — title + descriptive copy.
+  const titlePanel = (
+    <div className="flex min-h-0 flex-col gap-4">
+      <ProFormaSectionTitle>Financial outlook</ProFormaSectionTitle>
+      <div className="space-y-3">
+        <h2 className="font-serif text-2xl text-white sm:text-3xl">{resolvedTitle}</h2>
+        {snapshot.aircraft?.label ? (
+          <p className="text-sm text-white/60">{snapshot.aircraft.label}</p>
+        ) : null}
+        <p className="text-sm leading-relaxed text-white/70">{resolvedDescription}</p>
+      </div>
+    </div>
+  );
+
+  // Column 2 — assumptions stack pulled from the workspace computation.
+  const assumptionsPanel = (
+    <div className="flex min-h-0 flex-col gap-4">
+      <ProFormaSectionTitle>Your assumptions</ProFormaSectionTitle>
+      <div className="space-y-5">
       {aircraftSelector}
-      <div
-        className={cn(
-          "grid gap-4",
-          embedded ? "grid-cols-1" : "max-w-xl sm:grid-cols-2",
-          slide && "gap-3"
-        )}
-      >
-        <label className="block text-sm text-white/70">
-          Aircraft value
+      <div>
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <label htmlFor="aircraft-value" className="text-sm text-white/70">
+            Aircraft value
+          </label>
           <MoneyInput
+            id="aircraft-value"
             value={aircraftValue}
             onChange={(v) => {
               userEditedRef.current = true;
               setAircraftValue(v);
             }}
-            className={inputClass}
+            className={proFormaNumericInputClass}
           />
-        </label>
-        {ownerHoursInputs}
+        </div>
+        <div className="pt-3">{ownerHoursInputs}</div>
       </div>
+      {canComputeLocally ? (
+        <div className="rounded-lg border border-white/15 bg-white/5 px-4 py-3">
+          <CrewLadderStepper
+            assumptions={stringsToAssumptionMap(calculationAssumptions)}
+            ownerHours={totalOwnerHours}
+            crewStepIndex={crewStepIndex}
+            variant="portal"
+            onCrewChange={(next) => {
+              userEditedRef.current = true;
+              const step = parseCrewStepIndex(next.crew_step_index);
+              if (step != null) setCrewStepIndex(step);
+            }}
+          />
+        </div>
+      ) : null}
       {crewSummary ? (
         <ProFormaUtilizationSummary
           summary={crewSummary}
           totalOwnerHours={totalOwnerHours}
           maxHours={crewSummary.maxAnnualUtilization}
-          compact={slide}
         />
       ) : null}
-      {splitScroll ? (
-        <ProFormaMetricsRow
-          netAnnualCost={metrics.netAnnualCost}
-          costPerOwnerHour={metrics.costPerOwnerHour}
-        />
-      ) : null}
+      <ProFormaAssumptionsList items={assumptionsUsed} />
       <button
         type="button"
         onClick={restore}
@@ -472,44 +490,53 @@ export function ProFormaClient({
       >
         Restore to PrismJet assumptions
       </button>
+      </div>
     </div>
   );
 
-  const proFormaPanel = splitScroll ? (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-      {statementToolbar}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-gutter:stable]">
-        <ClientProFormaStatement
-          ref={statementRef}
-          rows={statementRows}
-          period={period}
-          compact={slide}
-          collapsible
-          defaultExpanded
-          hideToolbar
-        />
-      </div>
+  // Column 3 — the pro forma statement.
+  const statementPanel = (
+    <div className="flex min-h-0 flex-col gap-4">
+      <ProFormaSectionTitle>Pro forma statement</ProFormaSectionTitle>
+      <ClientProFormaStatement
+        rows={statementRows}
+        period={period}
+        collapsible
+        defaultExpanded
+        onPeriodChange={setPeriod}
+      />
     </div>
-  ) : (
-    <div className={cn(slide ? "flex flex-col gap-4" : "space-y-6")}>
-      {embedded && slide ? (
-        <>
-          <ProFormaMetricsRow
-            netAnnualCost={metrics.netAnnualCost}
-            costPerOwnerHour={metrics.costPerOwnerHour}
-          />
-          <div className="flex items-center justify-end gap-3">{periodToggle}</div>
-        </>
-      ) : null}
-      {!hideVisualSummary ? (
-        <ProFormaVisualSummary
-          lineItems={lineItemsForViz}
-          period={period}
-          onPeriodChange={setPeriod}
-          compact={slide}
-        />
-      ) : null}
-      <ClientProFormaStatement rows={statementRows} period={period} compact={slide} />
+  );
+
+  // Column 4 — totals / net costs.
+  const totalsPanel = (
+    <div className="flex min-h-0 flex-col gap-4">
+      <ProFormaSectionTitle>Net costs</ProFormaSectionTitle>
+      <div className="space-y-4 rounded-lg border border-white/15 bg-white/5 p-4 backdrop-blur">
+      <dl className="space-y-4">
+        <div>
+          <dt className="text-sm text-white/60">Total aircraft value</dt>
+          <dd className="mt-1 font-mono text-lg tabular-nums text-white">
+            {formatCurrency(parsedAircraftValue)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-sm text-white/60">Annual cost (net)</dt>
+          <dd className="mt-1 font-mono text-xl tabular-nums text-atlas-accent">
+            {formatCurrency(Math.abs(netAnnualCost))}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-sm text-white/60">Hourly cost</dt>
+          <dd className="mt-1 font-mono text-lg tabular-nums text-white">
+            {hourlyNetCost > 0 ? formatCurrency(hourlyNetCost) : "—"}
+          </dd>
+          <p className="mt-0.5 text-xs text-white/45">
+            Net cost ÷ {totalOwnerHours || 0} owner hours
+          </p>
+        </div>
+      </dl>
+      </div>
     </div>
   );
 
@@ -517,68 +544,36 @@ export function ProFormaClient({
     <div
       className={cn(
         "text-white",
-        splitScroll && "flex min-h-0 flex-1 flex-col overflow-hidden",
-        !splitScroll && embedded && (slide ? "space-y-4" : "space-y-8"),
-        !splitScroll && !embedded && "space-y-10",
+        embedded
+          ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+          : "",
         className
       )}
     >
-      {!embedded ? (
-        <>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">Financial outlook</p>
-              <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Pro Forma</h1>
-              {snapshot.aircraft?.label ? (
-                <p className="mt-2 text-white/60">{snapshot.aircraft.label}</p>
-              ) : null}
-            </div>
-            <div className="flex rounded-lg border border-white/20 bg-white/5 p-1 backdrop-blur">
-              {(["annual", "monthly"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPeriod(p)}
-                  className={cn(
-                    "rounded-md px-4 py-2 text-sm capitalize transition-colors",
-                    period === p
-                      ? "bg-atlas-accent text-[#0B0F1A]"
-                      : "text-white/60 hover:text-white"
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="max-w-2xl text-white/70">
-            Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to
-            model scenarios — crew and utilization update live.
-          </p>
-        </>
-      ) : null}
-
-      {embedded ? (
-        <div
-          className={cn(
-            splitScroll
-              ? "flex min-h-0 flex-1 flex-col gap-4 overflow-hidden lg:grid lg:grid-cols-[minmax(260px,340px)_1fr] lg:items-stretch lg:gap-8"
-              : "grid items-start gap-6 lg:grid-cols-[minmax(260px,340px)_1fr] lg:gap-8 xl:gap-10",
-            slide && !splitScroll && "gap-5 lg:gap-8",
-            aircraftLoading && "opacity-70 transition-opacity"
-          )}
-        >
-          <div className={cn(splitScroll && "shrink-0 lg:overflow-visible")}>
-            {inputsPanel}
-          </div>
-          {proFormaPanel}
-        </div>
-      ) : (
-        <>
-          {inputsPanel}
-          {proFormaPanel}
-        </>
-      )}
+      <div
+        className={cn(
+          embedded
+            ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain xl:overflow-hidden"
+            : "",
+          "grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6",
+          showTitleColumn
+            ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,2.75fr)_minmax(0,3.5fr)_minmax(0,2fr)] xl:gap-5"
+            : "xl:grid-cols-[minmax(0,2.75fr)_minmax(0,3.5fr)_minmax(0,2fr)] xl:gap-5",
+          embedded && "xl:h-full xl:min-h-0 xl:flex-1 xl:grid-rows-1",
+          aircraftLoading && "opacity-70 transition-opacity"
+        )}
+      >
+        {showTitleColumn ? (
+          <ProFormaColumn>{titlePanel}</ProFormaColumn>
+        ) : null}
+        <ProFormaColumn>{assumptionsPanel}</ProFormaColumn>
+        <ProFormaColumn className="md:col-span-2 xl:col-span-1">
+          {statementPanel}
+        </ProFormaColumn>
+        <ProFormaColumn className="md:col-span-2 xl:col-span-1 xl:self-start">
+          {totalsPanel}
+        </ProFormaColumn>
+      </div>
     </div>
   );
 }

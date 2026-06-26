@@ -9,10 +9,12 @@ import {
 export function ExperienceSlideV2({
   children,
   className,
+  contentClassName,
   lockViewport = false,
 }: {
   children: React.ReactNode;
   className?: string;
+  contentClassName?: string;
   /** Pin slide to the shell content band — inner regions scroll instead of the page. */
   lockViewport?: boolean;
 }) {
@@ -30,8 +32,9 @@ export function ExperienceSlideV2({
         className={cn(
           experienceContentMaxV2,
           lockViewport
-            ? "flex min-h-0 flex-1 flex-col overflow-hidden py-4 sm:py-5"
-            : "flex flex-col justify-start py-4 sm:py-6 lg:py-8"
+            ? "flex min-h-0 flex-1 flex-col overflow-hidden py-3 sm:py-4"
+            : "flex flex-col justify-start py-4 sm:py-6 lg:py-8",
+          contentClassName
         )}
       >
         {children}

@@ -130,6 +130,7 @@ export async function buildSnapshotPayload(
   }
 
   const aircraftList = await buildAircraftSnapshotList({
+    proposalId,
     includedAircraft,
     primaryAircraftInstanceId: proposal.aircraftInstanceId,
     assumptionRows,
