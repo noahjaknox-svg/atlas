@@ -4,6 +4,7 @@ import {
   computeCrewTotal,
   computeCrewTrainingTotalAmount,
   computeLeadPilotCrewTotal,
+  computeLeadPilotTrainingTotal,
   computePicCrewTotal,
   computePicTrainingTotal,
   computeSicCrewTotal,
@@ -15,7 +16,6 @@ import {
   computeHangarCalculatedAnnual,
   stripLegacyEstimatedHangar,
 } from "@/lib/hangar-assumptions";
-import { mergeEstimatedDefaults } from "@/lib/aircraft-estimated-defaults";
 import {
   applyCrewStepToAssumptions,
   resolveCrewStepFromAssumptions,
@@ -78,7 +78,7 @@ export function buildEffectiveAssumptions(
 ): AssumptionMap {
   const merged = mergeAssumptionsWithDefaults(
     stripLegacyEstimatedHangar(assumptions),
-    mergeEstimatedDefaults(defaults)
+    defaults
   );
   const resolved = resolveCrewStepFromAssumptions(merged, crewOverrides, defaults);
   const withCrew = applyCrewStepToAssumptions(merged, resolved);
@@ -87,6 +87,7 @@ export function buildEffectiveAssumptions(
 
 const CALCULATED_DISPLAY: Record<string, (a: AssumptionMap) => number> = {
   lead_pilot_crew_total: computeLeadPilotCrewTotal,
+  lead_pilot_training_total: computeLeadPilotTrainingTotal,
   pic_crew_total: computePicCrewTotal,
   sic_crew_total: computeSicCrewTotal,
   cabin_crew_total: computeCabinCrewTotal,

@@ -21,6 +21,8 @@ export async function POST(
     const ownerHours = body.ownerHours ?? body.owner_annual_hours;
     const proformaOwnerHours =
       body.proformaOwnerHours ?? body.ownerProformaHours ?? body.proforma_owner_hours;
+    const crewStepIndex =
+      body.crewStepIndex ?? body.crew_step_index ?? body.crewStep ?? undefined;
     const aircraftInstanceId =
       body.aircraftInstanceId ?? body.aircraft_instance_id ?? body.aircraft ?? null;
 
@@ -47,6 +49,10 @@ export async function POST(
       proformaOwnerHours: Array.isArray(proformaOwnerHours)
         ? proformaOwnerHours.map((h: unknown) => Number(h))
         : undefined,
+      crewStepIndex:
+        crewStepIndex != null && crewStepIndex !== ""
+          ? Number(crewStepIndex)
+          : undefined,
       aircraftInstanceId:
         aircraftInstanceId != null && aircraftInstanceId !== ""
           ? String(aircraftInstanceId)

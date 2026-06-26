@@ -8,6 +8,15 @@ import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 
 type ColMode = "full" | "annual_only";
 
+export function proFormaStatementToolbarButtonClass(active = false) {
+  return cn(
+    "rounded-md border px-3 py-1.5 text-xs uppercase tracking-wide transition-colors",
+    active
+      ? "border-atlas-accent/50 bg-atlas-accent/15 text-atlas-accent"
+      : "border-white/20 text-white/70 hover:border-white/40 hover:text-white"
+  );
+}
+
 function colModeForLayout(layout: ProFormaStatementRow["layout"]): ColMode {
   return layout === "revenue" || layout === "hourly_variable" ? "full" : "annual_only";
 }
@@ -90,6 +99,8 @@ export const ClientProFormaStatement = forwardRef<
     defaultExpanded?: boolean;
     /** Hide built-in expand/collapse toolbar (use external controls + ref). */
     hideToolbar?: boolean;
+    /** When set, Annual / Monthly toggles render in the toolbar beside expand/collapse. */
+    onPeriodChange?: (period: "annual" | "monthly") => void;
   }
 >(function ClientProFormaStatement(
   {
@@ -100,6 +111,7 @@ export const ClientProFormaStatement = forwardRef<
     collapsible = false,
     defaultExpanded = false,
     hideToolbar = false,
+    onPeriodChange,
   },
   ref
 ) {
@@ -150,21 +162,37 @@ export const ClientProFormaStatement = forwardRef<
   return (
     <div className={cn(!hideToolbar && "space-y-3", className)}>
       {!hideToolbar ? (
-        <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={expandAllSections}
-            className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
-          >
-            Expand all
-          </button>
-          <button
-            type="button"
-            onClick={collapseAllSections}
-            className="rounded-md border border-white/20 px-3 py-1.5 text-xs uppercase tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white"
-          >
-            Collapse all
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={expandAllSections}
+              className={proFormaStatementToolbarButtonClass()}
+            >
+              Expand all
+            </button>
+            <button
+              type="button"
+              onClick={collapseAllSections}
+              className={proFormaStatementToolbarButtonClass()}
+            >
+              Collapse all
+            </button>
+          </div>
+          {onPeriodChange ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {(["annual", "monthly"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => onPeriodChange(p)}
+                  className={proFormaStatementToolbarButtonClass(period === p)}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

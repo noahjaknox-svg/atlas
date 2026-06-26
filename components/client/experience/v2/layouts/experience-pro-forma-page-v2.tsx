@@ -30,19 +30,16 @@ export function ExperienceProFormaPageV2({
   });
 
   return (
-    <ExperienceSlideV2 lockViewport>
+    <ExperienceSlideV2 lockViewport contentClassName="!max-w-[min(100%,100rem)]">
       <ProFormaClient
         slug={slug}
         initial={client}
         initialAircraftId={aircraftParam ?? client.aircraft.id}
         embedded
         experiencePath
-        slide
-        splitScroll
-        hideVisualSummary
+        title={section.title}
+        description={bodyCopy || undefined}
         className="min-h-0 flex-1"
-        pageTitle={section.title}
-        pageIntro={bodyCopy || undefined}
       />
     </ExperienceSlideV2>
   );

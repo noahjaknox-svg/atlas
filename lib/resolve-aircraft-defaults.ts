@@ -1,11 +1,8 @@
 import { prisma } from "@/lib/db";
 import type { AssumptionMap } from "@/lib/assumptions";
-import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
 import { resolveValidWarehouseAircraftId } from "@/lib/resolve-warehouse-aircraft-id";
-import { computeDerivedAssumptions } from "@/lib/aircraft-calculated-fields";
-import { mergeEstimatedDefaults } from "@/lib/aircraft-estimated-defaults";
-import { DEFAULT_BLOCK_TO_FLIGHT_FACTOR } from "@/lib/proforma-utilization";
+import { normalizeAircraftProfileMode } from "@/lib/aircraft-profile-mode";
 import {
   PROFORMA_VISIBILITY_KEY,
   parseProFormaVisibility,
@@ -15,6 +12,7 @@ import {
   buildProFormaLineVisibilityFromWarehouse,
   parseWarehouseFieldVisibility,
 } from "@/lib/warehouse-aircraft-proforma-visibility";
+import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
 
 function buildDefaultsContext(
   assumptions: AssumptionMap,
@@ -38,7 +36,13 @@ function buildDefaultsContext(
   return ctx;
 }
 
-/** Resolve database-backed defaults for all tab fields on an aircraft instance. */
+function mergeNonEmpty(target: Record<string, string>, patch: Record<string, string>) {
+  for (const [k, v] of Object.entries(patch)) {
+    if (v?.trim()) target[k] = v.trim();
+  }
+}
+
+/** Resolve Data Hub defaults for workspace Pulled/Default column (no synthetic fills). */
 export async function resolveAircraftDefaults(params: {
   aircraftInstanceId: string;
   assumptions: AssumptionMap;
@@ -52,8 +56,7 @@ export async function resolveAircraftDefaults(params: {
   });
 
   const ctx = buildDefaultsContext(params.assumptions, instance);
-
-  let map: Record<string, string> = mergeEstimatedDefaults({});
+  const map: Record<string, string> = {};
   const usage = ctx.usage_type === "part_91_135" ? "part_91_135" : "part_91";
 
   const icao =
@@ -71,12 +74,14 @@ export async function resolveAircraftDefaults(params: {
   const warehouseAircraftId = warehouseResolution.id;
 
   if (warehouseAircraftId) {
-    const refDefaults = await loadAircraftReferenceDefaults({
-      warehouseAircraftId,
-      airportIcao: icao,
-      fboName: ctx.fbo_name ?? instance?.fboName,
-    });
-    map = { ...map, ...refDefaults };
+    mergeNonEmpty(
+      map,
+      await loadAircraftReferenceDefaults({
+        warehouseAircraftId,
+        airportIcao: icao,
+        fboName: ctx.fbo_name ?? instance?.fboName,
+      })
+    );
   }
 
   let aircraft = instance?.warehouseAircraft ?? null;
@@ -85,25 +90,8 @@ export async function resolveAircraftDefaults(params: {
       where: { id: warehouseAircraftId },
     });
   }
-  if (aircraft) {
-    map.aircraft_manufacturer = aircraft.manufacturer ?? "";
-    map.aircraft_model = aircraft.model ?? "";
-    map.aircraft_master_id = aircraft.id;
-    map.crew_model = map.crew_model ?? "full_time";
-    map.owner_annual_hours = map.owner_annual_hours ?? "400";
-    map.charter_block_to_flight_ratio =
-      map.charter_block_to_flight_ratio ?? String(DEFAULT_BLOCK_TO_FLIGHT_FACTOR);
-    const defaultAvailable = 100;
-    map.charter_flight_hours = map.charter_flight_hours ?? String(defaultAvailable);
-    map.charter_block_hours =
-      map.charter_block_hours ??
-      String(Math.round(defaultAvailable * DEFAULT_BLOCK_TO_FLIGHT_FACTOR));
-    map.pilot_charter_incentive_per_hour = map.pilot_charter_incentive_per_hour ?? "113";
-    map.insurance_mode = map.insurance_mode ?? "annual";
-    map.fet_treatment = map.fet_treatment ?? "pass_through";
-    map.charter_demand_confidence = map.charter_demand_confidence ?? "medium";
-    map.financing_enabled = map.financing_enabled ?? "no";
 
+  if (aircraft) {
     const fieldVisibility = parseWarehouseFieldVisibility(aircraft.proformaFieldVisibility);
     const lineVisibility = buildProFormaLineVisibilityFromWarehouse(fieldVisibility);
     const existingVisibility = parseProFormaVisibility(ctx);
@@ -113,19 +101,7 @@ export async function resolveAircraftDefaults(params: {
       insurance_pl: existingVisibility.insurance_pl ?? false,
       registration_pl: existingVisibility.registration_pl ?? false,
     });
-  }
 
-  if (icao) {
-    map.home_airport_icao = icao.toUpperCase();
-    map.proposed_home_base = icao.toUpperCase();
-    map.fuel_source = map.fuel_source ?? "fbo_base";
-  }
-
-  map.home_fuel_pct = map.home_fuel_pct ?? "70";
-  map.charter_payback_pct = map.charter_payback_pct ?? "75";
-  map.fuel_surcharge = map.fuel_surcharge ?? "0";
-
-  if (aircraft) {
     const bundle = buildDefaultsFromReferences({
       master: {
         id: aircraft.id,
@@ -142,16 +118,23 @@ export async function resolveAircraftDefaults(params: {
       usageType: usage,
     });
     for (const [k, v] of Object.entries(bundle)) {
-      if (v && !map[k]) map[k] = v;
+      if (v?.trim() && !map[k]?.trim()) map[k] = v.trim();
     }
   }
 
-  map = mergeEstimatedDefaults(map);
+  if (icao) {
+    map.home_airport_icao = icao.toUpperCase();
+    map.proposed_home_base = icao.toUpperCase();
+  }
 
-  const merged = { ...map, ...computeDerivedAssumptions(map as AssumptionMap) };
+  const profileMode = normalizeAircraftProfileMode({ ...ctx, ...map });
+  if (profileMode === "general") {
+    delete map.aircraft_year;
+  }
+
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(merged)) {
-    if (v !== undefined) out[k] = String(v);
+  for (const [k, v] of Object.entries(map)) {
+    if (v !== undefined && v.trim() !== "") out[k] = v;
   }
   return out;
 }

@@ -1,7 +1,7 @@
 import type { AssumptionMap } from "./assumptions";
-import { CLIENT_EDITABLE_ASSUMPTIONS } from "./aircraft-workspace";
+import { PROSPECT_EDITABLE_ASSUMPTIONS } from "./aircraft-workspace";
 
-export { CLIENT_EDITABLE_ASSUMPTIONS };
+export { PROSPECT_EDITABLE_ASSUMPTIONS };
 
 export type FieldType = "text" | "number" | "textarea" | "select" | "currency";
 
@@ -31,6 +31,8 @@ export type WorkspaceField = {
   proformaSource?: boolean;
   /** Hidden when usage type is Part 91 only (no charter). */
   charterOnly?: boolean;
+  /** Shown only for the given aircraft profile mode. */
+  profileMode?: "existing" | "general";
 };
 
 export type WorkspaceSectionDef = {
@@ -104,7 +106,7 @@ export const WORKSPACE_SECTIONS: WorkspaceSectionDef[] = [
       },
       {
         key: "clientSummary",
-        label: "Client-facing summary",
+        label: "Prospect-facing summary",
         type: "textarea",
         prospectKey: "clientSummary",
         colSpan: 2,
@@ -126,7 +128,7 @@ export const WORKSPACE_SECTIONS: WorkspaceSectionDef[] = [
         required: true,
       }),
       assumptionField("aircraft", "fuel_burn_gph", "Fuel burn (GPH)", { type: "number" }),
-      assumptionField("aircraft", "aircraft_summary", "Client aircraft summary", {
+      assumptionField("aircraft", "aircraft_summary", "Prospect aircraft summary", {
         type: "textarea",
         colSpan: 2,
       }),
@@ -330,8 +332,8 @@ export function getWorkspaceCompleteness(state: WorkspaceFormState): {
   return { percent, missingRequired, sectionStatus };
 }
 
-const CLIENT_EDITABLE_SET = new Set(
-  CLIENT_EDITABLE_ASSUMPTIONS.map((c) => c.name)
+const PROSPECT_EDITABLE_SET = new Set(
+  PROSPECT_EDITABLE_ASSUMPTIONS.map((c) => c.name)
 );
 
 export function buildAssumptionPayload(
@@ -362,7 +364,7 @@ export function buildAssumptionPayload(
         sourceType: "manual",
       };
       if (
-        (CLIENT_EDITABLE_SET as Set<string>).has(name) &&
+        (PROSPECT_EDITABLE_SET as Set<string>).has(name) &&
         clientEditable?.[name] !== undefined
       ) {
         patch.editableByClient = clientEditable[name];

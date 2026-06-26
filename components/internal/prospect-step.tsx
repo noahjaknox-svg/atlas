@@ -139,7 +139,7 @@ export function ProspectStepForm({
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="clientSummary">Client-facing summary</Label>
+          <Label htmlFor="clientSummary">Prospect-facing summary</Label>
           <textarea
             id="clientSummary"
             name="clientSummary"

@@ -11,12 +11,15 @@ import {
   SECTION_TYPE_TO_SLUG,
   type ExperienceSectionSnapshot,
   getExperienceNavSections,
+  isProFormaSectionVisible,
+  resolvePortalNavLinks,
 } from "@/lib/experience-content";
 import {
   experienceHref,
   getExperiencePageSlugs,
 } from "@/lib/prefetch-experience-routes";
 import { useExperiencePrefetch } from "./use-experience-prefetch";
+import { PortalNavExtraLinks } from "./portal-nav-extra-links";
 
 const MOBILE_SHORT_LABELS: Record<string, string> = {
   welcome: "Welcome",
@@ -156,11 +159,12 @@ export function ExperienceShell({
   const mobileOverflow = navSections.slice(4);
 
   const welcome = sections.find((s) => s.sectionType === "welcome");
-  const marketUrl = welcome?.contentBlocks?.aircraftMarketUrl?.trim();
-  const marketLabel =
-    welcome?.contentBlocks?.aircraftMarketButtonLabel?.trim() || "Available aircraft";
+  const navExtraLinks = resolvePortalNavLinks(welcome?.contentBlocks);
 
-  const proFormaCta = (
+  const outlineNavClass =
+    "shrink-0 rounded-md border border-white/25 px-3 py-1.5 text-[10px] font-medium uppercase tracking-widest text-white/90 hover:border-white/40 hover:bg-white/5 sm:px-4 sm:py-2 sm:text-xs";
+
+  const proFormaCta = isProFormaSectionVisible(sections) ? (
     <Link
       href={withDraft(experienceHref(slug, "pro-forma"))}
       prefetch
@@ -172,23 +176,12 @@ export function ExperienceShell({
     >
       Pro Forma
     </Link>
-  );
-
-  const marketCta = marketUrl ? (
-    <a
-      href={marketUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="shrink-0 rounded-md border border-white/25 px-3 py-1.5 text-[10px] font-medium uppercase tracking-widest text-white/90 hover:border-white/40 hover:bg-white/5 sm:px-4 sm:py-2 sm:text-xs"
-    >
-      <span className="max-w-[5rem] truncate sm:max-w-none">{marketLabel}</span>
-    </a>
   ) : null;
 
   const headerCtas = (
     <div className="flex shrink-0 items-center gap-2 sm:gap-3">
       {proFormaCta}
-      {marketCta}
+      <PortalNavExtraLinks links={navExtraLinks} buttonClassName={outlineNavClass} />
     </div>
   );
 

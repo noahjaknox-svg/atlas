@@ -7,6 +7,7 @@ import { type AircraftListItem } from "@/components/internal/workspace/aircraft-
 import { AircraftTabsPanel } from "@/components/internal/workspace/aircraft-tabs-panel";
 import type { PortalPresentationState } from "@/components/internal/workspace/portal-presentation-panel";
 import { PortalPresentationDialog } from "@/components/internal/workspace/portal-presentation-dialog";
+import { PROSPECT_PORTAL_UPDATED_MESSAGE } from "@/lib/product-terminology";
 import { WorkspaceLayout } from "@/components/internal/workspace/workspace-layout";
 import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { WorkspaceProposalFooter } from "@/components/internal/workspace/workspace-proposal-footer";
@@ -67,6 +68,7 @@ type SectionRow = {
   posterUrl?: string | null;
   signatoryName?: string | null;
   signatoryTitle?: string | null;
+  contentBlocks?: ExperienceSectionRow["contentBlocks"];
 };
 
 export type ProposalWorkspaceData = {
@@ -95,6 +97,7 @@ export type ProposalWorkspaceData = {
     ownerHours: string | number | null;
   }>;
   clientPortal: { slug: string; active: boolean; portalUrl?: string } | null;
+  lastPublishedAt: string | null;
   initialClientEditable?: Record<string, boolean>;
   ownersByAircraft: Record<string, ProposalOwnerProfile[]>;
   allocationModeByAircraft: Record<string, OwnerExpenseAllocationMode>;
@@ -130,14 +133,7 @@ export function ProposalWorkspace({
   );
   const [warehouseBaselineByAircraft, setWarehouseBaselineByAircraft] = useState<
     Record<string, Record<string, string>>
-  >(() =>
-    Object.fromEntries(
-      data.aircraft.map((a) => [
-        a.id,
-        warehouseDefaultsBaseline(mergeAssumptions(a.assumptions, a) as Record<string, string>),
-      ])
-    )
-  );
+  >(() => Object.fromEntries(data.aircraft.map((a) => [a.id, {}])));
   const [portal, setPortal] = useState(data.clientPortal);
   const [clientEditable, setClientEditable] = useState<Record<string, boolean>>(
     () => data.initialClientEditable ?? {}
@@ -151,6 +147,7 @@ export function ProposalWorkspace({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
   const [needsRepublish, setNeedsRepublish] = useState(false);
+  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(data.lastPublishedAt);
   const [proposalName, setProposalName] = useState(data.proposalName);
   const [portalPin, setPortalPin] = useState<string | null>(data.portalPin);
   const [ownersByAircraft, setOwnersByAircraft] = useState(data.ownersByAircraft);
@@ -161,7 +158,7 @@ export function ProposalWorkspace({
   const [deletedAt, setDeletedAt] = useState<string | null>(data.deletedAt ?? null);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const ownersSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipOwnersSave = useRef(true);
+  const ownersDirtyRef = useRef(new Set<string>());
   const ownersRevisionRef = useRef<Record<string, number>>({});
   const ownersByAircraftRef = useRef(ownersByAircraft);
   const warehouseSeedAttempted = useRef(new Set<string>());
@@ -220,6 +217,27 @@ export function ProposalWorkspace({
     }));
   }
 
+  const loadWarehouseBaselineOnly = useCallback(
+    async (aircraftId: string) => {
+      const assumptions = assumptionsByAircraftRef.current[aircraftId] ?? {};
+      const params = buildDefaultsQueryParams(assumptions);
+
+      const res = await fetch(
+        `/api/proposals/${data.id}/aircraft/${aircraftId}/defaults?${params.toString()}`,
+        { cache: "no-store" }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.defaults) return false;
+
+      setWarehouseBaselineByAircraft((prev) => ({
+        ...prev,
+        [aircraftId]: warehouseDefaultsBaseline(json.defaults as Record<string, string>),
+      }));
+      return true;
+    },
+    [data.id]
+  );
+
   const applyWarehouseFromApi = useCallback(
     async (aircraftId: string, mode: "seed" | "refresh") => {
       const assumptions = assumptionsByAircraftRef.current[aircraftId] ?? {};
@@ -276,7 +294,20 @@ export function ProposalWorkspace({
             ? {
                 ...a,
                 proposedHomeBaseIcao:
-                  (instancePatch.proposedHomeBaseIcao as string) ?? a.proposedHomeBaseIcao,
+                  (instancePatch.proposedHomeBaseIcao as string | null | undefined) ??
+                  a.proposedHomeBaseIcao,
+                year:
+                  instancePatch.year !== undefined
+                    ? (instancePatch.year as number | null)
+                    : a.year,
+                tailNumber:
+                  instancePatch.tailNumber !== undefined
+                    ? (instancePatch.tailNumber as string | null)
+                    : a.tailNumber,
+                serialNumber:
+                  instancePatch.serialNumber !== undefined
+                    ? (instancePatch.serialNumber as string | null)
+                    : a.serialNumber,
               }
             : a
         )
@@ -300,6 +331,8 @@ export function ProposalWorkspace({
 
   const persistOwners = useCallback(
     async (aircraftId: string) => {
+      if (!ownersDirtyRef.current.has(aircraftId)) return;
+
       const revisionAtStart = ownersRevisionRef.current[aircraftId] ?? 0;
       const profiles = ownersByAircraftRef.current[aircraftId] ?? [];
       const mode = allocationModeByAircraft[aircraftId] ?? "hybrid";
@@ -335,6 +368,7 @@ export function ProposalWorkspace({
       );
       if (!res.ok) return;
       const json = await res.json();
+      ownersDirtyRef.current.delete(aircraftId);
       const applySavedValues =
         revisionAtStart === (ownersRevisionRef.current[aircraftId] ?? 0);
       if (json.profiles) {
@@ -347,26 +381,18 @@ export function ProposalWorkspace({
           ),
         }));
       }
-      if (json.syncedAssumptions && applySavedValues) {
-        setAssumptionsByAircraft((prev) => {
-          const base = prev[aircraftId] ?? {};
-          const savedProfiles = json.profiles ?? profiles;
-          return {
-            ...prev,
-            [aircraftId]: mergeWithDerived(
-              assumptionsAfterOwnerDefaultsChange(
-                base,
-                savedProfiles,
-                mode,
-                warehouseBaselineByAircraftRef.current[aircraftId] ?? {}
-              )
-            ),
-          };
-        });
-      }
       if (portal?.active) setNeedsRepublish(true);
     },
     [data.id, allocationModeByAircraft, portal?.active]
+  );
+
+  const scheduleOwnersPersist = useCallback(
+    (aircraftId: string) => {
+      ownersDirtyRef.current.add(aircraftId);
+      if (ownersSaveTimer.current) clearTimeout(ownersSaveTimer.current);
+      ownersSaveTimer.current = setTimeout(() => void persistOwners(aircraftId), 1200);
+    },
+    [persistOwners]
   );
 
   function applyOwnerChanges(
@@ -383,7 +409,11 @@ export function ProposalWorkspace({
       (ownersRevisionRef.current[aircraftId] ?? 0) + 1;
     setOwnersByAircraft((prev) => ({ ...prev, [aircraftId]: profiles }));
     setAllocationModeByAircraft((prev) => ({ ...prev, [aircraftId]: mode }));
-    skipSave.current = true;
+    if (seedProforma) {
+      dirtyAircraftRef.current.add(aircraftId);
+    } else {
+      skipSave.current = true;
+    }
     setAssumptionsByAircraft((prev) => {
       const base = prev[aircraftId] ?? {};
       const warehouseDefaults = warehouseBaselineByAircraftRef.current[aircraftId] ?? {};
@@ -405,6 +435,7 @@ export function ProposalWorkspace({
         [aircraftId]: mergeWithDerived(next),
       };
     });
+    scheduleOwnersPersist(aircraftId);
   }
   const isArchived = deletedAt != null;
   const saveLabel = isArchived
@@ -418,6 +449,13 @@ export function ProposalWorkspace({
         : saveStatus === "error"
           ? "Save failed — retrying on next edit"
           : "Autosave on";
+
+  useEffect(() => {
+    if (isArchived) return;
+    for (const ac of aircraft) {
+      void loadWarehouseBaselineOnly(ac.id);
+    }
+  }, [aircraft, isArchived, loadWarehouseBaselineOnly]);
 
   useEffect(() => {
     if (!selected || isArchived) return;
@@ -463,7 +501,7 @@ export function ProposalWorkspace({
     setSaveStatus("saving");
     try {
       const payload = dirtyIds.flatMap((acId) => {
-        const map = assumptionsByAircraft[acId];
+        const map = assumptionsByAircraftRef.current[acId];
         if (!map) return [];
         const category = aircraftAssumptionCategory(acId);
         const fields = getAllAircraftEditorFields(category);
@@ -489,7 +527,7 @@ export function ProposalWorkspace({
       ];
 
       for (const acId of dirtyIds) {
-        const map = assumptionsByAircraft[acId];
+        const map = assumptionsByAircraftRef.current[acId];
         if (!map) continue;
         const patch = instancePatchFromAssumptions(map);
         if (acId === selectedId) {
@@ -577,19 +615,6 @@ export function ProposalWorkspace({
     };
   }, [assumptionsByAircraft, persist]);
 
-  useEffect(() => {
-    if (skipOwnersSave.current) {
-      skipOwnersSave.current = false;
-      return;
-    }
-    if (!selectedId) return;
-    if (ownersSaveTimer.current) clearTimeout(ownersSaveTimer.current);
-    ownersSaveTimer.current = setTimeout(() => void persistOwners(selectedId), 1200);
-    return () => {
-      if (ownersSaveTimer.current) clearTimeout(ownersSaveTimer.current);
-    };
-  }, [ownersByAircraft, allocationModeByAircraft, selectedId, persistOwners]);
-
   function setAssumption(name: string, value: string) {
     if (!selectedId) return;
     dirtyAircraftRef.current.add(selectedId);
@@ -635,7 +660,6 @@ export function ProposalWorkspace({
     const ac = json.aircraft;
     const serverAssumptions = (json.assumptions ?? {}) as AssumptionMap;
     const assumptions: AssumptionMap = mergeWithDerived(serverAssumptions);
-    const baseline = warehouseDefaultsBaseline(serverAssumptions);
 
     const item: AircraftListItem = {
       id: ac.id,
@@ -652,7 +676,8 @@ export function ProposalWorkspace({
     warehouseSeedAttempted.current.add(ac.id);
     setAircraft((list) => [...list, item]);
     setAssumptionsByAircraft((m) => ({ ...m, [ac.id]: assumptions }));
-    setWarehouseBaselineByAircraft((m) => ({ ...m, [ac.id]: baseline }));
+    setWarehouseBaselineByAircraft((m) => ({ ...m, [ac.id]: {} }));
+    void applyWarehouseFromApi(ac.id, "seed");
     setOwnersByAircraft((m) => ({
       ...m,
       [ac.id]: profileFromLegacyAssumptions(assumptions),
@@ -696,8 +721,9 @@ export function ProposalWorkspace({
     setAssumptionsByAircraft((m) => ({ ...m, [ac.id]: assumptions }));
     setWarehouseBaselineByAircraft((m) => ({
       ...m,
-      [ac.id]: warehouseBaselineByAircraft[id] ?? warehouseDefaultsBaseline(assumptions),
+      [ac.id]: warehouseBaselineByAircraft[id] ?? {},
     }));
+    void loadWarehouseBaselineOnly(ac.id);
     const srcOwners = ownersByAircraft[id] ?? profileFromLegacyAssumptions(src);
     setOwnersByAircraft((m) => ({
       ...m,
@@ -711,6 +737,7 @@ export function ProposalWorkspace({
       [ac.id]: allocationModeByAircraft[id] ?? "hybrid",
     }));
     setSelectedId(ac.id);
+    scheduleOwnersPersist(ac.id);
   }
 
   async function handleRemove(id: string) {
@@ -748,6 +775,25 @@ export function ProposalWorkspace({
     if (portal?.active) setNeedsRepublish(true);
   }
 
+  async function handlePreviewPortal() {
+    let slug = previewSlug;
+    if (!slug) {
+      const res = await fetch(`/api/proposals/${data.id}/portal/draft`, { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.slug) {
+        alert(json.error ?? "Could not open preview");
+        return;
+      }
+      slug = json.slug as string;
+      setPortal({
+        slug,
+        active: false,
+        portalUrl: json.portalUrl ?? null,
+      });
+    }
+    window.open(`/${slug}/experience/welcome?draft=1`, "_blank");
+  }
+
   async function handlePublish(republishing = false) {
     setPublishLoading(true);
     try {
@@ -773,7 +819,10 @@ export function ProposalWorkspace({
         }
       } else {
         setNeedsRepublish(false);
-        alert("Client portal updated with your latest changes.");
+        alert(PROSPECT_PORTAL_UPDATED_MESSAGE);
+      }
+      if (json.publishedAt) {
+        setLastPublishedAt(json.publishedAt);
       }
     } finally {
       setPublishLoading(false);
@@ -783,14 +832,20 @@ export function ProposalWorkspace({
   const portalSlug = portal?.active ? portal.slug : null;
   const previewSlug = portal?.slug ?? null;
   const portalActive = !!portal?.active;
-  const portalExists = !!portal;
 
   async function handleSetPortalActive(active: boolean) {
-    if (
-      !active &&
+    if (!active) {
+      if (
+        !confirm(
+          "Take down this proposal? Clients with the link will no longer be able to open it. " +
+            "The deal stays in your pipeline and nothing is deleted — you can restore it anytime."
+        )
+      ) {
+        return;
+      }
+    } else if (
       !confirm(
-        "Take down this proposal? Clients with the link will no longer be able to open it. " +
-          "The deal stays in your pipeline and nothing is deleted — you can restore it anytime."
+        "Restore this prospect portal? Clients will be able to open it again with the current access code."
       )
     ) {
       return;
@@ -925,17 +980,13 @@ export function ProposalWorkspace({
             portalUrl={portal?.portalUrl ?? null}
             portalPin={portalPin}
             portalActive={portalActive}
-            portalExists={portalExists}
             publishLoading={publishLoading}
             needsRepublish={needsRepublish}
+            lastPublishedAt={lastPublishedAt}
             isAdmin={isAdmin}
             hasSelectedAircraft={!!selected}
-            onPreview={() =>
-              previewSlug &&
-              window.open(`/${previewSlug}/experience/welcome?draft=1`, "_blank")
-            }
-            onPublish={() => void handlePublish(false)}
-            onRepublish={() => void handlePublish(true)}
+            onPreview={() => void handlePreviewPortal()}
+            onPublish={(republish) => void handlePublish(republish)}
             onTakeDown={() => void handleSetPortalActive(false)}
             onRestorePortal={() => void handleSetPortalActive(true)}
             onRegeneratePin={() => void handleRegeneratePin()}
@@ -991,7 +1042,6 @@ export function ProposalWorkspace({
           sections={sections as ExperienceSectionRow[]}
           onSectionsChange={setSections}
           portalSlug={portalSlug}
-          needsRepublish={needsRepublish}
           onExperienceSaved={() => setNeedsRepublish(true)}
         />
       ) : null}

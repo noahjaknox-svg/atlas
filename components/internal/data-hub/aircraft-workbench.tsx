@@ -27,12 +27,13 @@ const FIELD_CONTROL = cn(
 
 const TOGGLE_SLOT_W = "w-[5.75rem] shrink-0";
 
-/** Crew sub-rows: count, salary, and training (where applicable) per role. */
+/** Crew sub-rows: default ladder step, salaries, and training per role. */
 const CREW_ROLE_ROWS: { label: string; keys: WarehouseAircraftField["key"][] }[] = [
-  { label: "Lead Pilot", keys: ["leadPilotCount", "leadPilotSalary"] },
-  { label: "PIC", keys: ["picCount", "picSalary", "picTrainingCost"] },
-  { label: "SIC", keys: ["sicCount", "sicSalary", "sicTrainingCost"] },
-  { label: "Cabin Attendant", keys: ["cabinAttendantCount", "cabinAttendantSalary"] },
+  { label: "Minimum crew", keys: ["defaultMinimumCrew"] },
+  { label: "Lead Pilot", keys: ["leadPilotSalary", "leadPilotTrainingCost"] },
+  { label: "PIC", keys: ["picSalary", "picTrainingCost"] },
+  { label: "SIC", keys: ["sicSalary", "sicTrainingCost"] },
+  { label: "Cabin Attendant", keys: ["cabinAttendantSalary"] },
 ];
 
 function toStr(v: unknown): string {

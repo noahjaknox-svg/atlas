@@ -29,15 +29,11 @@ function count(v: string | undefined, fallback = 1): number {
 }
 
 /** Fields auto-computed in the workspace (shown read-only). */
-export function isCalculatedField(name: string, assumptions?: AssumptionMap): boolean {
-  if (CALCULATED_ASSUMPTION_KEYS.has(name)) return true;
-  return false;
-}
-
 export const CALCULATED_ASSUMPTION_KEYS = new Set([
   "blended_fuel_price",
   "fuel_cost_per_hour",
   "lead_pilot_crew_total",
+  "lead_pilot_training_total",
   "pic_crew_total",
   "sic_crew_total",
   "cabin_crew_total",
@@ -52,6 +48,11 @@ export const CALCULATED_ASSUMPTION_KEYS = new Set([
   "jet_fuel_tax_credit_per_hour",
   "hangar_calculated_annual",
 ]);
+
+export function isCalculatedField(name: string, assumptions?: AssumptionMap): boolean {
+  if (CALCULATED_ASSUMPTION_KEYS.has(name)) return true;
+  return false;
+}
 
 /** Legacy keys kept in DB but not shown in the UI. */
 export const HIDDEN_LEGACY_ASSUMPTION_KEYS = new Set([
@@ -87,25 +88,31 @@ export const HIDDEN_LEGACY_ASSUMPTION_KEYS = new Set([
   "hangar_monthly",
 ]);
 
-/** Per-pilot training annual × headcount; falls back to legacy crew_training if unset. */
+/** Per-role training annual; lead is separate from PIC/SIC headcount. */
 export function resolveCrewTrainingTotal(a: AssumptionMap): {
+  lead: number;
   pic: number;
   sic: number;
   total: number;
 } {
+  const lead =
+    a.lead_pilot_enabled === "yes" ? Math.round(num(a.lead_pilot_training)) : 0;
   const picPerPilot = num(a.pic_training);
   const sicPerPilot = num(a.sic_training);
-  const leadHeads = a.lead_pilot_enabled === "yes" ? 1 : 0;
-  const picHeads = leadHeads > 0 ? count(a.pic_count, 0) + leadHeads : count(a.pic_count, 1);
+  const picHeads = count(a.pic_count, 1);
   const sicHeads = count(a.sic_count, 1);
   let pic = picPerPilot > 0 && picHeads > 0 ? Math.round(picPerPilot * picHeads) : 0;
   let sic = sicPerPilot > 0 && sicHeads > 0 ? Math.round(sicPerPilot * sicHeads) : 0;
   const legacy = num(a.crew_training);
-  if (pic === 0 && sic === 0 && legacy > 0) {
+  if (lead === 0 && pic === 0 && sic === 0 && legacy > 0) {
     pic = Math.round(legacy / 2);
     sic = legacy - pic;
   }
-  return { pic, sic, total: pic + sic };
+  return { lead, pic, sic, total: lead + pic + sic };
+}
+
+export function computeLeadPilotTrainingTotal(a: AssumptionMap): number {
+  return resolveCrewTrainingTotal(a).lead;
 }
 
 export function computePicTrainingTotal(a: AssumptionMap): number {
@@ -127,10 +134,10 @@ export function formatTrainingCalculationHint(
 ): string | undefined {
   const perPic = num(a.pic_training);
   const perSic = num(a.sic_training);
-  const leadHeads = a.lead_pilot_enabled === "yes" ? 1 : 0;
-  const picHeads = leadHeads > 0 ? count(a.pic_count, 0) + leadHeads : count(a.pic_count, 1);
+  const perLead = num(a.lead_pilot_training);
+  const picHeads = count(a.pic_count, 1);
   const sicHeads = count(a.sic_count, 1);
-  const { pic, sic } = resolveCrewTrainingTotal(a);
+  const { lead, pic, sic } = resolveCrewTrainingTotal(a);
 
   if (role === "pic") {
     if (perPic <= 0 || picHeads <= 0) return undefined;
@@ -142,6 +149,9 @@ export function formatTrainingCalculationHint(
   }
 
   const parts: string[] = [];
+  if (lead > 0 && perLead > 0) {
+    parts.push(`${formatCurrency(perLead)} lead`);
+  }
   if (pic > 0 && perPic > 0 && picHeads > 0) {
     parts.push(`${formatCurrency(perPic)} × ${picHeads} PIC`);
   }
@@ -265,6 +275,7 @@ export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<A
   derived.crew_total = String(leadTotal + picTotal + sicTotal + cabinTotal);
 
   const training = resolveCrewTrainingTotal(assumptions);
+  derived.lead_pilot_training_total = String(training.lead);
   derived.pic_training_total = String(training.pic);
   derived.sic_training_total = String(training.sic);
   derived.crew_training_total = String(training.total);

@@ -9,6 +9,7 @@ import { calculatedAssumptionAmount } from "@/lib/resolve-effective-assumptions"
 import { formatTrainingCalculationHint } from "@/lib/aircraft-calculated-fields";
 
 const TRAINING_ROLLUP_ROLES: Record<string, "pic" | "sic" | "total"> = {
+  lead_pilot_training_total: "total",
   pic_training_total: "pic",
   sic_training_total: "sic",
   crew_training_total: "total",

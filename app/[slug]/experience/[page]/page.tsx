@@ -113,9 +113,12 @@ export default async function ExperiencePageRoute({
 
   const section = getSectionBySlug(sections, page);
 
-  if (!section || !section.visible) {
+  if (!section) notFound();
+
+  // Staff draft preview shows the requested page even when it is toggled off for clients.
+  if (!isDraft && !section.visible) {
     const fallbackSlug = getFirstExperienceSlug(sections);
-    const draftQs = isDraft ? "draft=1" : "";
+    const draftQs = "";
     const aircraftQs = aircraftParam ? `aircraft=${encodeURIComponent(aircraftParam)}` : "";
     const qs = [draftQs, aircraftQs].filter(Boolean).join("&");
     if (page !== fallbackSlug) {

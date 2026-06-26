@@ -9,6 +9,7 @@ import { resolvePortalCalculationMap } from "./portal-calculation-assumptions";
 import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
 import {
   computeWorkspaceProFormaForClient,
+  resolvePortalCrewStepFloor,
   stringsToAssumptionMap,
 } from "./workspace-proforma-client";
 
@@ -22,6 +23,7 @@ export async function serializeClientSnapshot(
     aircraftInstanceId?: string | null;
     proposalId?: string;
     prospectOpportunityType?: string;
+    crewStepIndex?: number;
   }
 ) {
   const entry = findAircraftEntry(snapshot, overrides?.aircraftInstanceId);
@@ -67,12 +69,28 @@ export async function serializeClientSnapshot(
 
   const proformaOwnerHours = overrides?.proformaOwnerHours ?? baselineProformaHours;
 
+  const sumOwnerHours = (hours: number[]) =>
+    hours.reduce((s, h) => s + (Number.isFinite(h) && h >= 0 ? h : 0), 0);
+
+  const baselineOwnerHoursTotal = sumOwnerHours(baselineProformaHours);
+  const activeOwnerHoursTotal =
+    overrides?.ownerHours ?? sumOwnerHours(proformaOwnerHours);
+
+  const baselineCrewStepIndex = resolvePortalCrewStepFloor(
+    baseAssumptions,
+    baselineOwnerHoursTotal
+  );
+  const activeCrewStepIndex =
+    overrides?.crewStepIndex ??
+    resolvePortalCrewStepFloor(baseAssumptions, activeOwnerHoursTotal);
+
   const summaryOverrides = {
     aircraftValue: overrides?.aircraftValue,
     ownerHours: overrides?.ownerHours,
     proformaOwnerHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
     calculationMap,
+    crewStepIndex: activeCrewStepIndex,
   };
 
   const summary = buildClientProFormaSummary(entry, summaryOverrides);
@@ -81,6 +99,7 @@ export async function serializeClientSnapshot(
     calculationMap,
     proformaOwnerHours: baselineProformaHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
+    crewStepIndex: baselineCrewStepIndex,
   });
 
   const effectiveMap = computeWorkspaceProFormaForClient(baseAssumptions, {
@@ -88,6 +107,7 @@ export async function serializeClientSnapshot(
     ownerHours: overrides?.ownerHours,
     proformaOwnerHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
+    crewStepIndex: activeCrewStepIndex,
   }).calculationAssumptions;
 
   const crewSummary = buildClientCrewSummary(
@@ -125,6 +145,7 @@ export async function serializeClientSnapshot(
     ownerProfiles,
     proformaOwnerHours,
     baseProformaOwnerHours: baselineProformaHours,
+    defaultCrewStepIndex: baselineCrewStepIndex,
     crewSummary,
     editableFields: {
       aircraftValue: {
@@ -142,6 +163,7 @@ export async function serializeClientSnapshot(
     proForma: summary.proForma,
     fixedCostBreakdown: summary.fixedCostBreakdown,
     statementRows: summary.statementRows,
+    assumptionsUsed: summary.assumptionsUsed,
     /** Full assumption map for instant client-side pro forma recalculation. */
     calculationAssumptions: calculationMap ?? entry.calculationAssumptions ?? {},
   };

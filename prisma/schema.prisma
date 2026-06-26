@@ -252,11 +252,10 @@ model WarehouseAircraft {
   inspectionReserve         Int?                      @map("inspection_reserve")
   tripExpenseHourly         Int?                      @map("trip_expense_hourly")
   // Crew
-  leadPilotCount            Int?                      @map("lead_pilot_count")
-  picCount                  Int?                      @map("pic_count")
-  sicCount                  Int?                      @map("sic_count")
-  cabinAttendantCount       Int?                      @map("cabin_attendant_count")
+  /** Minimum total pilots (PIC + SIC) before ladder step-up. */
+  defaultMinimumCrew          Int?                      @map("default_minimum_crew")
   leadPilotSalary           Int?                      @map("lead_pilot_salary")
+  leadPilotTrainingCost     Int?                      @map("lead_pilot_training_cost")
   picSalary                 Int?                      @map("pic_salary")
   sicSalary                 Int?                      @map("sic_salary")
   cabinAttendantSalary      Int?                      @map("cabin_attendant_salary")

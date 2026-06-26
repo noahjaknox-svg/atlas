@@ -56,7 +56,9 @@ export function AircraftPortalList({
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               <h2 className="font-serif text-2xl">{ac.label}</h2>
-              {ac.tailNumber ? (
+              {ac.aircraftProfileMode === "existing" && ac.aircraftTypeLabel ? (
+                <p className="mt-1 text-sm text-white/55">{ac.aircraftTypeLabel}</p>
+              ) : ac.tailNumber ? (
                 <p className="mt-1 text-sm text-white/55">{ac.tailNumber}</p>
               ) : null}
               {ac.clientSummary ? (

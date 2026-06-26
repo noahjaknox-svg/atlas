@@ -1,6 +1,6 @@
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProFormaResult } from "@/lib/proforma";
-import { buildProFormaStatement, type ProFormaStatementRow } from "@/lib/proforma-statement";
+import { buildProFormaStatement, type ProFormaStatementRow, type ProFormaAssumptionUsedItem } from "@/lib/proforma-statement";
 import type { AircraftSnapshotMetrics } from "@/lib/portal-aircraft-types";
 import {
   applyProFormaVisibility,
@@ -11,6 +11,7 @@ import {
   formatCrewComposition,
   patchAssumptionsWithCrewStep,
   resolveCrewStepFromAssumptions,
+  crewStepFloor,
 } from "@/lib/crew-step";
 import { computeUtilizationProfile } from "@/lib/proforma-utilization";
 import {
@@ -27,6 +28,7 @@ export type WorkspaceProFormaClientResult = {
   fixedCostBreakdown: Array<{ label: string; annual: number; monthly: number }>;
   summaryRows: Array<{ key: string; label: string; annual: number }>;
   statementRows: ProFormaStatementRow[];
+  assumptionsUsed: ProFormaAssumptionUsedItem[];
   calculationAssumptions: AssumptionMap;
 };
 
@@ -38,6 +40,8 @@ export type ClientProFormaOverrides = {
   proformaOwnerHours?: number[];
   ownerProfiles?: ProposalOwnerProfile[];
   warehouseDefaults?: Record<string, string>;
+  /** User-selected crew ladder step (portal scenario). */
+  crewStepIndex?: number;
 };
 
 export type ClientCrewSummary = {
@@ -102,6 +106,20 @@ function resolveOwnerHoursForPatch(
   return null;
 }
 
+/** Lowest crew ladder step the portal should start from (warehouse minimum + owner hours). */
+export function resolvePortalCrewStepFloor(
+  assumptions: AssumptionMap,
+  ownerHours: number,
+  warehouseDefaults: Record<string, string> = {}
+): number {
+  const resolved = resolveCrewStepFromAssumptions(
+    assumptions,
+    { ownerHours },
+    warehouseDefaults
+  );
+  return crewStepFloor(resolved);
+}
+
 /** Apply client-editable overrides and sync crew step + utilization like workspace. */
 export function applyClientProFormaOverrides(
   assumptions: AssumptionMap,
@@ -129,8 +147,11 @@ export function applyClientProFormaOverrides(
 
   const ownerHours = resolveOwnerHoursForPatch(map, overrides);
 
-  if (ownerHours != null) {
-    map = patchAssumptionsWithCrewStep(map, warehouseDefaults, { ownerHours });
+  if (ownerHours != null || overrides.crewStepIndex != null) {
+    map = patchAssumptionsWithCrewStep(map, warehouseDefaults, {
+      ...(ownerHours != null ? { ownerHours } : {}),
+      ...(overrides.crewStepIndex != null ? { userStep: overrides.crewStepIndex } : {}),
+    });
   }
 
   return map;
@@ -270,6 +291,7 @@ export function computeWorkspaceProFormaForClient(
     fixedCostBreakdown,
     summaryRows,
     statementRows,
+    assumptionsUsed: statement.assumptionsUsed,
     calculationAssumptions: map,
   };
 }

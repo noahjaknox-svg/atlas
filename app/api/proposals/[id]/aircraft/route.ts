@@ -127,6 +127,7 @@ export async function POST(
 
     const acCategory = aircraftAssumptionCategory(aircraft.id);
     const initialAssumptions: Record<string, string> = {
+      aircraft_profile_mode: "general",
       aircraft_model: input.aircraftModel,
       aircraft_manufacturer: input.manufacturer,
       aircraft_master_id: input.aircraftMasterId,

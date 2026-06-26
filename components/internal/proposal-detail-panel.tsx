@@ -10,6 +10,13 @@ import { StatusBadge } from "@/components/ui/badge";
 import { BADGE_STYLES } from "@/lib/pipeline";
 import { prefetchProposalRoute } from "@/lib/prefetch-proposal-route";
 import { ROUTES } from "@/lib/routes";
+import {
+  OPEN_PROSPECT_PORTAL,
+  OPEN_PROPOSAL_WORKSPACE,
+  PREVIEW_PROSPECT_PORTAL,
+  PROPOSAL_WORKSPACE,
+  PUBLISH_PROSPECT_PORTAL,
+} from "@/lib/product-terminology";
 import { cn } from "@/lib/utils";
 import type { PipelineCardData } from "@/components/internal/pipeline-card";
 
@@ -204,7 +211,7 @@ export function ProposalDetailPanel({
     const name = data.prospect.prospectName;
     if (
       !confirm(
-        `Archive ${name}? This removes the deal from the pipeline and deactivates the client portal.`
+        `Archive ${name}? This removes the deal from the pipeline and deactivates the prospect portal.`
       )
     ) {
       return;
@@ -335,7 +342,7 @@ export function ProposalDetailPanel({
                 </dl>
 
                 <div>
-                  <p className="text-[10px] uppercase text-atlas-muted">Client portal</p>
+                  <p className="text-[10px] uppercase text-atlas-muted">Prospect portal</p>
                   {portalActive ? (
                     <p className="mt-1 font-mono text-xs text-atlas-success">
                       Live · /{data.clientPortal!.slug}
@@ -359,7 +366,7 @@ export function ProposalDetailPanel({
                     placeholder="Comments and context for the team…"
                   />
                   <p className="mt-1 text-[10px] text-atlas-muted">
-                    Same notes appear in the proposal workspace.
+                    Same notes appear in the {PROPOSAL_WORKSPACE}.
                   </p>
                 </div>
 
@@ -388,7 +395,7 @@ export function ProposalDetailPanel({
                   prefetch
                   className="min-w-[120px] flex-1"
                 >
-                  <Button className="w-full text-xs">Open workspace</Button>
+                  <Button className="w-full text-xs">{OPEN_PROPOSAL_WORKSPACE}</Button>
                 </Link>
                 {data ? (
                   <>
@@ -403,7 +410,7 @@ export function ProposalDetailPanel({
                         window.open(`/${data.clientPortal!.slug}/experience/welcome`, "_blank")
                       }
                     >
-                      Preview
+                      {PREVIEW_PROSPECT_PORTAL}
                     </Button>
                     {isAdmin && (
                       <Button
@@ -413,7 +420,7 @@ export function ProposalDetailPanel({
                         disabled={publishLoading}
                         onClick={() => void handlePublish()}
                       >
-                        {publishLoading ? "…" : "Publish"}
+                        {publishLoading ? "…" : PUBLISH_PROSPECT_PORTAL}
                       </Button>
                     )}
                     <Button
@@ -427,7 +434,7 @@ export function ProposalDetailPanel({
                         window.open(data.clientPortal.portalUrl, "_blank")
                       }
                     >
-                      Client portal
+                      {OPEN_PROSPECT_PORTAL}
                     </Button>
                   </>
                 ) : null}

@@ -4,6 +4,7 @@
 
 import type { Prisma, WarehouseAircraft } from "@prisma/client";
 import { parseWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-proforma-visibility";
+import { parseFormattedNumber } from "@/lib/utils";
 
 export type WarehouseFieldType = "text" | "int" | "decimal" | "bool" | "select";
 export type WarehouseFieldFormat = "text" | "money" | "integer";
@@ -148,10 +149,24 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     proformaToggleable: true,
     format: "money",
   },
-  // Crew — grouped by role in the UI (Lead → PIC → SIC → Cabin Attendant)
-  { key: "leadPilotCount", label: "Lead Pilot Count", group: "Crew", type: "int", required: true, format: "integer" },
+  // Crew — salaries/training in Data Hub; counts live on workspace
+  {
+    key: "defaultMinimumCrew",
+    label: "Default Minimum Pilots",
+    group: "Crew",
+    type: "int",
+    required: true,
+    format: "integer",
+  },
   { key: "leadPilotSalary", label: "Lead Pilot Salary", group: "Crew", type: "int", required: true, format: "money" },
-  { key: "picCount", label: "PIC Count", group: "Crew", type: "int", required: true, format: "integer" },
+  {
+    key: "leadPilotTrainingCost",
+    label: "Lead Pilot Training Cost",
+    group: "Crew",
+    type: "int",
+    required: true,
+    format: "money",
+  },
   { key: "picSalary", label: "PIC Salary", group: "Crew", type: "int", required: true, format: "money" },
   {
     key: "picTrainingCost",
@@ -161,7 +176,6 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     required: true,
     format: "money",
   },
-  { key: "sicCount", label: "SIC Count", group: "Crew", type: "int", required: true, format: "integer" },
   { key: "sicSalary", label: "SIC Salary", group: "Crew", type: "int", required: true, format: "money" },
   {
     key: "sicTrainingCost",
@@ -170,15 +184,6 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     type: "int",
     required: true,
     format: "money",
-  },
-  {
-    key: "cabinAttendantCount",
-    label: "Cabin Attendant Count",
-    group: "Crew",
-    type: "int",
-    required: false,
-    proformaToggleable: true,
-    format: "integer",
   },
   {
     key: "cabinAttendantSalary",
@@ -300,6 +305,28 @@ export function parseSaveAs(body: Record<string, unknown>): SaveAs {
   return "draft";
 }
 
+function parseWarehouseInt(raw: unknown, label: string): number {
+  if (raw === null || raw === undefined || raw === "") {
+    throw new Error(`${label} must be a valid number`);
+  }
+  const parsed = parseFormattedNumber(String(raw));
+  const n = Math.round(Number(parsed));
+  if (!Number.isFinite(n)) {
+    throw new Error(`${label} must be a valid number`);
+  }
+  return n;
+}
+
+/** Normalize legacy payback basis strings to Prisma enum values. */
+export function normalizePaybackBasis(raw: unknown): Prisma.WarehouseAircraftUncheckedCreateInput["charterPaybackBasis"] {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!v) return undefined;
+  if (v.includes("flight")) return "flight_time";
+  return "block_time";
+}
+
 /** Convert a request body into a Prisma data object for create/update. */
 export function buildWarehouseAircraftData(
   body: Record<string, unknown>,
@@ -323,13 +350,20 @@ export function buildWarehouseAircraftData(
     }
     switch (field.type) {
       case "int":
-        data[field.key] = Math.round(Number(raw));
+        data[field.key] = parseWarehouseInt(raw, field.label);
         break;
       case "decimal":
-        data[field.key] = Number(raw);
+        data[field.key] = Number(parseFormattedNumber(String(raw)));
         break;
       case "bool":
         data[field.key] = raw === true || raw === "true" || raw === "1";
+        break;
+      case "select":
+        if (field.key === "charterPaybackBasis" || field.key === "fuelSurchargePaybackBasis") {
+          data[field.key] = normalizePaybackBasis(raw);
+        } else {
+          data[field.key] = String(raw);
+        }
         break;
       default:
         data[field.key] = String(raw);

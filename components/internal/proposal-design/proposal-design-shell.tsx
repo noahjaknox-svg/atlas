@@ -6,6 +6,11 @@ import { ProposalDesignEditor } from "@/components/internal/proposal-design-edit
 import { ExperienceMasterEditor } from "@/components/internal/proposal-design/experience-master-editor";
 import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
 import type { ExperienceMasterTemplate } from "@/lib/experience-master";
+import {
+  PROSPECT_PORTAL_DESIGNER,
+  EDIT_PROSPECT_PORTAL,
+  PROPOSAL_WORKSPACE,
+} from "@/lib/product-terminology";
 
 type Tab = "branding" | "report";
 
@@ -24,9 +29,9 @@ export function ProposalDesignShell({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-4 border-b border-atlas-border px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-xl text-atlas-text">Deck Builder</h1>
+          <h1 className="font-serif text-xl text-atlas-text">{PROSPECT_PORTAL_DESIGNER}</h1>
           <p className="mt-0.5 text-xs text-atlas-muted">
-            Page structure, layout, visuals, and master copy for every client proposal
+            Page structure, layout, visuals, and master copy for every prospect portal
           </p>
         </div>
         <nav className="flex gap-1 rounded-lg border border-atlas-border p-1">
@@ -72,8 +77,9 @@ export function ProposalDesignShell({
               >
                 Pages &amp; layout
               </button>
-              . Each proposal then adjusts copy and chooses which pages to include from{" "}
-              <span className="text-atlas-text">Edit presentation</span> on the proposal workspace.
+              . Each proposal then adjusts copy and chooses which pages to include via{" "}
+              <span className="text-atlas-text">{EDIT_PROSPECT_PORTAL}</span> in the{" "}
+              {PROPOSAL_WORKSPACE}.
             </p>
             <ProposalDesignEditor initialContent={initialContent} initialFleet={initialFleet} />
           </div>

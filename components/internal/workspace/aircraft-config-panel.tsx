@@ -15,7 +15,7 @@ import {
   aircraftAssumptionCategory,
   buildProfileFieldGroups,
   buildEconomicsFieldGroups,
-  CLIENT_EDITABLE_ASSUMPTIONS,
+  PROSPECT_EDITABLE_ASSUMPTIONS,
   filterEconomicsGroupsForModel,
   getAircraftCompleteness,
   normalizeUsageType,
@@ -333,12 +333,12 @@ export function AircraftConfigPanel({
                 disabled={!portalSlug}
                 onClick={onClientPortal}
               >
-                Client portal
+                Prospect portal
               </Button>
             </div>
 
             {portalSlug && (
-              <CollapsibleSection title="Client portal PIN" defaultOpen={false}>
+              <CollapsibleSection title="Prospect portal PIN" defaultOpen={false}>
                 <p className="font-mono text-xs">{portalPin ? `PIN ${portalPin}` : "Published — PIN shown once at publish"}</p>
                 {onRegeneratePin && (
                   <Button
@@ -354,9 +354,9 @@ export function AircraftConfigPanel({
               </CollapsibleSection>
             )}
 
-            <CollapsibleSection title="Client-editable assumptions" defaultOpen={false}>
+            <CollapsibleSection title="Prospect-editable assumptions" defaultOpen={false}>
               <ul className="space-y-2">
-                {CLIENT_EDITABLE_ASSUMPTIONS.map((item) => (
+                {PROSPECT_EDITABLE_ASSUMPTIONS.map((item) => (
                   <li key={item.name} className="flex items-center justify-between text-xs">
                     <span className="text-atlas-muted">{item.label}</span>
                     <input

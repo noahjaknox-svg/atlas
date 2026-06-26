@@ -99,7 +99,7 @@ export function ProFormaView({
           >
             ← Workspace
           </Link>
-          <h1 className="mt-2 font-serif text-2xl">Pro Forma — {aircraftLabel}</h1>
+          <h1 className="mt-2 font-serif text-2xl">Demo Pro Forma — {aircraftLabel}</h1>
         </div>
         <div className="flex rounded-md border border-atlas-border p-0.5">
           {(["annual", "monthly"] as const).map((p) => (

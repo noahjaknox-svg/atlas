@@ -2,13 +2,17 @@ import type { Prisma } from "@prisma/client";
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import type { ExperienceContentBlocks } from "@/lib/experience-content";
+import {
+  sanitizeExperiencePageLinks,
+  type ExperienceContentBlocks,
+} from "@/lib/experience-content";
 
 /**
  * Per-proposal section edits are limited to copy, page selection (visible),
- * order, signatory, and the per-proposal aircraft market link. Structure, media,
- * layout, and rich content blocks are owned globally by the Deck Builder
- * (Proposal Design) and are intentionally ignored here.
+ * order, signatory, the per-proposal aircraft market link, and custom page
+ * link buttons. Structure, media, layout, and rich content blocks are owned
+ * globally by the Deck Builder (Proposal Design) and are intentionally ignored
+ * here.
  */
 export async function PATCH(
   request: Request,
@@ -52,6 +56,9 @@ export async function PATCH(
         }
         if ("aircraftMarketButtonLabel" in incoming) {
           merged.aircraftMarketButtonLabel = incoming.aircraftMarketButtonLabel ?? null;
+        }
+        if ("navLinks" in incoming) {
+          merged.navLinks = sanitizeExperiencePageLinks(incoming.navLinks);
         }
         data.contentBlocks = merged as unknown as Prisma.InputJsonValue;
       }

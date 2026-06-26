@@ -2,12 +2,10 @@ import type { WorkspaceField } from "@/lib/workspace-sections";
 import {
   VALUE_SOURCE_OPTIONS,
   YES_NO_OPTIONS,
-  CREW_MODEL_OPTIONS,
   FET_TREATMENT_OPTIONS,
   FUEL_SOURCE_OPTIONS,
   INSURANCE_MODE_OPTIONS,
 } from "@/lib/aircraft-constants";
-import { CALCULATED_ASSUMPTION_KEYS } from "@/lib/aircraft-calculated-fields";
 
 export type AircraftWorkspaceTab =
   | "aircraft"
@@ -53,6 +51,8 @@ export type AircraftTabSection = {
   title: string;
   groups: AircraftTabGroup[];
   proFormaRollup?: SectionProFormaRollup;
+  /** Hide dollar/hour footers on this section (e.g. crew tab inputs only). */
+  hideProFormaRollup?: boolean;
   /** Entire section hidden for Part 91-only usage (e.g. Net Revenue). */
   charterOnly?: boolean;
 };
@@ -70,7 +70,7 @@ function field(
     label,
     type: "text",
     ...rest,
-    ...(calculated || CALCULATED_ASSUMPTION_KEYS?.has(name) ? { readOnly: true } : {}),
+    ...(calculated ? { readOnly: true } : {}),
   };
 }
 
@@ -105,7 +105,7 @@ function hourlyRateRollup(label: string, rateKey: string): SectionProFormaRollup
     type: "hourly",
     sumKeys: [rateKey],
     format: "currency",
-    proFormaHint: "Per flight hour · applied on Pro Forma",
+    proFormaHint: "Per flight hour · applied on Demo Pro Forma",
   };
 }
 
@@ -131,11 +131,25 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         {
           title: "Identity",
           fields: [
-            field("aircraft_manufacturer", "Manufacturer", { required: true }),
-            field("aircraft_model", "Model", { required: true }),
-            field("aircraft_year", "Year", { type: "number", required: true }),
-            field("tail_number", "Tail number"),
-            field("serial_number", "Serial number"),
+            field("aircraft_profile_mode", "Aircraft type", {
+              type: "select",
+              required: true,
+              options: [
+                { value: "existing", label: "Use Existing Aircraft" },
+                { value: "general", label: "Use General Aircraft" },
+              ],
+            }),
+            field("tail_number", "Tail number", { required: true, profileMode: "existing" }),
+            field("aircraft_year", "Year", {
+              type: "number",
+              required: true,
+              profileMode: "existing",
+            }),
+            field("aircraft_manufacturer", "Manufacturer", {
+              required: true,
+              profileMode: "general",
+            }),
+            field("aircraft_model", "Model", { required: true, profileMode: "general" }),
           ],
         },
       ],
@@ -173,11 +187,16 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
   ],
   crew_training: [
     {
-      title: "Crew Salaries & Benefits",
+      title: "Crew",
+      hideProFormaRollup: true,
       groups: [
         {
-          title: "Benefits",
-          fields: [field("benefits_pct", "Benefits percentage", { type: "number" })],
+          title: "Default minimum pilots",
+          fields: [
+            field("default_minimum_crew", "Default minimum pilots", {
+              type: "number",
+            }),
+          ],
         },
         {
           title: "Lead pilot",
@@ -186,102 +205,72 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
               type: "select",
               options: YES_NO_OPTIONS,
             }),
+          ],
+        },
+        {
+          title: "Benefits",
+          fields: [field("benefits_pct", "Benefits percentage", { type: "number" })],
+        },
+        {
+          title: "Pilot salaries",
+          fields: [
             currency("lead_pilot_salary", "Lead pilot salary (annual)"),
-          ],
-          proFormaRollup: {
-            label: "Lead pilot total",
-            type: "calculated",
-            valueKey: "lead_pilot_crew_total",
-            format: "currency",
-            proFormaHint: "Included in P&L: Crew Salaries & Benefits",
-          },
-        },
-        {
-          title: "PIC",
-          fields: [
-            field("pic_count", "PIC count (from crew step)", { type: "number", readOnly: true }),
+            currency("lead_pilot_crew_total", "Lead pilot salary total", { calculated: true }),
             currency("pic_salary", "PIC salary (annual, per pilot)"),
+            currency("pic_crew_total", "PIC salary total", { calculated: true }),
+            currency("sic_salary", "SIC salary (annual, per pilot)"),
+            currency("sic_crew_total", "SIC salary total", { calculated: true }),
+            currency("crew_total", "Total crew salaries", { calculated: true }),
           ],
-          proFormaRollup: {
-            label: "PIC total",
-            type: "calculated",
-            valueKey: "pic_crew_total",
-            format: "currency",
-            proFormaHint: "Included in P&L: Crew Salaries & Benefits",
-          },
+        },
+      ],
+    },
+    {
+      title: "Training",
+      proFormaRollup: {
+        label: "Total crew training",
+        type: "calculated",
+        valueKey: "crew_training_total",
+        format: "currency",
+      },
+      groups: [
+        {
+          title: "Lead pilot training",
+          fields: [
+            currency("lead_pilot_training", "Lead pilot training (annual)"),
+            currency("lead_pilot_training_total", "Lead pilot training total", {
+              calculated: true,
+            }),
+          ],
         },
         {
-          title: "SIC",
+          title: "PIC training",
           fields: [
-            field("sic_count", "SIC count (from crew step)", { type: "number", readOnly: true }),
-            currency("sic_salary", "SIC salary (annual, per pilot)"),
+            currency("pic_training", "PIC training (annual, per pilot)"),
+            currency("pic_training_total", "PIC training total", { calculated: true }),
           ],
-          proFormaRollup: {
-            label: "SIC total",
-            type: "calculated",
-            valueKey: "sic_crew_total",
-            format: "currency",
-            proFormaHint: "Included in P&L: Crew Salaries & Benefits",
-          },
         },
+        {
+          title: "SIC training",
+          fields: [
+            currency("sic_training", "SIC training (annual, per pilot)"),
+            currency("sic_training_total", "SIC training total", { calculated: true }),
+          ],
+        },
+      ],
+    },
+    {
+      title: "Cabin attendant",
+      hideProFormaRollup: true,
+      groups: [
         {
           title: "Cabin",
           fields: [
             field("cabin_attendant_count", "Cabin attendant count", { type: "number" }),
             currency("cabin_attendant_annual_cost", "Cabin attendant annual cost"),
           ],
-          proFormaRollup: {
-            label: "Cabin total",
-            type: "calculated",
-            valueKey: "cabin_crew_total",
-            format: "currency",
-            proFormaHint: "Included in P&L: Crew Salaries & Benefits",
-          },
-        },
-        {
-          title: "Crew model",
-          fields: [
-            field("crew_model", "Crew model", { type: "select", options: CREW_MODEL_OPTIONS }),
-          ],
         },
       ],
-      proFormaRollup: lineRollup(
-        "Crew Salaries & Benefits",
-        "crew_salaries",
-        "P&L fixed ownership"
-      ),
-    },
-    {
-      title: "Training",
-      groups: [
-        {
-          title: "PIC Training",
-          fields: [currency("pic_training", "PIC training (annual, per pilot)")],
-          proFormaRollup: {
-            label: "PIC training total",
-            type: "calculated",
-            valueKey: "pic_training_total",
-            format: "currency",
-          },
-        },
-        {
-          title: "SIC Training",
-          fields: [currency("sic_training", "SIC training (annual, per pilot)")],
-          proFormaRollup: {
-            label: "SIC training total",
-            type: "calculated",
-            valueKey: "sic_training_total",
-            format: "currency",
-          },
-        },
-      ],
-      proFormaRollup: {
-        label: "Total crew training",
-        type: "calculated",
-        valueKey: "crew_training_total",
-        format: "currency",
-        proFormaHint: "Included in P&L: Crew Training",
-      },
     },
     {
       title: "Notes",
@@ -420,7 +409,7 @@ export const AIRCRAFT_TAB_SECTIONS: Record<
         type: "hourly",
         sumKeys: [...OPERATING_HOURLY_RATE_KEYS],
         format: "currency",
-        proFormaHint: "Hourly rates · multiplied by hours on Pro Forma",
+        proFormaHint: "Hourly rates · multiplied by hours on Demo Pro Forma",
       },
     },
   ],
@@ -655,7 +644,7 @@ export const TAB_LABELS: Record<AircraftWorkspaceTab, string> = {
   utilization_costs: "Utilization & Operating Costs",
   financing_fees: "Financing & Fees",
   revenue: "Revenue",
-  pro_forma: "Pro Forma",
+  pro_forma: "Demo Pro Forma",
 };
 
 /** Shorter labels for the configurator tab strip (full name in `title`). */

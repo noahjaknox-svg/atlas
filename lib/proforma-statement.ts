@@ -62,9 +62,11 @@ export type ProFormaStatementRow = {
   toggleable?: boolean;
 };
 
+export type ProFormaAssumptionUsedItem = { label: string; value: string };
+
 export type ProFormaStatement = {
   rows: ProFormaStatementRow[];
-  assumptionsUsed: { label: string; value: string }[];
+  assumptionsUsed: ProFormaAssumptionUsedItem[];
   utilization: UtilizationProfile;
 };
 
@@ -308,7 +310,7 @@ function buildAssumptionsUsedPanel(
   fuelHr: number,
   varHr: number,
   paybackPct: number
-): { label: string; value: string }[] {
+): ProFormaAssumptionUsedItem[] {
   return [
     { label: "Home fuel price ($/gal)", value: num(a.home_fuel_price).toFixed(2) },
     { label: "Away fuel price ($/gal)", value: num(a.away_fuel_price).toFixed(2) },

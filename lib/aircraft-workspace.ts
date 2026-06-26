@@ -1,4 +1,11 @@
 import type { AssumptionMap } from "./assumptions";
+import { OWNER_PROFORMA_HOURS_KEY } from "./proposal-owners";
+import {
+  getAircraftTypeLabel,
+  normalizeAircraftProfileMode,
+  requiredAssumptionKeysForProfileMode,
+  fieldVisibleForProfileMode,
+} from "./aircraft-profile-mode";
 import type { WorkspaceField } from "./workspace-sections";
 import { AIRCRAFT_TAB_FIELDS, getAllTabAssumptionFields } from "./aircraft-tab-fields";
 import { VALUE_SOURCE_OPTIONS } from "./aircraft-constants";
@@ -17,7 +24,7 @@ export type WorkspaceSectionId =
 export const WORKSPACE_NAV: { id: WorkspaceSectionId; label: string; aircraftScoped: boolean }[] = [
   { id: "profile", label: "Profile", aircraftScoped: true },
   { id: "economics", label: "Economics", aircraftScoped: true },
-  { id: "proforma", label: "Pro Forma", aircraftScoped: true },
+  { id: "proforma", label: "Demo Pro Forma", aircraftScoped: true },
   { id: "output", label: "Output", aircraftScoped: true },
 ];
 
@@ -99,7 +106,7 @@ export const AIRCRAFT_PURPOSE_OPTIONS = [
   { value: "replacement_aircraft", label: "Replacement aircraft" },
 ] as const;
 
-export const CLIENT_EDITABLE_ASSUMPTIONS = [
+export const PROSPECT_EDITABLE_ASSUMPTIONS = [
   { name: "aircraft_value", label: "Aircraft value" },
   { name: "owner_annual_hours", label: "Owner annual hours" },
 ] as const;
@@ -307,15 +314,24 @@ export function getAircraftDisplayName(
   assumptions: AssumptionMap,
   meta: AircraftCardMeta
 ): string {
-  const mfr = assumptions.aircraft_manufacturer?.trim();
-  const mdl = assumptions.aircraft_model?.trim();
-  if (mfr && mdl) return `${mfr} ${mdl}`;
-  if (mdl) return mdl;
+  const mode = normalizeAircraftProfileMode(assumptions);
+  if (mode === "existing") {
+    const tail = assumptions.tail_number?.trim() || meta.tailNumber?.trim();
+    if (tail) return tail;
+  }
+
+  const typeLabel = getAircraftTypeLabel(assumptions);
+  if (typeLabel) return typeLabel;
+
+  if (meta.aircraftMaster) {
+    const m = meta.aircraftMaster;
+    if (m.manufacturer && m.model) return `${m.manufacturer} ${m.model}`;
+    if (m.model) return m.model;
+  }
+
   const legacy = assumptions.aircraft_model?.trim();
   if (legacy && legacy.includes(" ")) return legacy;
-  if (meta.aircraftMaster) {
-    return `${meta.aircraftMaster.manufacturer} ${meta.aircraftMaster.model}`;
-  }
+
   return "New aircraft";
 }
 
@@ -323,31 +339,50 @@ export function getAircraftCardSubtitle(
   assumptions: AssumptionMap,
   meta: AircraftCardMeta
 ): string | null {
-  const parts: string[] = [];
+  const mode = normalizeAircraftProfileMode(assumptions);
+
+  if (mode === "existing") {
+    const typeLabel =
+      getAircraftTypeLabel(assumptions) ??
+      (meta.aircraftMaster
+        ? [meta.aircraftMaster.manufacturer, meta.aircraftMaster.model]
+            .filter(Boolean)
+            .join(" ")
+        : null);
+    return typeLabel || null;
+  }
+
   const base = assumptions.proposed_home_base || meta.proposedHomeBaseIcao;
-  if (base) parts.push(base);
-  const year = assumptions.aircraft_year || (meta.year ? String(meta.year) : "");
-  if (year) parts.push(year);
-  return parts.length ? parts.join(" · ") : null;
+  return base || null;
 }
 
-const REQUIRED_FOR_READY = [
-  "aircraft_manufacturer",
-  "aircraft_model",
-  "aircraft_year",
-  "aircraft_value",
-  "home_airport_icao",
-  "home_fuel_price",
-  "away_fuel_price",
-  "home_fuel_pct",
-  "usage_type",
-  "owner_annual_hours",
-];
+function isRequiredFieldFilled(
+  assumptions: AssumptionMap,
+  key: string
+): boolean {
+  return Boolean(assumptions[key]?.trim());
+}
+
+function getRequiredKeysForReady(assumptions: AssumptionMap): string[] {
+  const mode = normalizeAircraftProfileMode(assumptions);
+  return [
+    ...requiredAssumptionKeysForProfileMode(mode),
+    "aircraft_value",
+    "home_airport_icao",
+    "home_fuel_price",
+    "away_fuel_price",
+    "home_fuel_pct",
+    "usage_type",
+    "owner_annual_hours",
+  ];
+}
 
 export type AircraftBadge = "ready" | "missing";
 
 export function getAircraftBadge(assumptions: AssumptionMap): AircraftBadge {
-  const missing = REQUIRED_FOR_READY.some((k) => !assumptions[k]?.trim());
+  const missing = getRequiredKeysForReady(assumptions).some(
+    (k) => !isRequiredFieldFilled(assumptions, k)
+  );
   return missing ? "missing" : "ready";
 }
 
@@ -358,17 +393,16 @@ export function getAircraftCompleteness(assumptions: AssumptionMap): {
   const missing: string[] = [];
   let total = 0;
   let filled = 0;
+  const mode = normalizeAircraftProfileMode(assumptions);
 
   const fields = getAllTabAssumptionFields();
   for (const f of fields) {
     if (!f.required || !f.assumptionName || f.readOnly) continue;
+    if (!fieldVisibleForProfileMode(f, mode)) continue;
     total++;
     const v = assumptions[f.assumptionName] ?? "";
     if (!v.trim()) missing.push(f.label);
     else filled++;
-  }
-  if (!assumptions.aircraft_manufacturer?.trim() && !assumptions.aircraft_model?.trim()) {
-    missing.push("Aircraft");
   }
   if (!assumptions.home_airport_icao?.trim()) missing.push("Home base");
   if (!assumptions.usage_type?.trim()) missing.push("Usage type");
@@ -391,7 +425,15 @@ export function assumptionsMapForCategory(
 }
 
 /** Assumption keys persisted outside tab field definitions. */
-export const META_ASSUMPTION_KEYS = ["proforma_line_visibility"] as const;
+export const META_ASSUMPTION_KEYS = [
+  "proforma_line_visibility",
+  OWNER_PROFORMA_HOURS_KEY,
+  "owner_annual_hours",
+  "crew_step_index",
+  "charter_block_hours",
+  "charter_flight_hours",
+  "charter_block_to_flight_ratio",
+] as const;
 
 export function buildMetaAssumptionPayload(
   category: string,
@@ -413,7 +455,7 @@ export function buildPayloadForCategory(
   fields: WorkspaceField[],
   clientEditable?: Record<string, boolean>
 ) {
-  const editableSet = new Set<string>(CLIENT_EDITABLE_ASSUMPTIONS.map((c) => c.name));
+  const editableSet = new Set<string>(PROSPECT_EDITABLE_ASSUMPTIONS.map((c) => c.name));
   return fields
     .filter((f) => f.category === category && f.assumptionName)
     .map((f) => {
@@ -478,10 +520,23 @@ export function mergeLegacyAssumptions(
 
 /** Map assumption keys to aircraft instance columns for persistence. */
 export function instancePatchFromAssumptions(assumptions: AssumptionMap) {
+  const mode = normalizeAircraftProfileMode(assumptions);
+  if (mode === "general") {
+    return {
+      year: null,
+      tailNumber: null,
+      serialNumber: null,
+      proposedHomeBaseIcao:
+        assumptions.proposed_home_base || assumptions.home_airport_icao || null,
+      estimatedValue: assumptions.aircraft_value || null,
+      valueSource: assumptions.value_source || null,
+      aircraftMasterId: assumptions.aircraft_master_id?.trim() || null,
+    };
+  }
   return {
     year: assumptions.aircraft_year ? parseInt(assumptions.aircraft_year, 10) : null,
     tailNumber: assumptions.tail_number || null,
-    serialNumber: assumptions.serial_number || null,
+    serialNumber: null,
     proposedHomeBaseIcao:
       assumptions.proposed_home_base || assumptions.home_airport_icao || null,
     estimatedValue: assumptions.aircraft_value || null,

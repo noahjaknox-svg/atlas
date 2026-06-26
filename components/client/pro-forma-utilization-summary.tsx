@@ -23,20 +23,8 @@ export function ProFormaUtilizationSummary({
         compact ? "px-3 py-2.5" : "px-4 py-3"
       )}
     >
-      <p className="text-xs uppercase tracking-[0.25em] text-atlas-accent">
-        Utilization & crew
-      </p>
+      <p className="text-xs uppercase tracking-[0.25em] text-atlas-accent">Utilization</p>
       <dl className={cn("mt-2 space-y-2", compact && "mt-1.5 space-y-1.5")}>
-        <div className="flex items-start justify-between gap-3">
-          <dt className="text-sm text-white/60">Crew required</dt>
-          <dd className="text-right font-mono text-sm tabular-nums text-white">
-            {summary.composition}
-          </dd>
-        </div>
-        <div className="flex items-start justify-between gap-3">
-          <dt className="text-sm text-white/60">Total pilots</dt>
-          <dd className="font-mono text-sm tabular-nums text-white">{summary.totalPilots}</dd>
-        </div>
         <div className="flex items-start justify-between gap-3">
           <dt className="text-sm text-white/60">Max annual utilization</dt>
           <dd className="font-mono text-sm tabular-nums text-white">
@@ -64,11 +52,6 @@ export function ProFormaUtilizationSummary({
           </dd>
         </div>
       </dl>
-      {summary.requiredByOwnerHours ? (
-        <p className="mt-2 text-xs text-amber-400/90">
-          Owner hours require this crew level or higher.
-        </p>
-      ) : null}
       {overMax ? (
         <p className="mt-2 text-xs text-amber-400/90">
           Total owner hours exceed max annual utilization for this crew level.

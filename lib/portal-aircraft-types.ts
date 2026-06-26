@@ -1,5 +1,6 @@
 import type { ProFormaResult } from "./proforma";
 import type { ProposalSnapshotPayload } from "./snapshot";
+import type { AircraftProfileMode } from "./aircraft-profile-mode";
 
 export type AircraftSnapshotMetrics = {
   netAnnualCost: number;
@@ -13,6 +14,9 @@ export type AircraftSnapshotMetrics = {
 export type AircraftSnapshotEntry = {
   id: string;
   label: string;
+  aircraftProfileMode: AircraftProfileMode;
+  aircraftTypeLabel: string | null;
+  portalSubtitle: string | null;
   manufacturer: string | null;
   model: string | null;
   tailNumber: string | null;
@@ -24,7 +28,7 @@ export type AircraftSnapshotEntry = {
   portalVideoUrl: string | null;
   portalSpecHighlights: string[];
   assumptions: ProposalSnapshotPayload["assumptions"];
-  /** Full assumption map used for workspace-aligned pro forma (not only client-visible). */
+  /** Full assumption map used for workspace-aligned pro forma (not only prospect-visible). */
   calculationAssumptions?: Record<string, string>;
   metrics: AircraftSnapshotMetrics;
   proForma: ProFormaResult;
@@ -41,15 +45,21 @@ export function normalizeAircraftList(
 ): AircraftSnapshotEntry[] {
   if (payload.aircraftList?.length) return payload.aircraftList;
 
-  const label =
-    [payload.aircraft.manufacturer, payload.aircraft.model].filter(Boolean).join(" ") ||
-    payload.aircraft.tailNumber ||
-    "Your aircraft";
+  const legacyType =
+    [payload.aircraft.manufacturer, payload.aircraft.model].filter(Boolean).join(" ") || null;
+  const legacyMode: AircraftProfileMode = payload.aircraft.tailNumber ? "existing" : "general";
+  const legacyLabel =
+    legacyMode === "existing" && payload.aircraft.tailNumber
+      ? payload.aircraft.tailNumber
+      : legacyType || payload.aircraft.tailNumber || "Your aircraft";
 
   return [
     {
       id: "legacy-primary",
-      label,
+      label: legacyLabel,
+      aircraftProfileMode: legacyMode,
+      aircraftTypeLabel: legacyType,
+      portalSubtitle: legacyMode === "existing" ? legacyType : payload.aircraft.proposedHomeBase,
       manufacturer: payload.aircraft.manufacturer,
       model: payload.aircraft.model,
       tailNumber: payload.aircraft.tailNumber,

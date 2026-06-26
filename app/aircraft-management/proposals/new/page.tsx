@@ -13,7 +13,8 @@ export default async function NewProposalPage() {
       <div className="mx-auto max-w-lg py-16 text-center">
         <h1 className="font-serif text-3xl">New Proposal</h1>
         <p className="mt-2 text-atlas-muted">
-          Start with prospect name and optional aircraft — then configure everything in one workspace.
+          Enter the prospect name to open the proposal workspace. Add contact details and aircraft
+          there.
         </p>
         <div className="mt-8 flex justify-center">
           <NewProposalDialog

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
+import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
 
 type NavLink = { kind: "link"; href: string; label: string };
 type NavAction = { kind: "action"; action: "new-proposal"; label: string };
@@ -36,7 +37,7 @@ const AIRCRAFT_MANAGEMENT: Department = {
   prefix: "/aircraft-management",
   items: [
     { kind: "link", href: ROUTES.aircraftManagement.pipeline, label: "Pipeline" },
-    { kind: "link", href: ROUTES.aircraftManagement.proposalDesign, label: "Proposal Design" },
+    { kind: "link", href: ROUTES.aircraftManagement.proposalDesign, label: PROSPECT_PORTAL_DESIGNER },
     { kind: "action", action: "new-proposal", label: "New proposal" },
   ],
 };

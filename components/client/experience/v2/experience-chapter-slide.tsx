@@ -37,14 +37,20 @@ export function ExperienceChapterSlide({
     aircraftParam,
     clientSnapshot,
     clientLoading,
+    draftMode,
   } = useExperienceBootstrap();
 
   const section = getBootstrapSection(sections, pageSlug);
-  if (!section?.visible) return null;
+  if (!section) return null;
+  if (!draftMode && !section.visible) return null;
 
   if (pageSlug === "pro-forma" && !clientSnapshot) {
     if (clientLoading) return <ProFormaLoadingSkeleton />;
-    return null;
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-white/60">
+        Unable to load pro forma data. Try refreshing the page.
+      </div>
+    );
   }
 
   return (

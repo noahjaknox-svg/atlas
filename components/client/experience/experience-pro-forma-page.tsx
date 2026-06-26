@@ -52,14 +52,16 @@ export function ExperienceProFormaPage({
               </div>
             </RevealOnScroll>
           ) : null}
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
             <ProFormaClient
               slug={slug}
               initial={client}
               initialAircraftId={aircraftParam ?? client.aircraft.id}
               embedded
               experiencePath
-              slide
+              title={section.title}
+              description={bodyCopy || undefined}
+              showTitleColumn={false}
             />
           </div>
         </div>

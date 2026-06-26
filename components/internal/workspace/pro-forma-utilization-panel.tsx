@@ -1,8 +1,6 @@
 "use client";
 
 import { useId, useMemo } from "react";
-import { Minus, Plus } from "lucide-react";
-import type { UtilizationProfile } from "@/lib/proforma-utilization";
 import { HoursInput } from "@/components/ui/hours-input";
 import { cn } from "@/lib/utils";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
@@ -12,15 +10,12 @@ import {
   proformaHoursForProfiles,
   validateProformaOwnerHours,
 } from "@/lib/proposal-owners";
+import { ProFormaCrewStepPanel } from "@/components/internal/workspace/pro-forma-crew-step-panel";
 import type { AssumptionMap } from "@/lib/assumptions";
 import {
-  CREW_LADDER,
-  crewStepFloor,
-  formatCrewComposition,
   mergeAssumptionsForCrewStep,
   patchAssumptionsWithCrewStep,
   resolveCrewStepFromAssumptions,
-  totalPilotsAtStep,
 } from "@/lib/crew-step";
 import { computeUtilizationProfile } from "@/lib/proforma-utilization";
 
@@ -28,24 +23,34 @@ const METRICS_GRID =
   "grid grid-cols-[minmax(11rem,1fr)_minmax(4.5rem,max-content)] items-center gap-x-4 border-b border-atlas-border/40 px-4 py-2.5 last:border-b-0";
 
 export function ProFormaScenarioPanel({
-  profile,
   charterEnabled = true,
   ownerProfiles = [],
-  onOwnerHoursChange,
+  onResetOwnerDefaults,
   assumptions,
   warehouseDefaults = {},
   onCrewChange,
 }: {
-  profile: UtilizationProfile;
   charterEnabled?: boolean;
   ownerProfiles?: ProposalOwnerProfile[];
-  onOwnerHoursChange: (hours: number) => void;
+  onResetOwnerDefaults?: () => void;
   assumptions: AssumptionMap;
   warehouseDefaults?: Record<string, string>;
   onCrewChange: (next: AssumptionMap) => void;
 }) {
   const multiOwner = ownerProfiles.length > 1;
   const ownerHoursInputId = useId();
+  const profilesForPatch = useMemo(() => {
+    if (ownerProfiles.length > 0) return ownerProfiles;
+    const hours = parseFloat(assumptions.owner_annual_hours ?? "400") || 400;
+    return [
+      {
+        sortOrder: 0,
+        displayName: "Owner",
+        annualFlightHours: hours,
+        ownershipPercent: 100,
+      },
+    ] satisfies ProposalOwnerProfile[];
+  }, [ownerProfiles, assumptions.owner_annual_hours]);
   const proformaHours = useMemo(
     () => proformaHoursForProfiles(ownerProfiles, assumptions),
     [ownerProfiles, assumptions]
@@ -72,10 +77,6 @@ export function ProFormaScenarioPanel({
     return computeUtilizationProfile(withCrew);
   }, [assumptions, warehouseDefaults, ownerHours, resolved]);
 
-  const floorStep = crewStepFloor(resolved);
-  const maxStep = CREW_LADDER.length - 1;
-  const minPilots = totalPilotsAtStep(floorStep);
-
   const proformaHoursValidation = useMemo(
     () => validateProformaOwnerHours(ownerProfiles, assumptions, resolved.maxAnnualUtilization),
     [ownerProfiles, assumptions, resolved.maxAnnualUtilization]
@@ -84,27 +85,14 @@ export function ProFormaScenarioPanel({
   function patchProformaHours(index: number, hours: number) {
     const withHours = patchProformaOwnerHoursAtIndex(
       assumptions,
-      ownerProfiles,
+      profilesForPatch,
       index,
       hours
     );
-    const total = ownerHoursForUtilization(ownerProfiles, withHours);
+    const total = ownerHoursForUtilization(profilesForPatch, withHours);
     onCrewChange(
       patchAssumptionsWithCrewStep(withHours, warehouseDefaults, { ownerHours: total })
     );
-  }
-
-  function applyCrewPatch(patch: { userStep?: number; leadEnabled?: boolean }) {
-    onCrewChange(
-      patchAssumptionsWithCrewStep(assumptions, warehouseDefaults, {
-        ...patch,
-        ownerHours,
-      })
-    );
-  }
-
-  function setStep(next: number) {
-    applyCrewPatch({ userStep: Math.max(floorStep, Math.min(maxStep, next)) });
   }
 
   return (
@@ -175,71 +163,28 @@ export function ProFormaScenarioPanel({
               min={0}
               step={1}
               className="atlas-input mt-3 w-full max-w-[8rem] text-center sm:text-left"
-              value={Number.isFinite(profile.ownerFlightHours) ? profile.ownerFlightHours : 0}
-              onChange={onOwnerHoursChange}
+              value={Number.isFinite(proformaHours[0]) ? proformaHours[0] : 0}
+              onChange={(hours) => patchProformaHours(0, hours)}
             />
           </div>
         )}
+        {onResetOwnerDefaults ? (
+          <button
+            type="button"
+            onClick={onResetOwnerDefaults}
+            className="mt-3 text-sm text-atlas-accent hover:underline"
+          >
+            Reset to owner defaults
+          </button>
+        ) : null}
       </div>
 
-      <div className="space-y-4 border-b border-atlas-border/50 px-4 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="atlas-label">Crew required</p>
-            <p className="atlas-caption mt-1 font-mono tabular-nums text-atlas-text">
-              {formatCrewComposition(resolved)}
-            </p>
-            {resolved.requiredStep > resolved.minStep &&
-            resolved.stepIndex === resolved.requiredStep ? (
-              <p className="mt-1 text-xs text-amber-600">
-                Owner hours require this crew level or higher.
-              </p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              aria-label="Decrease pilot count"
-              disabled={resolved.stepIndex <= floorStep}
-              onClick={() => setStep(resolved.stepIndex - 1)}
-              className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-atlas-border bg-atlas-bg text-atlas-text",
-                resolved.stepIndex <= floorStep && "cursor-not-allowed opacity-40"
-              )}
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-            <span
-              className="min-w-[2rem] text-center font-mono text-sm tabular-nums"
-              title={`${resolved.totalPilots} pilots (minimum ${minPilots})`}
-            >
-              {resolved.totalPilots}
-            </span>
-            <button
-              type="button"
-              aria-label="Increase pilot count"
-              disabled={resolved.stepIndex >= maxStep}
-              onClick={() => setStep(resolved.stepIndex + 1)}
-              className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-atlas-border bg-atlas-bg text-atlas-text",
-                resolved.stepIndex >= maxStep && "cursor-not-allowed opacity-40"
-              )}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <label className="flex cursor-pointer items-center justify-between gap-3">
-          <span className="atlas-field-label">Include lead pilot</span>
-          <input
-            type="checkbox"
-            checked={resolved.leadEnabled}
-            onChange={(e) => applyCrewPatch({ leadEnabled: e.target.checked })}
-            className="h-4 w-4 rounded border-atlas-border accent-atlas-accent"
-          />
-        </label>
-      </div>
+      <ProFormaCrewStepPanel
+        assumptions={assumptions}
+        warehouseDefaults={warehouseDefaults}
+        ownerHours={ownerHours}
+        onCrewChange={onCrewChange}
+      />
 
       <div className="py-1">
         <MetricRow

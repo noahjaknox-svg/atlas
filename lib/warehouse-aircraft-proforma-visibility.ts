@@ -10,7 +10,6 @@ export const WAREHOUSE_FIELD_PROFORMA_LINES: Partial<
   apuProgram: ["charter_apu", "owner_apu"],
   inspectionReserve: ["charter_inspection", "owner_inspection"],
   tripExpenseHourly: ["owner_trip"],
-  cabinAttendantCount: ["crew_salaries"],
   cabinAttendantSalary: ["crew_salaries"],
 };
 

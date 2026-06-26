@@ -51,14 +51,18 @@ export function proformaHoursForProfiles(
   profiles: ProposalOwnerProfile[],
   assumptions: AssumptionMap
 ): number[] {
-  const stored = parseProformaOwnerHoursJson(assumptions, profiles.length);
-  if (stored) return stored;
-
   if (profiles.length === 1) {
-    const h = parseFloat(assumptions.owner_annual_hours ?? "");
-    if (Number.isFinite(h) && h >= 0) return [h];
+    const fromAnnual = parseFloat(assumptions.owner_annual_hours ?? "");
+    if (Number.isFinite(fromAnnual) && fromAnnual >= 0) {
+      return [fromAnnual];
+    }
+    const stored = parseProformaOwnerHoursJson(assumptions, 1);
+    if (stored) return stored;
     return [profiles[0]?.annualFlightHours ?? 400];
   }
+
+  const stored = parseProformaOwnerHoursJson(assumptions, profiles.length);
+  if (stored) return stored;
 
   return profiles.map((p) =>
     Number.isFinite(p.annualFlightHours) ? p.annualFlightHours : 0
@@ -242,9 +246,10 @@ export function assumptionsAfterOwnerDefaultsChange(
   if (allocationMode) {
     next[OWNER_EXPENSE_ALLOCATION_KEY] = allocationMode;
   }
-  if (seedProforma) {
-    next = seedProformaHoursInAssumptions(next, profiles);
+  if (!seedProforma) {
+    return next;
   }
+  next = seedProformaHoursInAssumptions(next, profiles);
   const hours = ownerHoursForUtilization(profiles, next);
   return patchAssumptionsWithCrewStep(next, warehouseDefaults, { ownerHours: hours });
 }

@@ -13,7 +13,7 @@ import { buildEffectiveAssumptions } from "./resolve-effective-assumptions";
 import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 import { resolveAircraftDefaults } from "./resolve-aircraft-defaults";
 
-const CLIENT_OVERRIDE_KEYS = new Set(["aircraft_value", "owner_annual_hours"]);
+const CLIENT_OVERRIDE_KEYS = new Set(["aircraft_value"]);
 
 function snapshotEntryToInstanceMeta(entry: AircraftSnapshotEntry) {
   return {

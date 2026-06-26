@@ -1,5 +1,4 @@
 import type { AssumptionMap } from "@/lib/assumptions";
-import { mergeEstimatedDefaults } from "@/lib/aircraft-estimated-defaults";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
 import { mergeAssumptionsWithDefaults } from "@/lib/resolve-effective-assumptions";
 
@@ -75,7 +74,7 @@ export function maxUsageForPilots(pilotCount: number, tiers: UsageTiers): number
   return tiers[n - 1] ?? 0;
 }
 
-/** First ladder index whose PIC/SIC meet or exceed warehouse baseline. */
+/** First ladder index whose PIC/SIC meet or exceed warehouse baseline (legacy migration). */
 export function warehouseMinStep(baselinePic: number, baselineSic: number): number {
   const pic = Math.max(0, Math.round(baselinePic));
   const sic = Math.max(0, Math.round(baselineSic));
@@ -90,21 +89,42 @@ export function warehouseMinStep(baselinePic: number, baselineSic: number): numb
   return CREW_LADDER.length - 1;
 }
 
-export function parseWarehouseBaseline(a: AssumptionMap): { pic: number; sic: number } {
-  const baselinePic = a.crew_baseline_pic?.trim();
-  const baselineSic = a.crew_baseline_sic?.trim();
-  return {
-    pic: Math.round(baselinePic ? num(baselinePic) : num(a.pic_count, 1)),
-    sic: Math.round(baselineSic ? num(baselineSic) : num(a.sic_count, 1)),
-  };
+/** Parse `default_minimum_crew` as minimum total pilots (PIC + SIC). */
+export function parseDefaultMinimumPilots(a: AssumptionMap): number | null {
+  const raw = a.default_minimum_crew?.trim();
+  if (raw === "" || raw == null) return null;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(MAX_PILOT_TIER, n);
 }
 
-/** Merge stored + warehouse + estimated defaults for crew ladder resolution. */
+/** Smallest ladder step whose PIC+SIC total meets or exceeds the target count. */
+export function stepIndexForTotalPilots(pilotCount: number): number {
+  const target = Math.max(2, Math.min(MAX_PILOT_TIER, Math.round(pilotCount)));
+  for (let i = 0; i < CREW_LADDER.length; i++) {
+    if (totalPilots(crewAtStep(i)) >= target) return i;
+  }
+  return CREW_LADDER.length - 1;
+}
+
+/** Ladder floor from `default_minimum_crew` (total pilots); step 0 when unset. */
+export function parseDefaultMinimumCrewMinStep(a: AssumptionMap): number {
+  const pilots = parseDefaultMinimumPilots(a);
+  if (pilots == null) return 0;
+  return stepIndexForTotalPilots(pilots);
+}
+
+/** @deprecated Use parseDefaultMinimumCrewMinStep */
+export function parseDefaultMinimumCrewStep(a: AssumptionMap): number {
+  return parseDefaultMinimumCrewMinStep(a);
+}
+
+/** Merge stored assumptions with warehouse defaults for crew ladder resolution. */
 export function mergeAssumptionsForCrewStep(
   assumptions: AssumptionMap,
   warehouseDefaults: Record<string, string> = {}
 ): AssumptionMap {
-  return mergeAssumptionsWithDefaults(assumptions, mergeEstimatedDefaults(warehouseDefaults));
+  return mergeAssumptionsWithDefaults(assumptions, warehouseDefaults);
 }
 
 /** Smallest step ≥ minStep where max usage can cover owner hours. */
@@ -132,8 +152,6 @@ export type ResolveCrewStepInput = {
   minStep?: number;
   tiers: UsageTiers;
   leadEnabled: boolean;
-  baselinePic?: number;
-  baselineSic?: number;
 };
 
 export type ResolvedCrewStep = {
@@ -147,9 +165,7 @@ export type ResolvedCrewStep = {
 };
 
 export function resolveCrewStep(input: ResolveCrewStepInput): ResolvedCrewStep {
-  const baselinePic = input.baselinePic ?? 1;
-  const baselineSic = input.baselineSic ?? 1;
-  const minStep = input.minStep ?? warehouseMinStep(baselinePic, baselineSic);
+  const minStep = input.minStep ?? 0;
   const requiredStep = requiredStepForOwnerHours(
     input.ownerHours,
     input.tiers,
@@ -190,10 +206,10 @@ export function resolveCrewStepFromAssumptions(
   warehouseDefaults: Record<string, string> = {}
 ): ResolvedCrewStep {
   const merged = mergeAssumptionsForCrewStep(a, warehouseDefaults);
-  const baseline = parseWarehouseBaseline(merged);
   const tiers = parseUsageTiers(merged);
   const leadEnabled = overrides?.leadEnabled ?? isLeadPilotEnabled(merged);
-  const ownerHours = overrides?.ownerHours ?? num(merged.owner_annual_hours, 400);
+  const ownerHours = overrides?.ownerHours ?? num(merged.owner_annual_hours);
+  const minStep = parseDefaultMinimumCrewMinStep(merged);
   const storedStep = merged.crew_step_index?.trim();
   const ladderPic = leadEnabled
     ? Math.max(1, Math.round(num(merged.pic_count)) + 1)
@@ -207,10 +223,9 @@ export function resolveCrewStepFromAssumptions(
   return resolveCrewStep({
     ownerHours,
     userStep: Number.isFinite(userStep) ? userStep : undefined,
+    minStep,
     tiers,
     leadEnabled,
-    baselinePic: baseline.pic,
-    baselineSic: baseline.sic,
   });
 }
 
@@ -270,6 +285,40 @@ export function formatCrewComposition(resolved: ResolvedCrewStep): string {
   }
   if (resolved.crew.sic > 0) parts.push(`${resolved.crew.sic} SIC`);
   return parts.join(" · ");
+}
+
+export function formatCrewLadderRung(stepIndex: number): string {
+  const crew = crewAtStep(stepIndex);
+  return `Step ${stepIndex}: ${crew.pic} PIC + ${crew.sic} SIC`;
+}
+
+export type CrewLadderReferenceRung = {
+  stepIndex: number;
+  crew: CrewComposition;
+  pilots: number;
+  maxUsage: number;
+};
+
+/** Static ladder reference: step composition and max annual usage per rung. */
+export function crewLadderReferenceRungs(
+  assumptions: AssumptionMap,
+  warehouseDefaults: Record<string, string> = {},
+  maxSteps = CREW_LADDER.length
+): CrewLadderReferenceRung[] {
+  const merged = mergeAssumptionsForCrewStep(assumptions, warehouseDefaults);
+  const tiers = parseUsageTiers(merged);
+  const leadEnabled = isLeadPilotEnabled(merged);
+  const limit = Math.max(1, Math.min(maxSteps, CREW_LADDER.length));
+
+  return CREW_LADDER.slice(0, limit).map((crew, stepIndex) => {
+    const pilots = totalPilots(crew, leadEnabled);
+    return {
+      stepIndex,
+      crew,
+      pilots,
+      maxUsage: maxUsageForPilots(pilots, tiers),
+    };
+  });
 }
 
 /** Total pilots (PIC + SIC) at a ladder step. Baseline step 0 = 2. */

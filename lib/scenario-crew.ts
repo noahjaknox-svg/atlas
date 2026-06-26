@@ -2,10 +2,9 @@ import type { AssumptionMap } from "@/lib/assumptions";
 import { mergeWithDerived } from "@/lib/aircraft-calculated-fields";
 import {
   applyCrewStepToAssumptions,
+  parseDefaultMinimumCrewMinStep,
   parseUsageTiers,
-  parseWarehouseBaseline,
   resolveCrewStep,
-  warehouseMinStep,
 } from "@/lib/crew-step";
 import { computeUtilizationProfile } from "@/lib/proforma-utilization";
 
@@ -20,9 +19,8 @@ export function applyScenarioCrewToAssumptions(
   base: AssumptionMap,
   scenario: ScenarioCrewInput
 ): AssumptionMap {
-  const baseline = parseWarehouseBaseline(base);
   const tiers = parseUsageTiers(base);
-  const minStep = warehouseMinStep(baseline.pic, baseline.sic);
+  const minStep = parseDefaultMinimumCrewMinStep(base);
   const leadEnabled =
     scenario.leadPilotEnabled != null
       ? scenario.leadPilotEnabled
@@ -34,8 +32,6 @@ export function applyScenarioCrewToAssumptions(
     minStep,
     tiers,
     leadEnabled,
-    baselinePic: baseline.pic,
-    baselineSic: baseline.sic,
   });
 
   const patched: AssumptionMap = {

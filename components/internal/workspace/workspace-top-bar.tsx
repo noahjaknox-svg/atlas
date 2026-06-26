@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/routes";
+import {
+  OPEN_PROSPECT_PORTAL,
+  PREVIEW_PROSPECT_PORTAL,
+  PUBLISH_PROSPECT_PORTAL,
+} from "@/lib/product-terminology";
 
 export function WorkspaceTopBar({
   saveLabel,
@@ -40,11 +45,11 @@ export function WorkspaceTopBar({
           disabled={!portalSlug}
           onClick={onPreview}
         >
-          Preview Proposal
+          {PREVIEW_PROSPECT_PORTAL}
         </Button>
         {isAdmin && (
           <Button type="button" size="sm" disabled={publishLoading} onClick={onPublish}>
-            {publishLoading ? "Publishing…" : "Publish"}
+            {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
           </Button>
         )}
         <Button
@@ -54,7 +59,7 @@ export function WorkspaceTopBar({
           disabled={!portalSlug}
           onClick={onClientPortal}
         >
-          Client Portal
+          {OPEN_PROSPECT_PORTAL}
         </Button>
       </div>
     </header>

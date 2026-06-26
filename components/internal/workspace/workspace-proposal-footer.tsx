@@ -1,20 +1,27 @@
 "use client";
 
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import {
+  COPY_PROSPECT_PORTAL_LINK,
+  EDIT_PROSPECT_PORTAL,
+  PREVIEW_PROSPECT_PORTAL,
+  PUBLISH_PROSPECT_PORTAL,
+  PUBLISHED_LAST_LABEL,
+} from "@/lib/product-terminology";
 
 export function WorkspaceProposalFooter({
   portalSlug,
   portalUrl,
   portalPin,
   portalActive,
-  portalExists,
   publishLoading,
   needsRepublish,
+  lastPublishedAt,
   isAdmin,
   hasSelectedAircraft,
   onPreview,
   onPublish,
-  onRepublish,
   onTakeDown,
   onRestorePortal,
   onRegeneratePin,
@@ -24,14 +31,14 @@ export function WorkspaceProposalFooter({
   portalUrl: string | null;
   portalPin: string | null;
   portalActive: boolean;
-  portalExists: boolean;
   publishLoading: boolean;
   needsRepublish: boolean;
+  lastPublishedAt: string | null;
   isAdmin: boolean;
   hasSelectedAircraft: boolean;
   onPreview: () => void;
-  onPublish: () => void;
-  onRepublish: () => void;
+  /** Pass true to republish an active portal; false for first publish or re-activate. */
+  onPublish: (republish: boolean) => void;
   onTakeDown: () => void;
   onRestorePortal: () => void;
   onRegeneratePin: () => void;
@@ -46,18 +53,22 @@ export function WorkspaceProposalFooter({
     }
   }
 
-  const showPublish = isAdmin && !portalExists;
-  const showRepublish = isAdmin && portalActive && needsRepublish;
-  const upToDate = isAdmin && portalActive && !needsRepublish;
+  const publishedLabel = lastPublishedAt
+    ? format(new Date(lastPublishedAt), "MMM d, yyyy 'at' h:mm a")
+    : "Never";
+
+  const publishDisabled =
+    publishLoading ||
+    (portalActive && !needsRepublish) ||
+    (!portalActive && !!portalPin && !needsRepublish);
+
   const showTakeDown = isAdmin && portalActive;
-  const showRestore = isAdmin && portalExists && !portalActive;
+  const showRestore = isAdmin && !portalActive && !!portalPin;
 
   return (
     <div className="shrink-0 border-t border-atlas-border bg-atlas-surface/40 px-4 py-2.5">
-      <div className="flex items-center justify-center">
-        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-          <p className="atlas-kicker shrink-0 whitespace-nowrap">Client portal</p>
-
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="secondary"
@@ -66,7 +77,7 @@ export function WorkspaceProposalFooter({
             disabled={!hasSelectedAircraft}
             onClick={onEditPresentation}
           >
-            Edit presentation
+            {EDIT_PROSPECT_PORTAL}
           </Button>
 
           <Button
@@ -78,45 +89,28 @@ export function WorkspaceProposalFooter({
             onClick={onPreview}
             title="Preview the current draft as the client will see it"
           >
-            Preview draft
+            {PREVIEW_PROSPECT_PORTAL}
           </Button>
+        </div>
 
-          {showPublish ? (
-            <Button
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {showTakeDown ? (
+            <button
               type="button"
-              size="sm"
-              className="shrink-0 text-xs"
+              title="Take down — clients can no longer view this proposal"
               disabled={publishLoading}
-              onClick={onPublish}
+              className="shrink-0 rounded border border-red-500/30 px-2.5 py-1.5 text-xs text-red-300/90 hover:border-red-500/60 hover:bg-red-500/10 disabled:opacity-40"
+              onClick={onTakeDown}
             >
-              {publishLoading ? "Publishing…" : "Publish proposal"}
-            </Button>
-          ) : null}
-
-          {showRepublish ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              className="shrink-0 text-xs ring-1 ring-atlas-accent/50"
-              disabled={publishLoading}
-              onClick={onRepublish}
-            >
-              {publishLoading ? "Updating…" : "Republish — data changed"}
-            </Button>
-          ) : null}
-
-          {upToDate ? (
-            <span className="shrink-0 whitespace-nowrap rounded border border-atlas-border/60 bg-atlas-bg/50 px-2 py-1 text-[10px] text-atlas-muted">
-              Published — portal matches saved data
-            </span>
+              Take down
+            </button>
           ) : null}
 
           {showRestore ? (
             <Button
               type="button"
               size="sm"
-              variant="default"
+              variant="secondary"
               className="shrink-0 text-xs"
               disabled={publishLoading}
               onClick={onRestorePortal}
@@ -125,17 +119,6 @@ export function WorkspaceProposalFooter({
               {publishLoading ? "Restoring…" : "Restore portal"}
             </Button>
           ) : null}
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="shrink-0 text-xs"
-            disabled={!portalActive}
-            onClick={() => void copyLink()}
-          >
-            Copy proposal link
-          </Button>
 
           {portalPin ? (
             <span className="shrink-0 rounded border border-atlas-border bg-atlas-bg px-2 py-1 font-mono text-[10px] text-atlas-accent">
@@ -146,23 +129,41 @@ export function WorkspaceProposalFooter({
           <button
             type="button"
             title="Regenerate access code"
-            disabled={!portalActive}
+            disabled={!portalActive || publishLoading}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-atlas-border text-sm text-atlas-muted hover:border-atlas-accent hover:text-atlas-accent disabled:opacity-40"
             onClick={onRegeneratePin}
           >
             ↻
           </button>
 
-          {showTakeDown ? (
-            <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-xs"
+            disabled={!portalActive}
+            onClick={() => void copyLink()}
+          >
+            {COPY_PROSPECT_PORTAL_LINK}
+          </Button>
+
+          <span className="mx-1 hidden h-5 w-px shrink-0 bg-atlas-border/80 sm:inline-block" aria-hidden />
+
+          <span className="shrink-0 whitespace-nowrap text-xs text-atlas-muted">
+            {PUBLISHED_LAST_LABEL}{" "}
+            <span className="text-atlas-text">{publishedLabel}</span>
+          </span>
+
+          {isAdmin ? (
+            <Button
               type="button"
-              title="Take down — clients can no longer view this proposal"
-              disabled={publishLoading}
-              className="shrink-0 rounded border border-red-500/30 px-2 py-1 text-[10px] text-red-300/90 hover:border-red-500/60 hover:bg-red-500/10 disabled:opacity-40"
-              onClick={onTakeDown}
+              size="sm"
+              className="shrink-0 text-xs"
+              disabled={publishDisabled}
+              onClick={() => onPublish(portalActive && !!portalPin)}
             >
-              Take down
-            </button>
+              {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
+            </Button>
           ) : null}
         </div>
       </div>

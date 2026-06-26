@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export function jsonOk<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
@@ -16,6 +17,24 @@ export function handleApiError(error: unknown) {
     (error as { code: string }).code === "P2002"
   ) {
     return jsonError("A record with that value already exists", 409);
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2022") {
+      return jsonError(
+        "Database schema is out of date. Apply pending migrations (npx prisma migrate deploy) and try again.",
+        500
+      );
+    }
+    if (error.code === "P2003") {
+      return jsonError("Related record not found", 400);
+    }
+  }
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    console.error(error);
+    return jsonError(
+      "Invalid aircraft data. Check crew and utilization fields, then try again.",
+      400
+    );
   }
   if (error instanceof Error) {
     if (error.message === "UNAUTHORIZED") {

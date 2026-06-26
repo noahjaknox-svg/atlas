@@ -317,7 +317,9 @@ function AircraftTeaserChapter({
           {aircraftList.map((ac) => (
             <li key={ac.id} className="font-serif text-lg">
               {ac.label}
-              {ac.tailNumber ? (
+              {ac.aircraftProfileMode === "existing" && ac.aircraftTypeLabel ? (
+                <span className="ml-2 text-sm text-white/45">{ac.aircraftTypeLabel}</span>
+              ) : ac.tailNumber ? (
                 <span className="ml-2 text-sm text-white/45">{ac.tailNumber}</span>
               ) : null}
             </li>
