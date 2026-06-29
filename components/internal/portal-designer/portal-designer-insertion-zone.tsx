@@ -39,7 +39,7 @@ export function PortalDesignerInsertionZone({
       className={cn(
         "relative flex items-center justify-center transition-all",
         emptyColumn
-          ? "min-h-[140px] rounded-lg border-2 border-dashed border-white/30 bg-white/[0.04] py-6"
+          ? "min-h-[140px] rounded-lg border border-dashed border-white/20 bg-transparent py-6"
           : "h-6 py-1",
         (isOver || active) && (emptyColumn ? "border-atlas-accent/60 bg-atlas-accent/10" : "h-10 py-2")
       )}

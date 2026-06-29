@@ -6,7 +6,6 @@ import type {
   BlockLayout,
   BlockPadding,
   BlockVerticalAlign,
-  BlockWidth,
   ExperiencePageBlock,
   ImageDisplaySize,
   RowDisplay,
@@ -14,11 +13,19 @@ import type {
 } from "@/lib/experience-content";
 import {
   resolveBlockWidthPresetId,
+  resolveShellBlockLayout,
   type BlockVisibility,
   type PortalLayoutSettings,
 } from "@/lib/portal-layout-settings";
 import { diagnosticsForBlock, type BlockDiagnostic } from "@/lib/portal-block-diagnostics";
-import { isContainerBlock, isRowBlock, resolveContainerLayout, resolveRowLayout, type RowColumnCount } from "@/lib/portal-block-layout";
+import {
+  isContainerBlock,
+  isRowBlock,
+  resolveContainerLayout,
+  resolveRowLayout,
+  type BlockPath,
+  type RowColumnCount,
+} from "@/lib/portal-block-layout";
 import { updateContainerGrid, updateRowColumns } from "@/lib/page-blocks-utils";
 import type { GridDimension } from "@/lib/experience-content";
 import { Input } from "@/components/ui/input";
@@ -44,6 +51,7 @@ export function PortalDesignerInspector({
   diagnostics = [],
   layoutSettings,
   designViewport,
+  selectedBlockPath,
 }: {
   section: DesignerSection;
   selectedBlock: ExperiencePageBlock | null;
@@ -54,6 +62,7 @@ export function PortalDesignerInspector({
   diagnostics?: BlockDiagnostic[];
   layoutSettings: PortalLayoutSettings;
   designViewport?: PreviewViewport;
+  selectedBlockPath?: BlockPath;
 }) {
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
@@ -61,18 +70,16 @@ export function PortalDesignerInspector({
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-atlas-border px-3">
+      <div className="flex h-11 shrink-0 items-center border-b border-atlas-border px-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">Settings</p>
-        {diagnostics.length > 0 ? (
-          <p className="truncate text-xs text-amber-300">
-            {diagnostics.length} warning{diagnostics.length === 1 ? "" : "s"}
-          </p>
-        ) : null}
       </div>
 
       <div className="space-y-4 p-4">
         <div>
-          <Label className="text-sm">Page title</Label>
+          <Label className="text-sm">Page name</Label>
+          <p className="mt-0.5 text-xs text-atlas-muted">
+            Used in the page list and navigation only. Add a Heading block to show a title on the page.
+          </p>
           <Input
             value={section.title}
             onChange={(e) => onPatchSection({ title: e.target.value })}
@@ -127,6 +134,7 @@ export function PortalDesignerInspector({
               proposalId={proposalId}
               layoutSettings={layoutSettings}
               designViewport={designViewport}
+              selectedBlockPath={selectedBlockPath}
             />
           </>
         ) : (
@@ -343,6 +351,7 @@ function BlockEditor({
   proposalId,
   layoutSettings,
   designViewport,
+  selectedBlockPath,
 }: {
   block: ExperiencePageBlock;
   onPatch: (patch: Partial<ExperiencePageBlock>) => void;
@@ -355,8 +364,17 @@ function BlockEditor({
   proposalId?: string;
   layoutSettings: PortalLayoutSettings;
   designViewport?: PreviewViewport;
+  selectedBlockPath?: BlockPath;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const shellLayoutPatch = (blockLayout: BlockLayout) =>
+    onPatch({ blockLayout } as Partial<ExperiencePageBlock>);
+
+  const nestedInGridCell = (selectedBlockPath?.length ?? 0) >= 2;
+
+  const shellBlockLayout = (shell: Extract<ExperiencePageBlock, { type: "container" | "row" }>) =>
+    shell.blockLayout ?? resolveShellBlockLayout(shell, { nestedInGridCell });
 
   if (isContainerBlock(block)) {
     const { rows, cols } = resolveContainerLayout(block);
@@ -466,27 +484,6 @@ function BlockEditor({
           </select>
         </div>
         <LayoutSelect
-          label="Width"
-          value={block.width ?? "full"}
-          options={[
-            ["auto", "Auto"],
-            ["narrow", "Narrow"],
-            ["medium", "Medium"],
-            ["full", "Full width"],
-          ]}
-          onChange={(width) => onPatch({ width: width as BlockWidth } as Partial<ExperiencePageBlock>)}
-        />
-        <LayoutSelect
-          label="Position on page"
-          value={block.align ?? "left"}
-          options={[
-            ["left", "Left"],
-            ["center", "Center"],
-            ["right", "Right"],
-          ]}
-          onChange={(align) => onPatch({ align: align as BlockAlign } as Partial<ExperiencePageBlock>)}
-        />
-        <LayoutSelect
           label="Cell stretch"
           value={block.cellAlign ?? "stretch"}
           options={[
@@ -496,6 +493,12 @@ function BlockEditor({
           onChange={(cellAlign) =>
             onPatch({ cellAlign: cellAlign as "start" | "stretch" } as Partial<ExperiencePageBlock>)
           }
+        />
+        <BlockLayoutControls
+          blockLayout={shellBlockLayout(block)}
+          layoutSettings={layoutSettings}
+          designViewport={designViewport}
+          onPatch={shellLayoutPatch}
         />
       </div>
     );
@@ -569,6 +572,12 @@ function BlockEditor({
             <option value="lg">Large</option>
           </select>
         </div>
+        <BlockLayoutControls
+          blockLayout={shellBlockLayout(block)}
+          layoutSettings={layoutSettings}
+          designViewport={designViewport}
+          onPatch={shellLayoutPatch}
+        />
       </div>
     );
   }

@@ -10,7 +10,6 @@ import {
   containerGridProps,
   getBlockPaddingClass,
   getLeafHorizontalJustifyClass,
-  getLeafTextAlignClass,
   getLeafVerticalJustifyClass,
   isShrinkWrapLeafBlock,
   isContainerBlock,
@@ -25,6 +24,7 @@ import {
   blockWidthStyleVars,
   DEFAULT_LAYOUT_SETTINGS,
   isBlockVisibleInViewport,
+  resolveShellBlockLayout,
   visibilityClasses,
   type PortalLayoutSettings,
 } from "@/lib/portal-layout-settings";
@@ -104,21 +104,39 @@ function isInsideGridCell(containerPath: BlockPath): boolean {
   return containerPath.length >= 2;
 }
 
-function LeafBlockLayoutFrame({
+function BlockLayoutFrame({
   blockLayout,
   layoutSettings,
   inGridCell,
   shrinkWrap = false,
+  designChrome = false,
   children,
 }: {
   blockLayout?: BlockLayout;
   layoutSettings: PortalLayoutSettings;
   inGridCell: boolean;
   shrinkWrap?: boolean;
+  designChrome?: boolean;
   children: React.ReactNode;
 }) {
   const hAlign = blockLayout?.align ?? "left";
   const vAlign = blockLayout?.verticalAlign ?? "top";
+  const paddingClass = getBlockPaddingClass(blockLayout?.padding);
+
+  const innerContent = designChrome ? (
+    <div className={cn("h-full w-full", paddingClass)}>
+      <div
+        className={cn(
+          "h-full w-full rounded-md border border-dashed border-white/25 bg-white/[0.04]",
+          inGridCell ? "min-h-[80px]" : "min-h-[120px]"
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  ) : (
+    children
+  );
 
   return (
     <div
@@ -126,7 +144,7 @@ function LeafBlockLayoutFrame({
         "flex w-full min-w-0 flex-col",
         inGridCell && "min-h-0 flex-1",
         getLeafVerticalJustifyClass(vAlign),
-        getBlockPaddingClass(blockLayout?.padding)
+        !designChrome && paddingClass
       )}
     >
       <div className={cn("flex w-full min-w-0", getLeafHorizontalJustifyClass(hAlign))}>
@@ -134,11 +152,11 @@ function LeafBlockLayoutFrame({
           className={cn(
             "min-w-0",
             shrinkWrap ? "w-auto max-w-full" : BLOCK_WIDTH_RESPONSIVE_CLASS,
-            !shrinkWrap && getLeafTextAlignClass(hAlign)
+            designChrome && "ring-1 ring-white/10"
           )}
           style={blockWidthStyleVars(blockLayout, layoutSettings)}
         >
-          {children}
+          {innerContent}
         </div>
       </div>
     </div>
@@ -252,6 +270,7 @@ function DesignBlockShell({
   children,
   className,
   fillCell,
+  designViewport,
 }: {
   block: ExperiencePageBlock;
   path: BlockPath;
@@ -261,18 +280,21 @@ function DesignBlockShell({
   children: React.ReactNode;
   className?: string;
   fillCell?: boolean;
+  designViewport?: PreviewViewport;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: block.id,
     data: { path, blockId: block.id },
   });
   const isSelected = selectedBlockId === block.id;
+  const mobileDesign = designViewport === "mobile";
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "relative pl-7",
+        "relative w-full min-w-0",
+        !mobileDesign && "pl-7",
         fillCell && "flex min-h-0 flex-1 flex-col",
         isDragging && "opacity-40"
       )}
@@ -476,7 +498,21 @@ export function ExperienceBlockRenderer({
         const blockPath = [...containerPath, blockIndex];
 
         if (isContainerBlock(block)) {
-          const { wrapperClass } = resolveContainerLayout(block, gridLayout);
+          const shellBlockLayout = resolveShellBlockLayout(block, {
+            nestedInGridCell: inGridCell,
+          });
+
+          if (
+            showDesign &&
+            !isBlockVisibleInViewport(
+              shellBlockLayout?.visibility,
+              designLayoutViewport,
+              true
+            )
+          ) {
+            return null;
+          }
+
           const gridContent = renderContainerCells({
             block,
             blockPath,
@@ -485,40 +521,85 @@ export function ExperienceBlockRenderer({
             ...childProps,
           });
 
-          const shell = showDesign ? (
-            <DesignBlockShell
-              block={block}
-              path={blockPath}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={onSelectBlock}
-              onBlockContextMenu={onBlockContextMenu}
-              className={wrapperClass}
-            >
-              {gridContent}
-            </DesignBlockShell>
-          ) : (
+          if (showDesign) {
+            return (
+              <div
+                key={block.id}
+                className={cn(inGridCell && "flex min-h-0 w-full flex-col")}
+              >
+                <DesignBlockShell
+                  block={block}
+                  path={blockPath}
+                  selectedBlockId={selectedBlockId}
+                  onSelectBlock={onSelectBlock}
+                  onBlockContextMenu={onBlockContextMenu}
+                  designViewport={designViewport}
+                  fillCell={inGridCell}
+                >
+                  <BlockLayoutFrame
+                    blockLayout={shellBlockLayout}
+                    layoutSettings={layoutSettings}
+                    inGridCell={inGridCell}
+                    designChrome
+                  >
+                    {gridContent}
+                  </BlockLayoutFrame>
+                </DesignBlockShell>
+                <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
+              </div>
+            );
+          }
+
+          const shell = (
             <BlockShell
               block={block}
               selectedBlockId={selectedBlockId}
               onSelectBlock={onSelectBlock}
               previewMode={previewMode}
-              className={wrapperClass}
             >
               {gridContent}
             </BlockShell>
           );
 
-          return (
-            <div key={block.id}>
+          const framedShell = (
+            <BlockLayoutFrame
+              blockLayout={shellBlockLayout}
+              layoutSettings={layoutSettings}
+              inGridCell={inGridCell}
+            >
               {shell}
-              {showDesign ? (
-                <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
-              ) : null}
+            </BlockLayoutFrame>
+          );
+
+          return (
+            <div
+              key={block.id}
+              className={cn(
+                inGridCell && "flex min-h-0 w-full flex-col",
+                visibilityClasses(shellBlockLayout?.visibility)
+              )}
+            >
+              {framedShell}
             </div>
           );
         }
 
         if (isRowBlock(block)) {
+          const shellBlockLayout = resolveShellBlockLayout(block, {
+            nestedInGridCell: inGridCell,
+          });
+
+          if (
+            showDesign &&
+            !isBlockVisibleInViewport(
+              shellBlockLayout?.visibility,
+              designLayoutViewport,
+              true
+            )
+          ) {
+            return null;
+          }
+
           const rowLayout =
             block.display === "rows" ? "stacked" : gridLayout;
           const gridProps = rowGridProps(block, rowLayout);
@@ -527,59 +608,85 @@ export function ExperienceBlockRenderer({
             "flex min-w-0 flex-col gap-4",
             stretchRowCells ? "h-full min-h-0" : "min-h-0"
           );
-          const shell = showDesign ? (
-            <DesignBlockShell
-              block={block}
-              path={blockPath}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={onSelectBlock}
-              onBlockContextMenu={onBlockContextMenu}
-            >
-              <div {...gridProps} style={gridProps.style as CSSProperties}>
-                {block.columns.map((column, colIndex) => (
-                  <div key={`${block.id}-col-${colIndex}`} className={rowColumnClass}>
-                    {showDesign && column.length === 0 ? (
-                      <PortalDesignerInsertionZone
-                        zoneId={insertionZoneId([...blockPath, colIndex], 0)}
-                        emptyColumn
-                      />
-                    ) : null}
-                    <ExperienceBlockRenderer
-                      blocks={column}
-                      containerPath={[...blockPath, colIndex]}
-                      {...childProps}
+          const rowGrid = (
+            <div {...gridProps} style={gridProps.style as CSSProperties}>
+              {block.columns.map((column, colIndex) => (
+                <div key={`${block.id}-col-${colIndex}`} className={rowColumnClass}>
+                  {showDesign && column.length === 0 ? (
+                    <PortalDesignerInsertionZone
+                      zoneId={insertionZoneId([...blockPath, colIndex], 0)}
+                      emptyColumn
                     />
-                  </div>
-                ))}
+                  ) : null}
+                  <ExperienceBlockRenderer
+                    blocks={column}
+                    containerPath={[...blockPath, colIndex]}
+                    {...childProps}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+
+          if (showDesign) {
+            return (
+              <div
+                key={block.id}
+                className={cn(inGridCell && "flex min-h-0 w-full flex-col")}
+              >
+                <DesignBlockShell
+                  block={block}
+                  path={blockPath}
+                  selectedBlockId={selectedBlockId}
+                  onSelectBlock={onSelectBlock}
+                  onBlockContextMenu={onBlockContextMenu}
+                  designViewport={designViewport}
+                  fillCell={inGridCell}
+                >
+                  <BlockLayoutFrame
+                    blockLayout={shellBlockLayout}
+                    layoutSettings={layoutSettings}
+                    inGridCell={inGridCell}
+                    designChrome
+                  >
+                    {rowGrid}
+                  </BlockLayoutFrame>
+                </DesignBlockShell>
+                <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
               </div>
-            </DesignBlockShell>
-          ) : (
+            );
+          }
+
+          const shell = (
             <BlockShell
               block={block}
               selectedBlockId={selectedBlockId}
               onSelectBlock={onSelectBlock}
               previewMode={previewMode}
             >
-              <div {...gridProps} style={gridProps.style as CSSProperties}>
-                {block.columns.map((column, colIndex) => (
-                  <div key={`${block.id}-col-${colIndex}`} className={rowColumnClass}>
-                    <ExperienceBlockRenderer
-                      blocks={column}
-                      containerPath={[...blockPath, colIndex]}
-                      {...childProps}
-                    />
-                  </div>
-                ))}
-              </div>
+              {rowGrid}
             </BlockShell>
           );
 
-          return (
-            <div key={block.id}>
+          const framedShell = (
+            <BlockLayoutFrame
+              blockLayout={shellBlockLayout}
+              layoutSettings={layoutSettings}
+              inGridCell={inGridCell}
+            >
               {shell}
-              {showDesign ? (
-                <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
-              ) : null}
+            </BlockLayoutFrame>
+          );
+
+          return (
+            <div
+              key={block.id}
+              className={cn(
+                inGridCell && "flex min-h-0 w-full flex-col",
+                visibilityClasses(shellBlockLayout?.visibility)
+              )}
+            >
+              {framedShell}
             </div>
           );
         }
@@ -597,27 +704,19 @@ export function ExperienceBlockRenderer({
           return null;
         }
 
-        const framedContent = (
-          <LeafBlockLayoutFrame
-            blockLayout={blockLayout}
-            layoutSettings={layoutSettings}
-            inGridCell={allowVerticalAlign}
-            shrinkWrap={isShrinkWrapLeafBlock(block)}
-          >
-            {renderLeafContent(block, showDesign ? designMode : false)}
-          </LeafBlockLayoutFrame>
-        );
+        const leafContent = renderLeafContent(block, showDesign ? designMode : false);
 
-        const leaf = showDesign ? (
+        const shell = showDesign ? (
           <DesignBlockShell
             block={block}
             path={blockPath}
             selectedBlockId={selectedBlockId}
             onSelectBlock={onSelectBlock}
             onBlockContextMenu={onBlockContextMenu}
+            designViewport={designViewport}
             fillCell={allowVerticalAlign}
           >
-            {framedContent}
+            {leafContent}
           </DesignBlockShell>
         ) : (
           <BlockShell
@@ -627,8 +726,19 @@ export function ExperienceBlockRenderer({
             previewMode={previewMode}
             fillCell={allowVerticalAlign}
           >
-            {framedContent}
+            {leafContent}
           </BlockShell>
+        );
+
+        const framedShell = (
+          <BlockLayoutFrame
+            blockLayout={blockLayout}
+            layoutSettings={layoutSettings}
+            inGridCell={allowVerticalAlign}
+            shrinkWrap={isShrinkWrapLeafBlock(block)}
+          >
+            {shell}
+          </BlockLayoutFrame>
         );
 
         return (
@@ -640,7 +750,7 @@ export function ExperienceBlockRenderer({
               !showDesign && visibilityClasses(blockLayout?.visibility)
             )}
           >
-            {leaf}
+            {framedShell}
             {showDesign ? (
               <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
             ) : null}

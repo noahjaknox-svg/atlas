@@ -109,6 +109,7 @@ describe("portal-block-layout", () => {
     expect(resolved.cols).toBe(2);
     expect(resolved.colTemplate).toBe("2fr 1fr");
     expect(resolved.rowTemplate).toBe("1fr 2fr");
+    expect("wrapperClass" in resolved).toBe(false);
     expect(getGridTemplate([2, 1], 2)).toBe("2fr 1fr");
   });
 

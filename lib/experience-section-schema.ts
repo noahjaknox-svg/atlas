@@ -111,6 +111,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       gap: z.enum(["sm", "md", "lg"]).optional(),
       display: z.enum(["columns", "rows"]).optional(),
       columnWeights: z.array(z.number().positive()).optional(),
+      blockLayout: blockLayoutSchema.optional(),
       columns: z.array(z.array(pageBlockSchema)),
     }),
     z.object({
@@ -123,6 +124,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       rowWeights: z.array(z.number().positive()).optional(),
       width: z.enum(["auto", "narrow", "medium", "full"]).optional(),
       align: z.enum(["left", "center", "right"]).optional(),
+      blockLayout: blockLayoutSchema.optional(),
       cellAlign: z.enum(["start", "stretch"]).optional(),
       cells: z.array(z.array(z.array(pageBlockSchema))),
     }),

@@ -57,6 +57,24 @@ function prefixLines(
   };
 }
 
+function wrapAlignment(
+  textarea: HTMLTextAreaElement,
+  align: "left" | "center" | "right"
+): { value: string; selectionStart: number; selectionEnd: number } {
+  const { selectionStart, selectionEnd, value } = textarea;
+  const selected = value.slice(selectionStart, selectionEnd) || "Text";
+  const wrapped = selected
+    .split("\n")
+    .map((line) => `<p style="text-align: ${align}">${line || " "}</p>`)
+    .join("\n");
+  const next = value.slice(0, selectionStart) + wrapped + value.slice(selectionEnd);
+  return {
+    value: next,
+    selectionStart: selectionStart + wrapped.length,
+    selectionEnd: selectionStart + wrapped.length,
+  };
+}
+
 const TOOLBAR_BUTTONS = [
   { id: "bold", label: "B", title: "Bold", action: (ta: HTMLTextAreaElement) => wrapSelection(ta, "**") },
   { id: "italic", label: "I", title: "Italic", action: (ta: HTMLTextAreaElement) => wrapSelection(ta, "_") },
@@ -70,6 +88,12 @@ const TOOLBAR_BUTTONS = [
     title: "Link",
     action: (ta: HTMLTextAreaElement) => wrapSelection(ta, "[", "](https://)"),
   },
+] as const;
+
+const ALIGN_BUTTONS = [
+  { id: "align-left", label: "Left", title: "Align left", align: "left" as const },
+  { id: "align-center", label: "Center", title: "Align center", align: "center" as const },
+  { id: "align-right", label: "Right", title: "Align right", align: "right" as const },
 ] as const;
 
 export function MarkdownToolbar({ textareaRef, value, onChange, className }: MarkdownToolbarProps) {
@@ -117,6 +141,18 @@ export function MarkdownToolbar({ textareaRef, value, onChange, className }: Mar
           </button>
         ))}
         <span className="mx-1 text-atlas-border">|</span>
+        {ALIGN_BUTTONS.map((btn) => (
+          <button
+            key={btn.id}
+            type="button"
+            title={btn.title}
+            onClick={() => applyAction((ta) => wrapAlignment(ta, btn.align))}
+            className="min-h-8 min-w-8 rounded-md px-2.5 py-1.5 text-xs font-medium text-atlas-muted hover:bg-atlas-bg hover:text-atlas-text"
+          >
+            {btn.label}
+          </button>
+        ))}
+        <span className="mx-1 text-atlas-border">|</span>
         <select
           className="h-8 min-w-[7rem] rounded-md border border-atlas-border/60 bg-atlas-bg px-2 text-xs text-atlas-muted"
           defaultValue=""
@@ -146,6 +182,9 @@ export function MarkdownToolbar({ textareaRef, value, onChange, className }: Mar
           </li>
           <li>
             <code>[label](url)</code>, <code>{`{{contactName}}`}</code>
+          </li>
+          <li>
+            Align buttons wrap selection in <code>{`<p style="text-align: center">…</p>`}</code>
           </li>
         </ul>
       </details>

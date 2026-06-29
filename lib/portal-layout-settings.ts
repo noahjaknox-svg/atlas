@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CSSProperties } from "react";
-import type { BlockLayout, BlockWidth } from "./experience-content";
+import type { BlockLayout, BlockWidth, ExperiencePageBlock } from "./experience-content";
 
 export type LayoutWidthPresetId = string;
 
@@ -11,9 +11,17 @@ export type LayoutWidthPreset = {
   mobilePercent: number;
 };
 
+export type PortalLayoutBreakpoints = {
+  /** Min viewport width (px) where desktop width presets apply. */
+  desktopMinWidth: number;
+  /** Min viewport width (px) where multi-column container/row grids go horizontal. */
+  gridMinWidth: number;
+};
+
 export type PortalLayoutSettings = {
   widthPresets: LayoutWidthPreset[];
   defaultPresetId: LayoutWidthPresetId;
+  breakpoints?: PortalLayoutBreakpoints;
 };
 
 export type BlockVisibility = "both" | "desktop" | "mobile";
@@ -30,13 +38,29 @@ export const layoutWidthPresetSchema = z.object({
   mobilePercent: z.number().min(PERCENT_MIN).max(PERCENT_MAX),
 });
 
+export const DEFAULT_LAYOUT_BREAKPOINTS: PortalLayoutBreakpoints = {
+  desktopMinWidth: 768,
+  gridMinWidth: 1024,
+};
+
+export const portalLayoutBreakpointsSchema = z
+  .object({
+    desktopMinWidth: z.number().int().min(480).max(1200),
+    gridMinWidth: z.number().int().min(640).max(1600),
+  })
+  .refine((data) => data.gridMinWidth >= data.desktopMinWidth, {
+    message: "gridMinWidth must be >= desktopMinWidth",
+  });
+
 export const portalLayoutSettingsSchema = z.object({
   widthPresets: z.array(layoutWidthPresetSchema).min(1),
   defaultPresetId: z.string().min(1),
+  breakpoints: portalLayoutBreakpointsSchema.optional(),
 });
 
 export const DEFAULT_LAYOUT_SETTINGS: PortalLayoutSettings = {
   defaultPresetId: "normal",
+  breakpoints: DEFAULT_LAYOUT_BREAKPOINTS,
   widthPresets: [
     { id: "full", label: "Full", desktopPercent: 100, mobilePercent: 100 },
     { id: "wide", label: "Wide", desktopPercent: 90, mobilePercent: 96 },
@@ -58,10 +82,68 @@ export function parsePortalLayoutSettings(raw: unknown): PortalLayoutSettings {
   const parsed = portalLayoutSettingsSchema.safeParse(raw);
   if (!parsed.success) return DEFAULT_LAYOUT_SETTINGS;
   const hasDefault = parsed.data.widthPresets.some((p) => p.id === parsed.data.defaultPresetId);
-  if (!hasDefault) {
-    return { ...parsed.data, defaultPresetId: parsed.data.widthPresets[0]!.id };
+  const breakpoints = parsed.data.breakpoints ?? DEFAULT_LAYOUT_BREAKPOINTS;
+  const base = hasDefault
+    ? { ...parsed.data, breakpoints }
+    : { ...parsed.data, defaultPresetId: parsed.data.widthPresets[0]!.id, breakpoints };
+  return base;
+}
+
+export function resolveLayoutBreakpoints(
+  settings: PortalLayoutSettings = DEFAULT_LAYOUT_SETTINGS
+): PortalLayoutBreakpoints {
+  return settings.breakpoints ?? DEFAULT_LAYOUT_BREAKPOINTS;
+}
+
+/** Injected stylesheet for branding-configurable layout breakpoints (live portal). */
+export function breakpointStyleContent(breakpoints: PortalLayoutBreakpoints): string {
+  const desktopMin = breakpoints.desktopMinWidth;
+  const desktopMax = desktopMin - 1;
+  const gridMin = breakpoints.gridMinWidth;
+  const gridMax = gridMin - 1;
+
+  return `
+@media (max-width: ${desktopMax}px) {
+  .block-width-responsive {
+    width: var(--block-width-mobile);
   }
-  return parsed.data;
+}
+
+@media (min-width: ${gridMin}px) {
+  .portal-row-grid[data-row-layout="responsive"] {
+    grid-template-columns: var(--portal-row-template);
+  }
+  .portal-container-grid[data-layout="responsive"] {
+    grid-template-columns: var(--portal-col-template);
+    grid-template-rows: var(--portal-row-template);
+  }
+}
+
+@media (max-width: ${gridMax}px) {
+  .portal-container-grid[data-layout="responsive"] {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+  }
+  .portal-row-grid[data-row-layout="responsive"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.portal-layout-show-desktop {
+  display: none !important;
+}
+.portal-layout-show-mobile {
+  display: block !important;
+}
+@media (min-width: ${desktopMin}px) {
+  .portal-layout-show-desktop {
+    display: block !important;
+  }
+  .portal-layout-show-mobile {
+    display: none !important;
+  }
+}
+`.trim();
 }
 
 export function resolveLayoutSettings(
@@ -133,9 +215,9 @@ export function blockWidthStyleVars(
 export function visibilityClasses(visibility: BlockVisibility = "both"): string {
   switch (visibility) {
     case "desktop":
-      return "hidden md:block";
+      return "hidden portal-layout-show-desktop";
     case "mobile":
-      return "md:hidden";
+      return "portal-layout-show-mobile";
     case "both":
     default:
       return "";
@@ -154,5 +236,30 @@ export function isBlockVisibleInViewport(
   return viewport === "mobile";
 }
 
-export const BLOCK_WIDTH_RESPONSIVE_CLASS =
-  "w-[var(--block-width)] max-md:w-[var(--block-width-mobile)] max-w-full";
+export const BLOCK_WIDTH_RESPONSIVE_CLASS = "block-width-responsive";
+
+type ShellBlock = Extract<ExperiencePageBlock, { type: "container" | "row" }>;
+
+/** Resolve layout for container/row shells (legacy container fields + nested defaults). */
+export function resolveShellBlockLayout(
+  block: ShellBlock,
+  options?: { nestedInGridCell?: boolean }
+): BlockLayout {
+  if (block.blockLayout) return block.blockLayout;
+
+  if (block.type === "container" && (block.width != null || block.align != null)) {
+    const layout: BlockLayout = {};
+    if (block.width) {
+      layout.widthDesktop = LEGACY_WIDTH_TO_PRESET[block.width] ?? "normal";
+      layout.widthMobile = layout.widthDesktop;
+    }
+    if (block.align) layout.align = block.align;
+    return layout;
+  }
+
+  if (options?.nestedInGridCell) {
+    return { widthDesktop: "full", widthMobile: "full" };
+  }
+
+  return {};
+}

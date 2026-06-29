@@ -42,6 +42,11 @@ export function ExperienceChapterSlide({
     draftMode,
   } = useExperienceBootstrap();
 
+  const layoutSettings = useMemo(
+    () => resolveLayoutSettings(payload.branding?.layoutSettings),
+    [payload.branding?.layoutSettings]
+  );
+
   const section = getBootstrapSection(sections, pageSlug);
   if (!section) return null;
   if (!draftMode && !section.visible) return null;
@@ -54,11 +59,6 @@ export function ExperienceChapterSlide({
       </div>
     );
   }
-
-  const layoutSettings = useMemo(
-    () => resolveLayoutSettings(payload.branding?.layoutSettings),
-    [payload.branding?.layoutSettings]
-  );
 
   const pageContent = (
     <ExperiencePageContent

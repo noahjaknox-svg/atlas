@@ -37,6 +37,7 @@ import { PortalDesignerPreview } from "./portal-designer-preview";
 import { sectionNavSlug } from "@/lib/experience-page-slug";
 import { PortalDesignerInspector } from "./portal-designer-inspector";
 import { PortalPublishChecklist } from "./portal-publish-checklist";
+import { PortalDesignerWarningsMenu } from "./portal-designer-warnings-menu";
 import { useDesignerHistory } from "./use-designer-history";
 import {
   cloneDesignerSections,
@@ -168,6 +169,18 @@ export function PortalDesignerShell({
   const diagnostics = useMemo(
     () => collectBlockDiagnostics(activeBlocks, variableContext),
     [activeBlocks, variableContext]
+  );
+
+  const showWarningsMenu = !(mode === "master" && brandingTab === "global");
+
+  const handleWarningSelect = useCallback(
+    (sel: BlockSelection) => {
+      setPreviewSource("draft");
+      setSelection(sel);
+      setMessage(null);
+      setError(null);
+    },
+    []
   );
 
   const hiddenPageCount = useMemo(
@@ -596,7 +609,16 @@ export function PortalDesignerShell({
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-atlas-border px-4 py-3">
         <div className="min-w-0 flex-1">
-          <h1 className="font-serif text-xl text-atlas-text">{PROSPECT_PORTAL_DESIGNER}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-serif text-xl text-atlas-text">{PROSPECT_PORTAL_DESIGNER}</h1>
+            {showWarningsMenu ? (
+              <PortalDesignerWarningsMenu
+                diagnostics={diagnostics}
+                blocks={activeBlocks}
+                onSelectBlock={handleWarningSelect}
+              />
+            ) : null}
+          </div>
           <p className="mt-0.5 text-xs text-atlas-muted">
             {mode === "master"
               ? "Global defaults for new proposals"
@@ -686,17 +708,12 @@ export function PortalDesignerShell({
         </div>
       </header>
 
-      {(message || error || dirty || diagnostics.length > 0) && (
+      {(message || error || dirty) && (
         <div className="shrink-0 border-b border-atlas-border px-4 py-2 text-xs">
           {error ? <span className="text-red-400">{error}</span> : null}
           {!error && message ? <span className="text-atlas-muted">{message}</span> : null}
           {!error && !message && dirty ? (
             <span className="text-amber-200/80">Unsaved changes</span>
-          ) : null}
-          {!error && diagnostics.length > 0 ? (
-            <span className={dirty ? "ml-2 text-amber-300" : "text-amber-300"}>
-              {diagnostics.length} content warning{diagnostics.length === 1 ? "" : "s"} on this page
-            </span>
           ) : null}
         </div>
       )}
@@ -786,6 +803,7 @@ export function PortalDesignerShell({
               diagnostics={diagnostics}
               layoutSettings={layoutSettings}
               designViewport={viewport}
+              selectedBlockPath={selection?.path}
             />
             <div className="border-t border-atlas-border">
               <button

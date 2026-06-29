@@ -5,6 +5,7 @@ import type { BlockDiagnostic } from "@/lib/portal-block-diagnostics";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { buildPortalVariableContext } from "@/lib/portal-variables";
 import { GenericChapterV2 } from "@/components/client/experience/v2/layouts/generic-chapter-v2";
+import { PortalLayoutBreakpointStyles } from "@/components/client/experience/portal-layout-breakpoint-styles";
 import { cn } from "@/lib/utils";
 import type { PreviewViewport } from "./portal-designer-types";
 import type { PortalLayoutSettings } from "@/lib/portal-layout-settings";
@@ -108,17 +109,12 @@ export function PortalDesignerPreview({
       <div className="flex shrink-0 items-center justify-center border-b border-atlas-border/40 px-3 py-2">
         <p className="text-xs uppercase tracking-wider text-atlas-muted">
           {viewport === "desktop" ? "Desktop preview" : "Mobile preview"}
-          {diagnostics.length > 0 ? (
-            <span className="ml-2 text-amber-300">
-              · {diagnostics.length} warning{diagnostics.length === 1 ? "" : "s"}
-            </span>
-          ) : null}
         </p>
       </div>
       <div
         className={cn(
           "flex min-h-0 flex-1",
-          viewport === "desktop" ? "px-4 py-2" : "items-start justify-center overflow-auto p-4"
+          viewport === "desktop" ? "px-4 py-2" : "items-start justify-center overflow-auto px-0 py-4"
         )}
       >
         <div
@@ -130,12 +126,14 @@ export function PortalDesignerPreview({
           )}
         >
           <div
+            data-design-viewport={designViewport ?? viewport}
             className={cn(
               viewport === "desktop"
-                ? "h-full min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
-                : "max-h-[min(720px,70vh)] overflow-y-auto p-4 sm:p-6"
+                ? "h-full min-h-0 flex-1 overflow-y-auto py-4 px-0"
+                : "max-h-[min(720px,70vh)] overflow-y-auto p-0"
             )}
           >
+            <PortalLayoutBreakpointStyles layoutSettings={layoutSettings} />
             <GenericChapterV2
               section={previewSection}
               variableContext={variableContext}

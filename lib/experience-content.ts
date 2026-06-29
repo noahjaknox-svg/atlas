@@ -204,6 +204,7 @@ export type ExperiencePageBlock =
       display?: RowDisplay;
       /** Relative column widths (e.g. [2, 1, 1] → 2fr 1fr 1fr). Defaults from preset when omitted. */
       columnWeights?: number[];
+      blockLayout?: BlockLayout;
       columns: ExperiencePageBlock[][];
     }
   | {
@@ -214,8 +215,11 @@ export type ExperiencePageBlock =
       gap?: RowGap;
       columnWeights?: number[];
       rowWeights?: number[];
+      /** @deprecated use blockLayout width presets */
       width?: BlockWidth;
+      /** @deprecated use blockLayout.align */
       align?: BlockAlign;
+      blockLayout?: BlockLayout;
       cellAlign?: ContainerCellAlign;
       cells: ExperiencePageBlock[][][];
     };

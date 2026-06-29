@@ -135,7 +135,6 @@ export function resolveContainerLayout(
   gridClass: string;
   colTemplate?: string;
   rowTemplate?: string;
-  wrapperClass?: string;
 } {
   const rows = Math.max(1, Math.min(4, block.rows)) as GridDimension;
   const cols = Math.max(1, Math.min(4, block.cols)) as GridDimension;
@@ -144,11 +143,6 @@ export function resolveContainerLayout(
   const rowWeights = normalizeGridWeights(block.rowWeights, rows);
   const colTemplate = cols > 1 ? getGridTemplate(colWeights, cols) : "1fr";
   const rowTemplate = rows > 1 ? getGridTemplate(rowWeights, rows) : "1fr";
-
-  const wrapperClass = cn(
-    getBlockWidthClass(block.width ?? "full"),
-    getBlockAlignClass(block.align ?? "left")
-  );
 
   const alignItems = "items-stretch";
   const gridClass = `portal-container-grid grid w-full ${gapClass} ${alignItems}`;
@@ -159,7 +153,6 @@ export function resolveContainerLayout(
     gridClass,
     colTemplate,
     rowTemplate,
-    wrapperClass,
   };
 }
 
@@ -300,6 +293,7 @@ export function getLeafVerticalJustifyClass(align: BlockVerticalAlign = "top"): 
   }
 }
 
+/** @deprecated Block horizontal align positions the box only; use markdown HTML for text alignment. */
 export function getLeafTextAlignClass(align: BlockAlign = "left"): string {
   switch (align) {
     case "center":
@@ -342,11 +336,11 @@ export function getLeafInnerWidthClass(width: BlockWidth = "auto", shrinkWrap = 
 export function getBlockPaddingClass(padding: BlockPadding = "none"): string {
   switch (padding) {
     case "sm":
-      return "py-2";
+      return "p-2";
     case "md":
-      return "py-4";
+      return "p-4";
     case "lg":
-      return "py-8";
+      return "p-8";
     case "none":
     default:
       return "";

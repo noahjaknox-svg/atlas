@@ -24,6 +24,8 @@ import {
   type ExperienceBootstrap,
 } from "./experience-bootstrap-context";
 import { ExperienceChapterDeck } from "./experience-chapter-deck";
+import { PortalLayoutBreakpointStyles } from "../portal-layout-breakpoint-styles";
+import type { PortalLayoutSettings } from "@/lib/portal-layout-settings";
 import { experienceNavPillV2 } from "./experience-tokens";
 import { PortalNavExtraLinks } from "../portal-nav-extra-links";
 
@@ -124,6 +126,7 @@ function ExperienceShellV2Frame({
   onTouchStart,
   onTouchEnd,
   mainRef,
+  layoutSettings,
 }: ShellCommonProps & {
   welcomeActive: boolean;
   proFormaActive: boolean;
@@ -140,6 +143,7 @@ function ExperienceShellV2Frame({
   onTouchStart?: (e: React.TouchEvent) => void;
   onTouchEnd?: (e: React.TouchEvent) => void;
   mainRef?: React.RefObject<HTMLElement>;
+  layoutSettings?: PortalLayoutSettings | null;
 }) {
   const [cloudsEnabled, setCloudsEnabled] = useCloudsToggle();
   const shellRef = useRef<HTMLDivElement>(null);
@@ -187,6 +191,7 @@ function ExperienceShellV2Frame({
 
   return (
     <div ref={shellRef} className="dark relative min-h-[100dvh] text-white">
+      <PortalLayoutBreakpointStyles layoutSettings={layoutSettings} />
       <div className="pointer-events-none fixed inset-0 z-0 bg-[#0a0d14]" aria-hidden />
       {cloudsEnabled ? (
         <CloudBackground
@@ -380,6 +385,7 @@ function ExperienceShellV2DeckInner(props: ShellCommonProps) {
     withDraft,
     activeSlug,
     isTransitioning,
+    payload,
   } = useExperienceBootstrap();
 
   const prefetchChapter = usePrefetchExperienceChapter(props.slug, props.draftMode);
@@ -439,6 +445,7 @@ function ExperienceShellV2DeckInner(props: ShellCommonProps) {
       onTouchStart={handleSwipeStart}
       onTouchEnd={handleSwipeEnd}
       mainRef={mainRef}
+      layoutSettings={payload.branding?.layoutSettings}
     />
   );
 }

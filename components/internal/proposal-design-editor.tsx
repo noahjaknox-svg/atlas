@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
 import {
+  DEFAULT_LAYOUT_BREAKPOINTS,
   DEFAULT_LAYOUT_SETTINGS,
   type LayoutWidthPreset,
+  type PortalLayoutBreakpoints,
   type PortalLayoutSettings,
 } from "@/lib/portal-layout-settings";
 
@@ -125,7 +127,8 @@ export function ProposalDesignEditor({
             <h2 className="atlas-section-title">Layout widths</h2>
             <p className="atlas-caption mt-1">
               Named width tiers as a percent of the page column or grid cell. Blocks pick a tier
-              for desktop and mobile separately.
+              for desktop and mobile separately. Breakpoints control when those tiers switch and
+              when multi-column layouts stack.
             </p>
           </div>
           <Button
@@ -233,13 +236,63 @@ function LayoutWidthsTable({
   settings: PortalLayoutSettings;
   onChange: (next: PortalLayoutSettings) => void;
 }) {
+  const breakpoints = settings.breakpoints ?? DEFAULT_LAYOUT_BREAKPOINTS;
+
   function patchPreset(index: number, patch: Partial<LayoutWidthPreset>) {
     const next = settings.widthPresets.map((p, i) => (i === index ? { ...p, ...patch } : p));
     onChange({ ...settings, widthPresets: next });
   }
 
+  function patchBreakpoints(patch: Partial<PortalLayoutBreakpoints>) {
+    const next = { ...breakpoints, ...patch };
+    if (next.gridMinWidth < next.desktopMinWidth) {
+      next.gridMinWidth = next.desktopMinWidth;
+    }
+    onChange({
+      ...settings,
+      breakpoints: next,
+    });
+  }
+
   return (
-    <div className="mt-4 overflow-x-auto">
+    <div className="mt-4 space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label className="text-xs text-atlas-muted">Desktop width starts at (px)</Label>
+          <Input
+            type="number"
+            min={480}
+            max={1200}
+            value={breakpoints.desktopMinWidth}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isFinite(n)) patchBreakpoints({ desktopMinWidth: n });
+            }}
+            className="mt-1 h-8"
+          />
+          <p className="mt-1 text-xs text-atlas-muted">
+            Below this width, mobile width presets apply.
+          </p>
+        </div>
+        <div>
+          <Label className="text-xs text-atlas-muted">Multi-column grid starts at (px)</Label>
+          <Input
+            type="number"
+            min={640}
+            max={1600}
+            value={breakpoints.gridMinWidth}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isFinite(n)) patchBreakpoints({ gridMinWidth: n });
+            }}
+            className="mt-1 h-8"
+          />
+          <p className="mt-1 text-xs text-atlas-muted">
+            Below this width, side-by-side container columns stack.
+          </p>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
       <table className="w-full min-w-[28rem] text-sm">
         <thead>
           <tr className="border-b border-atlas-border text-left text-xs text-atlas-muted">
@@ -282,6 +335,7 @@ function LayoutWidthsTable({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

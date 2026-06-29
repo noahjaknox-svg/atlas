@@ -2,16 +2,18 @@
 
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import type { PortalVariableContext } from "@/lib/portal-variables";
-import { resolvePortalVariables } from "@/lib/portal-variables";
 import { ExperienceBlockRenderer } from "../../experience-block-renderer";
 import { ExperienceSlideV2 } from "./experience-slide-v2";
 import { ChapterStagger, ChapterStaggerItem } from "../chapter-transition";
-import { ChapterHeader } from "../chapter-layout-primitives";
 
 import type { BlockPath } from "@/lib/portal-block-layout";
 import type { ExperiencePageBlock } from "@/lib/experience-content";
 import type { PreviewViewport } from "@/components/internal/portal-designer/portal-designer-types";
 import type { PortalLayoutSettings } from "@/lib/portal-layout-settings";
+import {
+  experienceBlockPageContentV2,
+} from "../experience-tokens";
+import { cn } from "@/lib/utils";
 
 export function GenericChapterV2({
   section,
@@ -39,24 +41,19 @@ export function GenericChapterV2({
   layoutSettings?: PortalLayoutSettings;
 }) {
   const blocks = section.contentBlocks?.pageBlocks ?? [];
+  const resolvedDesignViewport = designViewport ?? "desktop";
+  const mobilePreview = resolvedDesignViewport === "mobile";
 
   return (
     <ExperienceSlideV2
-      className={designMode ? "px-0" : undefined}
-      contentClassName={
-        designMode ? "mx-0 max-w-none px-4 sm:px-6" : undefined
-      }
+      className={cn(
+        "portal-block-page-layout !px-0",
+        mobilePreview && "portal-design-mobile-layout",
+        !mobilePreview && designMode && "portal-design-desktop-layout"
+      )}
+      contentClassName={experienceBlockPageContentV2}
     >
       <ChapterStagger className="flex w-full flex-col gap-4 lg:gap-6">
-        <ChapterStaggerItem>
-          <ChapterHeader
-            title={
-              variableContext
-                ? resolvePortalVariables(section.title, variableContext)
-                : section.title
-            }
-          />
-        </ChapterStaggerItem>
         <ChapterStaggerItem>
           <ExperienceBlockRenderer
             blocks={blocks}
