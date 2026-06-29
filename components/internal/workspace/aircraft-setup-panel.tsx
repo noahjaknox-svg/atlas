@@ -190,7 +190,7 @@ export function AircraftSetupBar({
   });
 
   return (
-    <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/40 px-4 py-4">
+    <div className="shrink-0 border-b border-atlas-border bg-atlas-chrome/95 px-4 py-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SearchableSelect
           label="Aircraft type"

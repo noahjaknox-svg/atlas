@@ -48,6 +48,8 @@ export function PinGate({
 
     setEntered(true);
     setLightSweep(true);
+    router.prefetch(`/${slug}/experience/welcome`);
+    router.prefetch(`/${slug}/experience/pro-forma`);
     setTimeout(() => {
       router.push(data.redirect ?? `/${slug}/experience/welcome`);
       router.refresh();
@@ -61,7 +63,7 @@ export function PinGate({
       priorityVideo
       kenBurns
       className={cn(
-        "relative flex min-h-screen flex-col items-center justify-center transition-opacity duration-700",
+        "dark relative flex min-h-screen flex-col items-center justify-center transition-opacity duration-700",
         entered && "opacity-0"
       )}
     >

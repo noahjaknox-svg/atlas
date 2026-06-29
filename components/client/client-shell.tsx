@@ -57,7 +57,7 @@ export function ClientShell({
     );
 
   return (
-    <div className={cn("min-h-screen", immersive ? "bg-transparent text-white" : "bg-atlas-bg")}>
+    <div className={cn("dark min-h-screen", immersive ? "bg-transparent text-white" : "bg-atlas-bg")}>
       <header
         className={cn(
           "portal-nav fixed left-0 right-0 top-0 z-50 border-b backdrop-blur-md",

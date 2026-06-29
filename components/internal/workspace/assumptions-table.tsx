@@ -225,7 +225,7 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
         <h3 className="atlas-panel-title truncate">{section.title}</h3>
       </div>
 
-      <div className="atlas-config-table py-1" role="table">
+      <div className="atlas-config-table" role="table">
         <ConfigTableHeader />
 
         {visibleGroups.map((group) => {

@@ -74,7 +74,7 @@ export function WorkspaceProposalFooter({
   const previewBlocked = previewDisabled || previewLoading;
 
   return (
-    <div className="shrink-0 border-t border-atlas-border bg-atlas-surface/40 px-4 py-2.5">
+    <div className="shrink-0 border-t border-atlas-border bg-atlas-chrome/95 px-4 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex items-center gap-2">
           <Button

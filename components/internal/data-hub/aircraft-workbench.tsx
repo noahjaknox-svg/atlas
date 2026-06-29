@@ -459,7 +459,7 @@ export function AircraftWorkbench({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20 xl:w-80">
+      <aside className="data-hub-sidebar flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 xl:w-80">
         <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3">
           <input
             placeholder="Search aircraft…"
@@ -504,7 +504,7 @@ export function AircraftWorkbench({
                       "flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors",
                       active
                         ? "bg-atlas-accent/15 font-medium text-atlas-accent"
-                        : "text-atlas-muted hover:bg-atlas-border/30"
+                        : "text-atlas-text/75 hover:bg-atlas-border/30 hover:text-atlas-text"
                     )}
                   >
                     <span className="min-w-0 flex-1 truncate">

@@ -104,7 +104,7 @@ export function DataHubClient({
           : "bg-atlas-accent/15 text-atlas-accent"
         : pinned
           ? "text-atlas-text hover:bg-atlas-border/30"
-          : "text-atlas-muted hover:bg-atlas-border/30"
+          : "text-atlas-text/75 hover:bg-atlas-border/30 hover:text-atlas-text"
     }`;
 
   const sidebarTools = showSidebarTools ? (
@@ -118,7 +118,7 @@ export function DataHubClient({
 
   return (
     <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <div className="shrink-0 border-b border-atlas-border bg-atlas-surface/30 lg:hidden">
+      <div className="shrink-0 border-b border-atlas-border bg-atlas-chrome/95 lg:hidden">
         <nav
           className="atlas-scroll-x flex gap-1 overflow-x-auto px-3 py-2"
           aria-label="Data sections"
@@ -144,7 +144,7 @@ export function DataHubClient({
         ) : null}
       </div>
 
-      <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20 lg:flex xl:w-60">
+      <aside className="data-hub-sidebar hidden min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 lg:flex xl:w-60">
         <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto">
           <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-atlas-muted/80">
             Data warehouse

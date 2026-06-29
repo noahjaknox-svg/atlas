@@ -186,7 +186,7 @@ export function ExperienceShell({
   );
 
   return (
-    <div className="relative h-screen overflow-hidden text-white">
+    <div className="dark relative h-screen overflow-hidden text-white">
       <CloudBackground
         imageUrl={branding.heroCloudImageUrl}
         videoUrl={branding.heroCloudVideoUrl}
