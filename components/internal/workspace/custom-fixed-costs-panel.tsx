@@ -61,7 +61,7 @@ export function CustomFixedCostsPanel({
         <h3 className="atlas-panel-title">Custom fixed costs</h3>
       </div>
 
-      <div className="atlas-config-table py-1" role="table">
+      <div className="atlas-config-table" role="table">
         <div className="atlas-config-th" role="row">
           <span className="min-w-0 truncate">Line item</span>
           <span className="atlas-config-th-value" aria-hidden />

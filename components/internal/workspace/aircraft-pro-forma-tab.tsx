@@ -273,7 +273,7 @@ export function AircraftProFormaColumn({
         </div>
       ) : null}
 
-      <div className="min-w-0 overflow-hidden rounded-lg border border-atlas-border/60 bg-atlas-bg/30">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-atlas-border/60 bg-atlas-surface/85 dark:bg-atlas-bg/30">
         <button
           type="button"
           className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-atlas-muted hover:text-atlas-text"

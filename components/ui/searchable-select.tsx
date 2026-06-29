@@ -64,6 +64,7 @@ export function SearchableSelect({
           if (!query) onSearch("");
         }}
         className={cn("atlas-input", compact && "h-9")}
+        title={(displayValue ?? query) || undefined}
       />
       {open && (options.length > 0 || loading) && (
         <ul className="atlas-scroll absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg">

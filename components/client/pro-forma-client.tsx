@@ -10,7 +10,10 @@ import { ProFormaAssumptionsList } from "@/components/client/pro-forma-assumptio
 import { ProFormaUtilizationSummary } from "@/components/client/pro-forma-utilization-summary";
 import { ProFormaFinancingPanel } from "@/components/shared/pro-forma-financing-panel";
 import { CrewLadderStepper } from "@/components/shared/crew-ladder-stepper";
-import type { ClientSnapshotView } from "@/lib/client-serializer";
+import {
+  serializeClientSnapshotFromPayload,
+  type ClientSnapshotView,
+} from "@/lib/client-serializer-payload";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 import {
@@ -24,6 +27,7 @@ import {
   isFinancingScenarioVisible,
   resolveInitialFinancingEnabled,
 } from "@/lib/financing-scenario";
+import { useExperienceBootstrapOptional } from "@/components/client/experience/v2/experience-bootstrap-context";
 
 function parseFinancingNumber(raw: string | undefined): number | undefined {
   const n = parseFloat(raw ?? "");
@@ -194,6 +198,7 @@ export function ProFormaClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const experienceBootstrap = useExperienceBootstrapOptional();
 
   const resolvedInitialAircraftId =
     initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? "";
@@ -298,10 +303,21 @@ export function ProFormaClient({
 
   const loadAircraftData = useCallback(
     async (aircraftId: string) => {
+      const isDraftPreview = searchParams.get("draft") === "1";
+
+      if (!isDraftPreview && experienceBootstrap?.payload) {
+        const local = serializeClientSnapshotFromPayload(experienceBootstrap.payload, {
+          aircraftInstanceId: aircraftId,
+        });
+        if (local) {
+          applySnapshot(local);
+          return;
+        }
+      }
+
       const generation = ++fetchGenerationRef.current;
       setAircraftLoading(true);
       try {
-        const isDraftPreview = searchParams.get("draft") === "1";
         const res = isDraftPreview
           ? await fetch(
               `/api/proposals/${encodeURIComponent(initial.proposal.id)}/portal-preview/client?aircraftInstanceId=${encodeURIComponent(aircraftId)}`
@@ -325,7 +341,7 @@ export function ProFormaClient({
         }
       }
     },
-    [slug, applySnapshot, searchParams, initial.proposal.id]
+    [slug, applySnapshot, searchParams, initial.proposal.id, experienceBootstrap?.payload]
   );
 
   const initialFingerprint = `${initial.aircraft.id}:${initial.calculationAssumptions?.proforma_custom_fixed_costs ?? ""}`;

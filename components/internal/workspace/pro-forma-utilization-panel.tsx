@@ -218,7 +218,7 @@ export function ProFormaScenarioPanel({
         onCrewChange={onCrewChange}
       />
 
-      <div className="py-1">
+      <div>
         <MetricRow
           label="Max annual usage"
           value={fmtHours(utilizationMetrics.maxAnnualUsage)}

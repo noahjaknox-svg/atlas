@@ -186,7 +186,7 @@ function ExperienceShellV2Frame({
   const footerOffset = "var(--portal-v2-footer-height)";
 
   return (
-    <div ref={shellRef} className="relative min-h-[100dvh] text-white">
+    <div ref={shellRef} className="dark relative min-h-[100dvh] text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[#0a0d14]" aria-hidden />
       {cloudsEnabled ? (
         <CloudBackground

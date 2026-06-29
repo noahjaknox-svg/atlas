@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
+import { ThemeAppearanceMenu } from "@/components/theme/theme-appearance-menu";
+import { ThemeLogo } from "@/components/theme/theme-logo";
 
 type NavLink = { kind: "link"; href: string; label: string };
 type NavAction = { kind: "action"; action: "new-proposal"; label: string };
@@ -93,7 +94,9 @@ export function AppHeader({
   const pathname = usePathname();
   const router = useRouter();
   const [departmentMenuOpen, setDepartmentMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const departmentMenuRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const activeDepartment = getActiveDepartment(pathname);
   const centerItems = activeDepartment.items;
@@ -102,6 +105,7 @@ export function AppHeader({
 
   useEffect(() => {
     setDepartmentMenuOpen(false);
+    setAccountMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -118,6 +122,20 @@ export function AppHeader({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [departmentMenuOpen]);
 
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target as Node)
+      ) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [accountMenuOpen]);
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     router.push("/login");
@@ -127,18 +145,11 @@ export function AppHeader({
   const homeHref = departmentHomeHref(activeDepartment);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-bg/95 backdrop-blur">
+    <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-chrome/95 backdrop-blur">
       <div className="grid h-14 w-full grid-cols-[1fr_auto_1fr] items-center px-3 lg:px-5">
         <div className="flex h-9 items-center justify-self-start gap-3">
           <Link href={homeHref} className="flex h-9 items-center" aria-label="PrismJet home">
-            <Image
-              src="/images/prismjet-logo.png"
-              alt="PrismJet"
-              width={246}
-              height={87}
-              className="h-9 w-auto object-contain"
-              priority
-            />
+            <ThemeLogo className="h-9 w-auto object-contain" priority />
           </Link>
 
           <div className="relative" ref={departmentMenuRef}>
@@ -222,56 +233,74 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-end gap-3">
-          <div className="relative group">
+          <div className="relative" ref={accountMenuRef}>
             <button
               type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-atlas-border bg-atlas-surface text-xs font-medium text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
               aria-label="Account menu"
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
             >
               {userName?.slice(0, 2).toUpperCase() ?? "—"}
             </button>
-            <div className="absolute right-0 top-full z-50 hidden min-w-[168px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg group-hover:block group-focus-within:block">
-              {userName && (
-                <p className="border-b border-atlas-border px-3 py-2 text-xs text-atlas-muted">
-                  {userName}
-                </p>
-              )}
-              <Link
-                href="/settings"
-                className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+            {accountMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 min-w-[168px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
               >
-                Settings
-              </Link>
-              {isAdmin && (
+                {userName && (
+                  <p className="border-b border-atlas-border px-3 py-2 text-xs text-atlas-muted">
+                    {userName}
+                  </p>
+                )}
                 <Link
-                  href="/settings/integrations"
+                  href="/settings"
+                  role="menuitem"
+                  onClick={() => setAccountMenuOpen(false)}
                   className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
                 >
-                  Integrations
+                  Settings
                 </Link>
-              )}
-              {isAdmin && (
+                {isAdmin && (
+                  <Link
+                    href="/settings/integrations"
+                    role="menuitem"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+                  >
+                    Integrations
+                  </Link>
+                )}
+                {isAdmin && (
+                  <Link
+                    href="/settings/users"
+                    role="menuitem"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+                  >
+                    Manage users
+                  </Link>
+                )}
                 <Link
-                  href="/settings/users"
+                  href="/help"
+                  role="menuitem"
+                  onClick={() => setAccountMenuOpen(false)}
                   className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
                 >
-                  Manage users
+                  Help
                 </Link>
-              )}
-              <Link
-                href="/help"
-                className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
-              >
-                Help
-              </Link>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
-              >
-                Log out
-              </button>
-            </div>
+                <ThemeAppearanceMenu />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void logout()}
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+                >
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

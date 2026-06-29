@@ -11,13 +11,14 @@ const config: Config = {
     extend: {
       colors: {
         atlas: {
-          bg: "#0A0D14",
-          surface: "#111827",
-          accent: "#C9A84C",
-          "accent-hover": "#E2C46A",
-          text: "#F9FAFB",
-          muted: "#9CA3AF",
-          border: "#1F2937",
+          bg: "rgb(var(--atlas-bg) / <alpha-value>)",
+          surface: "rgb(var(--atlas-surface) / <alpha-value>)",
+          accent: "rgb(var(--atlas-accent) / <alpha-value>)",
+          "accent-hover": "rgb(var(--atlas-accent-hover) / <alpha-value>)",
+          text: "rgb(var(--atlas-text) / <alpha-value>)",
+          muted: "rgb(var(--atlas-muted) / <alpha-value>)",
+          border: "rgb(var(--atlas-border) / <alpha-value>)",
+          chrome: "rgb(var(--atlas-chrome) / <alpha-value>)",
           danger: "#EF4444",
           success: "#10B981",
         },

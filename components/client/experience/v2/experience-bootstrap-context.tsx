@@ -12,11 +12,15 @@ import {
 } from "react";
 import {
   getSectionBySlug,
+  isProFormaSectionVisible,
   SECTION_TYPE_TO_SLUG,
   type ExperienceSectionSnapshot,
   type ExperienceSectionType,
 } from "@/lib/experience-content";
-import type { ClientSnapshotView } from "@/lib/client-serializer";
+import {
+  serializeClientSnapshotFromPayload,
+  type ClientSnapshotView,
+} from "@/lib/client-serializer-payload";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import {
   experienceHref,
@@ -85,6 +89,43 @@ function buildExperienceUrl(
   if (!qs) return base;
   const join = base.includes("?") ? "&" : "?";
   return `${base}${join}${qs}`;
+}
+
+function buildPublishedClientSnapshot(
+  payload: ProposalSnapshotPayload,
+  aircraftInstanceId: string | null
+): ClientSnapshotView | null {
+  return serializeClientSnapshotFromPayload(payload, {
+    aircraftInstanceId: aircraftInstanceId ?? payload.primaryAircraftInstanceId ?? null,
+  });
+}
+
+async function fetchClientSnapshotFromApi(options: {
+  slug: string;
+  draftMode: boolean;
+  proposalId?: string;
+  aircraftParam: string | null;
+  primaryAircraftInstanceId?: string | null;
+}): Promise<ClientSnapshotView | null> {
+  const { slug, draftMode, proposalId, aircraftParam, primaryAircraftInstanceId } = options;
+  const params = new URLSearchParams();
+  if (aircraftParam) params.set("aircraft", aircraftParam);
+  const qs = params.toString();
+
+  const fetchUrl =
+    draftMode && proposalId
+      ? (() => {
+          const draftParams = new URLSearchParams();
+          const aircraftId = aircraftParam ?? primaryAircraftInstanceId ?? null;
+          if (aircraftId) draftParams.set("aircraftInstanceId", aircraftId);
+          const draftQs = draftParams.toString();
+          return `/api/proposals/${encodeURIComponent(proposalId)}/portal-preview/client${draftQs ? `?${draftQs}` : ""}`;
+        })()
+      : `/api/portal/${encodeURIComponent(slug)}/proposal${qs ? `?${qs}` : ""}`;
+
+  const res = await fetch(fetchUrl);
+  if (!res.ok) return null;
+  return (await res.json()) as ClientSnapshotView;
 }
 
 export function ExperienceBootstrapProvider({
@@ -216,6 +257,17 @@ export function ExperienceBootstrapProvider({
     return () => window.removeEventListener("popstate", onPopState);
   }, [activeSlug, markSlugVisited, pageSlugs]);
 
+  /** Build pro forma from embedded snapshot (published portals — no API). */
+  useEffect(() => {
+    if (draftMode) return;
+    const built = buildPublishedClientSnapshot(bootstrap.payload, aircraftParam);
+    if (!built) return;
+    setClientSnapshot(built);
+    if (isProFormaSectionVisible(sections)) {
+      markSlugVisited("pro-forma");
+    }
+  }, [aircraftParam, bootstrap.payload, draftMode, markSlugVisited, sections]);
+
   useEffect(() => {
     if (activeSlug !== "pro-forma") return;
 
@@ -227,31 +279,25 @@ export function ExperienceBootstrapProvider({
     }
 
     if (clientSnapshot) return;
+
+    const built = buildPublishedClientSnapshot(bootstrap.payload, aircraftParam);
+    if (built) {
+      setClientSnapshot(built);
+      return;
+    }
+
     if (clientFetchRef.current) return;
 
     const generation = ++clientFetchGenerationRef.current;
     setClientLoading(true);
-    const params = new URLSearchParams();
-    if (aircraftParam) params.set("aircraft", aircraftParam);
-    const qs = params.toString();
 
-    const fetchUrl =
-      draftMode && bootstrap.proposalId
-        ? (() => {
-            const draftParams = new URLSearchParams();
-            const aircraftId =
-              aircraftParam ?? bootstrap.payload.primaryAircraftInstanceId ?? null;
-            if (aircraftId) draftParams.set("aircraftInstanceId", aircraftId);
-            const draftQs = draftParams.toString();
-            return `/api/proposals/${encodeURIComponent(bootstrap.proposalId)}/portal-preview/client${draftQs ? `?${draftQs}` : ""}`;
-          })()
-        : `/api/portal/${encodeURIComponent(slug)}/proposal${qs ? `?${qs}` : ""}`;
-
-    clientFetchRef.current = fetch(fetchUrl)
-      .then(async (res) => {
-        if (!res.ok) return null;
-        return (await res.json()) as ClientSnapshotView;
-      })
+    clientFetchRef.current = fetchClientSnapshotFromApi({
+      slug,
+      draftMode,
+      proposalId: bootstrap.proposalId,
+      aircraftParam,
+      primaryAircraftInstanceId: bootstrap.payload.primaryAircraftInstanceId,
+    })
       .catch(() => null)
       .finally(() => {
         if (generation === clientFetchGenerationRef.current) {
@@ -273,7 +319,7 @@ export function ExperienceBootstrapProvider({
     activeSlug,
     aircraftParam,
     bootstrap.initialClientSnapshot,
-    bootstrap.payload.primaryAircraftInstanceId,
+    bootstrap.payload,
     bootstrap.proposalId,
     clientSnapshot,
     draftMode,

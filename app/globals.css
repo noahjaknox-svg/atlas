@@ -4,13 +4,14 @@
 
 @layer base {
   :root {
-    --atlas-bg: #0a0d14;
-    --atlas-surface: #111827;
-    --atlas-accent: #c9a84c;
-    --atlas-accent-hover: #e2c46a;
-    --atlas-text: #f9fafb;
-    --atlas-muted: #b4bcc8;
-    --atlas-border: #1f2937;
+    --atlas-bg: 246 248 251;
+    --atlas-surface: 255 255 255;
+    --atlas-accent: 201 168 76;
+    --atlas-accent-hover: 184 146 63;
+    --atlas-text: 17 24 39;
+    --atlas-muted: 91 101 118;
+    --atlas-border: 216 222 230;
+    --atlas-chrome: 232 236 242;
     --portal-nav-height: 4.5rem;
     --portal-v2-nav-offset: 7.75rem;
     --portal-v2-dock-height: 3.25rem;
@@ -23,6 +24,18 @@
     --portal-glass-bg: rgba(11, 15, 26, 0.45);
     --portal-glass-border: rgba(255, 255, 255, 0.12);
     --portal-stage-size: min(42vw, 22rem);
+  }
+
+  :root.dark,
+  .dark {
+    --atlas-bg: 10 13 20;
+    --atlas-surface: 17 24 39;
+    --atlas-accent: 201 168 76;
+    --atlas-accent-hover: 226 196 106;
+    --atlas-text: 249 250 251;
+    --atlas-muted: 180 188 200;
+    --atlas-border: 31 41 55;
+    --atlas-chrome: 13 17 26;
   }
 
   @media (max-width: 639px) {
@@ -287,6 +300,30 @@
     @apply p-4;
   }
 
+  :root:not(.dark) .atlas-workspace-section {
+    @apply border-atlas-border/70 bg-atlas-surface/85;
+  }
+
+  :root:not(.dark) .atlas-workspace-section-header {
+    @apply border-b border-atlas-border/55 bg-atlas-surface/45;
+  }
+
+  :root:not(.dark) .atlas-config-th {
+    @apply border-b border-atlas-border/60 bg-atlas-surface/35;
+  }
+
+  :root:not(.dark) .atlas-config-group-header {
+    @apply border-b border-atlas-border/50 bg-atlas-surface/30;
+  }
+
+  :root:not(.dark) .atlas-config-row {
+    @apply border-b border-atlas-border/30;
+  }
+
+  :root:not(.dark) .data-hub-sidebar {
+    @apply bg-atlas-surface/70;
+  }
+
   .atlas-form-stack {
     @apply space-y-4;
   }
@@ -320,7 +357,7 @@
   }
 
   .atlas-input {
-    @apply h-9 w-full rounded-md border border-atlas-border bg-atlas-bg px-3 text-sm text-atlas-text shadow-sm placeholder:text-atlas-muted/50 focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/25;
+    @apply h-9 w-full rounded-md border border-atlas-border bg-atlas-surface/80 px-3 text-sm text-atlas-text placeholder:text-atlas-muted/50 focus:border-atlas-accent focus:outline-none focus:ring-1 focus:ring-atlas-accent/25;
   }
 
   .atlas-input-mono {
@@ -329,7 +366,11 @@
 
   /** Configurator assumption table (Field | Pulled / Default | Override) */
   .atlas-config-table {
-    @apply min-w-0 overflow-x-auto;
+    @apply min-w-0 overflow-x-auto pb-0 pt-0;
+  }
+
+  .atlas-config-table [role="rowgroup"] > .atlas-config-row:last-child {
+    @apply border-b-0;
   }
 
   .atlas-field-grid {

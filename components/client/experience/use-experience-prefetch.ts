@@ -26,9 +26,22 @@ export function useExperiencePrefetch(
 
   useEffect(() => {
     const search = typeof window !== "undefined" ? window.location.search : "";
-    prefetchAllExperienceRoutes(router, slug, sections, draftMode, search);
-    prefetchExperienceMedia(sections, branding);
-    router.prefetch(`/${slug}/aircraft`);
+
+    const prefetchRoutes = () => {
+      const slugs = getExperiencePageSlugs(sections);
+      if (slugs.includes("pro-forma")) {
+        prefetchExperienceRoute(router, slug, "pro-forma", draftMode, search);
+      }
+      prefetchAllExperienceRoutes(router, slug, sections, draftMode, search);
+      prefetchExperienceMedia(sections, branding);
+      router.prefetch(`/${slug}/aircraft`);
+    };
+
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(prefetchRoutes);
+      return () => cancelIdleCallback(id);
+    }
+    prefetchRoutes();
   }, [router, slug, sections, branding, draftMode]);
 
   useEffect(() => {

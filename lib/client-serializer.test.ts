@@ -44,7 +44,7 @@ vi.mock("@/lib/proposal-owners-db", () => ({
 
 import { resolvePortalCalculationMap } from "@/lib/portal-calculation-assumptions";
 import { loadOwnerProfilesForAircraft } from "@/lib/proposal-owners-db";
-import { serializeClientSnapshot } from "@/lib/client-serializer";
+import { serializeClientSnapshot, serializeClientSnapshotFromPayload } from "@/lib/client-serializer";
 
 const baseSnapshot: ProposalSnapshotPayload = {
   version: 1,
@@ -267,5 +267,117 @@ describe("serializeClientSnapshot frozen published path", () => {
     const view = await serializeClientSnapshot(snapshot, { proposalId: "p1" });
     expect(view.calculationAssumptions[PROFORMA_VISIBILITY_KEY]).toBe(visibility);
     expect(view.statementRows.some((r) => r.key === "subscriptions_pl")).toBe(false);
+  });
+});
+
+const secondAircraft = {
+  id: "a2",
+  label: "N456",
+  aircraftProfileMode: "existing" as const,
+  aircraftTypeLabel: "Bombardier Challenger 300",
+  portalSubtitle: null,
+  manufacturer: "Bombardier",
+  model: "Challenger 300",
+  tailNumber: "N456",
+  year: 2015,
+  category: null,
+  proposedHomeBase: "KSDL",
+  clientSummary: null,
+  portalImageUrl: null,
+  portalVideoUrl: null,
+  portalSpecHighlights: [] as string[],
+  assumptions: {},
+  calculationAssumptions: {
+    charter_rate: "4800",
+    owner_annual_hours: "350",
+    aircraft_value: "18000000",
+    usage_type: "part_91",
+    max_usage_1_pilot: "0",
+    max_usage_2_pilots: "400",
+    max_usage_3_pilots: "550",
+    crew_step_index: "0",
+    lead_pilot_enabled: "no",
+    pic_count: "1",
+    sic_count: "1",
+    crew_total: "320000",
+    home_fuel_price: "6",
+    away_fuel_price: "7",
+    home_fuel_pct: "80",
+    fuel_burn_gph: "300",
+    max_annual_utilization: "400",
+    charter_block_to_flight_ratio: "1.13",
+    variable_cost_per_hour: "900",
+    insurance_mode: "fixed",
+    insurance_annual: "40000",
+  },
+  ownerProfiles: [
+    {
+      sortOrder: 0,
+      displayName: "Owner B",
+      annualFlightHours: 350,
+      ownershipPercent: 100,
+    },
+  ],
+  metrics: {
+    netAnnualCost: 800000,
+    netMonthlyCost: 66666,
+    ownerHours: 350,
+    charterRevenueOffset: 0,
+    costPerOwnerHour: 2200,
+    aircraftValue: 18000000,
+  },
+  proForma: {
+    netAnnualCost: 800000,
+    netMonthlyCost: 66666,
+    totalRevenue: 0,
+    totalFixedCosts: 400000,
+    ownerVariableCost: 80000,
+    charterVariableCost: 40000,
+    costPerOwnerHour: 2200,
+    charterRevenueOffset: 0,
+    rows: [],
+  },
+};
+
+const multiAircraftSnapshot: ProposalSnapshotPayload = {
+  ...baseSnapshot,
+  primaryAircraftInstanceId: "a1",
+  aircraftList: [baseSnapshot.aircraftList![0]!, secondAircraft],
+};
+
+describe("serializeClientSnapshotFromPayload", () => {
+  it("matches async serializeClientSnapshot for published primary aircraft", async () => {
+    const sync = serializeClientSnapshotFromPayload(multiAircraftSnapshot);
+    const asyncView = await serializeClientSnapshot(multiAircraftSnapshot, { proposalId: "p1" });
+    expect(sync).not.toBeNull();
+    expect(sync!.aircraft.id).toBe(asyncView.aircraft.id);
+    expect(sync!.calculationAssumptions.charter_rate).toBe(
+      asyncView.calculationAssumptions.charter_rate
+    );
+    expect(sync!.statementRows.length).toBe(asyncView.statementRows.length);
+  });
+
+  it("selects aircraft by aircraftInstanceId override", () => {
+    const view = serializeClientSnapshotFromPayload(multiAircraftSnapshot, {
+      aircraftInstanceId: "a2",
+    });
+    expect(view).not.toBeNull();
+    expect(view!.aircraft.id).toBe("a2");
+    expect(view!.aircraft.tailNumber).toBe("N456");
+    expect(view!.calculationAssumptions.charter_rate).toBe("4800");
+    expect(view!.ownerProfiles[0]?.displayName).toBe("Owner B");
+  });
+
+  it("returns null when calculationAssumptions are missing", () => {
+    const legacy: ProposalSnapshotPayload = {
+      ...baseSnapshot,
+      aircraftList: [
+        {
+          ...baseSnapshot.aircraftList![0]!,
+          calculationAssumptions: undefined,
+        },
+      ],
+    };
+    expect(serializeClientSnapshotFromPayload(legacy)).toBeNull();
   });
 });
