@@ -26,6 +26,9 @@ import {
   assumptionsFromInstance,
   usageTypeToOperatingModel,
 } from "@/lib/aircraft-workspace";
+import {
+  normalizeProformaCustomFixedCostsAssumption,
+} from "@/lib/proforma-custom-fixed-costs";
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import {
@@ -98,6 +101,7 @@ export type ProposalWorkspaceData = {
   }>;
   clientPortal: { slug: string; active: boolean; portalUrl?: string } | null;
   lastPublishedAt: string | null;
+  initialNeedsRepublish?: boolean;
   initialClientEditable?: Record<string, boolean>;
   ownersByAircraft: Record<string, ProposalOwnerProfile[]>;
   allocationModeByAircraft: Record<string, OwnerExpenseAllocationMode>;
@@ -146,10 +150,14 @@ export function ProposalWorkspace({
   >("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
-  const [needsRepublish, setNeedsRepublish] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [needsRepublish, setNeedsRepublish] = useState(data.initialNeedsRepublish ?? false);
   const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(data.lastPublishedAt);
   const [proposalName, setProposalName] = useState(data.proposalName);
   const [portalPin, setPortalPin] = useState<string | null>(data.portalPin);
+  const markNeedsRepublish = useCallback(() => {
+    if (portalPin) setNeedsRepublish(true);
+  }, [portalPin]);
   const [ownersByAircraft, setOwnersByAircraft] = useState(data.ownersByAircraft);
   const [allocationModeByAircraft, setAllocationModeByAircraft] = useState(
     data.allocationModeByAircraft
@@ -187,16 +195,23 @@ export function ProposalWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ includedOnProposal: included }),
     });
+    markNeedsRepublish();
   }
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scenarioSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipSave = useRef(true);
   const dirtyAircraftRef = useRef(new Set<string>());
+  const assumptionRevisionRef = useRef<Record<string, number>>({});
   const persistInFlight = useRef(false);
   const persistQueued = useRef(false);
+  const saveStatusRef = useRef(saveStatus);
   const assumptionsByAircraftRef = useRef(assumptionsByAircraft);
   const warehouseBaselineByAircraftRef = useRef(warehouseBaselineByAircraft);
+
+  useEffect(() => {
+    saveStatusRef.current = saveStatus;
+  }, [saveStatus]);
 
   useEffect(() => {
     assumptionsByAircraftRef.current = assumptionsByAircraft;
@@ -209,6 +224,23 @@ export function ProposalWorkspace({
   useEffect(() => {
     ownersByAircraftRef.current = ownersByAircraft;
   }, [ownersByAircraft]);
+
+  function markAircraftDirty(aircraftId: string) {
+    dirtyAircraftRef.current.add(aircraftId);
+    assumptionRevisionRef.current[aircraftId] =
+      (assumptionRevisionRef.current[aircraftId] ?? 0) + 1;
+  }
+
+  function releasePersistedDirty(
+    dirtyIds: string[],
+    revisionsAtStart: Map<string, number>
+  ) {
+    for (const acId of dirtyIds) {
+      if ((assumptionRevisionRef.current[acId] ?? 0) === revisionsAtStart.get(acId)) {
+        dirtyAircraftRef.current.delete(acId);
+      }
+    }
+  }
 
   function seedWarehouseBaseline(aircraftId: string, defaults: Record<string, string>) {
     setWarehouseBaselineByAircraft((prev) => ({
@@ -256,7 +288,7 @@ export function ProposalWorkspace({
         applyWarehouseDefaults(assumptions, defaults, mode)
       );
 
-      dirtyAircraftRef.current.add(aircraftId);
+      markAircraftDirty(aircraftId);
       setAssumptionsByAircraft((prev) => ({ ...prev, [aircraftId]: nextAssumptions }));
       setWarehouseBaselineByAircraft((prev) => ({ ...prev, [aircraftId]: baseline }));
 
@@ -282,7 +314,7 @@ export function ProposalWorkspace({
     const cleaned = Object.fromEntries(
       Object.entries(patch).filter((entry): entry is [string, string] => entry[1] != null)
     ) as AssumptionMap;
-    dirtyAircraftRef.current.add(aircraftId);
+    markAircraftDirty(aircraftId);
     setAssumptionsByAircraft((prev) => ({
       ...prev,
       [aircraftId]: mergeWithDerived({ ...(prev[aircraftId] ?? {}), ...cleaned }),
@@ -381,7 +413,7 @@ export function ProposalWorkspace({
           ),
         }));
       }
-      if (portal?.active) setNeedsRepublish(true);
+      if (portalPin) markNeedsRepublish();
     },
     [data.id, allocationModeByAircraft, portal?.active]
   );
@@ -410,7 +442,7 @@ export function ProposalWorkspace({
     setOwnersByAircraft((prev) => ({ ...prev, [aircraftId]: profiles }));
     setAllocationModeByAircraft((prev) => ({ ...prev, [aircraftId]: mode }));
     if (seedProforma) {
-      dirtyAircraftRef.current.add(aircraftId);
+      markAircraftDirty(aircraftId);
     } else {
       skipSave.current = true;
     }
@@ -438,6 +470,15 @@ export function ProposalWorkspace({
     scheduleOwnersPersist(aircraftId);
   }
   const isArchived = deletedAt != null;
+  const previewDisabledReason = !selected
+    ? "Select an aircraft to preview the prospect portal"
+    : saveStatus === "saving"
+      ? "Wait until your changes finish saving"
+      : saveStatus === "error"
+        ? "Fix save errors before previewing"
+        : undefined;
+  const previewDisabled =
+    !selected || saveStatus === "saving" || saveStatus === "error" || previewLoading;
   const saveLabel = isArchived
     ? "Archived — read only"
     : saveStatus === "saving"
@@ -487,15 +528,32 @@ export function ProposalWorkspace({
     [data.id]
   );
 
-  const persist = useCallback(async () => {
-    if (isArchived) return;
+  const waitForPersistIdle = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        const tick = () => {
+          if (!persistInFlight.current) resolve();
+          else setTimeout(tick, 25);
+        };
+        tick();
+      }),
+    []
+  );
+
+  const persist = useCallback(async (): Promise<boolean> => {
+    if (isArchived) return true;
     if (persistInFlight.current) {
       persistQueued.current = true;
-      return;
+      await waitForPersistIdle();
+      return saveStatusRef.current !== "error";
     }
 
     const dirtyIds = Array.from(dirtyAircraftRef.current);
-    if (dirtyIds.length === 0) return;
+    if (dirtyIds.length === 0) return true;
+
+    const revisionsAtStart = new Map(
+      dirtyIds.map((id) => [id, assumptionRevisionRef.current[id] ?? 0])
+    );
 
     persistInFlight.current = true;
     setSaveStatus("saving");
@@ -513,9 +571,9 @@ export function ProposalWorkspace({
       });
 
       if (payload.length === 0) {
-        dirtyAircraftRef.current.clear();
+        releasePersistedDirty(dirtyIds, revisionsAtStart);
         setSaveStatus("saved");
-        return;
+        return true;
       }
 
       const requests: Promise<Response>[] = [
@@ -541,17 +599,29 @@ export function ProposalWorkspace({
           })
         );
       }
-      dirtyAircraftRef.current.clear();
-
       const results = await Promise.all(requests);
       if (results.some((r) => !r.ok)) throw new Error("save failed");
 
+      releasePersistedDirty(dirtyIds, revisionsAtStart);
+
+      for (const acId of dirtyIds) {
+        const map = assumptionsByAircraftRef.current[acId];
+        if (!map) continue;
+        const normalized = normalizeProformaCustomFixedCostsAssumption(map);
+        assumptionsByAircraftRef.current[acId] = normalized;
+        setAssumptionsByAircraft((prev) =>
+          prev[acId] ? { ...prev, [acId]: normalized } : prev
+        );
+      }
+
       setSaveStatus("saved");
       setLastSavedAt(new Date());
-      if (portal?.active) setNeedsRepublish(true);
+      if (portalPin) markNeedsRepublish();
       if (selectedId) scheduleScenarioSync(selectedId);
+      return true;
     } catch {
       setSaveStatus("error");
+      return false;
     } finally {
       persistInFlight.current = false;
       if (persistQueued.current) {
@@ -561,13 +631,34 @@ export function ProposalWorkspace({
     }
   }, [
     data.id,
-    assumptionsByAircraft,
     selectedId,
     clientEditable,
     portal?.active,
     scheduleScenarioSync,
     isArchived,
+    waitForPersistIdle,
   ]);
+
+  const flushPersist = useCallback(async (): Promise<boolean> => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+
+    if (selectedId) {
+      markAircraftDirty(selectedId);
+    }
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await waitForPersistIdle();
+      if (dirtyAircraftRef.current.size === 0) break;
+      await persist();
+      await waitForPersistIdle();
+      if (saveStatusRef.current === "error") break;
+    }
+
+    return saveStatusRef.current !== "error";
+  }, [persist, selectedId, waitForPersistIdle]);
 
   async function handleProspectSave(payload: ProspectSavePayload) {
     setProspectSaveState("saving");
@@ -596,6 +687,7 @@ export function ProposalWorkspace({
           null
       );
       setProspectSaveState("saved");
+      markNeedsRepublish();
     } catch {
       setProspectSaveState("error");
       throw new Error("Failed to save prospect");
@@ -617,20 +709,25 @@ export function ProposalWorkspace({
 
   function setAssumption(name: string, value: string) {
     if (!selectedId) return;
-    dirtyAircraftRef.current.add(selectedId);
+    markAircraftDirty(selectedId);
     setAssumptionsByAircraft((prev) => {
       const base = syncUtilizationHours({ ...(prev[selectedId] ?? {}), [name]: value });
-      return { ...prev, [selectedId]: mergeWithDerived(base) };
+      const merged = mergeWithDerived(base);
+      const updated = { ...prev, [selectedId]: merged };
+      assumptionsByAircraftRef.current = updated;
+      return updated;
     });
   }
 
   function setAssumptionsMap(next: AssumptionMap) {
     if (!selectedId) return;
-    dirtyAircraftRef.current.add(selectedId);
-    setAssumptionsByAircraft((prev) => ({
-      ...prev,
-      [selectedId]: mergeWithDerived(syncUtilizationHours(next)),
-    }));
+    markAircraftDirty(selectedId);
+    setAssumptionsByAircraft((prev) => {
+      const merged = mergeWithDerived(syncUtilizationHours(next));
+      const updated = { ...prev, [selectedId]: merged };
+      assumptionsByAircraftRef.current = updated;
+      return updated;
+    });
   }
 
   async function handleSelect(id: string) {
@@ -684,10 +781,17 @@ export function ProposalWorkspace({
     }));
     setAllocationModeByAircraft((m) => ({ ...m, [ac.id]: "hybrid" }));
     setSelectedId(ac.id);
-    dirtyAircraftRef.current.add(ac.id);
+    markAircraftDirty(ac.id);
   }
 
   async function handleRefreshWarehouseData(aircraftId: string) {
+    if (
+      !confirm(
+        "Refresh warehouse data for this aircraft? Values from the Data Warehouse will replace unstored defaults. Your saved overrides are kept."
+      )
+    ) {
+      return;
+    }
     const ok = await applyWarehouseFromApi(aircraftId, "refresh");
     if (!ok) {
       alert("Could not refresh warehouse data. Check aircraft type and home base.");
@@ -772,29 +876,100 @@ export function ProposalWorkspace({
       return next;
     });
     setSelectedId(json.selectedAircraftId ?? aircraft.find((a) => a.id !== id)?.id ?? null);
-    if (portal?.active) setNeedsRepublish(true);
+    if (portalPin) setNeedsRepublish(true);
+  }
+
+  function setPreviewTabMessage(tab: Window | null, message: string) {
+    if (!tab || tab.closed) return;
+    try {
+      tab.document.title = "Atlas — Preview";
+      tab.document.body.innerHTML = `<p style="margin:0;padding:2rem;font-family:system-ui,sans-serif;color:#334155">${message}</p>`;
+    } catch {
+      // Ignore if the browser blocks writing to the placeholder tab.
+    }
+  }
+
+  function navigatePreviewTab(tab: Window | null, url: string) {
+    if (tab && !tab.closed) {
+      tab.location.replace(url);
+      return true;
+    }
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    return opened != null;
   }
 
   async function handlePreviewPortal() {
-    let slug = previewSlug;
-    if (!slug) {
-      const res = await fetch(`/api/proposals/${data.id}/portal/draft`, { method: "POST" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json.slug) {
-        alert(json.error ?? "Could not open preview");
+    if (previewDisabled) return;
+
+    const previewTab = window.open("about:blank", "_blank");
+    setPreviewTabMessage(previewTab, "Saving your changes…");
+    setPreviewLoading(true);
+    try {
+      if (selectedId) {
+        markAircraftDirty(selectedId);
+      }
+      const saved = await flushPersist();
+      if (!saved) {
+        previewTab?.close();
+        alert("Could not save your latest changes. Fix any save errors and try preview again.");
         return;
       }
-      slug = json.slug as string;
-      setPortal({
-        slug,
-        active: false,
-        portalUrl: json.portalUrl ?? null,
-      });
+
+      setPreviewTabMessage(previewTab, "Opening preview…");
+
+      let slug = previewSlug;
+      if (!slug) {
+        let res: Response;
+        try {
+          res = await fetch(`/api/proposals/${data.id}/portal/draft`, { method: "POST" });
+        } catch {
+          previewTab?.close();
+          alert("Could not reach the server. Check your connection and try preview again.");
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.slug) {
+          previewTab?.close();
+          alert(json.error ?? "Could not open preview");
+          return;
+        }
+        slug = json.slug as string;
+        setPortal({
+          slug,
+          active: false,
+          portalUrl: json.portalUrl ?? null,
+        });
+      }
+
+      const aircraftQs =
+        selectedId != null
+          ? `&aircraft=${encodeURIComponent(selectedId)}`
+          : "";
+      const previewUrl = `${window.location.origin}/${slug}/experience/pro-forma?draft=1${aircraftQs}&_t=${Date.now()}`;
+      const opened = navigatePreviewTab(previewTab, previewUrl);
+      if (!opened) {
+        alert(
+          "Your browser blocked the preview tab. Allow popups for this site and try again."
+        );
+      }
+    } catch {
+      previewTab?.close();
+      alert("Could not open preview. Please try again.");
+    } finally {
+      setPreviewLoading(false);
     }
-    window.open(`/${slug}/experience/welcome?draft=1`, "_blank");
   }
 
   async function handlePublish(republishing = false) {
+    if (
+      !confirm(
+        republishing
+          ? "Republish this prospect portal? Clients will see your latest workspace changes."
+          : "Publish this prospect portal? Clients will receive a new access code on first publish."
+      )
+    ) {
+      return;
+    }
     setPublishLoading(true);
     try {
       const res = await fetch(`/api/proposals/${data.id}/publish`, {
@@ -845,7 +1020,7 @@ export function ProposalWorkspace({
       }
     } else if (
       !confirm(
-        "Restore this prospect portal? Clients will be able to open it again with the current access code."
+        "Restore this prospect portal? Clients will see the last published version — not your current draft — until you republish."
       )
     ) {
       return;
@@ -876,6 +1051,7 @@ export function ProposalWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ proposalName: name }),
     });
+    markNeedsRepublish();
   }
 
   async function handleArchive() {
@@ -934,6 +1110,7 @@ export function ProposalWorkspace({
           : ac
       )
     );
+    markNeedsRepublish();
   }
 
   const listItems: AircraftListItem[] = aircraft.map((ac) => ({
@@ -985,6 +1162,9 @@ export function ProposalWorkspace({
             lastPublishedAt={lastPublishedAt}
             isAdmin={isAdmin}
             hasSelectedAircraft={!!selected}
+            previewLoading={previewLoading}
+            previewDisabled={previewDisabled}
+            previewDisabledReason={previewDisabledReason}
             onPreview={() => void handlePreviewPortal()}
             onPublish={(republish) => void handlePublish(republish)}
             onTakeDown={() => void handleSetPortalActive(false)}
@@ -1042,7 +1222,7 @@ export function ProposalWorkspace({
           sections={sections as ExperienceSectionRow[]}
           onSectionsChange={setSections}
           portalSlug={portalSlug}
-          onExperienceSaved={() => setNeedsRepublish(true)}
+          onExperienceSaved={() => markNeedsRepublish()}
         />
       ) : null}
     </div>

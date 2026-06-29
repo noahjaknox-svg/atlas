@@ -53,24 +53,32 @@ export function ExperienceChapterSlide({
     );
   }
 
+  const pageContent = (
+    <ExperiencePageContent
+      pageSlug={pageSlug}
+      section={section}
+      payload={payload}
+      contactName={contactName}
+      branding={{
+        heroCloudImageUrl: branding.heroCloudImageUrl,
+        heroCloudVideoUrl: branding.heroCloudVideoUrl,
+        logoUrl: branding.logoUrl ?? null,
+      }}
+      slug={slug}
+      client={clientSnapshot ?? undefined}
+      aircraftParam={aircraftParam}
+      renderV2
+    />
+  );
+
   return (
-    <div className="min-h-0 w-full shrink-0" aria-hidden={!isActive}>
+    <div className="flex h-full min-h-0 w-full flex-col" aria-hidden={!isActive}>
       <ChapterStaggerProvider mode="static">
-        <ExperiencePageContent
-          pageSlug={pageSlug}
-          section={section}
-          payload={payload}
-          contactName={contactName}
-          branding={{
-            heroCloudImageUrl: branding.heroCloudImageUrl,
-            heroCloudVideoUrl: branding.heroCloudVideoUrl,
-            logoUrl: branding.logoUrl ?? null,
-          }}
-          slug={slug}
-          client={clientSnapshot ?? undefined}
-          aircraftParam={aircraftParam}
-          renderV2
-        />
+        {pageSlug === "pro-forma" ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{pageContent}</div>
+        ) : (
+          pageContent
+        )}
       </ChapterStaggerProvider>
     </div>
   );

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolvePortalBranding } from "@/lib/portal-constants";
 
 describe("resolvePortalBranding", () => {
-  it("uses live portal content for cloud video and ignores snapshot branding", () => {
+  it("uses snapshot branding when preferSnapshot is true (published portal)", () => {
     const liveContent = {
       heroCloudImageUrl: "https://cdn.example/live-cloud.jpg",
       heroCloudVideoUrl: "https://cdn.example/live-cloud.mp4",
@@ -15,14 +15,14 @@ describe("resolvePortalBranding", () => {
       logoUrl: "https://cdn.example/snapshot-logo.png",
     };
 
-    const branding = resolvePortalBranding(liveContent, snapshot);
+    const branding = resolvePortalBranding(liveContent, snapshot, { preferSnapshot: true });
 
-    expect(branding.heroCloudImageUrl).toBe("https://cdn.example/live-cloud.jpg");
-    expect(branding.heroCloudVideoUrl).toBe("https://cdn.example/live-cloud.mp4");
-    expect(branding.logoUrl).toBe("https://cdn.example/live-logo.png");
+    expect(branding.heroCloudImageUrl).toBe("https://cdn.example/snapshot-cloud.jpg");
+    expect(branding.heroCloudVideoUrl).toBe("https://cdn.example/snapshot-cloud.mp4");
+    expect(branding.logoUrl).toBe("https://cdn.example/snapshot-logo.png");
   });
 
-  it("does not fall back to snapshot cloud video when live content has a saved URL", () => {
+  it("uses live portal content for draft preview when preferSnapshot is false", () => {
     const branding = resolvePortalBranding(
       {
         heroCloudImageUrl: "https://cdn.example/new-cloud.jpg",

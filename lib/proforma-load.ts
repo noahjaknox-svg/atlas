@@ -1,12 +1,8 @@
 import { prisma } from "@/lib/db";
-import {
-  assumptionsToProFormaInputs,
-  calculateProFormaScenarios,
-  type ScenarioProFormaResult,
-  type ScenarioInput,
-} from "@/lib/proforma";
+import type { ScenarioProFormaResult, ScenarioInput } from "@/lib/proforma";
+import { calculateWorkspaceProFormaScenarios } from "@/lib/workspace-proforma-scenarios";
 import { ensureThreeScenarios, scenarioInputsFromDb } from "@/lib/scenarios";
-import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { resolveEffectiveAssumptionsForInstance } from "@/lib/resolve-aircraft-defaults";
 
 export type ProFormaPayload = {
@@ -30,19 +26,18 @@ export async function loadProFormaData(
     }),
   ]);
 
-  const category = aircraftAssumptionCategory(aircraftInstanceId);
-  let map = mergeLegacyAssumptions(
+  let map = mergeAssumptionRowsForInstance(
     assumptions.map((a) => ({
       category: a.category,
       assumptionName: a.assumptionName,
       value: a.value,
     })),
-    category
+    aircraftInstanceId
   );
   map = await resolveEffectiveAssumptionsForInstance(aircraftInstanceId, map);
 
   const scenarioInputs = scenarioInputsFromDb(scenarioRows);
-  const results = calculateProFormaScenarios(map, scenarioInputs);
+  const results = calculateWorkspaceProFormaScenarios(map, scenarioInputs);
 
   return {
     scenarios: results,

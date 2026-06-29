@@ -16,6 +16,7 @@ import {
   syncUtilizationHours,
 } from "@/lib/proforma-utilization";
 import { computeHangarCalculatedAnnual, resolveHangarAnnual } from "@/lib/hangar-assumptions";
+import { applyFinancingDerivations, resolveFinancingAmounts } from "@/lib/financing-assumptions";
 import { formatCurrency } from "@/lib/utils";
 
 function num(v: string | undefined, fallback = 0): number {
@@ -206,9 +207,7 @@ export function computeCrewTotal(a: AssumptionMap): number {
 
 export function computeMonthlyDebtService(a: AssumptionMap): number | null {
   if (a.financing_enabled !== "yes") return null;
-  const loan = num(a.loan_amount);
-  const down = num(a.down_payment);
-  const principal = Math.max(0, loan - down);
+  const { principal } = resolveFinancingAmounts(a);
   if (principal <= 0) return 0;
 
   const termMonths = Math.max(1, Math.round(num(a.term_months, 120)));
@@ -280,7 +279,10 @@ export function computeDerivedAssumptions(assumptions: AssumptionMap): Partial<A
   derived.sic_training_total = String(training.sic);
   derived.crew_training_total = String(training.total);
 
-  const debt = computeMonthlyDebtService(assumptions);
+  Object.assign(derived, applyFinancingDerivations(assumptions));
+
+  const withFinancing = { ...assumptions, ...derived } as AssumptionMap;
+  const debt = computeMonthlyDebtService(withFinancing);
   if (debt != null) {
     derived.monthly_debt_service = String(debt);
   } else {

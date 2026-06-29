@@ -38,13 +38,23 @@ export function getExperiencePageSlugs(sections: ExperienceSectionSnapshot[]): s
   return slugs;
 }
 
+function appendSearchParams(href: string, search: string): string {
+  const trimmed = search.replace(/^\?/, "").trim();
+  if (!trimmed) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}${trimmed}`;
+}
+
 export function prefetchExperienceRoute(
   router: { prefetch: (href: string) => void },
   slug: string,
   pageSlug: string,
-  draftMode = false
+  draftMode = false,
+  search = typeof window !== "undefined" ? window.location.search : ""
 ): void {
-  const href = withExperienceDraftQuery(experienceHref(slug, pageSlug), draftMode);
+  const href = appendSearchParams(
+    withExperienceDraftQuery(experienceHref(slug, pageSlug), draftMode),
+    search
+  );
   if (prefetchedHrefs.has(href)) return;
   prefetchedHrefs.add(href);
   router.prefetch(href);
@@ -54,10 +64,11 @@ export function prefetchAllExperienceRoutes(
   router: { prefetch: (href: string) => void },
   slug: string,
   sections: ExperienceSectionSnapshot[],
-  draftMode = false
+  draftMode = false,
+  search = typeof window !== "undefined" ? window.location.search : ""
 ): void {
   for (const pageSlug of getExperiencePageSlugs(sections)) {
-    prefetchExperienceRoute(router, slug, pageSlug, draftMode);
+    prefetchExperienceRoute(router, slug, pageSlug, draftMode, search);
   }
 }
 

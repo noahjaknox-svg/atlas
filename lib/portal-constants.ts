@@ -65,11 +65,25 @@ export type PortalBrandingSnapshot = {
   logoUrl?: string | null;
 };
 
-/** Live Proposal Design branding wins over published snapshot for global portal assets. */
+/** Published snapshots use frozen branding; draft preview uses live Proposal Design assets. */
 export function resolvePortalBranding(
   content: Pick<PortalContentData, "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl">,
-  _snapshot?: PortalBrandingSnapshot | null
+  snapshot?: PortalBrandingSnapshot | null,
+  options?: { preferSnapshot?: boolean }
 ) {
+  if (options?.preferSnapshot && snapshot) {
+    return {
+      heroCloudImageUrl:
+        snapshot.heroCloudImageUrl?.trim() ||
+        content.heroCloudImageUrl ||
+        DEFAULT_CLOUD_IMAGE,
+      heroCloudVideoUrl: resolveHeroCloudVideoUrl(
+        snapshot.heroCloudVideoUrl ?? content.heroCloudVideoUrl
+      ),
+      logoUrl: snapshot.logoUrl?.trim() || content.logoUrl || DEFAULT_LOGO,
+    };
+  }
+
   return {
     heroCloudImageUrl: content.heroCloudImageUrl || DEFAULT_CLOUD_IMAGE,
     heroCloudVideoUrl: resolveHeroCloudVideoUrl(content.heroCloudVideoUrl),

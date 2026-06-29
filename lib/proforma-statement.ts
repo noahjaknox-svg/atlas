@@ -8,7 +8,12 @@ import {
   variableCostPerHour,
   type ProFormaInputs,
 } from "@/lib/proforma";
-import { computeCrewTotal, resolveCrewTrainingTotal } from "@/lib/aircraft-calculated-fields";
+import {
+  computeCrewTotal,
+  computeMonthlyDebtService,
+  resolveCrewTrainingTotal,
+} from "@/lib/aircraft-calculated-fields";
+import { resolveFinancingAmounts } from "@/lib/financing-assumptions";
 import { resolveHangarAnnual } from "@/lib/hangar-assumptions";
 import {
   computeUtilizationProfile,
@@ -19,11 +24,18 @@ import { isCharterUsageEnabled } from "@/lib/usage-type";
 import {
   computeJetFuelTaxDifferentialCredit,
   computeRegistrationAnnual,
-  JET_FUEL_TAX_DIFFERENTIAL_CREDIT_LABEL,
+  FET_FUEL_TAX_REFUND_LABEL,
+  FET_FUEL_TAX_REFUND_RATE_LABEL,
   jetFuelTaxCreditRatePerCharterFlightHour,
   resolveJetFuelTaxDifferentialPerGal,
 } from "@/lib/fet-refund";
 import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
+import {
+  parseProformaCustomFixedCosts,
+  customFixedCostLineKey,
+  sumProformaCustomFixedCosts,
+} from "@/lib/proforma-custom-fixed-costs";
+import { formatCurrency } from "@/lib/utils";
 
 function num(v: string | undefined, fallback = 0): number {
   const n = parseFloat(v ?? "");
@@ -69,6 +81,42 @@ export type ProFormaStatement = {
   assumptionsUsed: ProFormaAssumptionUsedItem[];
   utilization: UtilizationProfile;
 };
+
+function fixedLineAnnualMagnitude(row: ProFormaStatementRow): number {
+  return Math.abs(row.annual ?? 0);
+}
+
+/** Sort fixed ownership line items descending by annual amount (absolute value). */
+export function sortFixedOwnershipStatementRows(
+  rows: ProFormaStatementRow[]
+): ProFormaStatementRow[] {
+  const out: ProFormaStatementRow[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.kind !== "section" || row.layout !== "fixed") {
+      out.push(row);
+      continue;
+    }
+
+    out.push(row);
+    const lines: ProFormaStatementRow[] = [];
+    const trailing: ProFormaStatementRow[] = [];
+    i++;
+    while (i < rows.length && rows[i].kind !== "section") {
+      const sectionRow = rows[i];
+      if (sectionRow.kind === "line" && sectionRow.layout === "fixed") {
+        lines.push(sectionRow);
+      } else {
+        trailing.push(sectionRow);
+      }
+      i++;
+    }
+    lines.sort((a, b) => fixedLineAnnualMagnitude(b) - fixedLineAnnualMagnitude(a));
+    out.push(...lines, ...trailing);
+    i--;
+  }
+  return out;
+}
 
 function expenseAnnual(amount: number): number {
   return -Math.abs(amount);
@@ -222,6 +270,11 @@ function sumFixedOwnership(a: AssumptionMap, availableCharterFlightHours: number
     a,
     availableCharterFlightHours
   );
+  const monthlyDebt =
+    a.financing_enabled === "yes" ? computeMonthlyDebtService(a) ?? 0 : 0;
+  const debtService = monthlyDebt > 0 ? monthlyDebt * 12 : 0;
+  const customItems = parseProformaCustomFixedCosts(a);
+  const customTotal = sumProformaCustomFixedCosts(customItems);
   const total =
     crew +
     training.total +
@@ -235,7 +288,9 @@ function sumFixedOwnership(a: AssumptionMap, availableCharterFlightHours: number
     cleaning +
     supplies +
     airport +
-    pilotCharterIncentive;
+    pilotCharterIncentive +
+    debtService +
+    customTotal;
   return {
     crew,
     training,
@@ -250,6 +305,9 @@ function sumFixedOwnership(a: AssumptionMap, availableCharterFlightHours: number
     supplies,
     airport,
     pilotCharterIncentive,
+    debtService,
+    customItems,
+    customTotal,
     total,
   };
 }
@@ -321,10 +379,30 @@ function buildAssumptionsUsedPanel(
     { label: "Variable cost per flight hour", value: formatRate(varHr) },
     { label: "Charter payback %", value: `${paybackPct}%` },
     {
-      label: "Jet fuel tax differential ($/gal)",
+      label: FET_FUEL_TAX_REFUND_RATE_LABEL,
       value: `$${resolveJetFuelTaxDifferentialPerGal(a).toFixed(3)}`,
     },
     { label: "Fuel source", value: a.fuel_source?.trim() || "—" },
+    ...(a.financing_enabled === "yes"
+      ? (() => {
+          const { downPayment, loanAmount } = resolveFinancingAmounts(a);
+          const monthlyDebt = computeMonthlyDebtService(a) ?? 0;
+          return [
+            {
+              label: "Down payment",
+              value: downPayment > 0 ? formatCurrency(downPayment) : "—",
+            },
+            {
+              label: "Loan amount",
+              value: loanAmount > 0 ? formatCurrency(loanAmount) : "—",
+            },
+            {
+              label: "Monthly debt service",
+              value: monthlyDebt > 0 ? formatCurrency(monthlyDebt) : "—",
+            },
+          ];
+        })()
+      : []),
   ];
 }
 
@@ -463,7 +541,7 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
       ),
       revenueLine(
         "fet_refund",
-        JET_FUEL_TAX_DIFFERENTIAL_CREDIT_LABEL,
+        FET_FUEL_TAX_REFUND_LABEL,
         jetFuelTaxCreditRatePerCharterFlightHour(synced, jetFuelTaxCreditInputs),
         charterFlightHours,
         jetFuelTaxCredit
@@ -497,6 +575,12 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
     fixedLine("cleaning_pl", "Cleaning", fixed.cleaning),
     fixedLine("supplies_pl", "Supplies", fixed.supplies),
     fixedLine("airport_fees_pl", "Airport Fees", fixed.airport),
+    ...(fixed.debtService > 0
+      ? [fixedLine("financing_debt_pl", "Debt service", fixed.debtService)]
+      : []),
+    ...fixed.customItems.map((item) =>
+      fixedLine(customFixedCostLineKey(item.id), item.name, item.amount)
+    ),
     subtotalRow(
       "total_fixed_ownership",
       "Total Fixed Ownership Costs",
@@ -645,5 +729,5 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
     inputs.charterPaybackPct
   );
 
-  return { rows, assumptionsUsed, utilization: u };
+  return { rows: sortFixedOwnershipStatementRows(rows), assumptionsUsed, utilization: u };
 }

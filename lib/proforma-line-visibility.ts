@@ -1,5 +1,6 @@
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
+import { customFixedCostLineKeys } from "@/lib/proforma-custom-fixed-costs";
 import { isCharterUsageEnabled } from "@/lib/usage-type";
 
 /** Persisted on proposal assumptions (per aircraft category). */
@@ -23,6 +24,7 @@ export const PROFORMA_TOGGLEABLE_KEYS = [
   "cleaning_pl",
   "supplies_pl",
   "airport_fees_pl",
+  "financing_debt_pl",
   "charter_fuel",
   "charter_parts",
   "charter_engine",
@@ -118,6 +120,8 @@ export function applyProFormaVisibility(
     "cleaning_pl",
     "supplies_pl",
     "airport_fees_pl",
+    "financing_debt_pl",
+    ...(assumptions ? customFixedCostLineKeys(assumptions) : []),
   ];
   const charterKeys = [
     "charter_fuel",

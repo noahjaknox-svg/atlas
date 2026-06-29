@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { useExperienceBootstrap } from "./experience-bootstrap-context";
 import { ExperienceChapterSlide } from "./experience-chapter-slide";
 
@@ -34,9 +35,9 @@ export function ExperienceChapterDeck() {
   const offset = slideCount > 0 ? `${(slideIndex * 100) / slideCount}%` : "0%";
 
   return (
-    <div className="relative min-h-0 w-full overflow-hidden">
+    <div className="relative h-full min-h-0 w-full overflow-x-hidden overflow-y-hidden">
       <motion.div
-        className="flex items-start"
+        className="flex h-full items-stretch"
         style={{ width: trackWidth }}
         animate={{ x: `-${offset}` }}
         transition={reducedMotion ? { duration: 0.12 } : deckSpring}
@@ -49,7 +50,14 @@ export function ExperienceChapterDeck() {
           const isActive = pageSlug === activeSlug;
 
           return (
-            <div key={pageSlug} className="shrink-0" style={{ width: slideWidth }}>
+            <div
+              key={pageSlug}
+              className={cn(
+                "h-full min-h-0 shrink-0",
+                pageSlug === "pro-forma" ? "overflow-hidden" : "overflow-y-auto overscroll-y-contain"
+              )}
+              style={{ width: slideWidth }}
+            >
               {visited ? (
                 <ExperienceChapterSlide pageSlug={pageSlug} isActive={isActive} />
               ) : null}

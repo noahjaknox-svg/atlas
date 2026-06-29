@@ -50,7 +50,9 @@ export async function loadActivePortal(slug: string) {
 
   const [content, fleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
 
-  const branding = resolvePortalBranding(content, payload?.branding);
+  const branding = resolvePortalBranding(content, payload?.branding, {
+    preferSnapshot: true,
+  });
 
   return {
     portal,

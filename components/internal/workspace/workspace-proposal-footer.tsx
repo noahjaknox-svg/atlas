@@ -8,6 +8,7 @@ import {
   PREVIEW_PROSPECT_PORTAL,
   PUBLISH_PROSPECT_PORTAL,
   PUBLISHED_LAST_LABEL,
+  REPUBLISH_PROSPECT_PORTAL,
 } from "@/lib/product-terminology";
 
 export function WorkspaceProposalFooter({
@@ -20,6 +21,9 @@ export function WorkspaceProposalFooter({
   lastPublishedAt,
   isAdmin,
   hasSelectedAircraft,
+  previewLoading = false,
+  previewDisabled = false,
+  previewDisabledReason,
   onPreview,
   onPublish,
   onTakeDown,
@@ -36,6 +40,9 @@ export function WorkspaceProposalFooter({
   lastPublishedAt: string | null;
   isAdmin: boolean;
   hasSelectedAircraft: boolean;
+  previewLoading?: boolean;
+  previewDisabled?: boolean;
+  previewDisabledReason?: string;
   onPreview: () => void;
   /** Pass true to republish an active portal; false for first publish or re-activate. */
   onPublish: (republish: boolean) => void;
@@ -64,6 +71,7 @@ export function WorkspaceProposalFooter({
 
   const showTakeDown = isAdmin && portalActive;
   const showRestore = isAdmin && !portalActive && !!portalPin;
+  const previewBlocked = previewDisabled || previewLoading;
 
   return (
     <div className="shrink-0 border-t border-atlas-border bg-atlas-surface/40 px-4 py-2.5">
@@ -85,11 +93,14 @@ export function WorkspaceProposalFooter({
             variant="secondary"
             size="sm"
             className="shrink-0 text-xs"
-            disabled={!portalSlug}
+            disabled={previewBlocked}
             onClick={onPreview}
-            title="Preview the current draft as the client will see it"
+            title={
+              previewDisabledReason ??
+              "Preview the current draft as the client will see it"
+            }
           >
-            {PREVIEW_PROSPECT_PORTAL}
+            {previewLoading ? "Opening preview…" : PREVIEW_PROSPECT_PORTAL}
           </Button>
         </div>
 
@@ -160,9 +171,13 @@ export function WorkspaceProposalFooter({
               size="sm"
               className="shrink-0 text-xs"
               disabled={publishDisabled}
-              onClick={() => onPublish(portalActive && !!portalPin)}
+              onClick={() => onPublish(!!portalPin)}
             >
-              {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
+              {publishLoading
+                ? "Publishing…"
+                : portalPin
+                  ? REPUBLISH_PROSPECT_PORTAL
+                  : PUBLISH_PROSPECT_PORTAL}
             </Button>
           ) : null}
         </div>

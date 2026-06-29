@@ -28,6 +28,7 @@ import {
   type PerOwnerEconomics,
 } from "@/lib/proforma-multi-owner";
 import { profilesWithProformaHours, seedProformaHoursInAssumptions, ownerHoursForUtilization } from "@/lib/proposal-owners";
+import { applyProformaScenarioOverlays } from "@/lib/proforma-scenario-assumptions";
 
 const METRIC_KEYS_HIDDEN_FROM_TABLE = new Set(["cost_per_owner_hour"]);
 
@@ -76,7 +77,15 @@ export function AircraftProFormaColumn({
     [rawAssumptions]
   );
 
-  const statement = useMemo(() => buildProFormaStatement(assumptions), [assumptions]);
+  const scenarioAssumptions = useMemo(
+    () => applyProformaScenarioOverlays(assumptions, rawAssumptions),
+    [assumptions, rawAssumptions]
+  );
+
+  const statement = useMemo(
+    () => buildProFormaStatement(scenarioAssumptions),
+    [scenarioAssumptions]
+  );
   const utilization = statement.utilization;
 
   const visibleStatement = useMemo(
@@ -85,9 +94,9 @@ export function AircraftProFormaColumn({
         statement.rows,
         visibility,
         utilization.ownerFlightHours,
-        assumptions
+        scenarioAssumptions
       ),
-    [statement.rows, visibility, utilization.ownerFlightHours, assumptions]
+    [statement.rows, visibility, utilization.ownerFlightHours, scenarioAssumptions]
   );
 
   const ownerFlightCostPerHour = useMemo(() => {
@@ -109,17 +118,17 @@ export function AircraftProFormaColumn({
     if (!multiOwner) return [];
     const withProformaHours = profilesWithProformaHours(ownerProfiles, rawAssumptions);
     return buildPerOwnerEconomics(
-      assumptions,
+      scenarioAssumptions,
       withProformaHours,
       statement.rows,
       allocationMode
     );
-  }, [multiOwner, assumptions, ownerProfiles, rawAssumptions, statement.rows, allocationMode]);
+  }, [multiOwner, scenarioAssumptions, ownerProfiles, rawAssumptions, statement.rows, allocationMode]);
 
   const perOwnerFinancing = useMemo(() => {
     if (!multiOwner) return [];
-    return buildPerOwnerFinancing(assumptions, ownerProfiles, allocationMode);
-  }, [multiOwner, assumptions, ownerProfiles, allocationMode]);
+    return buildPerOwnerFinancing(scenarioAssumptions, ownerProfiles, allocationMode);
+  }, [multiOwner, scenarioAssumptions, ownerProfiles, allocationMode]);
 
   const rows = useMemo(() => {
     return visibleStatement

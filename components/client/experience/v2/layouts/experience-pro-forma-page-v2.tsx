@@ -30,7 +30,12 @@ export function ExperienceProFormaPageV2({
   });
 
   return (
-    <ExperienceSlideV2 lockViewport contentClassName="!max-w-[min(100%,100rem)]">
+    <ExperienceSlideV2
+      lockViewport
+      flushBottom
+      className="min-h-0 flex-1"
+      contentClassName="!mx-0 h-full min-h-0 !max-w-[min(100%,100rem)]"
+    >
       <ProFormaClient
         slug={slug}
         initial={client}

@@ -30,9 +30,19 @@ function shouldShowGroupFooter(group: AircraftTabGroup, rows: WorkspaceField[]):
 function ConfigTableHeader() {
   return (
     <div className="atlas-config-th" role="row">
-      <span>Field</span>
-      <span className="atlas-config-th-value">Pulled / Default</span>
-      <span className="atlas-config-th-override">Override</span>
+      <span className="min-w-0 truncate">Field</span>
+      <span
+        className="atlas-config-th-value"
+        title="Pulled — live Data Warehouse reference for comparison. Override — your saved copy for this proposal."
+      >
+        Pulled
+      </span>
+      <span
+        className="atlas-config-th-override"
+        title="Values you enter here are saved on this proposal and preserved on warehouse refresh."
+      >
+        Override
+      </span>
     </div>
   );
 }
@@ -110,7 +120,7 @@ function ConfigTableFooter({
         >
           {total.label}
         </span>
-        <span aria-hidden />
+        <span aria-hidden className="min-w-0" />
         <div className="atlas-config-col-value">
           <span
             className={cn(
@@ -172,6 +182,7 @@ function renderFieldRow(
       storedValue={assumptions[name]}
       calculatedValue={calcVal}
       onChange={(v) => {
+        if (field.warehouseDefaultOnly) return;
         if (!isFieldEditableInAssumptionsTab(field) || readOnlyScenario) return;
         onOverride(name, v);
       }}
@@ -209,7 +220,7 @@ export const AssumptionsSectionTable = memo(function AssumptionsSectionTable({
         );
 
   return (
-    <section className="atlas-workspace-section min-w-0 overflow-hidden">
+    <section className="atlas-workspace-section min-w-0">
       <div className="atlas-workspace-section-header">
         <h3 className="atlas-panel-title truncate">{section.title}</h3>
       </div>

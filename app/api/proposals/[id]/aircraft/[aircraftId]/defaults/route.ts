@@ -1,7 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { assumptionsToMap } from "@/lib/assumptions";
-import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { resolveAircraftDefaults } from "@/lib/resolve-aircraft-defaults";
 import { prisma } from "@/lib/db";
 
@@ -22,14 +22,13 @@ export async function GET(
     });
     if (!proposal) throw new Error("NOT_FOUND");
 
-    const category = aircraftAssumptionCategory(aircraftId);
-    const assumptions = mergeLegacyAssumptions(
+    const assumptions = mergeAssumptionRowsForInstance(
       proposal.assumptions.map((a) => ({
         category: a.category,
         assumptionName: a.assumptionName,
         value: a.value,
       })),
-      category
+      aircraftId
     );
 
     const homeIcao = url.searchParams.get("homeIcao")?.trim();

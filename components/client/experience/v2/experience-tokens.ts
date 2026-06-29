@@ -18,8 +18,7 @@ export const experienceContentMaxV2 = "mx-auto w-full max-w-6xl min-h-0";
 
 export const experienceSlideV2 = "flex min-h-0 flex-col";
 
-/** Fill the shell content band without page scroll (pro forma split layout). */
+/** Fill parent content band — inner regions scroll instead of the page. */
 export const experienceViewportLockV2 = cn(
-  "overflow-hidden",
-  "h-[calc(100dvh-var(--portal-v2-nav-offset)-var(--portal-v2-footer-height)-var(--portal-v2-draft-offset)-env(safe-area-inset-bottom)-1.5rem)]"
+  "h-full min-h-0 max-h-full overflow-hidden"
 );

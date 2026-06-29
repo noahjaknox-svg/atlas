@@ -4,7 +4,7 @@ import type { SectionProFormaRollup } from "@/lib/aircraft-tab-fields";
 import { calculateProForma, assumptionsToProFormaInputs } from "@/lib/proforma";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
 import { computeTotalFixedFromAssumptions } from "@/lib/proforma";
-import { proFormaLineAmount } from "@/lib/proforma-line-amounts";
+import { proFormaLineAmount, proFormaLineRate } from "@/lib/proforma-line-amounts";
 import { calculatedAssumptionAmount } from "@/lib/resolve-effective-assumptions";
 import { formatTrainingCalculationHint } from "@/lib/aircraft-calculated-fields";
 
@@ -48,6 +48,41 @@ export function computeSectionProFormaTotal(
     return {
       label: rollup.label,
       formatted: formatCurrency(total),
+      proFormaHint: rollup.proFormaHint,
+    };
+  }
+
+  if (rollup.type === "lineRate" && rollup.proformaLine) {
+    const rate = proFormaLineRate(synced, rollup.proformaLine);
+    if (rate == null) return null;
+    return {
+      label: rollup.label,
+      formatted: `${formatCurrency(rate)}/hr`,
+      proFormaHint: rollup.proFormaHint,
+    };
+  }
+
+  if (rollup.type === "lineRates") {
+    let total = 0;
+    let any = false;
+    for (const key of rollup.proformaLines ?? []) {
+      const rate = proFormaLineRate(synced, key);
+      if (rate != null) {
+        total += rate;
+        any = true;
+      }
+    }
+    for (const key of rollup.sumKeys ?? []) {
+      const rate = num(effective[key]);
+      if (rate > 0) {
+        total += rate;
+        any = true;
+      }
+    }
+    if (!any || total <= 0) return null;
+    return {
+      label: rollup.label,
+      formatted: `${formatCurrency(total)}/hr`,
       proFormaHint: rollup.proFormaHint,
     };
   }
@@ -131,7 +166,7 @@ export function computeSectionProFormaTotal(
     return {
       label: rollup.label,
       formatted: `${formatCurrency(total)}/hr`,
-      proFormaHint: rollup.proFormaHint ?? "Hourly rates · multiplied by hours on Pro Forma",
+      proFormaHint: rollup.proFormaHint,
     };
   }
 

@@ -275,6 +275,14 @@ model WarehouseAircraft {
   fuelSurchargePaybackBasis PaybackBasis?             @map("fuel_surcharge_payback_basis")
   fuelSurcharge             Int?                      @map("fuel_surcharge")
   pilotCharterIncentive     Int?                      @map("pilot_charter_incentive")
+  airframeProgram           Int?                      @map("airframe_program")
+  maintenanceReserve        Int?                      @map("maintenance_reserve")
+  defaultCabinAttendantCount Int?                     @map("default_cabin_attendant_count")
+  wifiAnnual                Int?                      @map("wifi_annual")
+  subscriptionsAnnual       Int?                      @map("subscriptions_annual")
+  cleaningAnnual            Int?                      @map("cleaning_annual")
+  suppliesAnnual            Int?                      @map("supplies_annual")
+  airportFeesAnnual         Int?                      @map("airport_fees_annual")
   createdAt                 DateTime                  @default(now()) @map("created_at")
   updatedAt                 DateTime                  @updatedAt @map("updated_at")
 
@@ -326,6 +334,14 @@ model CompanySettings {
   charterPaybackPercent          Decimal  @default(82.5) @map("charter_payback_percent") @db.Decimal(6, 3)
   crewBenefitsPercent            Decimal  @default(0.16) @map("crew_benefits_percent") @db.Decimal(6, 4)
   fuelTaxRefund                  Decimal  @default(0.175) @map("fuel_tax_refund") @db.Decimal(10, 4)
+  defaultInsuranceMode           String?  @map("default_insurance_mode")
+  defaultInsuranceAnnual         Int?     @map("default_insurance_annual")
+  defaultInsurancePremiumPercent Decimal? @map("default_insurance_premium_percent") @db.Decimal(6, 3)
+  defaultRegistrationTaxRate     Decimal? @map("default_registration_tax_rate") @db.Decimal(6, 4)
+  defaultDownPaymentPercent      Decimal? @map("default_down_payment_percent") @db.Decimal(6, 3)
+  defaultInterestRate            Decimal? @map("default_interest_rate") @db.Decimal(6, 4)
+  defaultTermMonths              Int?     @map("default_term_months")
+  defaultBalloonPayment          Int?     @map("default_balloon_payment")
   updatedAt                      DateTime @updatedAt @map("updated_at")
 
   @@map("company_settings")
@@ -339,6 +355,7 @@ model AircraftInstance {
   tailNumber                  String?            @map("tail_number")
   serialNumber                String?            @map("serial_number")
   year                        Int?
+  /// @deprecated Use proposal assumption `aircraft_value` instead. Backfill via scripts/migrate-legacy-assumptions.ts --backfill-estimated-value
   estimatedValue              Decimal?           @map("estimated_value") @db.Decimal(14, 2)
   valueSource                 ValueSource?       @map("value_source")
   currentManager              String?            @map("current_manager")
@@ -507,6 +524,7 @@ model UserInvite {
   @@map("user_invites")
 }
 
+/// @deprecated Schema-only — not wired in workspace or portal flows. Remove in a future migration.
 model FeatureOption {
   id                   String          @id @default(uuid()) @db.Uuid
   featureName          String          @map("feature_name")
@@ -525,6 +543,7 @@ model FeatureOption {
   @@map("feature_options")
 }
 
+/// @deprecated Schema-only — not wired in workspace or portal flows. Remove in a future migration.
 model OperatingModel {
   id                  String   @id @default(uuid()) @db.Uuid
   name                String
@@ -634,6 +653,7 @@ model ProposalAssumption {
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
   @@unique([proposalId, category, assumptionName])
+  @@index([proposalId, category])
   @@map("proposal_assumptions")
 }
 
@@ -773,6 +793,7 @@ model ClientPortal {
 }
 
 model ClientScenario {
+  /// Analytics-only — optional persist from portal scenario API; no portal read/resume UX.
   id                         String   @id @default(uuid()) @db.Uuid
   proposalId                 String   @map("proposal_id") @db.Uuid
   portalId                   String   @map("portal_id") @db.Uuid
@@ -789,6 +810,7 @@ model ClientScenario {
   @@map("client_scenarios")
 }
 
+/// @deprecated Schema-only — not wired in workspace UI. Remove in a future migration.
 model ProposalTask {
   id         String    @id @default(uuid()) @db.Uuid
   proposalId String    @map("proposal_id") @db.Uuid

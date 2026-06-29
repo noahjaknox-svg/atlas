@@ -14,8 +14,12 @@
     --portal-nav-height: 4.5rem;
     --portal-v2-nav-offset: 7.75rem;
     --portal-v2-dock-height: 3.25rem;
-    --portal-v2-footer-height: 5rem;
+    --portal-v2-footer-height: 5.5rem;
     --portal-v2-draft-offset: 0px;
+    --portal-v2-content-height: calc(
+      100dvh - var(--portal-v2-nav-offset) - var(--portal-v2-footer-height) -
+        var(--portal-v2-draft-offset) - env(safe-area-inset-bottom) - 1.25rem
+    );
     --portal-glass-bg: rgba(11, 15, 26, 0.45);
     --portal-glass-border: rgba(255, 255, 255, 0.12);
     --portal-stage-size: min(42vw, 22rem);
@@ -26,7 +30,7 @@
       --portal-nav-height: 4.25rem;
       --portal-v2-nav-offset: 6.75rem;
       --portal-v2-dock-height: 3rem;
-      --portal-v2-footer-height: 4.5rem;
+      --portal-v2-footer-height: 4.75rem;
       --portal-stage-size: min(72vw, 16rem);
     }
   }
@@ -126,6 +130,24 @@
   .portal-v2-scroll-fade {
     mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  }
+
+  /** Bottom edge hint inside a scrollable pro forma column (gradient only — backdrop-filter breaks under deck transform). */
+  .portal-v2-column-scroll-fade {
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 2.5rem;
+    background: linear-gradient(
+      to top,
+      rgb(10 13 20 / 0.99) 0%,
+      rgb(10 13 20 / 0.72) 45%,
+      rgb(10 13 20 / 0.25) 75%,
+      transparent 100%
+    );
   }
 
   .scrollbar-none {
@@ -307,24 +329,25 @@
 
   /** Configurator assumption table (Field | Pulled / Default | Override) */
   .atlas-config-table {
-    @apply min-w-0 overflow-hidden;
+    @apply min-w-0 overflow-x-auto;
   }
 
   .atlas-field-grid {
-    @apply grid min-h-10 items-center gap-x-3 px-4 py-1;
-    grid-template-columns: minmax(0, 1.35fr) minmax(7.5rem, 1fr) minmax(7.5rem, 1fr);
+    @apply grid min-h-[2.75rem] items-center gap-x-3 px-4 py-2;
+    grid-template-columns: minmax(0, 1.1fr) minmax(10.5rem, 1fr) minmax(10.5rem, 1fr);
+    min-width: 28rem;
   }
 
   .atlas-config-th {
-    @apply atlas-field-grid min-h-9 border-b border-atlas-border/70 bg-atlas-surface/40 py-2 text-[11px] font-semibold uppercase tracking-wide text-atlas-muted;
+    @apply atlas-field-grid min-h-9 border-b border-atlas-border/70 bg-atlas-surface/40 py-2 text-[10px] font-semibold uppercase tracking-wide text-atlas-muted sm:text-[11px];
   }
 
   .atlas-config-th-value {
-    @apply block text-right;
+    @apply block min-w-0 text-right leading-tight;
   }
 
   .atlas-config-th-override {
-    @apply block text-right text-atlas-accent/90;
+    @apply block min-w-0 text-right leading-tight text-atlas-accent/90;
   }
 
   .atlas-config-group-header {
@@ -332,7 +355,7 @@
   }
 
   .atlas-config-row {
-    @apply atlas-field-grid border-b border-atlas-border/15 transition-colors hover:bg-atlas-surface/5;
+    @apply atlas-field-grid border-b border-atlas-border/15 transition-colors hover:bg-atlas-surface/5 last:border-b-0;
   }
 
   .atlas-config-row-calculated {
@@ -340,19 +363,19 @@
   }
 
   .atlas-config-label {
-    @apply min-w-0 truncate pr-2 text-sm font-medium leading-none text-atlas-text;
+    @apply min-w-0 truncate py-0.5 pr-2 text-sm font-medium leading-snug text-atlas-text;
   }
 
   .atlas-config-label-muted {
-    @apply font-normal text-atlas-muted;
+    @apply font-normal text-atlas-muted/80;
   }
 
   .atlas-config-col-value {
-    @apply flex min-h-9 min-w-0 items-center justify-end;
+    @apply flex h-8 min-w-0 w-full items-center justify-end self-center;
   }
 
   .atlas-config-value {
-    @apply max-w-full truncate text-right font-mono text-sm tabular-nums leading-none text-atlas-muted;
+    @apply block w-full min-w-0 truncate text-right font-mono text-sm tabular-nums leading-none text-atlas-muted;
   }
 
   .atlas-config-value-active {
@@ -360,23 +383,23 @@
   }
 
   .atlas-config-use-default {
-    @apply text-right text-xs text-atlas-muted/70;
+    @apply block w-full min-w-0 truncate text-right text-xs leading-snug text-atlas-muted/75;
   }
 
   .atlas-config-calc-pill {
-    @apply inline-flex max-w-full items-center justify-end rounded border border-atlas-accent/25 bg-atlas-accent/10 px-2 py-0.5 font-mono text-sm tabular-nums leading-none text-atlas-accent;
+    @apply inline-flex h-8 min-w-0 max-w-full items-center justify-end truncate rounded-md border border-atlas-accent/25 bg-atlas-accent/10 px-2.5 font-mono text-sm tabular-nums leading-none text-atlas-accent;
   }
 
   .atlas-config-input {
-    @apply h-8 w-full max-w-[7.5rem] rounded-md border border-atlas-border/80 bg-atlas-bg px-2.5 text-right font-mono text-sm tabular-nums text-atlas-text shadow-none placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:not-italic placeholder:text-atlas-muted/45 focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
+    @apply h-8 w-full min-w-0 rounded-md border border-atlas-border/80 bg-atlas-bg px-2.5 text-right font-mono text-sm tabular-nums text-atlas-text shadow-none placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:not-italic placeholder:text-atlas-muted/45 focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
   }
 
   .atlas-config-input-override {
-    @apply border-atlas-accent/35 bg-atlas-bg;
+    @apply border-atlas-accent/35 bg-atlas-bg text-atlas-text;
   }
 
   .atlas-config-select {
-    @apply h-8 w-full max-w-[7.5rem] cursor-pointer rounded-md border border-atlas-border/80 bg-atlas-bg px-2 text-right text-sm text-atlas-text focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
+    @apply h-8 w-full min-w-0 cursor-pointer rounded-md border border-atlas-border/80 bg-atlas-bg px-2 text-right text-sm text-atlas-text focus:border-atlas-accent/60 focus:outline-none focus:ring-1 focus:ring-atlas-accent/20;
   }
 
   .atlas-section-title {
@@ -396,11 +419,11 @@
   }
 
   .atlas-tab-strip {
-    @apply flex w-full min-w-0 items-stretch justify-between gap-0 border-b border-atlas-border bg-atlas-surface/20;
+    @apply grid w-full min-w-0 border-b border-atlas-border bg-atlas-surface/20;
   }
 
-  .atlas-tab-strip .atlas-tab {
-    @apply min-w-0 flex-1 whitespace-nowrap px-2 py-2.5 text-center text-xs sm:text-sm;
+  .atlas-tab-strip-item {
+    @apply flex min-h-10 w-full min-w-0 items-center justify-center border-b-2 px-1 py-2 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs;
   }
 
   .atlas-data-table {

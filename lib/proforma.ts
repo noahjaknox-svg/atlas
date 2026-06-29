@@ -5,6 +5,7 @@
 import type { AssumptionMap } from "@/lib/assumptions";
 import { computeCrewTrainingTotalAmount } from "@/lib/aircraft-calculated-fields";
 import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
+import { sumProformaCustomFixedCosts, parseProformaCustomFixedCosts } from "@/lib/proforma-custom-fixed-costs";
 import { applyScenarioCrewToAssumptions } from "@/lib/scenario-crew";
 import {
   computeUtilizationProfile,
@@ -329,6 +330,10 @@ export function computeTotalFixedFromAssumptions(
   const availableHours = computeUtilizationProfile(synced).availableCharterFlightHours;
   const pilotIncentive = computePilotCharterIncentiveAnnual(synced, availableHours);
 
+  const customTotal = sumProformaCustomFixedCosts(
+    parseProformaCustomFixedCosts(assumptions as AssumptionMap)
+  );
+
   return (
     get("crew_total") +
     picTraining.total +
@@ -342,7 +347,8 @@ export function computeTotalFixedFromAssumptions(
     get("subscriptions_annual") +
     get("cleaning_annual") +
     get("supplies_annual") +
-    get("airport_fees_annual")
+    get("airport_fees_annual") +
+    customTotal
   );
 }
 

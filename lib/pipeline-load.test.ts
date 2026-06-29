@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const findMany = vi.fn();
-const count = vi.fn();
-const userFindMany = vi.fn();
+const { findMany, count, userFindMany } = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  count: vi.fn(),
+  userFindMany: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({
   prisma: {

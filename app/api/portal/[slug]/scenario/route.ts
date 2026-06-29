@@ -4,6 +4,11 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { serializeClientSnapshot } from "@/lib/client-serializer";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
+/**
+ * Recalculate pro forma from the published snapshot plus in-memory client overrides.
+ * Does not read workspace assumptions from the database — baseline is frozen at publish.
+ * Optional ClientScenario create is analytics-only; no portal read path uses stored scenarios.
+ */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -23,6 +28,13 @@ export async function POST(
       body.proformaOwnerHours ?? body.ownerProformaHours ?? body.proforma_owner_hours;
     const crewStepIndex =
       body.crewStepIndex ?? body.crew_step_index ?? body.crewStep ?? undefined;
+    const financingEnabled =
+      body.financingEnabled ?? body.financing_enabled ?? undefined;
+    const downPaymentPercent =
+      body.downPaymentPercent ?? body.down_payment_percent ?? undefined;
+    const interestRate = body.interestRate ?? body.interest_rate ?? undefined;
+    const termMonths = body.termMonths ?? body.term_months ?? undefined;
+    const balloonPayment = body.balloonPayment ?? body.balloon_payment ?? undefined;
     const aircraftInstanceId =
       body.aircraftInstanceId ?? body.aircraft_instance_id ?? body.aircraft ?? null;
 
@@ -53,11 +65,28 @@ export async function POST(
         crewStepIndex != null && crewStepIndex !== ""
           ? Number(crewStepIndex)
           : undefined,
+      financingEnabled:
+        financingEnabled != null && financingEnabled !== ""
+          ? financingEnabled === true || financingEnabled === "yes"
+          : undefined,
+      downPaymentPercent:
+        downPaymentPercent != null && downPaymentPercent !== ""
+          ? Number(downPaymentPercent)
+          : undefined,
+      interestRate:
+        interestRate != null && interestRate !== ""
+          ? Number(interestRate)
+          : undefined,
+      termMonths:
+        termMonths != null && termMonths !== "" ? Number(termMonths) : undefined,
+      balloonPayment:
+        balloonPayment != null && balloonPayment !== ""
+          ? Number(balloonPayment)
+          : undefined,
       aircraftInstanceId:
         aircraftInstanceId != null && aircraftInstanceId !== ""
           ? String(aircraftInstanceId)
           : undefined,
-      proposalId: portal.proposalId,
     });
 
     if (body.persistScenario === true) {

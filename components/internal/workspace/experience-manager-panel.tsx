@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { EXPERIENCE_SECTION_TYPES, EXPERIENCE_TAB_LABELS, SECTION_TYPE_TO_SLUG } from "@/lib/experience-content";
 import {
@@ -12,6 +13,7 @@ import type {
   ExperienceContentBlocks,
   ExperienceSectionType,
 } from "@/lib/experience-content";
+import type { ExperienceMasterTemplate } from "@/lib/experience-master";
 
 export type ExperienceSectionRow = {
   id: string;
@@ -38,6 +40,45 @@ export function ExperienceManagerForm({
   portalSlug?: string | null;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [masterTemplates, setMasterTemplates] = useState<ExperienceMasterTemplate[] | null>(
+    null
+  );
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/portal-content")
+      .then((r) => r.json())
+      .then((data: { experienceTemplates?: ExperienceMasterTemplate[] | null }) => {
+        if (active) setMasterTemplates(data.experienceTemplates ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function resetSectionToMaster(index: number) {
+    const sec = experienceSections[index];
+    if (!sec) return;
+    const master = masterTemplates?.find((t) => t.sectionType === sec.sectionType);
+    if (!master) {
+      alert("Master template not loaded. Try again in a moment.");
+      return;
+    }
+    if (
+      !confirm(
+        `Reset "${sec.title}" to the global ${PROSPECT_PORTAL_DESIGNER} copy? Your proposal-specific edits for this page will be replaced.`
+      )
+    ) {
+      return;
+    }
+    updateSection(index, {
+      title: master.title,
+      bodyCopy: master.bodyCopy,
+      signatoryName: master.signatoryName ?? null,
+      signatoryTitle: master.signatoryTitle ?? null,
+    });
+  }
 
   const experienceSections = sections
     .filter((s) =>
@@ -134,6 +175,15 @@ export function ExperienceManagerForm({
                       {PREVIEW_PROSPECT_PORTAL}
                     </a>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px] text-atlas-muted"
+                    onClick={() => resetSectionToMaster(index)}
+                  >
+                    Reset to master
+                  </Button>
                 </div>
               ) : null}
             </div>

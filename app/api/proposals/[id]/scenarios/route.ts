@@ -2,7 +2,8 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { ensureThreeScenarios, SCENARIO_NAMES } from "@/lib/scenarios";
-import { aircraftAssumptionCategory, mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { resolveEffectiveAssumptionsForInstance } from "@/lib/resolve-aircraft-defaults";
 import { scenarioCharterHoursFromCrew } from "@/lib/scenario-crew";
 
@@ -22,16 +23,17 @@ export async function POST(
     const assumptionRows = await prisma.proposalAssumption.findMany({
       where: { proposalId: id },
     });
-    const category = aircraftAssumptionCategory(aircraftInstanceId);
-    let baseMap = mergeLegacyAssumptions(
+    let baseMap = mergeAssumptionRowsForInstance(
       assumptionRows.map((a) => ({
         category: a.category,
         assumptionName: a.assumptionName,
         value: a.value,
       })),
-      category
+      aircraftInstanceId
     );
     baseMap = await resolveEffectiveAssumptionsForInstance(aircraftInstanceId, baseMap);
+
+    const category = aircraftAssumptionCategory(aircraftInstanceId);
 
     const scenarios = body.scenarios as Array<{
       scenarioIndex: number;

@@ -25,6 +25,8 @@ import { resolvePortalBranding } from "@/lib/portal-constants";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
 
+export const dynamic = "force-dynamic";
+
 type PortalBranding = {
   heroCloudImageUrl: string;
   heroCloudVideoUrl: string | null;
@@ -35,7 +37,13 @@ type PortalBranding = {
  * Build the live (unpublished) payload for a staff-only draft preview. Reuses the
  * same resolution as publishing so the preview matches exactly what would be sent.
  */
-async function loadDraftPreview(slug: string): Promise<{
+async function loadDraftPreview(
+  slug: string,
+  resolveScope:
+    | { mode: "none" }
+    | { mode: "primary" }
+    | { mode: "aircraft"; aircraftId: string }
+): Promise<{
   payload: ProposalSnapshotPayload;
   branding: PortalBranding;
   contactName: string;
@@ -47,12 +55,36 @@ async function loadDraftPreview(slug: string): Promise<{
 
   const portal = await prisma.clientPortal.findUnique({
     where: { slug },
-    select: { proposalId: true },
+    select: {
+      proposalId: true,
+      proposal: {
+        select: {
+          aircraftInstanceId: true,
+          aircraft: {
+            where: { includedOnProposal: true },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
   if (!portal) return null;
 
+  let fullyResolveAircraftIds: string[] | undefined;
+  if (resolveScope.mode === "none") {
+    fullyResolveAircraftIds = [];
+  } else if (resolveScope.mode === "aircraft") {
+    fullyResolveAircraftIds = [resolveScope.aircraftId];
+  } else {
+    const primaryId =
+      portal.proposal.aircraftInstanceId ?? portal.proposal.aircraft[0]?.id ?? null;
+    fullyResolveAircraftIds = primaryId ? [primaryId] : [];
+  }
+
   const [payload, content] = await Promise.all([
-    buildSnapshotPayload(portal.proposalId),
+    buildSnapshotPayload(portal.proposalId, { fullyResolveAircraftIds }),
     getPortalContent(),
   ]);
 
@@ -88,7 +120,13 @@ export default async function ExperiencePageRoute({
   let disclaimer: string | null;
 
   if (isDraft) {
-    const preview = await loadDraftPreview(slug);
+    const resolveScope =
+      page === "pro-forma"
+        ? aircraftParam
+          ? { mode: "aircraft" as const, aircraftId: aircraftParam }
+          : { mode: "primary" as const }
+        : { mode: "none" as const };
+    const preview = await loadDraftPreview(slug, resolveScope);
     if (!preview) redirect(`/${slug}`);
     payload = preview.payload;
     branding = preview.branding;
@@ -103,7 +141,9 @@ export default async function ExperiencePageRoute({
     if (!data.payload) redirect(`/${slug}`);
     await trackPortalView(data.portal.id);
     payload = data.payload;
-    branding = data.branding;
+    branding = resolvePortalBranding(data.content, payload.branding, {
+      preferSnapshot: true,
+    });
     contactName = data.contactName;
     clientDisplayName = data.clientDisplayName;
     proposalId = data.portal.proposalId;
@@ -130,23 +170,17 @@ export default async function ExperiencePageRoute({
   let client;
   if (page === "pro-forma") {
     client = await serializeClientSnapshot(payload, {
-      aircraftInstanceId: aircraftParam ?? null,
       proposalId,
+      aircraftInstanceId: aircraftParam ?? null,
+      useLiveWorkspace: isDraft,
     });
   }
 
   const renderV2 = isExperienceRenderV2(payload.renderSchemaVersion);
 
   let initialClientSnapshot = null;
-  if (renderV2) {
-    if (page === "pro-forma" && client) {
-      initialClientSnapshot = client;
-    } else if (isDraft) {
-      initialClientSnapshot = await serializeClientSnapshot(payload, {
-        aircraftInstanceId: aircraftParam ?? null,
-        proposalId,
-      });
-    }
+  if (renderV2 && page === "pro-forma" && client) {
+    initialClientSnapshot = client;
   }
 
   return (

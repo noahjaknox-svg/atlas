@@ -25,6 +25,8 @@ export type WorkspaceField = {
   demoted?: boolean;
   /** Benchmark / reference — not a primary driver */
   reference?: boolean;
+  /** Read-only display always uses warehouse defaults (e.g. average cost). */
+  warehouseDefaultOnly?: boolean;
   /** Collapsed under accordion in revenue tab */
   accordionGroup?: string;
   /** Set on Pro Forma utilization panel — read-only on assumption tabs */
