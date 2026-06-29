@@ -1,9 +1,15 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { useCallback, useId, useMemo } from "react";
 import { HoursInput } from "@/components/ui/hours-input";
 import { cn } from "@/lib/utils";
+import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
+import {
+  mergeAssumptionsForCrewStep,
+  patchAssumptionsWithCrewStep,
+  resolveCrewStepFromAssumptions,
+} from "@/lib/crew-step";
 import {
   ownerHoursForUtilization,
   patchProformaOwnerHoursAtIndex,
@@ -11,13 +17,17 @@ import {
   validateProformaOwnerHours,
 } from "@/lib/proposal-owners";
 import { ProFormaCrewStepPanel } from "@/components/internal/workspace/pro-forma-crew-step-panel";
-import type { AssumptionMap } from "@/lib/assumptions";
+import { ProFormaFinancingPanel } from "@/components/shared/pro-forma-financing-panel";
 import {
-  mergeAssumptionsForCrewStep,
-  patchAssumptionsWithCrewStep,
-  resolveCrewStepFromAssumptions,
-} from "@/lib/crew-step";
+  applyProformaScenarioOverlays,
+  proformaFinancingScenarioPatch,
+} from "@/lib/proforma-scenario-assumptions";
+import { mergeAssumptionsWithDefaults } from "@/lib/resolve-effective-assumptions";
 import { computeUtilizationProfile } from "@/lib/proforma-utilization";
+import {
+  isFinancingScenarioVisible,
+  assumptionsWithFinancingDefault,
+} from "@/lib/financing-scenario";
 
 const METRICS_GRID =
   "grid grid-cols-[minmax(11rem,1fr)_minmax(4.5rem,max-content)] items-center gap-x-4 border-b border-atlas-border/40 px-4 py-2.5 last:border-b-0";
@@ -56,6 +66,28 @@ export function ProFormaScenarioPanel({
     [ownerProfiles, assumptions]
   );
   const ownerHours = ownerHoursForUtilization(ownerProfiles, assumptions);
+
+  const configuratorEffective = useMemo(
+    () =>
+      assumptionsWithFinancingDefault(
+        mergeAssumptionsWithDefaults(assumptions, warehouseDefaults)
+      ),
+    [assumptions, warehouseDefaults]
+  );
+
+  const financingVisible = isFinancingScenarioVisible(assumptions);
+  const financingAssumptions = useMemo(
+    () => applyProformaScenarioOverlays(configuratorEffective, assumptions),
+    [assumptions, configuratorEffective]
+  );
+
+  const patchFinancingAssumptions = useCallback(
+    (next: AssumptionMap) => {
+      const scenarioPatch = proformaFinancingScenarioPatch(next, configuratorEffective);
+      onCrewChange({ ...assumptions, ...scenarioPatch } as AssumptionMap);
+    },
+    [assumptions, configuratorEffective, onCrewChange]
+  );
 
   const resolved = useMemo(() => {
     const merged = mergeAssumptionsForCrewStep(assumptions, warehouseDefaults);
@@ -106,7 +138,7 @@ export function ProFormaScenarioPanel({
           <div>
             <p className="atlas-label">Owner flight hours</p>
             <p className="atlas-caption mt-1">
-              Defaults set on the Owners tab — drives P&L below
+              Defaults set in Owner flight hours & equity — drives P&L below
             </p>
             <ul className="mt-3 space-y-3">
               {ownerProfiles.map((p, i) => (
@@ -156,7 +188,7 @@ export function ProFormaScenarioPanel({
               Owner flight hours
             </label>
             <p className="atlas-caption mt-1">
-              Defaults set on the Owners tab — drives P&L below
+              Defaults set in Owner flight hours & equity — drives P&L below
             </p>
             <HoursInput
               id={ownerHoursInputId}
@@ -205,6 +237,15 @@ export function ProFormaScenarioPanel({
           </>
         ) : null}
       </div>
+
+      {financingVisible ? (
+        <ProFormaFinancingPanel
+          assumptions={financingAssumptions}
+          onChange={patchFinancingAssumptions}
+          defaultOpen={false}
+          allowAircraftValueEdit
+        />
+      ) : null}
     </section>
   );
 }

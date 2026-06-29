@@ -31,8 +31,8 @@ describe("normalizeProfilesForCount", () => {
     const next = normalizeProfilesForCount(2, existing, 400);
 
     expect(next).toHaveLength(2);
-    expect(next[0].ownershipPercent).toBe(50);
-    expect(next[1].ownershipPercent).toBe(50);
+    expect(next[0].ownershipPercent).toBe(100);
+    expect(next[1].ownershipPercent).toBe(0);
     expect(next[0].annualFlightHours).toBe(400);
     expect(next[1].annualFlightHours).toBe(0);
   });
@@ -257,7 +257,11 @@ describe("assumptionsAfterOwnerDefaultsChange", () => {
       { crew_step_index: "0", lead_pilot_enabled: "no" },
       profiles,
       "hybrid",
-      {}
+      {
+        max_usage_1_pilot: "250",
+        max_usage_2_pilots: "450",
+        max_usage_3_pilots: "600",
+      }
     );
     expect(next.owner_annual_hours).toBe("500");
     expect(parseProformaOwnerHoursJson(next, 2)).toEqual([300, 200]);

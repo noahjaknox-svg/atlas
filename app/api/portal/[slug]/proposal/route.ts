@@ -33,9 +33,7 @@ export async function GET(
     if (!snapshot) return jsonError("Proposal not published", 404);
 
     const payload = snapshot.snapshotJson as unknown as ProposalSnapshotPayload;
-    return jsonOk(
-      await serializeClientSnapshot(payload, { proposalId: portal.proposalId })
-    );
+    return jsonOk(await serializeClientSnapshot(payload));
   } catch (e) {
     return handleApiError(e);
   }

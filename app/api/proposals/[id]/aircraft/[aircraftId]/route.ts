@@ -34,11 +34,7 @@ export async function PATCH(
     }
     if (body.tailNumber !== undefined) instanceData.tailNumber = body.tailNumber;
     if (body.serialNumber !== undefined) instanceData.serialNumber = body.serialNumber;
-    if (body.estimatedValue !== undefined) {
-      instanceData.estimatedValue = body.estimatedValue
-        ? parseFloat(String(body.estimatedValue))
-        : null;
-    }
+    // estimatedValue is deprecated — use aircraft_value assumption instead.
     if (body.valueSource !== undefined) instanceData.valueSource = body.valueSource;
     if (body.aircraftMasterId !== undefined) {
       instanceData.warehouseAircraftId = body.aircraftMasterId || null;

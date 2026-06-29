@@ -8,6 +8,7 @@ import { HoursInput } from "@/components/ui/hours-input";
 import { ClientProFormaStatement } from "@/components/client/client-proforma-statement";
 import { ProFormaAssumptionsList } from "@/components/client/pro-forma-assumptions";
 import { ProFormaUtilizationSummary } from "@/components/client/pro-forma-utilization-summary";
+import { ProFormaFinancingPanel } from "@/components/shared/pro-forma-financing-panel";
 import { CrewLadderStepper } from "@/components/shared/crew-ladder-stepper";
 import type { ClientSnapshotView } from "@/lib/client-serializer";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
@@ -18,6 +19,27 @@ import {
   resolvePortalCrewStepFloor,
   stringsToAssumptionMap,
 } from "@/lib/workspace-proforma-client";
+import type { AssumptionMap } from "@/lib/assumptions";
+import {
+  isFinancingScenarioVisible,
+  resolveInitialFinancingEnabled,
+} from "@/lib/financing-scenario";
+
+function parseFinancingNumber(raw: string | undefined): number | undefined {
+  const n = parseFloat(raw ?? "");
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function financingBaselineFromMap(map: Record<string, string>) {
+  const assumptions = stringsToAssumptionMap(map);
+  return {
+    enabled: resolveInitialFinancingEnabled(assumptions),
+    downPaymentPercent: map.down_payment_percent ?? "",
+    interestRate: map.interest_rate ?? "",
+    termMonths: map.term_months ?? "",
+    balloonPayment: map.balloon_payment ?? "",
+  };
+}
 
 type ClientProFormaData = ClientSnapshotView;
 
@@ -40,23 +62,88 @@ function ProFormaSectionTitle({ children }: { children: React.ReactNode }) {
 const DEFAULT_DESCRIPTION =
   "Explore annual and monthly ownership economics. Adjust aircraft value and owner hours to model scenarios — crew and utilization update live.";
 
+/** Match `.portal-v2-column-scroll-fade` height in globals.css (~2.5rem). */
+const PROFORMA_COLUMN_FADE_HEIGHT_PX = 40;
+
 /** Scrollable column wrapper for the embedded pro forma grid. */
 function ProFormaColumn({
   children,
   className,
+  embedded = false,
+  scrollDeps,
+  pinnedFooter,
 }: {
   children: React.ReactNode;
   className?: string;
+  embedded?: boolean;
+  /** Re-run overflow/fade detection when column content changes. */
+  scrollDeps?: unknown;
+  /** Pinned below the scroll region — not covered by the bottom fade overlay. */
+  pinnedFooter?: React.ReactNode;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [showScrollFade, setShowScrollFade] = useState(false);
+
+  const updateScrollFade = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const hasOverflow = el.scrollHeight > el.clientHeight + 2;
+    const atBottom =
+      el.scrollTop + el.clientHeight >= el.scrollHeight - PROFORMA_COLUMN_FADE_HEIGHT_PX;
+    setShowScrollFade(hasOverflow && !atBottom);
+  }, []);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const run = () => updateScrollFade();
+    run();
+    const t = window.setTimeout(run, 0);
+    el.addEventListener("scroll", run, { passive: true });
+    const observer = new ResizeObserver(run);
+    observer.observe(el);
+    const contentEl = contentRef.current;
+    if (contentEl) observer.observe(contentEl);
+    return () => {
+      window.clearTimeout(t);
+      el.removeEventListener("scroll", run);
+      observer.disconnect();
+    };
+  }, [embedded, updateScrollFade, children, scrollDeps]);
+
+  if (!embedded) {
+    return (
+      <div className={cn("min-h-0 min-w-0", className)}>
+        {children}
+        {pinnedFooter}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "min-h-0 min-w-0",
-        "max-xl:overflow-visible xl:overflow-y-auto xl:overscroll-y-contain xl:pr-1",
+        "relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden",
         className
       )}
     >
-      {children}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 sm:pr-1"
+          style={{ scrollPaddingBottom: PROFORMA_COLUMN_FADE_HEIGHT_PX }}
+        >
+          <div ref={contentRef}>{children}</div>
+        </div>
+        {showScrollFade ? <div className="portal-v2-column-scroll-fade" aria-hidden /> : null}
+      </div>
+      {pinnedFooter ? (
+        <div className="relative z-[3] shrink-0 border-t border-white/10 bg-[#0a0d14] pt-2.5 pb-0.5">
+          {pinnedFooter}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -107,11 +194,13 @@ export function ProFormaClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const resolvedInitialAircraftId =
+    initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? "";
+
   const [period, setPeriod] = useState<"annual" | "monthly">("annual");
   const [snapshot, setSnapshot] = useState(initial);
-  const [selectedAircraftId, setSelectedAircraftId] = useState(
-    initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? ""
-  );
+  const [selectedAircraftId, setSelectedAircraftId] = useState(resolvedInitialAircraftId);
   const [aircraftValue, setAircraftValue] = useState(
     String(initial.editableFields.aircraftValue.value)
   );
@@ -122,6 +211,7 @@ export function ProFormaClient({
     initial.proformaOwnerHours ?? [initial.editableFields.ownerAnnualHours.value]
   );
   const initialCrewStep = initialCrewStepForSnapshot(initial, initialTotalOwnerHours);
+  const initialFinancing = financingBaselineFromMap(initial.calculationAssumptions ?? {});
   const [baseline, setBaseline] = useState({
     aircraftValue: initial.baseMetrics.aircraftValue,
     proformaOwnerHours:
@@ -129,8 +219,14 @@ export function ProFormaClient({
       initial.proformaOwnerHours ??
       [initial.baseMetrics.ownerHours],
     crewStepIndex: initialCrewStep,
+    financing: initialFinancing,
   });
   const [crewStepIndex, setCrewStepIndex] = useState<number>(() => initialCrewStep);
+  const [financingEnabled, setFinancingEnabled] = useState(initialFinancing.enabled);
+  const [downPaymentPercent, setDownPaymentPercent] = useState(initialFinancing.downPaymentPercent);
+  const [interestRate, setInterestRate] = useState(initialFinancing.interestRate);
+  const [termMonths, setTermMonths] = useState(initialFinancing.termMonths);
+  const [balloonPayment, setBalloonPayment] = useState(initialFinancing.balloonPayment);
   const [aircraftLoading, setAircraftLoading] = useState(false);
 
   const ownerProfiles: ProposalOwnerProfile[] = snapshot.ownerProfiles ?? [];
@@ -144,15 +240,21 @@ export function ProFormaClient({
     () => snapshot.calculationAssumptions ?? {},
     [snapshot.calculationAssumptions]
   );
+  const configuratorAssumptions = useMemo(
+    () => stringsToAssumptionMap(calculationAssumptions),
+    [calculationAssumptions]
+  );
+  const financingScenarioVisible = useMemo(
+    () => isFinancingScenarioVisible(configuratorAssumptions),
+    [configuratorAssumptions]
+  );
+
   const canComputeLocally = Object.keys(calculationAssumptions).length > 0;
 
   const crewStepFloor = useMemo(() => {
     if (!canComputeLocally) return undefined;
-    return resolvePortalCrewStepFloor(
-      stringsToAssumptionMap(calculationAssumptions),
-      totalOwnerHours
-    );
-  }, [canComputeLocally, calculationAssumptions, totalOwnerHours]);
+    return resolvePortalCrewStepFloor(configuratorAssumptions, totalOwnerHours);
+  }, [canComputeLocally, configuratorAssumptions, totalOwnerHours]);
 
   useEffect(() => {
     if (crewStepFloor == null) return;
@@ -161,6 +263,7 @@ export function ProFormaClient({
 
   const showAircraftSelector = snapshot.aircraftList.length > 1;
   const userEditedRef = useRef(false);
+  const fetchGenerationRef = useRef(0);
 
   const applySnapshot = useCallback((next: ClientProFormaData, resetEdits = true) => {
     setSnapshot(next);
@@ -173,6 +276,7 @@ export function ProFormaClient({
       totalProformaHours(nextProformaHours)
     );
     if (resetEdits) {
+      const nextFinancing = financingBaselineFromMap(next.calculationAssumptions ?? {});
       setBaseline({
         aircraftValue: next.baseMetrics.aircraftValue,
         proformaOwnerHours:
@@ -180,44 +284,61 @@ export function ProFormaClient({
           next.proformaOwnerHours ??
           [next.baseMetrics.ownerHours],
         crewStepIndex: nextCrewStep,
+        financing: nextFinancing,
       });
       setCrewStepIndex(nextCrewStep);
+      setFinancingEnabled(nextFinancing.enabled);
+      setDownPaymentPercent(nextFinancing.downPaymentPercent);
+      setInterestRate(nextFinancing.interestRate);
+      setTermMonths(nextFinancing.termMonths);
+      setBalloonPayment(nextFinancing.balloonPayment);
       userEditedRef.current = false;
     }
   }, []);
 
   const loadAircraftData = useCallback(
     async (aircraftId: string) => {
+      const generation = ++fetchGenerationRef.current;
       setAircraftLoading(true);
       try {
-        const res = await fetch(`/api/portal/${slug}/scenario`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            aircraftInstanceId: aircraftId,
-            persistScenario: false,
-          }),
-        });
-        if (res.ok) {
-          applySnapshot((await res.json()) as ClientProFormaData);
-        }
+        const isDraftPreview = searchParams.get("draft") === "1";
+        const res = isDraftPreview
+          ? await fetch(
+              `/api/proposals/${encodeURIComponent(initial.proposal.id)}/portal-preview/client?aircraftInstanceId=${encodeURIComponent(aircraftId)}`
+            )
+          : await fetch(`/api/portal/${slug}/scenario`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                aircraftInstanceId: aircraftId,
+                persistScenario: false,
+              }),
+            });
+        if (!res.ok) return;
+        const data = (await res.json()) as ClientProFormaData;
+        if (generation !== fetchGenerationRef.current) return;
+        if (data.aircraft.id !== aircraftId) return;
+        applySnapshot(data);
       } finally {
-        setAircraftLoading(false);
+        if (generation === fetchGenerationRef.current) {
+          setAircraftLoading(false);
+        }
       }
     },
-    [slug, applySnapshot]
+    [slug, applySnapshot, searchParams, initial.proposal.id]
   );
 
-  const prevInitialAircraftIdRef = useRef(initialAircraftId);
+  const initialFingerprint = `${initial.aircraft.id}:${initial.calculationAssumptions?.proforma_custom_fixed_costs ?? ""}`;
+  const prevInitialFingerprintRef = useRef(initialFingerprint);
 
   useEffect(() => {
-    if (initialAircraftId === prevInitialAircraftIdRef.current) return;
-    prevInitialAircraftIdRef.current = initialAircraftId;
+    if (initialFingerprint === prevInitialFingerprintRef.current) return;
+    prevInitialFingerprintRef.current = initialFingerprint;
     const id =
       initialAircraftId ?? initial.aircraft.id ?? initial.aircraftList[0]?.id ?? "";
     setSelectedAircraftId(id);
     applySnapshot(initial);
-  }, [initialAircraftId, initial, applySnapshot]);
+  }, [initialFingerprint, initialAircraftId, initial, applySnapshot]);
 
   const parsedAircraftValue = useMemo(
     () => parseFloat(parseFormattedNumber(aircraftValue)) || 0,
@@ -226,25 +347,33 @@ export function ProFormaClient({
 
   const localCalc = useMemo(() => {
     if (!canComputeLocally) return null;
-    return computeWorkspaceProFormaForClient(
-      stringsToAssumptionMap(calculationAssumptions),
-      {
-        aircraftValue: parsedAircraftValue,
-        proformaOwnerHours,
-        ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
-        ownerHours: multiOwner ? undefined : totalOwnerHours,
-        crewStepIndex,
-      }
-    );
+    return computeWorkspaceProFormaForClient(configuratorAssumptions, {
+      aircraftValue: parsedAircraftValue,
+      proformaOwnerHours,
+      ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
+      ownerHours: multiOwner ? undefined : totalOwnerHours,
+      crewStepIndex,
+      financingEnabled: financingScenarioVisible ? financingEnabled : false,
+      downPaymentPercent: parseFinancingNumber(downPaymentPercent),
+      interestRate: parseFinancingNumber(interestRate),
+      termMonths: parseFinancingNumber(termMonths),
+      balloonPayment: parseFinancingNumber(balloonPayment),
+    });
   }, [
     canComputeLocally,
-    calculationAssumptions,
+    configuratorAssumptions,
     parsedAircraftValue,
     proformaOwnerHours,
     ownerProfiles,
     multiOwner,
     totalOwnerHours,
     crewStepIndex,
+    financingScenarioVisible,
+    financingEnabled,
+    downPaymentPercent,
+    interestRate,
+    termMonths,
+    balloonPayment,
   ]);
 
   const statementRows: ProFormaStatementRow[] = useMemo(() => {
@@ -267,6 +396,20 @@ export function ProFormaClient({
   const hourlyNetCost =
     totalOwnerHours > 0 ? Math.abs(netAnnualCost) / totalOwnerHours : 0;
 
+  const financingActive =
+    financingScenarioVisible &&
+    (localCalc?.calculationAssumptions.financing_enabled === "yes" ||
+      (!localCalc && financingEnabled));
+  const monthlyDebtService = useMemo(() => {
+    if (!financingScenarioVisible) return 0;
+    const raw = localCalc?.calculationAssumptions.monthly_debt_service;
+    const n = parseFloat(raw ?? "");
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [
+    financingScenarioVisible,
+    localCalc?.calculationAssumptions.monthly_debt_service,
+  ]);
+
   // Assumptions shown off-statement — same panel as the internal workspace pro forma.
   const assumptionsUsed = useMemo(
     () => localCalc?.assumptionsUsed ?? snapshot.assumptionsUsed ?? [],
@@ -279,10 +422,47 @@ export function ProFormaClient({
       proformaOwnerHours,
       ownerHours: totalOwnerHours,
       crewStepIndex,
+      financingEnabled,
+      downPaymentPercent: parseFinancingNumber(downPaymentPercent),
+      interestRate: parseFinancingNumber(interestRate),
+      termMonths: parseFinancingNumber(termMonths),
+      balloonPayment: parseFinancingNumber(balloonPayment),
       aircraftInstanceId: selectedAircraftId || undefined,
     }),
-    [parsedAircraftValue, proformaOwnerHours, totalOwnerHours, crewStepIndex, selectedAircraftId]
+    [
+      parsedAircraftValue,
+      proformaOwnerHours,
+      totalOwnerHours,
+      crewStepIndex,
+      financingEnabled,
+      downPaymentPercent,
+      interestRate,
+      termMonths,
+      balloonPayment,
+      selectedAircraftId,
+    ]
   );
+
+  const financingAssumptions = useMemo((): AssumptionMap => {
+    const base = configuratorAssumptions;
+    return {
+      ...base,
+      aircraft_value: String(parsedAircraftValue),
+      financing_enabled: financingEnabled ? "yes" : "no",
+      down_payment_percent: downPaymentPercent,
+      interest_rate: interestRate,
+      term_months: termMonths,
+      balloon_payment: balloonPayment,
+    };
+  }, [
+    configuratorAssumptions,
+    parsedAircraftValue,
+    financingEnabled,
+    downPaymentPercent,
+    interestRate,
+    termMonths,
+    balloonPayment,
+  ]);
 
   const persistScenario = useCallback(async () => {
     await fetch(`/api/portal/${slug}/scenario`, {
@@ -296,19 +476,39 @@ export function ProFormaClient({
   }, [slug, scenarioPayload]);
 
   const fetchFromServer = useCallback(async () => {
-    const res = await fetch(`/api/portal/${slug}/scenario`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...scenarioPayload,
-        persistScenario: userEditedRef.current,
-      }),
-    });
-    if (res.ok) {
-      const updated = (await res.json()) as ClientProFormaData;
-      applySnapshot(updated, false);
+    const isDraftPreview = searchParams.get("draft") === "1";
+    if (isDraftPreview && canComputeLocally && !userEditedRef.current) {
+      return;
     }
-  }, [slug, scenarioPayload, applySnapshot]);
+    const generation = ++fetchGenerationRef.current;
+    const aircraftIdAtFetch = selectedAircraftId;
+    const res =
+      isDraftPreview && initial.proposal.id
+        ? await fetch(
+            `/api/proposals/${encodeURIComponent(initial.proposal.id)}/portal-preview/client?aircraftInstanceId=${encodeURIComponent(aircraftIdAtFetch)}`
+          )
+        : await fetch(`/api/portal/${slug}/scenario`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...scenarioPayload,
+              persistScenario: userEditedRef.current,
+            }),
+          });
+    if (!res.ok) return;
+    const updated = (await res.json()) as ClientProFormaData;
+    if (generation !== fetchGenerationRef.current) return;
+    if (updated.aircraft.id !== aircraftIdAtFetch) return;
+    applySnapshot(updated, false);
+  }, [
+    slug,
+    scenarioPayload,
+    applySnapshot,
+    searchParams,
+    initial.proposal.id,
+    selectedAircraftId,
+    canComputeLocally,
+  ]);
 
   useEffect(() => {
     if (canComputeLocally) return;
@@ -343,6 +543,11 @@ export function ProFormaClient({
     setAircraftValue(String(baseline.aircraftValue));
     setProformaOwnerHours([...baseline.proformaOwnerHours]);
     setCrewStepIndex(baseline.crewStepIndex);
+    setFinancingEnabled(baseline.financing.enabled);
+    setDownPaymentPercent(baseline.financing.downPaymentPercent);
+    setInterestRate(baseline.financing.interestRate);
+    setTermMonths(baseline.financing.termMonths);
+    setBalloonPayment(baseline.financing.balloonPayment);
   }
 
   function patchOwnerHoursAtIndex(index: number, hours: number) {
@@ -463,7 +668,7 @@ export function ProFormaClient({
       {canComputeLocally ? (
         <div className="rounded-lg border border-white/15 bg-white/5 px-4 py-3">
           <CrewLadderStepper
-            assumptions={stringsToAssumptionMap(calculationAssumptions)}
+            assumptions={configuratorAssumptions}
             ownerHours={totalOwnerHours}
             crewStepIndex={crewStepIndex}
             variant="portal"
@@ -482,16 +687,34 @@ export function ProFormaClient({
           maxHours={crewSummary.maxAnnualUtilization}
         />
       ) : null}
+      {canComputeLocally && financingScenarioVisible ? (
+        <ProFormaFinancingPanel
+          assumptions={financingAssumptions}
+          variant="portal"
+          defaultOpen={false}
+          onChange={(next) => {
+            userEditedRef.current = true;
+            setFinancingEnabled(next.financing_enabled === "yes");
+            setDownPaymentPercent(next.down_payment_percent ?? "");
+            setInterestRate(next.interest_rate ?? "");
+            setTermMonths(next.term_months ?? "");
+            setBalloonPayment(next.balloon_payment ?? "");
+          }}
+        />
+      ) : null}
       <ProFormaAssumptionsList items={assumptionsUsed} />
-      <button
-        type="button"
-        onClick={restore}
-        className="text-sm text-atlas-accent hover:underline"
-      >
-        Restore to PrismJet assumptions
-      </button>
       </div>
     </div>
+  );
+
+  const restoreButton = (
+    <button
+      type="button"
+      onClick={restore}
+      className="text-sm text-atlas-accent hover:underline"
+    >
+      Restore to PrismJet assumptions
+    </button>
   );
 
   // Column 3 — the pro forma statement.
@@ -525,7 +748,18 @@ export function ProFormaClient({
           <dd className="mt-1 font-mono text-xl tabular-nums text-atlas-accent">
             {formatCurrency(Math.abs(netAnnualCost))}
           </dd>
+          {financingActive && monthlyDebtService > 0 ? (
+            <p className="mt-0.5 text-xs text-white/45">Includes debt service in fixed costs</p>
+          ) : null}
         </div>
+        {financingActive && monthlyDebtService > 0 ? (
+          <div>
+            <dt className="text-sm text-white/60">Monthly debt service</dt>
+            <dd className="mt-1 font-mono text-lg tabular-nums text-white">
+              {formatCurrency(monthlyDebtService)}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-sm text-white/60">Hourly cost</dt>
           <dd className="mt-1 font-mono text-lg tabular-nums text-white">
@@ -544,33 +778,41 @@ export function ProFormaClient({
     <div
       className={cn(
         "text-white",
-        embedded
-          ? "flex min-h-0 flex-1 flex-col overflow-hidden"
-          : "",
+        embedded && "flex min-h-0 flex-1 flex-col overflow-hidden",
         className
       )}
     >
       <div
         className={cn(
-          embedded
-            ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain xl:overflow-hidden"
-            : "",
-          "grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6",
+          "grid h-full min-h-0 grid-cols-1 gap-5 md:grid-cols-2 md:gap-6",
           showTitleColumn
             ? "xl:grid-cols-[minmax(0,2fr)_minmax(0,2.75fr)_minmax(0,3.5fr)_minmax(0,2fr)] xl:gap-5"
             : "xl:grid-cols-[minmax(0,2.75fr)_minmax(0,3.5fr)_minmax(0,2fr)] xl:gap-5",
-          embedded && "xl:h-full xl:min-h-0 xl:flex-1 xl:grid-rows-1",
+          embedded &&
+            "flex-1 grid-rows-[repeat(4,minmax(0,1fr))] md:grid-rows-[repeat(2,minmax(0,1fr))] xl:grid-rows-[minmax(0,1fr)]",
           aircraftLoading && "opacity-70 transition-opacity"
         )}
       >
         {showTitleColumn ? (
-          <ProFormaColumn>{titlePanel}</ProFormaColumn>
+          <ProFormaColumn embedded={embedded} scrollDeps={resolvedTitle}>
+            {titlePanel}
+          </ProFormaColumn>
         ) : null}
-        <ProFormaColumn>{assumptionsPanel}</ProFormaColumn>
-        <ProFormaColumn className="md:col-span-2 xl:col-span-1">
+        <ProFormaColumn
+          embedded={embedded}
+          scrollDeps={assumptionsUsed.length}
+          pinnedFooter={restoreButton}
+        >
+          {assumptionsPanel}
+        </ProFormaColumn>
+        <ProFormaColumn
+          embedded={embedded}
+          className="md:col-span-2 xl:col-span-1"
+          scrollDeps={`${statementRows.length}:${period}`}
+        >
           {statementPanel}
         </ProFormaColumn>
-        <ProFormaColumn className="md:col-span-2 xl:col-span-1 xl:self-start">
+        <ProFormaColumn embedded={embedded} className="md:col-span-2 xl:col-span-1">
           {totalsPanel}
         </ProFormaColumn>
       </div>

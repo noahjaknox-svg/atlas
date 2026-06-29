@@ -1,6 +1,5 @@
 import type { AssumptionMap } from "@/lib/assumptions";
-
-/** Hangar keys copied from warehouse/FBO — persisted on the proposal aircraft. */
+import { PROFORMA_SCENARIO_ASSUMPTION_KEYS } from "@/lib/proforma-scenario-assumptions";
 export const WAREHOUSE_SNAPSHOT_KEYS = new Set([
   "square_footage",
   "hangar_cost_per_sqft",
@@ -13,6 +12,8 @@ export const WAREHOUSE_PULLED_KEYS = new Set([
   "hangar_calculated_annual",
 ]);
 
+import { workspaceKeysPreservedOnRefresh } from "@/lib/field-parity-manifest";
+
 /** User-edited fields kept when manually refreshing warehouse data. */
 export const WAREHOUSE_REFRESH_PRESERVE_KEYS = new Set([
   "hangar_annual",
@@ -20,23 +21,35 @@ export const WAREHOUSE_REFRESH_PRESERVE_KEYS = new Set([
   "serial_number",
   "aircraft_year",
   "aircraft_value",
-  "value_source",
   "aircraft_summary",
   "features_notes",
   "wifi_features",
   "typical_range",
   "typical_cruise_speed",
   "passenger_capacity",
+  "range_at_max_passengers",
+  "aircraft_category",
+  "model_code",
+  "crew_count",
   "default_owner_hours",
   "owner_annual_hours",
   "owner_expense_allocation_mode",
+  "financing_scenario_mode",
   "financing_enabled",
-  "loan_amount",
-  "down_payment",
+  "down_payment_percent",
   "interest_rate",
   "term_months",
   "balloon_payment",
   "crew_notes",
+  "proforma_line_visibility",
+  "proforma_custom_fixed_costs",
+  "proforma_aircraft_value",
+  "proforma_financing_enabled",
+  "proforma_down_payment_percent",
+  "proforma_interest_rate",
+  "proforma_term_months",
+  "proforma_balloon_payment",
+  ...Array.from(workspaceKeysPreservedOnRefresh()),
 ]);
 
 /** Derived/read-only keys — never copied from warehouse API responses. */
@@ -45,6 +58,8 @@ const WAREHOUSE_SKIP_KEYS = new Set([
   "fuel_cost_per_hour",
   "variable_cost_per_hour",
   "blended_fuel_price",
+  "loan_amount",
+  "down_payment",
   "monthly_debt_service",
   "lead_pilot_crew_total",
   "pic_crew_total",
@@ -75,6 +90,9 @@ export function applyWarehouseDefaults(
       continue;
     }
     next[key] = value;
+  }
+  if (mode === "seed" && !next.financing_scenario_mode?.trim()) {
+    next.financing_scenario_mode = "hide_default";
   }
   return next;
 }

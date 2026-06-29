@@ -142,6 +142,37 @@ function ExperienceShellV2Frame({
   mainRef?: React.RefObject<HTMLElement>;
 }) {
   const [cloudsEnabled, setCloudsEnabled] = useCloudsToggle();
+  const shellRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const prev = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prev;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
+  useEffect(() => {
+    const footer = footerRef.current;
+    const shell = shellRef.current;
+    if (!footer || !shell) return;
+
+    const syncFooterHeight = () => {
+      const height = footer.offsetHeight;
+      if (height > 0) {
+        shell.style.setProperty("--portal-v2-footer-height", `${height}px`);
+      }
+    };
+
+    syncFooterHeight();
+    const observer = new ResizeObserver(syncFooterHeight);
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, [disclaimer, clientDisplayName]);
 
   const navSections = getExperienceChapterSections(sections);
   const hasChapterTabs = navSections.length > 0;
@@ -152,11 +183,10 @@ function ExperienceShellV2Frame({
 
   const resolvedLogo = logoUrl ?? branding.logoUrl ?? DEFAULT_LOGO;
   const draftBannerOffset = draftMode ? "1.5rem" : "0px";
-  const footerOffset =
-    "calc(var(--portal-v2-footer-height) + env(safe-area-inset-bottom))";
+  const footerOffset = "var(--portal-v2-footer-height)";
 
   return (
-    <div className="relative min-h-[100dvh] text-white">
+    <div ref={shellRef} className="relative min-h-[100dvh] text-white">
       <div className="pointer-events-none fixed inset-0 z-0 bg-[#0a0d14]" aria-hidden />
       {cloudsEnabled ? (
         <CloudBackground
@@ -273,27 +303,27 @@ function ExperienceShellV2Frame({
 
       <main
         ref={mainRef}
-        className="relative z-10 h-[100dvh] overflow-y-auto overscroll-y-contain"
+        className="relative z-10 flex h-[100dvh] flex-col overflow-hidden"
         style={{
           paddingTop: `calc(${draftBannerOffset} + var(--portal-v2-nav-offset))`,
-          paddingBottom: `calc(${footerOffset} + 0.75rem)`,
-          scrollPaddingBottom: `calc(${footerOffset} + 1rem)`,
+          paddingBottom: footerOffset,
           ...(draftMode ? { ["--portal-v2-draft-offset" as string]: "1.5rem" } : {}),
         }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        {main}
+        <div className="min-h-0 flex-1 overflow-hidden">{main}</div>
       </main>
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.06] pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2.5"
+        ref={footerRef}
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.06] pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-md"
         style={{
           background:
             "linear-gradient(to top, rgb(10 13 20 / 0.94) 65%, rgb(10 13 20 / 0.72))",
         }}
       >
-        <div className="mx-auto flex max-w-[100rem] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:gap-6">
+        <div className="relative z-[1] mx-auto flex max-w-[100rem] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:gap-6">
           <div className="w-[32%] min-w-[6rem] shrink-0 sm:w-auto sm:max-w-[20rem] lg:max-w-[22rem]">
             {clientDisplayName ? (
               <p className="truncate font-serif text-2xl font-medium leading-none tracking-tight text-white/95 sm:text-3xl lg:text-4xl">

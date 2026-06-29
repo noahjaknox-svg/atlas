@@ -1,4 +1,6 @@
 import type { AssumptionMap } from "@/lib/assumptions";
+import { computeMonthlyDebtService } from "@/lib/aircraft-calculated-fields";
+import { applyFinancingDerivations } from "@/lib/financing-assumptions";
 import type { ProFormaResult } from "@/lib/proforma";
 import { buildProFormaStatement, type ProFormaStatementRow, type ProFormaAssumptionUsedItem } from "@/lib/proforma-statement";
 import type { AircraftSnapshotMetrics } from "@/lib/portal-aircraft-types";
@@ -42,6 +44,12 @@ export type ClientProFormaOverrides = {
   warehouseDefaults?: Record<string, string>;
   /** User-selected crew ladder step (portal scenario). */
   crewStepIndex?: number;
+  /** Opt-in financing scenario (portal / client preview). */
+  financingEnabled?: boolean;
+  downPaymentPercent?: number;
+  interestRate?: number;
+  termMonths?: number;
+  balloonPayment?: number;
 };
 
 export type ClientCrewSummary = {
@@ -135,6 +143,22 @@ export function applyClientProFormaOverrides(
     map.aircraft_value = String(overrides.aircraftValue);
   }
 
+  if (overrides.financingEnabled != null) {
+    map.financing_enabled = overrides.financingEnabled ? "yes" : "no";
+  }
+  if (overrides.downPaymentPercent != null) {
+    map.down_payment_percent = String(overrides.downPaymentPercent);
+  }
+  if (overrides.interestRate != null) {
+    map.interest_rate = String(overrides.interestRate);
+  }
+  if (overrides.termMonths != null) {
+    map.term_months = String(overrides.termMonths);
+  }
+  if (overrides.balloonPayment != null) {
+    map.balloon_payment = String(overrides.balloonPayment);
+  }
+
   if (overrides.proformaOwnerHours != null && profiles.length > 0) {
     map = patchProformaOwnerHoursAll(map, profiles, overrides.proformaOwnerHours);
   } else if (overrides.ownerHours != null) {
@@ -155,6 +179,20 @@ export function applyClientProFormaOverrides(
   }
 
   return map;
+}
+
+/** Merge financing scenario inputs + derived loan/debt fields without clobbering stored aggregates. */
+export function mergeClientFinancingAssumptions(map: AssumptionMap): AssumptionMap {
+  const financingDerived = applyFinancingDerivations(map);
+  const withFinancing = { ...map, ...financingDerived } as AssumptionMap;
+  if (map.financing_enabled !== "yes") {
+    return { ...map, monthly_debt_service: "" };
+  }
+  const monthlyDebt = computeMonthlyDebtService(withFinancing);
+  return {
+    ...withFinancing,
+    monthly_debt_service: monthlyDebt != null ? String(monthlyDebt) : "",
+  };
 }
 
 /** Read-only crew + utilization summary for client portal UI. */
@@ -199,7 +237,7 @@ export function computeWorkspaceProFormaForClient(
   assumptions: AssumptionMap,
   overrides?: ClientProFormaOverrides
 ): WorkspaceProFormaClientResult {
-  const map = applyClientProFormaOverrides(assumptions, overrides);
+  const map = mergeClientFinancingAssumptions(applyClientProFormaOverrides(assumptions, overrides));
 
   const statement = buildProFormaStatement(map);
   const visibility = parseProFormaVisibility(map);

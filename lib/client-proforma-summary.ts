@@ -95,6 +95,11 @@ export function buildClientProFormaSummary(
     ownerProfiles?: ProposalOwnerProfile[];
     calculationMap?: Record<string, string>;
     crewStepIndex?: number;
+    financingEnabled?: boolean;
+    downPaymentPercent?: number;
+    interestRate?: number;
+    termMonths?: number;
+    balloonPayment?: number;
   }
 ): ClientProFormaSummary {
   const baseMap = stringsToAssumptionMap(resolveCalculationMap(entry, overrides?.calculationMap));
@@ -105,6 +110,11 @@ export function buildClientProFormaSummary(
     proformaOwnerHours: overrides?.proformaOwnerHours,
     ownerProfiles: profiles.length > 0 ? profiles : undefined,
     crewStepIndex: overrides?.crewStepIndex,
+    financingEnabled: overrides?.financingEnabled,
+    downPaymentPercent: overrides?.downPaymentPercent,
+    interestRate: overrides?.interestRate,
+    termMonths: overrides?.termMonths,
+    balloonPayment: overrides?.balloonPayment,
   });
 
   const lineItems = toClientLineItems(calc.proForma);

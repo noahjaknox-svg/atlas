@@ -1,5 +1,10 @@
 import type { AssumptionMap } from "./assumptions";
+import {
+  normalizeProformaCustomFixedCostsAssumption,
+  PROFORMA_CUSTOM_FIXED_COSTS_KEY,
+} from "./proforma-custom-fixed-costs";
 import { OWNER_PROFORMA_HOURS_KEY } from "./proposal-owners";
+import { PROFORMA_SCENARIO_ASSUMPTION_KEYS } from "./proforma-scenario-assumptions";
 import {
   getAircraftTypeLabel,
   normalizeAircraftProfileMode,
@@ -149,14 +154,6 @@ export function buildProfileFieldGroups(category: string): FieldGroup[] {
         field(category, "aircraft_year", "Year", { type: "number", required: true }),
         field(category, "tail_number", "Tail number"),
         field(category, "serial_number", "Serial number"),
-        field(category, "aircraft_value", "Estimated aircraft value ($)", {
-          type: "number",
-          required: true,
-        }),
-        field(category, "value_source", "Value source", {
-          type: "select",
-          options: VALUE_SOURCE_OPTIONS,
-        }),
         field(category, "hangar_monthly", "Monthly hangar", { type: "number" }),
         field(category, "hangar_annual", "Annual hangar", { type: "number" }),
         field(category, "home_fuel_price", "Home fuel ($/gal)", {
@@ -427,7 +424,10 @@ export function assumptionsMapForCategory(
 /** Assumption keys persisted outside tab field definitions. */
 export const META_ASSUMPTION_KEYS = [
   "proforma_line_visibility",
+  "proforma_custom_fixed_costs",
   OWNER_PROFORMA_HOURS_KEY,
+  ...PROFORMA_SCENARIO_ASSUMPTION_KEYS,
+  "financing_scenario_mode",
   "owner_annual_hours",
   "crew_step_index",
   "charter_block_hours",
@@ -435,18 +435,29 @@ export const META_ASSUMPTION_KEYS = [
   "charter_block_to_flight_ratio",
 ] as const;
 
+function metaAssumptionPersistValue(key: string, assumptions: AssumptionMap): string {
+  if (key === PROFORMA_CUSTOM_FIXED_COSTS_KEY) {
+    return normalizeProformaCustomFixedCostsAssumption(assumptions)[
+      PROFORMA_CUSTOM_FIXED_COSTS_KEY
+    ]!;
+  }
+  return assumptions[key]!;
+}
+
 export function buildMetaAssumptionPayload(
   category: string,
   assumptions: AssumptionMap
 ): Array<{ category: string; assumptionName: string; value: string; sourceType: string }> {
-  return META_ASSUMPTION_KEYS.filter((k) => assumptions[k] != null && assumptions[k] !== "").map(
-    (k) => ({
-      category,
-      assumptionName: k,
-      value: assumptions[k]!,
-      sourceType: "manual",
-    })
-  );
+  return META_ASSUMPTION_KEYS.filter((k) => {
+    if (assumptions[k] == null) return false;
+    if (k === PROFORMA_CUSTOM_FIXED_COSTS_KEY) return true;
+    return assumptions[k] !== "";
+  }).map((k) => ({
+    category,
+    assumptionName: k,
+    value: metaAssumptionPersistValue(k, assumptions),
+    sourceType: "manual",
+  }));
 }
 
 export function buildPayloadForCategory(
@@ -509,6 +520,9 @@ export function mergeLegacyAssumptions(
     targetCategory.startsWith("ac_") || targetCategory === "__legacy__";
   if (!useLegacy) return merged;
 
+  const hasPerAircraftRows = all.some((a) => a.category.startsWith("ac_"));
+  if (hasPerAircraftRows) return merged;
+
   const legacy: AssumptionMap = {};
   for (const a of all) {
     if ((LEGACY_CATEGORIES as readonly string[]).includes(a.category)) {
@@ -528,8 +542,8 @@ export function instancePatchFromAssumptions(assumptions: AssumptionMap) {
       serialNumber: null,
       proposedHomeBaseIcao:
         assumptions.proposed_home_base || assumptions.home_airport_icao || null,
-      estimatedValue: assumptions.aircraft_value || null,
-      valueSource: assumptions.value_source || null,
+      estimatedValue: null,
+      valueSource: null,
       aircraftMasterId: assumptions.aircraft_master_id?.trim() || null,
     };
   }
@@ -539,8 +553,8 @@ export function instancePatchFromAssumptions(assumptions: AssumptionMap) {
     serialNumber: null,
     proposedHomeBaseIcao:
       assumptions.proposed_home_base || assumptions.home_airport_icao || null,
-    estimatedValue: assumptions.aircraft_value || null,
-    valueSource: assumptions.value_source || null,
+    estimatedValue: null,
+    valueSource: null,
     aircraftMasterId: assumptions.aircraft_master_id?.trim() || null,
   };
 }
@@ -551,7 +565,5 @@ export function assumptionsFromInstance(meta: AircraftCardMeta): AssumptionMap {
   if (meta.tailNumber) map.tail_number = meta.tailNumber;
   if (meta.serialNumber) map.serial_number = meta.serialNumber;
   if (meta.proposedHomeBaseIcao) map.proposed_home_base = meta.proposedHomeBaseIcao;
-  if (meta.estimatedValue) map.aircraft_value = meta.estimatedValue;
-  if (meta.valueSource) map.value_source = meta.valueSource;
   return map;
 }

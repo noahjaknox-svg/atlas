@@ -1,4 +1,5 @@
 import type { ProposalSnapshotPayload } from "./snapshot";
+import type { ProposalOwnerProfile } from "./proposal-owners";
 import {
   buildClientCrewSummary,
   buildClientProFormaSummary,
@@ -7,11 +8,13 @@ import {
 import { findAircraftEntry, normalizeAircraftList } from "./portal-aircraft-types";
 import { resolvePortalCalculationMap } from "./portal-calculation-assumptions";
 import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
+import { normalizeCustomFixedCostsInStringMap } from "./proforma-custom-fixed-costs";
 import {
   computeWorkspaceProFormaForClient,
   resolvePortalCrewStepFloor,
   stringsToAssumptionMap,
 } from "./workspace-proforma-client";
+import { perfTimed } from "@/lib/perf-log";
 
 /** Strip internal-only data from snapshot for client API responses. */
 export async function serializeClientSnapshot(
@@ -24,36 +27,50 @@ export async function serializeClientSnapshot(
     proposalId?: string;
     prospectOpportunityType?: string;
     crewStepIndex?: number;
+    financingEnabled?: boolean;
+    downPaymentPercent?: number;
+    interestRate?: number;
+    termMonths?: number;
+    balloonPayment?: number;
+    /** Draft preview only — recalculate from live workspace + warehouse. Published portals stay frozen. */
+    useLiveWorkspace?: boolean;
   }
 ) {
-  const entry = findAircraftEntry(snapshot, overrides?.aircraftInstanceId);
+  return perfTimed("serializeClientSnapshot", async () => {
+  const targetAircraftId =
+    overrides?.aircraftInstanceId ??
+    snapshot.primaryAircraftInstanceId ??
+    null;
+  const entry = findAircraftEntry(snapshot, targetAircraftId);
+  const useLiveWorkspace = overrides?.useLiveWorkspace === true;
 
   let calculationMap: Record<string, string> | undefined;
   let resolvedInstanceId: string | null = null;
-  if (overrides?.proposalId) {
+  if (useLiveWorkspace && overrides?.proposalId) {
     resolvedInstanceId =
-      overrides.aircraftInstanceId && overrides.aircraftInstanceId !== "legacy-primary"
-        ? overrides.aircraftInstanceId
+      targetAircraftId && targetAircraftId !== "legacy-primary"
+        ? targetAircraftId
         : entry.id !== "legacy-primary"
           ? entry.id
           : null;
 
-    calculationMap = await resolvePortalCalculationMap(
-      overrides.proposalId,
-      entry,
-      overrides.prospectOpportunityType,
-      resolvedInstanceId
+    calculationMap = normalizeCustomFixedCostsInStringMap(
+      await resolvePortalCalculationMap(
+        overrides.proposalId,
+        entry,
+        overrides.prospectOpportunityType,
+        resolvedInstanceId
+      )
     );
   }
 
+  const frozenAssumptions = entry.calculationAssumptions ?? {};
   const baseAssumptions = stringsToAssumptionMap(
-    calculationMap ?? entry.calculationAssumptions ?? {}
+    useLiveWorkspace ? calculationMap ?? frozenAssumptions : frozenAssumptions
   );
 
-  let ownerProfiles: Awaited<
-    ReturnType<typeof loadOwnerProfilesForAircraft>
-  >["profiles"] = [];
-  if (overrides?.proposalId && resolvedInstanceId) {
+  let ownerProfiles: ProposalOwnerProfile[] = entry.ownerProfiles ?? [];
+  if (useLiveWorkspace && overrides?.proposalId && resolvedInstanceId) {
     const loaded = await loadOwnerProfilesForAircraft(
       overrides.proposalId,
       resolvedInstanceId,
@@ -84,19 +101,35 @@ export async function serializeClientSnapshot(
     overrides?.crewStepIndex ??
     resolvePortalCrewStepFloor(baseAssumptions, activeOwnerHoursTotal);
 
+  const hasClientOverrides =
+    overrides?.aircraftValue != null ||
+    overrides?.ownerHours != null ||
+    overrides?.proformaOwnerHours != null ||
+    overrides?.crewStepIndex != null ||
+    overrides?.financingEnabled != null ||
+    overrides?.downPaymentPercent != null ||
+    overrides?.interestRate != null ||
+    overrides?.termMonths != null ||
+    overrides?.balloonPayment != null;
+
   const summaryOverrides = {
     aircraftValue: overrides?.aircraftValue,
     ownerHours: overrides?.ownerHours,
     proformaOwnerHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
-    calculationMap,
+    calculationMap: hasClientOverrides ? undefined : calculationMap,
     crewStepIndex: activeCrewStepIndex,
+    financingEnabled: overrides?.financingEnabled,
+    downPaymentPercent: overrides?.downPaymentPercent,
+    interestRate: overrides?.interestRate,
+    termMonths: overrides?.termMonths,
+    balloonPayment: overrides?.balloonPayment,
   };
 
   const summary = buildClientProFormaSummary(entry, summaryOverrides);
 
   const baselineSummary = buildClientProFormaSummary(entry, {
-    calculationMap,
+    calculationMap: useLiveWorkspace ? calculationMap : undefined,
     proformaOwnerHours: baselineProformaHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
     crewStepIndex: baselineCrewStepIndex,
@@ -108,6 +141,11 @@ export async function serializeClientSnapshot(
     proformaOwnerHours,
     ownerProfiles: ownerProfiles.length > 0 ? ownerProfiles : undefined,
     crewStepIndex: activeCrewStepIndex,
+    financingEnabled: overrides?.financingEnabled,
+    downPaymentPercent: overrides?.downPaymentPercent,
+    interestRate: overrides?.interestRate,
+    termMonths: overrides?.termMonths,
+    balloonPayment: overrides?.balloonPayment,
   }).calculationAssumptions;
 
   const crewSummary = buildClientCrewSummary(
@@ -141,7 +179,6 @@ export async function serializeClientSnapshot(
       clientSummary: entry.clientSummary,
     },
     aircraftList,
-    sections: snapshot.sections,
     ownerProfiles,
     proformaOwnerHours,
     baseProformaOwnerHours: baselineProformaHours,
@@ -165,8 +202,12 @@ export async function serializeClientSnapshot(
     statementRows: summary.statementRows,
     assumptionsUsed: summary.assumptionsUsed,
     /** Full assumption map for instant client-side pro forma recalculation. */
-    calculationAssumptions: calculationMap ?? entry.calculationAssumptions ?? {},
+    calculationAssumptions:
+      normalizeCustomFixedCostsInStringMap(
+        useLiveWorkspace ? calculationMap ?? frozenAssumptions : frozenAssumptions
+      ) ?? frozenAssumptions,
   };
+  });
 }
 
 export type ClientSnapshotView = Awaited<ReturnType<typeof serializeClientSnapshot>>;

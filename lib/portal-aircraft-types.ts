@@ -1,4 +1,5 @@
 import type { ProFormaResult } from "./proforma";
+import type { ProposalOwnerProfile } from "./proposal-owners";
 import type { ProposalSnapshotPayload } from "./snapshot";
 import type { AircraftProfileMode } from "./aircraft-profile-mode";
 
@@ -30,6 +31,8 @@ export type AircraftSnapshotEntry = {
   assumptions: ProposalSnapshotPayload["assumptions"];
   /** Full assumption map used for workspace-aligned pro forma (not only prospect-visible). */
   calculationAssumptions?: Record<string, string>;
+  /** Frozen owner profiles at publish time (published portal reads these, not live DB). */
+  ownerProfiles?: ProposalOwnerProfile[];
   metrics: AircraftSnapshotMetrics;
   proForma: ProFormaResult;
 };
@@ -85,6 +88,15 @@ export function findAircraftEntry(
   aircraftInstanceId?: string | null
 ): AircraftSnapshotEntry {
   const list = normalizeAircraftList(payload);
-  if (!aircraftInstanceId) return list[0]!;
-  return list.find((a) => a.id === aircraftInstanceId) ?? list[0]!;
+  const resolvedId =
+    aircraftInstanceId ??
+    payload.primaryAircraftInstanceId ??
+    null;
+  if (!resolvedId) return list[0]!;
+  const exact = list.find((a) => a.id === resolvedId);
+  if (exact) return exact;
+  const primary = payload.primaryAircraftInstanceId
+    ? list.find((a) => a.id === payload.primaryAircraftInstanceId)
+    : undefined;
+  return primary ?? list[0]!;
 }

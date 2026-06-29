@@ -25,15 +25,17 @@ export function useExperiencePrefetch(
   const pathname = usePathname();
 
   useEffect(() => {
-    prefetchAllExperienceRoutes(router, slug, sections, draftMode);
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    prefetchAllExperienceRoutes(router, slug, sections, draftMode, search);
     prefetchExperienceMedia(sections, branding);
     router.prefetch(`/${slug}/aircraft`);
   }, [router, slug, sections, branding, draftMode]);
 
   useEffect(() => {
+    const search = typeof window !== "undefined" ? window.location.search : "";
     const slugs = getExperiencePageSlugs(sections);
     for (const pageSlug of slugs) {
-      prefetchExperienceRoute(router, slug, pageSlug, draftMode);
+      prefetchExperienceRoute(router, slug, pageSlug, draftMode, search);
     }
   }, [pathname, router, slug, sections, draftMode]);
 }
@@ -45,6 +47,7 @@ export function usePrefetchExperienceChapter(
 ): (pageSlug: string) => void {
   const router = useRouter();
   return (pageSlug: string) => {
-    prefetchExperienceRoute(router, slug, pageSlug, draftMode);
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    prefetchExperienceRoute(router, slug, pageSlug, draftMode, search);
   };
 }

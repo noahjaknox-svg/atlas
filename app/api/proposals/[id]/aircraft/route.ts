@@ -1,16 +1,13 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import {
-  aircraftAssumptionCategory,
-  mergeLegacyAssumptions,
-} from "@/lib/aircraft-workspace";
+import { aircraftAssumptionCategory, usageTypeToOperatingModel } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import {
   PROFORMA_VISIBILITY_KEY,
   serializeProFormaVisibility,
 } from "@/lib/proforma-line-visibility";
 import { validateAddAircraftBody } from "@/lib/validate-add-aircraft";
-import { usageTypeToOperatingModel } from "@/lib/aircraft-workspace";
 
 export async function GET(
   _request: Request,
@@ -44,29 +41,19 @@ export async function GET(
       where: { proposalId },
     });
 
+    const assumptionRows = assumptions.map((a) => ({
+      category: a.category,
+      assumptionName: a.assumptionName,
+      value: a.value,
+    }));
+
     const items = aircraft.map((ac) => {
-      const category = aircraftAssumptionCategory(ac.id);
-      const assumptionMap = mergeLegacyAssumptions(
-        assumptions.map((a) => ({
-          category: a.category,
-          assumptionName: a.assumptionName,
-          value: a.value,
-        })),
-        category
-      );
+      let assumptionMap = mergeAssumptionRowsForInstance(assumptionRows, ac.id);
       if (
         proposal.aircraftInstanceId === ac.id &&
         Object.keys(assumptionMap).length === 0
       ) {
-        const legacy = mergeLegacyAssumptions(
-          assumptions.map((a) => ({
-            category: a.category,
-            assumptionName: a.assumptionName,
-            value: a.value,
-          })),
-          "legacy-none"
-        );
-        Object.assign(assumptionMap, legacy);
+        assumptionMap = mergeAssumptionRowsForInstance(assumptionRows, null);
       }
       return {
         id: ac.id,

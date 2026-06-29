@@ -8,11 +8,10 @@ import { getPortalUrl } from "@/lib/portal-credentials";
 import { decryptPinFromStorage } from "@/lib/pin-vault";
 import { loadProposalAircraft } from "@/lib/load-proposal-aircraft";
 import {
-  aircraftAssumptionCategory,
-  mergeLegacyAssumptions,
   assumptionsFromInstance,
   applyProspectOpportunityFallback,
 } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
@@ -110,13 +109,12 @@ export default async function ProposalWorkspacePage({
   const prospectOpportunity = proposal.prospect.opportunityType;
 
   const aircraft = aircraftList.map((ac) => {
-    const category = aircraftAssumptionCategory(ac.id);
-    let assumptionMap = mergeLegacyAssumptions(assumptionRows, category);
+    let assumptionMap = mergeAssumptionRowsForInstance(assumptionRows, ac.id);
     if (
       proposal.aircraftInstanceId === ac.id &&
       Object.keys(assumptionMap).length === 0
     ) {
-      assumptionMap = mergeLegacyAssumptions(assumptionRows, "__legacy__");
+      assumptionMap = mergeAssumptionRowsForInstance(assumptionRows, null);
     }
     assumptionMap = applyProspectOpportunityFallback(assumptionMap, prospectOpportunity);
     const meta = {
@@ -241,6 +239,22 @@ export default async function ProposalWorkspacePage({
     ownersByAircraft,
     allocationModeByAircraft,
     lastPublishedAt: proposal.snapshots[0]?.publishedAt?.toISOString() ?? null,
+    initialNeedsRepublish: (() => {
+      const lastPublished = proposal.snapshots[0]?.publishedAt;
+      if (!lastPublished || !proposal.clientPortal) return false;
+      const candidates = [
+        proposal.updatedAt,
+        proposal.prospect.updatedAt,
+        ...proposal.assumptions.map((a) => a.updatedAt),
+        ...proposal.sections.map((s) => s.updatedAt),
+        ...aircraftList.map((ac) => ac.updatedAt),
+      ];
+      const latest = candidates.reduce(
+        (max, d) => (d > max ? d : max),
+        proposal.updatedAt
+      );
+      return latest > lastPublished;
+    })(),
   };
 
   return (

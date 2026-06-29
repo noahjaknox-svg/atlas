@@ -4,9 +4,12 @@ type WarehouseRow = Pick<
   WarehouseAircraft,
   | "manufacturer"
   | "model"
+  | "modelCode"
+  | "aircraftCategory"
   | "passengerCapacity"
   | "emptyRange"
   | "rangeAtMaxPassengers"
+  | "crewCount"
   | "squareFootage"
   | "averageCruiseSpeed"
   | "wifi"
@@ -15,9 +18,12 @@ type WarehouseRow = Pick<
   | "partsProgram"
   | "engineProgram"
   | "apuProgram"
+  | "airframeProgram"
   | "inspectionReserve"
+  | "maintenanceReserve"
   | "tripExpenseHourly"
   | "defaultMinimumCrew"
+  | "defaultCabinAttendantCount"
   | "leadPilotSalary"
   | "leadPilotTrainingCost"
   | "picSalary"
@@ -37,6 +43,11 @@ type WarehouseRow = Pick<
   | "fuelSurchargePaybackBasis"
   | "fuelSurcharge"
   | "pilotCharterIncentive"
+  | "wifiAnnual"
+  | "subscriptionsAnnual"
+  | "cleaningAnnual"
+  | "suppliesAnnual"
+  | "airportFeesAnnual"
 >;
 
 function setInt(
@@ -74,10 +85,16 @@ export function loadWarehouseAircraftDefaults(
 
   setStr(map, "aircraft_manufacturer", aircraft.manufacturer);
   setStr(map, "aircraft_model", aircraft.model);
+  setStr(map, "model_code", aircraft.modelCode);
+  if (aircraft.aircraftCategory) {
+    map.aircraft_category = aircraft.aircraftCategory;
+  }
   map.aircraft_master_id = aircraft.id;
 
   setInt(map, "passenger_capacity", aircraft.passengerCapacity);
   setInt(map, "typical_range", aircraft.emptyRange);
+  setInt(map, "range_at_max_passengers", aircraft.rangeAtMaxPassengers);
+  setInt(map, "crew_count", aircraft.crewCount);
   setInt(map, "square_footage", aircraft.squareFootage);
   setInt(map, "typical_cruise_speed", aircraft.averageCruiseSpeed);
   if (aircraft.wifi != null) {
@@ -89,7 +106,9 @@ export function loadWarehouseAircraftDefaults(
   setInt(map, "parts_program_rate", aircraft.partsProgram);
   setInt(map, "engine_program_rate", aircraft.engineProgram);
   setInt(map, "apu_program_rate", aircraft.apuProgram);
+  setInt(map, "airframe_program_rate", aircraft.airframeProgram);
   setInt(map, "inspection_reserve_rate", aircraft.inspectionReserve);
+  setInt(map, "maintenance_reserve_rate", aircraft.maintenanceReserve);
   setInt(map, "trip_expense_per_hour", aircraft.tripExpenseHourly);
 
   setIntOrZero(map, "default_minimum_crew", aircraft.defaultMinimumCrew);
@@ -98,6 +117,7 @@ export function loadWarehouseAircraftDefaults(
   setInt(map, "pic_salary", aircraft.picSalary);
   setInt(map, "sic_salary", aircraft.sicSalary);
   setInt(map, "cabin_attendant_annual_cost", aircraft.cabinAttendantSalary);
+  setIntOrZero(map, "cabin_attendant_count", aircraft.defaultCabinAttendantCount);
   setInt(map, "pic_training", aircraft.picTrainingCost);
   setInt(map, "sic_training", aircraft.sicTrainingCost);
 
@@ -112,6 +132,11 @@ export function loadWarehouseAircraftDefaults(
   setInt(map, "charter_rate", aircraft.charterHourlyRate);
   setInt(map, "fuel_surcharge", aircraft.fuelSurcharge);
   setInt(map, "pilot_charter_incentive_per_hour", aircraft.pilotCharterIncentive);
+  setInt(map, "wifi_annual", aircraft.wifiAnnual);
+  setInt(map, "subscriptions_annual", aircraft.subscriptionsAnnual);
+  setInt(map, "cleaning_annual", aircraft.cleaningAnnual);
+  setInt(map, "supplies_annual", aircraft.suppliesAnnual);
+  setInt(map, "airport_fees_annual", aircraft.airportFeesAnnual);
 
   if (aircraft.charterPaybackBasis) {
     map.charter_payback_basis = aircraft.charterPaybackBasis;

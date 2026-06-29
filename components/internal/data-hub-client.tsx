@@ -10,7 +10,12 @@ import {
   DataHubFilterSidebar,
   DataHubSearchBar,
 } from "@/components/internal/data-hub/filter-bar";
-import { CompanySettingsTab } from "@/components/internal/data-hub/company-settings-tab";
+import {
+  CompanySettingsSectionTab,
+  CompanySettingsTab,
+  INSURANCE_FIELDS,
+  REGISTRATION_TAX_FIELDS,
+} from "@/components/internal/data-hub/company-settings-tab";
 import { CrewDataHubPanel } from "@/components/internal/data-hub/crew-data-hub-panel";
 import { AircraftWorkbench } from "@/components/internal/data-hub/aircraft-workbench";
 import { AirportAuditWorkbench } from "@/components/internal/data-hub/airport-audit-workbench";
@@ -50,7 +55,8 @@ const REFERENCE_TABS = [
   { id: "airports", label: "Airports" },
   { id: "fbos", label: "FBOs" },
   { id: "general", label: "General and Company" },
-  { id: "insurance", label: "Insurance & Taxes" },
+  { id: "insurance", label: "Insurance" },
+  { id: "registration-taxes", label: "Registration & Taxes" },
 ] as const;
 
 const CREW_TAB = { id: "performance-data", label: "PrismJet Crew Data" } as const;
@@ -79,6 +85,7 @@ export function DataHubClient({
     !isCrewTab &&
     tab !== "general" &&
     tab !== "insurance" &&
+    tab !== "registration-taxes" &&
     tab !== "aircraft" &&
     tab !== "fbos";
   const scrollContainedTab = tab === "aircraft" || tab === "fbos" || tab === "airports" || isCrewTab;
@@ -273,10 +280,19 @@ export function DataHubClient({
         {tab === "general" && <CompanySettingsTab />}
 
         {tab === "insurance" && (
-          <div className="max-w-xl rounded-lg border border-dashed border-atlas-border p-6 text-sm text-atlas-muted">
-            Insurance &amp; Taxes data is not configured yet. While this tab is empty, pro forma
-            insurance and state-tax line items resolve to $0 and are hidden from proposals.
-          </div>
+          <CompanySettingsSectionTab
+            title="Insurance defaults"
+            description="Default insurance mode and amounts copied into each proposal workspace on aircraft add and manual refresh."
+            fields={INSURANCE_FIELDS}
+          />
+        )}
+
+        {tab === "registration-taxes" && (
+          <CompanySettingsSectionTab
+            title="Registration & taxes defaults"
+            description="Default registration tax rate copied into each proposal workspace on aircraft add and manual refresh."
+            fields={REGISTRATION_TAX_FIELDS}
+          />
         )}
       </div>
     </div>

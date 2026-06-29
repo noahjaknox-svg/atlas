@@ -18,7 +18,7 @@ export async function PATCH(request: Request) {
   try {
     await requireAdmin();
     const body = await request.json();
-    await getCompanySettings(); // ensure the row exists
+    await getCompanySettings();
     const updated = await prisma.companySettings.update({
       where: { id: "default" },
       data: {
@@ -28,6 +28,15 @@ export async function PATCH(request: Request) {
         charterPaybackPercent: parseOptionalDecimal(body.charterPaybackPercent),
         crewBenefitsPercent: parseOptionalDecimal(body.crewBenefitsPercent),
         fuelTaxRefund: parseOptionalDecimal(body.fuelTaxRefund),
+        defaultInsuranceMode:
+          body.defaultInsuranceMode != null ? String(body.defaultInsuranceMode) : undefined,
+        defaultInsuranceAnnual: parseOptionalInt(body.defaultInsuranceAnnual),
+        defaultInsurancePremiumPercent: parseOptionalDecimal(body.defaultInsurancePremiumPercent),
+        defaultRegistrationTaxRate: parseOptionalDecimal(body.defaultRegistrationTaxRate),
+        defaultDownPaymentPercent: parseOptionalDecimal(body.defaultDownPaymentPercent),
+        defaultInterestRate: parseOptionalDecimal(body.defaultInterestRate),
+        defaultTermMonths: parseOptionalInt(body.defaultTermMonths),
+        defaultBalloonPayment: parseOptionalInt(body.defaultBalloonPayment),
       },
     });
     return jsonOk(serializeCompanySettings(updated));

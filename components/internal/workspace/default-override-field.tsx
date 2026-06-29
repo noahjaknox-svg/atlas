@@ -42,18 +42,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
 }) {
   if (hidden) return null;
 
-  const isCalculated = Boolean(field.readOnly || calculatedValue !== undefined);
-  const state = getAssumptionRowState({
-    field,
-    defaultValue,
-    overrideDisplay: value,
-    storedValue: storedValue || value,
-    isCalculated,
-  });
-
-  const usingOverride = state === "overridden";
-  const labelMuted = field.reference || field.demoted;
-
+  const labelMuted = field.demoted;
   const labelCell = (
     <p
       title={field.label}
@@ -64,6 +53,40 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
     </p>
   );
 
+  if (field.warehouseDefaultOnly) {
+    const display = formatDefaultDisplay(field, defaultValue);
+    return (
+      <div className="atlas-config-row">
+        {labelCell}
+        <div className="atlas-config-col-value">
+          <span
+            className={cn(
+              "atlas-config-value",
+              display !== "—" && "atlas-config-value-active"
+            )}
+            title={display !== "—" ? display : undefined}
+          >
+            {display}
+          </span>
+        </div>
+        <div className="atlas-config-col-value">
+          <span className="atlas-config-use-default">Data Warehouse · Average Cost</span>
+        </div>
+      </div>
+    );
+  }
+
+  const isCalculated = Boolean(field.readOnly || calculatedValue !== undefined);
+  const state = getAssumptionRowState({
+    field,
+    defaultValue,
+    overrideDisplay: value,
+    storedValue: storedValue || value,
+    isCalculated,
+  });
+
+  const usingOverride = state === "overridden";
+
   if (isCalculated) {
     return (
       <div className="atlas-config-row atlas-config-row-calculated">
@@ -72,7 +95,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
           <span className="atlas-config-value">—</span>
         </div>
         <div className="atlas-config-col-value">
-          <span className="atlas-config-calc-pill" title="Calculated">
+          <span className="atlas-config-calc-pill" title={calculatedValue ?? undefined}>
             {calculatedValue ?? "—"}
           </span>
         </div>
@@ -97,6 +120,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
             "atlas-config-value",
             !usingOverride && defaultDisplay !== "—" && "atlas-config-value-active"
           )}
+          title={defaultDisplay !== "—" ? defaultDisplay : undefined}
         >
           {defaultDisplay}
         </span>
@@ -104,7 +128,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
       <div className="atlas-config-col-value">
         {field.type === "textarea" ? (
           <textarea
-            className={cn(inputCls, "min-h-[2.75rem] resize-none py-1.5 text-left text-sm")}
+            className={cn(inputCls, "min-h-[2.75rem] w-full max-w-none resize-none py-1.5 text-left text-sm")}
             value={value}
             placeholder="Use default."
             onChange={(e) => onChange(e.target.value)}
@@ -124,7 +148,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
           </select>
         ) : field.type === "currency" ? (
           <MoneyInput
-            className={moneyInputClassName(hasOverride)}
+            className={cn(moneyInputClassName(hasOverride), "w-full min-w-0 max-w-none")}
             value={value}
             currency
             placeholder="Use default."
@@ -133,7 +157,7 @@ export const DefaultOverrideField = memo(function DefaultOverrideField({
         ) : (
           <input
             type={field.type === "number" ? "number" : "text"}
-            className={inputCls}
+            className={cn(inputCls, "w-full max-w-none")}
             value={value}
             placeholder="Use default."
             onChange={(e) => onChange(e.target.value)}
@@ -148,4 +172,33 @@ export function effectiveFieldValue(defaultValue: string, override: string): str
   const o = parseFormattedNumber(override.trim());
   if (o) return o;
   return defaultValue.trim();
+}
+
+/** Value shown in the override column (empty when stored matches warehouse default). */
+export function assumptionOverrideDisplay(stored: string, defaultValue: string): string {
+  const d = defaultValue.trim();
+  const v = stored.trim();
+  if (!v) return "";
+  if (d && v === d) return "";
+  return stored;
+}
+
+/** Effective value for calculations and pro forma inputs. */
+export function resolvedAssumptionDisplay(stored: string, defaultValue: string): string {
+  return effectiveFieldValue(defaultValue, assumptionOverrideDisplay(stored, defaultValue));
+}
+
+/** Persist a full effective display value back to stored assumptions. */
+export function storeAssumptionFromEffectiveDisplay(
+  effectiveDisplay: string,
+  defaultValue: string
+): string {
+  const parsed = parseFormattedNumber(effectiveDisplay.trim());
+  if (!parsed) return effectiveFieldValue(defaultValue, "");
+  const n = parseFloat(parsed);
+  const defN = parseFloat(parseFormattedNumber(defaultValue));
+  if (Number.isFinite(defN) && Math.round(n) === Math.round(defN)) {
+    return effectiveFieldValue(defaultValue, "");
+  }
+  return String(Math.round(n));
 }

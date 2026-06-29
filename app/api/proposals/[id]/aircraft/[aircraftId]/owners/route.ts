@@ -2,7 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { aircraftAssumptionCategory } from "@/lib/aircraft-workspace";
-import { mergeLegacyAssumptions } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import {
   serializeProfilesForApi,
   validateOwnerProfiles,
@@ -21,15 +21,14 @@ async function getAssumptionMap(proposalId: string, aircraftId: string) {
   const assumptions = await prisma.proposalAssumption.findMany({
     where: { proposalId },
   });
-  const category = aircraftAssumptionCategory(aircraftId);
   const rows = assumptions.map((a) => ({
     category: a.category,
     assumptionName: a.assumptionName,
     value: a.value,
   }));
-  let map = mergeLegacyAssumptions(rows, category);
+  let map = mergeAssumptionRowsForInstance(rows, aircraftId);
   if (Object.keys(map).length === 0) {
-    map = mergeLegacyAssumptions(rows, "__legacy__");
+    map = mergeAssumptionRowsForInstance(rows, null);
   }
   return map;
 }

@@ -1,14 +1,14 @@
 import type { AssumptionMap } from "./assumptions";
 import { prisma } from "./db";
 import {
-  aircraftAssumptionCategory,
   applyProspectOpportunityFallback,
   assumptionsFromInstance,
-  mergeLegacyAssumptions,
 } from "./aircraft-workspace";
 import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
-import { normalizeAircraftList } from "./portal-aircraft-types";
-import type { ProposalSnapshotPayload } from "./snapshot";
+import { mergeAssumptionRowsForEntry } from "./portal-assumption-merge";
+import {
+  normalizeProformaCustomFixedCostsAssumption,
+} from "./proforma-custom-fixed-costs";
 import { buildEffectiveAssumptions } from "./resolve-effective-assumptions";
 import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 import { resolveAircraftDefaults } from "./resolve-aircraft-defaults";
@@ -22,9 +22,7 @@ function snapshotEntryToInstanceMeta(entry: AircraftSnapshotEntry) {
     tailNumber: entry.tailNumber,
     serialNumber: null as string | null,
     proposedHomeBaseIcao: entry.proposedHomeBase,
-    estimatedValue: entry.metrics.aircraftValue
-      ? String(entry.metrics.aircraftValue)
-      : null,
+    estimatedValue: null,
     valueSource: null as string | null,
     aircraftMaster:
       entry.manufacturer || entry.model
@@ -46,26 +44,25 @@ function clientOverridesFromSnapshot(entry: AircraftSnapshotEntry): Record<strin
   return overrides;
 }
 
-function mergeAssumptionRowsForEntry(
-  assumptionRows: Array<{ category: string; assumptionName: string; value: string }>,
-  entry: AircraftSnapshotEntry,
-  aircraftInstanceId: string | null
-): AssumptionMap {
-  const categories = new Set<string>();
+async function applyConfiguratorAircraftValue(
+  full: AssumptionMap,
+  resolvedInstanceId: string | null
+): Promise<AssumptionMap> {
+  if (!resolvedInstanceId) return full;
 
-  if (entry.id !== "legacy-primary") {
-    categories.add(aircraftAssumptionCategory(entry.id));
-  }
-  if (aircraftInstanceId) {
-    categories.add(aircraftAssumptionCategory(aircraftInstanceId));
-  }
-  categories.add("__legacy__");
+  const defaults = await resolveAircraftDefaults({
+    aircraftInstanceId: resolvedInstanceId,
+    assumptions: full,
+  });
+  const warehouse = defaults.aircraft_value?.trim();
+  if (!warehouse) return full;
 
-  let merged: AssumptionMap = {};
-  for (const category of Array.from(categories)) {
-    merged = { ...merged, ...mergeLegacyAssumptions(assumptionRows, category) };
+  const stored = full.aircraft_value?.trim();
+  const storedNum = parseFloat(stored ?? "");
+  if (!stored || !Number.isFinite(storedNum) || storedNum <= 0) {
+    return { ...full, aircraft_value: warehouse };
   }
-  return merged;
+  return full;
 }
 
 /** Load full workspace assumption map aligned with internal pro forma editor. */
@@ -112,35 +109,14 @@ export async function resolvePortalCalculationMap(
 
   if (resolvedInstanceId) {
     full = await resolveEffectiveAssumptionsForInstance(resolvedInstanceId, full);
+    full = await applyConfiguratorAircraftValue(full, resolvedInstanceId);
   } else {
     full = buildEffectiveAssumptions(full, {});
   }
 
+  full = normalizeProformaCustomFixedCostsAssumption(full);
+
   return full;
 }
 
-export async function enrichSnapshotAircraftList(
-  proposalId: string,
-  payload: ProposalSnapshotPayload,
-  prospectOpportunityType?: string
-): Promise<ProposalSnapshotPayload> {
-  const proposal = await prisma.proposal.findUnique({
-    where: { id: proposalId },
-    select: { aircraftInstanceId: true },
-  });
-
-  const list = normalizeAircraftList(payload);
-  const enrichedList = await Promise.all(
-    list.map(async (entry) => {
-      const calculationAssumptions = await resolvePortalCalculationMap(
-        proposalId,
-        entry,
-        prospectOpportunityType,
-        entry.id !== "legacy-primary" ? entry.id : proposal?.aircraftInstanceId
-      );
-      return { ...entry, calculationAssumptions };
-    })
-  );
-
-  return { ...payload, aircraftList: enrichedList };
-}
+/** Draft-only: live workspace resolver — not used on published portal paths. */

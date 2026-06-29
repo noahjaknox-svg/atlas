@@ -16,6 +16,7 @@ import { isCalculatedField } from "@/lib/aircraft-calculated-fields";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
 import type { ProposalOwnerProfile } from "@/lib/proposal-owners";
 import { OwnerFinancingSplitPanel } from "@/components/internal/workspace/owner-financing-split-panel";
+import { CustomFixedCostsPanel } from "@/components/internal/workspace/custom-fixed-costs-panel";
 import {
   buildEffectiveAssumptions,
   mergeAssumptionsWithDefaults,
@@ -40,11 +41,13 @@ import {
   isCharterUsageEnabled,
   sectionVisibleForUsage,
 } from "@/lib/usage-type";
+import {
+  financingEnabledForScenarioMode,
+  isFinancingScenarioVisible,
+  normalizeFinancingScenarioMode,
+} from "@/lib/financing-scenario";
 
-const UTILIZATION_SYNC_KEYS = new Set([
-  "max_annual_utilization",
-  "charter_block_to_flight_ratio",
-]);
+const UTILIZATION_SYNC_KEYS = new Set(["charter_block_to_flight_ratio"]);
 
 export function AircraftTabsPanel({
   proposalId,
@@ -101,6 +104,11 @@ export function AircraftTabsPanel({
       if (UTILIZATION_SYNC_KEYS.has(name)) {
         next = syncUtilizationHours(mergeAssumptionsWithDefaults(next, warehouseDefaults));
       }
+      if (name === "financing_scenario_mode") {
+        const mode = normalizeFinancingScenarioMode(next.financing_scenario_mode);
+        next.financing_scenario_mode = mode;
+        next.financing_enabled = financingEnabledForScenarioMode(mode);
+      }
       onAssumptionsChange(next);
     },
     [assumptions, warehouseDefaults, onAssumptionsChange, onApplySetupDefaults]
@@ -133,7 +141,8 @@ export function AircraftTabsPanel({
   function renderTabContent(tab: EditorTab) {
     if (tab === "owners") {
       const defaultHours =
-        parseFloat(assumptions.default_owner_hours ?? "400") || 400;
+        ownerProfiles[0]?.annualFlightHours ??
+        (parseFloat(assumptions.owner_annual_hours ?? "400") || 400);
       return (
         <div className="flex flex-col gap-6">
           <section className="atlas-workspace-section">
@@ -183,7 +192,8 @@ export function AircraftTabsPanel({
     );
 
     const showOwnerFinancing =
-      tab === "financing_fees" &&
+      tab === "financing" &&
+      isFinancingScenarioVisible(assumptions) &&
       assumptions.financing_enabled === "yes" &&
       ownerProfiles.length > 1;
 
@@ -202,6 +212,14 @@ export function AircraftTabsPanel({
             warehouseDefaults={warehouseDefaults}
           />
         ) : null}
+        {tab === "financing" ? (
+          <p className="text-sm text-atlas-muted">
+            Set how financing appears on the Demo Pro Forma and client portal. Estimated aircraft
+            value comes from the Data Warehouse Average Cost column. Override here for the
+            proposal baseline; the Demo Pro Forma can model a different scenario value without
+            changing this tab. Loan defaults seed the financing block when it is shown.
+          </p>
+        ) : null}
         {visibleSections.map((section) => (
           <AssumptionsSectionTable
             key={section.title}
@@ -213,6 +231,12 @@ export function AircraftTabsPanel({
             onOverride={handleOverride}
           />
         ))}
+        {tab === "financing_fees" ? (
+          <CustomFixedCostsPanel
+            assumptions={assumptions}
+            onAssumptionsChange={onAssumptionsChange}
+          />
+        ) : null}
       </div>
     );
   }
@@ -230,7 +254,11 @@ export function AircraftTabsPanel({
       <div className="atlas-workspace grid min-h-0 flex-1 grid-cols-2">
       {/* Configurator — equal width */}
       <div className="flex min-h-0 min-w-0 flex-col border-r border-atlas-border">
-        <nav className="atlas-tab-strip shrink-0 px-1" aria-label="Configuration tabs">
+        <nav
+          className="grid shrink-0 border-b border-atlas-border bg-atlas-surface/20"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+          aria-label="Configuration tabs"
+        >
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -238,13 +266,13 @@ export function AircraftTabsPanel({
               onClick={() => setActiveTab(tab)}
               title={TAB_LABELS[tab]}
               className={cn(
-                "atlas-tab",
+                "flex min-h-10 w-full min-w-0 items-center justify-center border-b-2 -mb-px px-1 py-2 text-center text-[11px] font-medium leading-tight transition-colors sm:text-xs",
                 activeTab === tab
                   ? "border-atlas-accent text-atlas-accent"
                   : "border-transparent text-atlas-muted hover:text-atlas-text"
               )}
             >
-              {TAB_STRIP_LABELS[tab]}
+              <span className="block w-full truncate">{TAB_STRIP_LABELS[tab]}</span>
             </button>
           ))}
         </nav>

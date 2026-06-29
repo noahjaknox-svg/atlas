@@ -1,12 +1,11 @@
 import type { AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalScenario } from "@prisma/client";
 import {
-  aircraftAssumptionCategory,
   getAircraftDisplayName,
   getAircraftCardSubtitle,
-  mergeLegacyAssumptions,
   assumptionsFromInstance,
   applyProspectOpportunityFallback,
 } from "./aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "./proposal-assumption-load";
 import { getAircraftTypeLabel, normalizeAircraftProfileMode } from "./aircraft-profile-mode";
 import type { ProFormaResult } from "./proforma";
 import {
@@ -18,6 +17,7 @@ import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
 import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
 import { applyScenarioCrewToAssumptions } from "./scenario-crew";
+import { assumptionsWithFinancingDefault } from "./financing-scenario";
 import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
 import {
   ownerHoursForUtilization,
@@ -27,6 +27,32 @@ import {
 } from "./proposal-owners";
 
 type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
+
+const EMPTY_PROFORMA: ProFormaResult = {
+  blendedFuelPrice: 0,
+  fuelCostPerHour: 0,
+  variableCostPerHour: 0,
+  charterRevenue: 0,
+  fuelSurchargeRevenue: 0,
+  totalRevenue: 0,
+  charterVariableCost: 0,
+  ownerVariableCost: 0,
+  netBeforeOwner: 0,
+  netAnnualCost: 0,
+  netMonthlyCost: 0,
+  costPerOwnerHour: 0,
+  insuranceEstimate: 0,
+  lineItems: [],
+};
+
+const EMPTY_METRICS: AircraftSnapshotMetrics = {
+  netAnnualCost: 0,
+  netMonthlyCost: 0,
+  ownerHours: 0,
+  charterRevenueOffset: 0,
+  costPerOwnerHour: 0,
+  aircraftValue: 0,
+};
 
 function resolveOwnerHoursForSnapshot(
   fullMap: Record<string, string>,
@@ -89,10 +115,9 @@ export async function buildAircraftSnapshotEntry(args: {
 }): Promise<AircraftSnapshotEntry> {
   const { aircraft, assumptionRows, allAssumptions, prospectOpportunityType, isPrimaryLegacy } =
     args;
-  const category = aircraftAssumptionCategory(aircraft.id);
-  let map = mergeLegacyAssumptions(assumptionRows, category);
+  let map = mergeAssumptionRowsForInstance(assumptionRows, aircraft.id);
   if (isPrimaryLegacy && Object.keys(map).length === 0) {
-    map = mergeLegacyAssumptions(assumptionRows, "__legacy__");
+    map = mergeAssumptionRowsForInstance(assumptionRows, null);
   }
   map = applyProspectOpportunityFallback(map, prospectOpportunityType);
 
@@ -134,6 +159,8 @@ export async function buildAircraftSnapshotEntry(args: {
     });
   }
 
+  fullMap = assumptionsWithFinancingDefault(fullMap);
+
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
   const master = aircraft.warehouseAircraft;
@@ -163,9 +190,79 @@ export async function buildAircraftSnapshotEntry(args: {
       (aircraft as AircraftWithMaster & { portalSpecHighlights?: unknown }).portalSpecHighlights
     ),
     assumptions: clientVisibleAssumptions(allAssumptions, fullMap),
-    calculationAssumptions: assumptionMapToStrings(fullMap),
+    /** Merge raw + workspace-aligned map so line visibility and derived fields both reach portal recalc. */
+    calculationAssumptions: assumptionMapToStrings({
+      ...fullMap,
+      ...workspaceProForma.calculationAssumptions,
+    }),
+    ownerProfiles: profiles.length > 0 ? profiles : undefined,
     metrics: workspaceProForma.metrics,
     proForma,
+  };
+}
+
+/** List metadata only — skips warehouse resolve and pro forma math (draft preview). */
+export function buildLightweightAircraftSnapshotEntry(args: {
+  aircraft: AircraftWithMaster;
+  assumptionRows: Array<{ category: string; assumptionName: string; value: string }>;
+  allAssumptions: ProposalAssumption[];
+  prospectOpportunityType: string;
+  isPrimaryLegacy: boolean;
+}): AircraftSnapshotEntry {
+  const { aircraft, assumptionRows, allAssumptions, prospectOpportunityType, isPrimaryLegacy } =
+    args;
+  let map = mergeAssumptionRowsForInstance(assumptionRows, aircraft.id);
+  if (isPrimaryLegacy && Object.keys(map).length === 0) {
+    map = mergeAssumptionRowsForInstance(assumptionRows, null);
+  }
+  map = applyProspectOpportunityFallback(map, prospectOpportunityType);
+
+  const meta = {
+    id: aircraft.id,
+    year: aircraft.year,
+    tailNumber: aircraft.tailNumber,
+    serialNumber: aircraft.serialNumber,
+    proposedHomeBaseIcao: aircraft.proposedHomeBaseIcao,
+    estimatedValue: aircraft.estimatedValue?.toString() ?? null,
+    valueSource: aircraft.valueSource,
+    aircraftMaster: aircraft.warehouseAircraft
+      ? {
+          manufacturer: aircraft.warehouseAircraft.manufacturer,
+          model: aircraft.warehouseAircraft.model,
+        }
+      : null,
+  };
+
+  const fullMap = { ...assumptionsFromInstance(meta), ...map };
+  const master = aircraft.warehouseAircraft;
+  const profileMode = normalizeAircraftProfileMode(fullMap);
+  const typeLabel =
+    getAircraftTypeLabel(fullMap) ??
+    (master ? [master.manufacturer, master.model].filter(Boolean).join(" ") || null : null);
+
+  return {
+    id: aircraft.id,
+    label: getAircraftDisplayName(fullMap, meta),
+    aircraftProfileMode: profileMode,
+    aircraftTypeLabel: typeLabel,
+    portalSubtitle: getAircraftCardSubtitle(fullMap, meta),
+    manufacturer: master?.manufacturer ?? fullMap.aircraft_manufacturer ?? null,
+    model: master?.model ?? fullMap.aircraft_model ?? null,
+    tailNumber: aircraft.tailNumber,
+    year: aircraft.year,
+    category: master?.aircraftCategory ?? fullMap.aircraft_category ?? null,
+    proposedHomeBase: aircraft.proposedHomeBaseIcao,
+    clientSummary: aircraft.clientSummary,
+    portalImageUrl:
+      (aircraft as AircraftWithMaster & { portalImageUrl?: string | null }).portalImageUrl ?? null,
+    portalVideoUrl:
+      (aircraft as AircraftWithMaster & { portalVideoUrl?: string | null }).portalVideoUrl ?? null,
+    portalSpecHighlights: parseSpecHighlights(
+      (aircraft as AircraftWithMaster & { portalSpecHighlights?: unknown }).portalSpecHighlights
+    ),
+    assumptions: clientVisibleAssumptions(allAssumptions, fullMap),
+    metrics: EMPTY_METRICS,
+    proForma: EMPTY_PROFORMA,
   };
 }
 
@@ -177,6 +274,8 @@ export async function buildAircraftSnapshotList(args: {
   allAssumptions: ProposalAssumption[];
   prospectOpportunityType: string;
   baseScenariosByAircraft?: Record<string, ProposalScenario | null>;
+  /** Omit = full resolve for all aircraft. Empty = lightweight list only. */
+  fullyResolveAircraftIds?: string[];
 }): Promise<AircraftSnapshotEntry[]> {
   const {
     proposalId,
@@ -186,11 +285,24 @@ export async function buildAircraftSnapshotList(args: {
     allAssumptions,
     prospectOpportunityType,
     baseScenariosByAircraft = {},
+    fullyResolveAircraftIds,
   } = args;
 
+  const resolveAll = fullyResolveAircraftIds === undefined;
+  const resolveSet = resolveAll ? null : new Set(fullyResolveAircraftIds);
+
   return Promise.all(
-    includedAircraft.map((aircraft) =>
-      buildAircraftSnapshotEntry({
+    includedAircraft.map((aircraft) => {
+      if (resolveSet && !resolveSet.has(aircraft.id)) {
+        return buildLightweightAircraftSnapshotEntry({
+          aircraft,
+          assumptionRows,
+          allAssumptions,
+          prospectOpportunityType,
+          isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
+        });
+      }
+      return buildAircraftSnapshotEntry({
         proposalId,
         aircraft,
         assumptionRows,
@@ -198,7 +310,7 @@ export async function buildAircraftSnapshotList(args: {
         prospectOpportunityType,
         isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
         scenario: baseScenariosByAircraft[aircraft.id] ?? null,
-      })
-    )
+      });
+    })
   );
 }

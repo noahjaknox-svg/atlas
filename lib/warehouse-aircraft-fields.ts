@@ -13,7 +13,7 @@ export interface WarehouseAircraftField {
   /** Prisma model field name. */
   key: keyof WarehouseAircraft & string;
   label: string;
-  group: "General" | "Hourly Rates" | "Crew" | "Utilization" | "Finances";
+  group: "General" | "Hourly Rates" | "Crew" | "Utilization" | "Finances" | "Operating Costs";
   type: WarehouseFieldType;
   /** Required to publish; Show/Hide on pro forma only when `proformaToggleable` is true. */
   required: boolean;
@@ -149,6 +149,24 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     proformaToggleable: true,
     format: "money",
   },
+  {
+    key: "airframeProgram",
+    label: "Airframe Program ($/hr)",
+    group: "Hourly Rates",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
+  {
+    key: "maintenanceReserve",
+    label: "Maintenance Reserve ($/hr)",
+    group: "Hourly Rates",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
   // Crew — salaries/training in Data Hub; counts live on workspace
   {
     key: "defaultMinimumCrew",
@@ -193,6 +211,14 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     required: false,
     proformaToggleable: true,
     format: "money",
+  },
+  {
+    key: "defaultCabinAttendantCount",
+    label: "Default Cabin Attendant Count",
+    group: "Crew",
+    type: "int",
+    required: false,
+    format: "integer",
   },
   // Utilization
   {
@@ -283,6 +309,51 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     group: "Finances",
     type: "int",
     required: true,
+    format: "money",
+  },
+  {
+    key: "wifiAnnual",
+    label: "In-flight Wi-Fi (annual)",
+    group: "Operating Costs",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
+  {
+    key: "subscriptionsAnnual",
+    label: "Subscriptions (annual)",
+    group: "Operating Costs",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
+  {
+    key: "cleaningAnnual",
+    label: "Cleaning (annual)",
+    group: "Operating Costs",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
+  {
+    key: "suppliesAnnual",
+    label: "Supplies (annual)",
+    group: "Operating Costs",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
+    format: "money",
+  },
+  {
+    key: "airportFeesAnnual",
+    label: "Airport fees (annual)",
+    group: "Operating Costs",
+    type: "int",
+    required: false,
+    proformaToggleable: true,
     format: "money",
   },
 ];

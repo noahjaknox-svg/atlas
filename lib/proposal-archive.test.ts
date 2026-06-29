@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isProposalArchived } from "@/lib/proposal-archive";
+import { isProposalArchived } from "@/lib/proposal-archive-state";
 
 describe("isProposalArchived", () => {
   it("returns false for null proposal", () => {

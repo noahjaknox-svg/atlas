@@ -27,3 +27,16 @@ export function proFormaLineAmount(
   const v = map.get(lineKey);
   return v != null ? v : null;
 }
+
+/** Rate column from a pro forma line (revenue / hourly variable rows). */
+export function proFormaLineRate(
+  effective: AssumptionMap,
+  lineKey: ProformaLineKey
+): number | null {
+  const { rows } = buildProFormaStatement(effective);
+  const row = rows.find((r) => r.key === lineKey && r.kind === "line");
+  if (!row || row.rate == null || !Number.isFinite(row.rate) || row.rate <= 0) {
+    return null;
+  }
+  return row.rate;
+}

@@ -31,7 +31,7 @@ export function CrewLadderExplainer({
   return (
     <section className="atlas-workspace-section min-w-0 overflow-hidden">
       <div className="atlas-workspace-section-header">
-        <h3 className="atlas-panel-title">Crew ladder</h3>
+        <h3 className="atlas-panel-title">Crew Ladder</h3>
       </div>
       <ol className="divide-y divide-atlas-border/40 text-sm text-atlas-text">
         {rungs.map(({ stepIndex, crew, pilots, maxUsage }) => {

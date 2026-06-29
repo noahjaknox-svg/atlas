@@ -26,7 +26,9 @@ export async function POST(
     const isRepublish = Boolean((body as { republish?: boolean }).republish);
 
     if (isRepublish) {
-      const result = await republishProposal(id, user.id);
+      const result = await republishProposal(id, user.id, {
+        reactivate: Boolean((body as { reactivate?: boolean }).reactivate),
+      });
       const baseUrl = getExternalAppUrl();
       return jsonOk({
         ...result,

@@ -19,6 +19,13 @@ import { buildAircraftSnapshotEntry, buildAircraftSnapshotList } from "@/lib/sna
 import { loadOwnerProfilesForAircraft } from "@/lib/proposal-owners-db";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { PROFORMA_VISIBILITY_KEY } from "@/lib/proforma-line-visibility";
+import { buildClientProFormaSummary } from "@/lib/client-proforma-summary";
+import {
+  customFixedCostLineKey,
+  PROFORMA_CUSTOM_FIXED_COSTS_KEY,
+  serializeProformaCustomFixedCosts,
+} from "@/lib/proforma-custom-fixed-costs";
 
 const baseAssumptionRows = [
   { category: "ac_a1", assumptionName: "aircraft_manufacturer", value: "Gulfstream" },
@@ -173,10 +180,101 @@ describe("buildAircraftSnapshotList", () => {
     });
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe("a1");
-    expect(list[0]?.label).toContain("Gulfstream");
+    expect(list[0]?.label).toContain("N123AB");
     expect(list[0]?.portalImageUrl).toContain("a1");
     expect(list[0]?.portalSpecHighlights).toEqual(["8 pax", "3,200 nm"]);
     expect(list[0]?.metrics.ownerHours).toBe(250);
+    expect(list[0]?.calculationAssumptions.aircraft_value).toBe("25000000");
+  });
+
+  it("embeds proforma_line_visibility in calculationAssumptions and hides lines on portal", async () => {
+    const visibility = JSON.stringify({ subscriptions_pl: false });
+    const rows = [
+      ...baseAssumptionRows.filter((r) => r.category === "ac_a1"),
+      { category: "ac_a1", assumptionName: "subscriptions_annual", value: "12000" },
+      { category: "ac_a1", assumptionName: PROFORMA_VISIBILITY_KEY, value: visibility },
+    ];
+
+    const entry = await buildAircraftSnapshotEntry({
+      proposalId: "prop1",
+      aircraft: mockAircraft("a1", "N123AB"),
+      assumptionRows: rows,
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+      isPrimaryLegacy: true,
+    });
+
+    expect(entry.calculationAssumptions?.[PROFORMA_VISIBILITY_KEY]).toBe(visibility);
+
+    const summary = buildClientProFormaSummary(entry);
+    expect(summary.statementRows.some((r) => r.key === "subscriptions_pl")).toBe(false);
+  });
+
+  it("embeds proforma_custom_fixed_costs in calculationAssumptions and portal statement", async () => {
+    const customJson = serializeProformaCustomFixedCosts([
+      { id: "legal", name: "Legal retainer", amount: 15000 },
+    ]);
+    const rows = [
+      ...baseAssumptionRows.filter((r) => r.category === "ac_a1"),
+      { category: "ac_a1", assumptionName: PROFORMA_CUSTOM_FIXED_COSTS_KEY, value: customJson },
+    ];
+
+    const entry = await buildAircraftSnapshotEntry({
+      proposalId: "prop1",
+      aircraft: mockAircraft("a1", "N123AB"),
+      assumptionRows: rows,
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+      isPrimaryLegacy: true,
+    });
+
+    expect(entry.calculationAssumptions?.[PROFORMA_CUSTOM_FIXED_COSTS_KEY]).toBe(customJson);
+
+    const withoutCustom = await buildAircraftSnapshotEntry({
+      proposalId: "prop1",
+      aircraft: mockAircraft("a1", "N123AB"),
+      assumptionRows: baseAssumptionRows.filter((r) => r.category === "ac_a1"),
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+      isPrimaryLegacy: true,
+    });
+
+    const summary = buildClientProFormaSummary(entry);
+    const baseline = buildClientProFormaSummary(withoutCustom);
+    const customRow = summary.statementRows.find(
+      (r) => r.key === customFixedCostLineKey("legal")
+    );
+    expect(customRow?.label).toBe("Legal retainer");
+    expect(customRow?.annual).toBe(-15000);
+
+    const totalWith = summary.statementRows.find((r) => r.key === "total_fixed_ownership");
+    const totalWithout = baseline.statementRows.find((r) => r.key === "total_fixed_ownership");
+    expect(totalWith?.annual).toBe((totalWithout?.annual ?? 0) - 15000);
+  });
+
+  it("embeds remove financing mode and disables financing in calculationAssumptions", async () => {
+    const rows = [
+      ...baseAssumptionRows.filter((r) => r.category === "ac_a1"),
+      {
+        category: "ac_a1",
+        assumptionName: "financing_scenario_mode",
+        value: "remove",
+      },
+      {
+        category: "ac_a1",
+        assumptionName: "financing_enabled",
+        value: "yes",
+      },
+    ];
+    const list = await buildAircraftSnapshotList({
+      includedAircraft: [mockAircraft("a1", "N123AB")],
+      primaryAircraftInstanceId: "a1",
+      assumptionRows: rows,
+      allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
+      prospectOpportunityType: "aircraft_management",
+    });
+    expect(list[0]?.calculationAssumptions.financing_scenario_mode).toBe("remove");
+    expect(list[0]?.calculationAssumptions.financing_enabled).toBe("no");
   });
 
   it("prefers assumption owner hours over stale base scenario row", async () => {
@@ -289,6 +387,6 @@ describe("normalizeAircraftList", () => {
     const list = normalizeAircraftList(legacy);
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe("legacy-primary");
-    expect(list[0]?.label).toContain("Gulfstream");
+    expect(list[0]?.label).toContain("N99");
   });
 });

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { perfTimed } from "./perf-log";
 import { getPortalContent, getExperienceMasterTemplates } from "./portal-content";
 import type { AssumptionMap } from "./assumptions";
 import { assumptionsToMap } from "./assumptions";
@@ -9,6 +10,7 @@ import { DECK_VERSION, RENDER_SCHEMA_VERSION } from "./experience-content";
 import { resolvePublishedSections } from "./experience-resolve";
 import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import { buildAircraftSnapshotList } from "./snapshot-aircraft";
+import { validateSnapshotPayload } from "./snapshot-validation";
 import { computeWorkspaceProFormaForClient } from "./workspace-proforma-client";
 
 export interface ProposalSnapshotPayload {
@@ -86,11 +88,24 @@ export interface ProposalSnapshotPayload {
     aircraftValue: number;
   };
   aircraftList?: AircraftSnapshotEntry[];
+  /** Proposal primary aircraft — default for portal pro forma when no aircraft param. */
+  primaryAircraftInstanceId?: string | null;
 }
 
+export type BuildSnapshotPayloadOptions = {
+  /**
+   * - undefined: full warehouse resolve + pro forma for every aircraft (publish).
+   * - []: lightweight aircraft list only (draft non-pro-forma pages).
+   * - [id, …]: full resolve only for these aircraft (draft pro forma preview).
+   */
+  fullyResolveAircraftIds?: string[];
+};
+
 export async function buildSnapshotPayload(
-  proposalId: string
+  proposalId: string,
+  options?: BuildSnapshotPayloadOptions
 ): Promise<ProposalSnapshotPayload> {
+  return perfTimed("snapshot.buildPayload", async () => {
   const proposal = await prisma.proposal.findUniqueOrThrow({
     where: { id: proposalId },
     include: {
@@ -137,6 +152,7 @@ export async function buildSnapshotPayload(
     allAssumptions: proposal.assumptions,
     prospectOpportunityType: proposal.prospect.opportunityType,
     baseScenariosByAircraft,
+    fullyResolveAircraftIds: options?.fullyResolveAircraftIds,
   });
 
   const primaryEntry =
@@ -237,7 +253,9 @@ export async function buildSnapshotPayload(
       aircraftValue: parseFloat(map.aircraft_value ?? "0") || 0,
     },
     aircraftList: aircraftList.length > 0 ? aircraftList : undefined,
+    primaryAircraftInstanceId: proposal.aircraftInstanceId,
   };
+  });
 }
 
 export async function createProposalSnapshot(
@@ -250,6 +268,13 @@ export async function createProposalSnapshot(
   });
 
   const payload = await buildSnapshotPayload(proposalId);
+
+  const validationErrors = validateSnapshotPayload(payload);
+  if (validationErrors.length > 0) {
+    throw new Error(
+      `Cannot publish proposal: snapshot validation failed:\n${validationErrors.join("\n")}`
+    );
+  }
 
   return prisma.proposalSnapshot.create({
     data: {

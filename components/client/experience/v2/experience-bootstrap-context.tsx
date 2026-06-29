@@ -122,6 +122,7 @@ export function ExperienceBootstrapProvider({
   );
 
   const clientFetchRef = useRef<Promise<ClientSnapshotView | null> | null>(null);
+  const clientFetchGenerationRef = useRef(0);
   const prevIndexRef = useRef(pageSlugs.indexOf(initialSlug));
   const isTransitioningRef = useRef(false);
 
@@ -217,39 +218,63 @@ export function ExperienceBootstrapProvider({
 
   useEffect(() => {
     if (activeSlug !== "pro-forma") return;
-    if (clientSnapshot) return;
+
     if (draftMode && bootstrap.initialClientSnapshot) {
-      setClientSnapshot(bootstrap.initialClientSnapshot);
+      if (!clientSnapshot) {
+        setClientSnapshot(bootstrap.initialClientSnapshot);
+      }
       return;
     }
 
+    if (clientSnapshot) return;
     if (clientFetchRef.current) return;
 
+    const generation = ++clientFetchGenerationRef.current;
     setClientLoading(true);
     const params = new URLSearchParams();
     if (aircraftParam) params.set("aircraft", aircraftParam);
     const qs = params.toString();
 
-    clientFetchRef.current = fetch(
-      `/api/portal/${encodeURIComponent(slug)}/proposal${qs ? `?${qs}` : ""}`
-    )
+    const fetchUrl =
+      draftMode && bootstrap.proposalId
+        ? (() => {
+            const draftParams = new URLSearchParams();
+            const aircraftId =
+              aircraftParam ?? bootstrap.payload.primaryAircraftInstanceId ?? null;
+            if (aircraftId) draftParams.set("aircraftInstanceId", aircraftId);
+            const draftQs = draftParams.toString();
+            return `/api/proposals/${encodeURIComponent(bootstrap.proposalId)}/portal-preview/client${draftQs ? `?${draftQs}` : ""}`;
+          })()
+        : `/api/portal/${encodeURIComponent(slug)}/proposal${qs ? `?${qs}` : ""}`;
+
+    clientFetchRef.current = fetch(fetchUrl)
       .then(async (res) => {
         if (!res.ok) return null;
         return (await res.json()) as ClientSnapshotView;
       })
       .catch(() => null)
       .finally(() => {
-        setClientLoading(false);
+        if (generation === clientFetchGenerationRef.current) {
+          setClientLoading(false);
+        }
       });
 
     clientFetchRef.current.then((data) => {
-      if (data) setClientSnapshot(data);
+      if (generation !== clientFetchGenerationRef.current) {
+        clientFetchRef.current = null;
+        return;
+      }
+      if (data) {
+        setClientSnapshot(data);
+      }
       clientFetchRef.current = null;
     });
   }, [
     activeSlug,
     aircraftParam,
     bootstrap.initialClientSnapshot,
+    bootstrap.payload.primaryAircraftInstanceId,
+    bootstrap.proposalId,
     clientSnapshot,
     draftMode,
     slug,

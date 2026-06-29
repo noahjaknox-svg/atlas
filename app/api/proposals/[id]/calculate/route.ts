@@ -1,14 +1,11 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { assumptionsToMap } from "@/lib/assumptions";
+import { perfTimed } from "@/lib/perf-log";
 import type { AssumptionMap } from "@/lib/assumptions";
-import {
-  assumptionsToProFormaInputs,
-  calculateProForma,
-  computeTotalFixedFromAssumptions,
-} from "@/lib/proforma";
+import { assumptionsToMap } from "@/lib/assumptions";
 import { syncUtilizationHours } from "@/lib/proforma-utilization";
+import { computeWorkspaceProFormaForClient } from "@/lib/workspace-proforma-client";
 
 export async function POST(
   request: Request,
@@ -36,66 +33,65 @@ export async function POST(
     });
     const targetAircraftId = aircraftInstanceId ?? proposal?.aircraftInstanceId;
 
-    let map: AssumptionMap;
-    if (clientAssumptions) {
-      map = syncUtilizationHours(clientAssumptions);
-    } else {
-      const assumptions = await prisma.proposalAssumption.findMany({
-        where: { proposalId: id },
+    const result = await perfTimed("calculate.proForma", async () => {
+      let map: AssumptionMap;
+      if (clientAssumptions) {
+        map = syncUtilizationHours(clientAssumptions);
+      } else {
+        const assumptions = await prisma.proposalAssumption.findMany({
+          where: { proposalId: id },
+        });
+
+        map = assumptionsToMap(assumptions);
+        if (targetAircraftId) {
+          const { mergeAssumptionRowsForInstance } = await import(
+            "@/lib/proposal-assumption-load"
+          );
+          const { resolveEffectiveAssumptionsForInstance } = await import(
+            "@/lib/resolve-aircraft-defaults"
+          );
+          map = mergeAssumptionRowsForInstance(
+            assumptions.map((a) => ({
+              category: a.category,
+              assumptionName: a.assumptionName,
+              value: a.value,
+            })),
+            targetAircraftId
+          );
+          map = await resolveEffectiveAssumptionsForInstance(targetAircraftId, map);
+        }
+        map = syncUtilizationHours(map);
+      }
+
+      const calc = computeWorkspaceProFormaForClient(map);
+      const { proForma, metrics } = calc;
+      const totalFixedCosts =
+        calc.summaryRows.find((row) => row.key === "fixed")?.annual ??
+        calc.fixedCostBreakdown.reduce((sum, item) => sum + item.annual, 0);
+
+      await prisma.proposalScenario.updateMany({
+        where: {
+          proposalId: id,
+          ...(targetAircraftId
+            ? { aircraftInstanceId: targetAircraftId }
+            : { isBaseCase: true }),
+        },
+        data: {
+          aircraftValue: metrics.aircraftValue || null,
+          ownerHours: metrics.ownerHours || null,
+          charterBlockHours: parseFloat(map.charter_block_hours ?? "") || null,
+          charterFlightHours: parseFloat(map.charter_flight_hours ?? "") || null,
+          totalFixedCosts: totalFixedCosts || null,
+          ownerVariableCosts: proForma.ownerVariableCost,
+          charterVariableCosts: proForma.charterVariableCost,
+          totalRevenue: proForma.totalRevenue,
+          netAnnualCost: proForma.netAnnualCost,
+          netMonthlyCost: proForma.netMonthlyCost,
+          costPerOwnerHour: proForma.costPerOwnerHour,
+        },
       });
 
-      map = assumptionsToMap(assumptions);
-      if (targetAircraftId) {
-        const { aircraftAssumptionCategory, mergeLegacyAssumptions } = await import(
-          "@/lib/aircraft-workspace"
-        );
-        const { resolveEffectiveAssumptionsForInstance } = await import(
-          "@/lib/resolve-aircraft-defaults"
-        );
-        const category = aircraftAssumptionCategory(targetAircraftId);
-        const perAircraft = mergeLegacyAssumptions(
-          assumptions.map((a) => ({
-            category: a.category,
-            assumptionName: a.assumptionName,
-            value: a.value,
-          })),
-          category
-        );
-        if (Object.keys(perAircraft).length > 0) map = perAircraft;
-        map = await resolveEffectiveAssumptionsForInstance(targetAircraftId, map);
-      }
-      map = syncUtilizationHours(map);
-    }
-
-    const result = calculateProForma(assumptionsToProFormaInputs(map));
-
-    const totalFixed =
-      parseFloat(map.total_fixed_costs ?? "0") || computeTotalFixedFromAssumptions(map);
-
-    await prisma.proposalScenario.updateMany({
-      where: {
-        proposalId: id,
-        ...(targetAircraftId
-          ? { aircraftInstanceId: targetAircraftId }
-          : { isBaseCase: true }),
-      },
-      data: {
-        aircraftValue: map.aircraft_value ? parseFloat(map.aircraft_value) : null,
-        ownerHours: map.owner_annual_hours ? parseFloat(map.owner_annual_hours) : null,
-        charterBlockHours: map.charter_block_hours
-          ? parseFloat(map.charter_block_hours)
-          : null,
-        charterFlightHours: map.charter_flight_hours
-          ? parseFloat(map.charter_flight_hours)
-          : null,
-        totalFixedCosts: totalFixed || null,
-        ownerVariableCosts: result.ownerVariableCost,
-        charterVariableCosts: result.charterVariableCost,
-        totalRevenue: result.totalRevenue,
-        netAnnualCost: result.netAnnualCost,
-        netMonthlyCost: result.netMonthlyCost,
-        costPerOwnerHour: result.costPerOwnerHour,
-      },
+      return proForma;
     });
 
     return jsonOk(result);

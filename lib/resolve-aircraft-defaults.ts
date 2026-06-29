@@ -92,16 +92,6 @@ export async function resolveAircraftDefaults(params: {
   }
 
   if (aircraft) {
-    const fieldVisibility = parseWarehouseFieldVisibility(aircraft.proformaFieldVisibility);
-    const lineVisibility = buildProFormaLineVisibilityFromWarehouse(fieldVisibility);
-    const existingVisibility = parseProFormaVisibility(ctx);
-    map[PROFORMA_VISIBILITY_KEY] = serializeProFormaVisibility({
-      ...existingVisibility,
-      ...lineVisibility,
-      insurance_pl: existingVisibility.insurance_pl ?? false,
-      registration_pl: existingVisibility.registration_pl ?? false,
-    });
-
     const bundle = buildDefaultsFromReferences({
       master: {
         id: aircraft.id,
@@ -137,6 +127,43 @@ export async function resolveAircraftDefaults(params: {
     if (v !== undefined && v.trim() !== "") out[k] = v;
   }
   return out;
+}
+
+/** Warehouse pro forma line visibility — applied at seed only, not on baseline resolve. */
+export async function resolveWarehouseLineVisibilityDefaults(params: {
+  aircraftInstanceId: string;
+  assumptions: AssumptionMap;
+}): Promise<string | undefined> {
+  const instance = await prisma.aircraftInstance.findUnique({
+    where: { id: params.aircraftInstanceId },
+    include: { warehouseAircraft: true },
+  });
+
+  const ctx = buildDefaultsContext(params.assumptions, instance);
+  const warehouseResolution = await resolveValidWarehouseAircraftId({
+    instanceWarehouseId: instance?.warehouseAircraftId,
+    assumptionMasterId: ctx.aircraft_master_id,
+    manufacturer: ctx.aircraft_manufacturer ?? instance?.warehouseAircraft?.manufacturer,
+    model: ctx.aircraft_model ?? instance?.warehouseAircraft?.model,
+  });
+
+  let aircraft = instance?.warehouseAircraft ?? null;
+  if (!aircraft && warehouseResolution.id) {
+    aircraft = await prisma.warehouseAircraft.findUnique({
+      where: { id: warehouseResolution.id },
+    });
+  }
+  if (!aircraft) return undefined;
+
+  const fieldVisibility = parseWarehouseFieldVisibility(aircraft.proformaFieldVisibility);
+  const lineVisibility = buildProFormaLineVisibilityFromWarehouse(fieldVisibility);
+  const existingVisibility = parseProFormaVisibility(ctx);
+  return serializeProFormaVisibility({
+    ...lineVisibility,
+    ...existingVisibility,
+    insurance_pl: existingVisibility.insurance_pl ?? false,
+    registration_pl: existingVisibility.registration_pl ?? false,
+  });
 }
 
 /** Resolve warehouse-backed defaults and merge with stored proposal assumptions. */

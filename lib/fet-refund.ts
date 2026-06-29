@@ -5,8 +5,14 @@ function num(v: string | undefined, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** UI label — pro forma & configurator. */
-export const JET_FUEL_TAX_DIFFERENTIAL_CREDIT_LABEL = "Jet Fuel Tax Differential Credit";
+/** Pro forma revenue line label. */
+export const FET_FUEL_TAX_REFUND_LABEL = "FET fuel tax refund";
+
+/** Rate assumption label ($/gal differential). */
+export const FET_FUEL_TAX_REFUND_RATE_LABEL = "FET fuel tax refund ($/gal)";
+
+/** @deprecated Use FET_FUEL_TAX_REFUND_LABEL */
+export const JET_FUEL_TAX_DIFFERENTIAL_CREDIT_LABEL = FET_FUEL_TAX_REFUND_LABEL;
 
 /** Default $/gal differential (noncommercial $0.219 − commercial $0.044). */
 export const DEFAULT_JET_FUEL_TAX_DIFFERENTIAL_PER_GAL = 0.175;

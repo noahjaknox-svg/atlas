@@ -3,11 +3,10 @@ import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadProposalAircraft } from "@/lib/load-proposal-aircraft";
 import {
-  aircraftAssumptionCategory,
   getAircraftDisplayName,
-  mergeLegacyAssumptions,
   assumptionsFromInstance,
 } from "@/lib/aircraft-workspace";
+import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ProFormaView } from "@/components/internal/pro-forma-view";
 import { loadProFormaData } from "@/lib/proforma-load";
@@ -47,14 +46,13 @@ export default async function ProFormaPage({
     aircraftList.find((a) => a.id === aircraftParam) ?? aircraftList[0] ?? null;
   if (!selected) notFound();
 
-  const category = aircraftAssumptionCategory(selected.id);
-  const assumptionMap = mergeLegacyAssumptions(
+  const assumptionMap = mergeAssumptionRowsForInstance(
     proposal.assumptions.map((a) => ({
       category: a.category,
       assumptionName: a.assumptionName,
       value: a.value,
     })),
-    category
+    selected.id
   );
   const meta = {
     id: selected.id,

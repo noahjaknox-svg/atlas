@@ -58,7 +58,7 @@ export function mergeAssumptionsWithDefaults(
     const storedZero = stored === "0" || stored === "0.0";
     const defaultPositive = parseFloat(d) > 0;
     if (storedZero && defaultPositive) {
-      if (key === "max_annual_utilization") {
+      if (key === "max_annual_utilization" || key === "aircraft_value") {
         merged[key] = d;
         continue;
       }
