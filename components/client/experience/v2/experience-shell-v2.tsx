@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 import { CloudBackground } from "@/components/client/cloud-background";
 import { experienceHref, withExperienceDraftQuery } from "@/lib/prefetch-experience-routes";
 import { DEFAULT_LOGO } from "@/lib/portal-constants";
+import { sectionNavSlug } from "@/lib/experience-page-slug";
 import {
   EXPERIENCE_TAB_LABELS,
-  SECTION_TYPE_TO_SLUG,
   resolvePortalNavLinks,
   type ExperienceSectionSnapshot,
   type ExperienceSectionType,
@@ -127,10 +127,10 @@ function ExperienceShellV2Frame({
 }: ShellCommonProps & {
   welcomeActive: boolean;
   proFormaActive: boolean;
-  isActive: (sectionType: string) => boolean;
+  isActive: (section: ExperienceSectionSnapshot) => boolean;
   welcomeHref: string;
   onWelcomeClick?: (e: React.MouseEvent) => void;
-  chapterHref: (sectionType: string) => string;
+  chapterHref: (section: ExperienceSectionSnapshot) => string;
   onChapterClick?: (e: React.MouseEvent, pageSlug: string) => void;
   proFormaHref: string;
   onProFormaClick?: (e: React.MouseEvent) => void;
@@ -246,13 +246,13 @@ function ExperienceShellV2Frame({
               aria-label="Chapters"
             >
               {navSections.map((s) => {
-                const active = isActive(s.sectionType);
-                const pageSlug =
-                  SECTION_TYPE_TO_SLUG[s.sectionType as ExperienceSectionType] ?? s.sectionType;
+                const active = isActive(s);
+                const pageSlug = sectionNavSlug(s);
+                const navKey = s.pageSlug ?? s.sectionType;
                 return (
                   <a
-                    key={s.sectionType}
-                    href={chapterHref(s.sectionType)}
+                    key={navKey}
+                    href={chapterHref(s)}
                     onClick={
                       onChapterClick
                         ? (e) => onChapterClick(e, pageSlug)
@@ -416,8 +416,8 @@ function ExperienceShellV2DeckInner(props: ShellCommonProps) {
     navigate(pageSlug);
   }
 
-  const welcomeActive = activeSlug === "welcome" || isActive("welcome");
-  const proFormaActive = activeSlug === "pro-forma" || isActive("pro_forma");
+  const welcomeActive = activeSlug === "welcome";
+  const proFormaActive = activeSlug === "pro-forma";
   const homeSlug = getExperienceHomeSlug(props.sections);
   const showProForma = isProFormaSectionVisible(props.sections);
 
@@ -456,20 +456,16 @@ function ExperienceShellV2StaticInner({
 
   const currentSlug = pathname?.match(/\/experience\/([^/?]+)/)?.[1] ?? null;
 
-  function isActive(sectionType: string) {
-    const pageSlug =
-      SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-    return currentSlug === pageSlug;
+  function isActive(section: ExperienceSectionSnapshot) {
+    return currentSlug === sectionNavSlug(section);
   }
 
-  function chapterHref(sectionType: string) {
-    const pageSlug =
-      SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-    return withDraft(experienceHref(props.slug, pageSlug));
+  function chapterHref(section: ExperienceSectionSnapshot) {
+    return withDraft(experienceHref(props.slug, sectionNavSlug(section)));
   }
 
-  const welcomeActive = currentSlug === "welcome" || isActive("welcome");
-  const proFormaActive = currentSlug === "pro-forma" || isActive("pro_forma");
+  const welcomeActive = currentSlug === "welcome";
+  const proFormaActive = currentSlug === "pro-forma";
   const homeSlug = getExperienceHomeSlug(props.sections);
   const showProForma = isProFormaSectionVisible(props.sections);
 

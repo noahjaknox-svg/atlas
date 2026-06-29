@@ -5,19 +5,29 @@ import type { SectionType } from "@prisma/client";
 export async function ensureExperienceSections(proposalId: string) {  const [existing, masterTemplates] = await Promise.all([
     prisma.proposalSection.findMany({
       where: { proposalId },
-      select: { sectionType: true },
+      select: { sectionType: true, pageSlug: true },
     }),
     getExperienceMasterTemplates(),
   ]);
 
-  const types = new Set(existing.map((s) => s.sectionType));
-  const missing = masterTemplates.filter((s) => !types.has(s.sectionType as SectionType));
+  const types = new Set(
+    existing.map((s) =>
+      s.sectionType === "custom_page" ? `custom_page:${s.pageSlug ?? ""}` : s.sectionType
+    )
+  );
+  const missing = masterTemplates.filter((s) => {
+    if (s.sectionType === "custom_page") {
+      return !types.has(`custom_page:${s.pageSlug ?? ""}`);
+    }
+    return !types.has(s.sectionType);
+  });
   if (missing.length === 0) return;
 
   await prisma.proposalSection.createMany({
     data: missing.map((s) => ({
       proposalId,
       sectionType: s.sectionType as SectionType,
+      pageSlug: s.pageSlug ?? undefined,
       title: s.title,
       sortOrder: s.sortOrder,
       visible: s.visible,

@@ -490,6 +490,40 @@
   .atlas-proforma-line {
     @apply min-w-0 truncate whitespace-nowrap text-sm leading-none;
   }
+
+  /* Portal page-block rows — grid-template-columns via CSS var (dynamic Tailwind grid-cols-[…] is not JIT-safe). */
+  .portal-row-grid[data-row-layout="horizontal"] {
+    grid-template-columns: var(--portal-row-template);
+  }
+
+  @media (min-width: 1024px) {
+    .portal-row-grid[data-row-layout="responsive"] {
+      grid-template-columns: var(--portal-row-template);
+    }
+  }
+
+  .portal-container-grid[data-layout="horizontal"] {
+    grid-template-columns: var(--portal-col-template);
+    grid-template-rows: var(--portal-row-template);
+  }
+
+  @media (min-width: 1024px) {
+    .portal-container-grid[data-layout="responsive"] {
+      grid-template-columns: var(--portal-col-template);
+      grid-template-rows: var(--portal-row-template);
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .portal-container-grid[data-layout="responsive"] {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto !important;
+    }
+
+    .portal-row-grid[data-row-layout="responsive"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
 }
 
 @layer utilities {

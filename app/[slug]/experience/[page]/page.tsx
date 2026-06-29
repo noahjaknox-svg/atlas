@@ -13,15 +13,16 @@ import { resolveFrozenSections } from "@/lib/experience-resolve";
 import {
   getFirstExperienceSlug,
   getSectionBySlug,
-  SLUG_TO_SECTION_TYPE,
   isExperienceRenderV2,
   type ExperienceSectionSnapshot,
 } from "@/lib/experience-content";
+import { verifyDesignerPreviewToken } from "@/lib/portal-designer-preview-token";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildSnapshotPayload, type ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
 import { resolvePortalBranding } from "@/lib/portal-constants";
+import { resolveLayoutSettings } from "@/lib/portal-layout-settings";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
 
@@ -102,14 +103,16 @@ export default async function ExperiencePageRoute({
   searchParams,
 }: {
   params: Promise<{ slug: string; page: string }>;
-  searchParams: Promise<{ aircraft?: string; draft?: string }>;
+  searchParams: Promise<{ aircraft?: string; draft?: string; previewToken?: string }>;
 }) {
   const { slug, page } = await params;
-  const { aircraft: aircraftParam, draft } = await searchParams;
-
-  if (!SLUG_TO_SECTION_TYPE[page]) notFound();
+  const { aircraft: aircraftParam, draft, previewToken } = await searchParams;
 
   const isDraft = draft === "1";
+  const previewFromToken = previewToken
+    ? await verifyDesignerPreviewToken(previewToken)
+    : null;
+  const isStaffPreview = isDraft || !!previewFromToken;
 
   let payload: ProposalSnapshotPayload | null;
   let branding: PortalBranding;
@@ -119,7 +122,30 @@ export default async function ExperiencePageRoute({
   let sections: ExperienceSectionSnapshot[];
   let disclaimer: string | null;
 
-  if (isDraft) {
+  if (previewFromToken) {
+    const internal = await getInternalUser();
+    if (!internal) redirect(`/${slug}`);
+    const preview = await loadDraftPreview(slug, { mode: "none" });
+    if (!preview) notFound();
+    payload = {
+      ...preview.payload,
+      sections: previewFromToken.payload.sections as ProposalSnapshotPayload["sections"],
+      renderSchemaVersion: previewFromToken.payload.renderSchemaVersion ?? 3,
+    };
+    if (previewFromToken.payload.hero?.clientSummary) {
+      payload = {
+        ...payload,
+        proposal: { ...payload.proposal, clientSummary: previewFromToken.payload.hero.clientSummary },
+        aircraft: { ...payload.aircraft, clientSummary: previewFromToken.payload.hero.clientSummary },
+      };
+    }
+    branding = preview.branding;
+    contactName = preview.contactName;
+    clientDisplayName = preview.clientDisplayName;
+    proposalId = previewFromToken.proposalId;
+    sections = previewFromToken.payload.sections as ExperienceSectionSnapshot[];
+    disclaimer = sections.find((s) => s.sectionType === "disclaimer")?.bodyCopy ?? null;
+  } else if (isDraft) {
     const resolveScope =
       page === "pro-forma"
         ? aircraftParam
@@ -156,7 +182,7 @@ export default async function ExperiencePageRoute({
   if (!section) notFound();
 
   // Staff draft preview shows the requested page even when it is toggled off for clients.
-  if (!isDraft && !section.visible) {
+  if (!isStaffPreview && !section.visible) {
     const fallbackSlug = getFirstExperienceSlug(sections);
     const draftQs = "";
     const aircraftQs = aircraftParam ? `aircraft=${encodeURIComponent(aircraftParam)}` : "";
@@ -172,7 +198,7 @@ export default async function ExperiencePageRoute({
     client = await serializeClientSnapshot(payload, {
       proposalId,
       aircraftInstanceId: aircraftParam ?? null,
-      useLiveWorkspace: isDraft,
+      useLiveWorkspace: isStaffPreview,
     });
   }
 
@@ -183,6 +209,8 @@ export default async function ExperiencePageRoute({
     initialClientSnapshot = client;
   }
 
+  const layoutSettings = resolveLayoutSettings(payload.branding?.layoutSettings);
+
   return (
     <PortalShell
       renderSchemaVersion={payload.renderSchemaVersion}
@@ -192,7 +220,7 @@ export default async function ExperiencePageRoute({
       clientDisplayName={clientDisplayName}
       disclaimer={disclaimer}
       branding={branding}
-      draftMode={isDraft}
+      draftMode={isStaffPreview}
       experienceBootstrap={
         renderV2
           ? {
@@ -217,6 +245,7 @@ export default async function ExperiencePageRoute({
           client={client}
           aircraftParam={aircraftParam}
           renderV2={false}
+          layoutSettings={layoutSettings}
         />
       ) : null}
     </PortalShell>

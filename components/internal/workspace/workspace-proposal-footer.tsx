@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   COPY_PROSPECT_PORTAL_LINK,
   EDIT_PROSPECT_PORTAL,
+  OPEN_PORTAL_DESIGNER,
   PREVIEW_PROSPECT_PORTAL,
   PUBLISH_PROSPECT_PORTAL,
   PUBLISHED_LAST_LABEL,
@@ -30,6 +31,7 @@ export function WorkspaceProposalFooter({
   onRestorePortal,
   onRegeneratePin,
   onEditPresentation,
+  onOpenDesigner,
 }: {
   portalSlug: string | null;
   portalUrl: string | null;
@@ -50,6 +52,7 @@ export function WorkspaceProposalFooter({
   onRestorePortal: () => void;
   onRegeneratePin: () => void;
   onEditPresentation: () => void;
+  onOpenDesigner: () => void;
 }) {
   async function copyLink() {
     if (!portalUrl) return;
@@ -86,6 +89,17 @@ export function WorkspaceProposalFooter({
             onClick={onEditPresentation}
           >
             {EDIT_PROSPECT_PORTAL}
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0 text-xs"
+            disabled={!hasSelectedAircraft}
+            onClick={onOpenDesigner}
+          >
+            {OPEN_PORTAL_DESIGNER}
           </Button>
 
           <Button

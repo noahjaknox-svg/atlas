@@ -2,6 +2,10 @@
 
 import type { ExperienceMasterTemplate } from "./experience-master";
 import { PRISMJET_MEDIA } from "./prismjet-media";
+import {
+  DEFAULT_LAYOUT_SETTINGS,
+  type PortalLayoutSettings,
+} from "./portal-layout-settings";
 
 export type ServicePillar = {
   title: string;
@@ -31,6 +35,8 @@ export type PortalContentData = {
   fleetTitle: string;
   fleetBody: string | null;
   sectionDefaults: SectionMediaDefaults;
+  /** Global width presets (% of parent) for portal blocks. */
+  layoutSettings: PortalLayoutSettings;
   /** Master copy for experience report pages — seeds new proposals. */
   experienceTemplates: ExperienceMasterTemplate[] | null;
 };
@@ -138,6 +144,7 @@ export const DEFAULT_PORTAL_CONTENT: PortalContentData = {
     cover: { imageUrl: DEFAULT_CLOUD_IMAGE },
     aircraft_overview: { imageUrl: "/images/fleet-jet-placeholder.svg" },
   },
+  layoutSettings: DEFAULT_LAYOUT_SETTINGS,
   experienceTemplates: null,
 };
 

@@ -75,6 +75,7 @@ export const COMPANY_SETTINGS_PARITY: FieldParityPair[] = [
   { workspaceKey: "benefits_pct", warehouseSource: "company_settings", warehouseColumn: "crewBenefitsPercent" },
   { workspaceKey: "jet_fuel_tax_differential_per_gal", warehouseSource: "company_settings", warehouseColumn: "fuelTaxRefund" },
   { workspaceKey: "away_fuel_price", warehouseSource: "company_settings", warehouseColumn: "usAverageFuelCost" },
+  { workspaceKey: "charter_block_to_flight_ratio", warehouseSource: "company_settings", warehouseColumn: "charterBlockToFlightRatio" },
   { workspaceKey: "insurance_mode", warehouseSource: "company_settings", warehouseColumn: "defaultInsuranceMode", workspaceUi: true, preserveOnRefresh: true },
   { workspaceKey: "insurance_annual", warehouseSource: "company_settings", warehouseColumn: "defaultInsuranceAnnual", workspaceUi: true, preserveOnRefresh: true },
   { workspaceKey: "insurance_premium_percent", warehouseSource: "company_settings", warehouseColumn: "defaultInsurancePremiumPercent", workspaceUi: true, preserveOnRefresh: true },

@@ -1,13 +1,10 @@
 import type { AssumptionMap } from "@/lib/assumptions";
-import { DEFAULT_BLOCK_TO_FLIGHT_FACTOR } from "@/lib/proforma-utilization";
 
 /**
- * Constants with no Data Hub source. Not merged into warehouse Pulled/Default —
- * only used where pro forma math needs a fallback when the workspace left a field empty.
+ * Legacy hook for code-only assumption fills. Prefer Data Hub company settings
+ * (e.g. charter_block_to_flight_ratio on General and Company).
  */
-export const CONSTANT_ASSUMPTION_DEFAULTS: Record<string, string> = {
-  charter_block_to_flight_ratio: String(DEFAULT_BLOCK_TO_FLIGHT_FACTOR),
-};
+export const CONSTANT_ASSUMPTION_DEFAULTS: Record<string, string> = {};
 
 /** @deprecated Use CONSTANT_ASSUMPTION_DEFAULTS. Kept for legacy imports. */
 export const ESTIMATED_DEFAULTS = CONSTANT_ASSUMPTION_DEFAULTS;

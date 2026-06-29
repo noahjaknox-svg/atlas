@@ -39,6 +39,9 @@ export function loadCompanySettingsDefaults(
   if (settings.usAverageFuelCost != null) {
     map.away_fuel_price = String(Number(settings.usAverageFuelCost));
   }
+  if (settings.charterBlockToFlightRatio != null) {
+    map.charter_block_to_flight_ratio = String(Number(settings.charterBlockToFlightRatio));
+  }
 
   setStr(map, "insurance_mode", settings.defaultInsuranceMode);
   setInt(map, "insurance_annual", settings.defaultInsuranceAnnual);

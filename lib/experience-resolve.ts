@@ -1,10 +1,10 @@
-import type { ExperienceContentBlocks, ExperienceSectionSnapshot } from "./experience-content";
+import type { ExperienceSectionSnapshot } from "./experience-content";
 import {
   EXPERIENCE_SECTION_TYPES,
   mergeSectionWithDefaults,
   sanitizeExperiencePageLinks,
 } from "./experience-content";
-import { getExperienceDefaultFromMaster } from "./experience-master";
+import { getExperienceDefaultFromMaster, masterToSectionSnapshot } from "./experience-master";
 import type { ExperienceMasterTemplate } from "./experience-master";
 import type { ProposalSnapshotPayload } from "./snapshot";
 
@@ -54,7 +54,12 @@ export function resolveExperienceSections(
     }
 
     return { ...defaults, visible: false };
-  }).filter((s): s is ExperienceSectionSnapshot => s !== null);
+  })
+    .filter((s): s is ExperienceSectionSnapshot => s !== null)
+    .concat(
+      fromPayload.filter((s) => s.sectionType === "custom_page") as ExperienceSectionSnapshot[]
+    )
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export function resolveExperienceSection(
@@ -69,51 +74,71 @@ export function resolveExperienceSection(
 /**
  * Build the sections stored on a published snapshot.
  *
- * Ownership split (the redesign's core rule):
- *   - Structure, media, layout, and rich content blocks come from the master
- *     templates (the global Deck Builder / Proposal Design).
- *   - Copy, page selection (visible), order, and signatory come from the proposal.
- *   - The only per-proposal content-block override preserved is the aircraft
- *     market link, which is genuinely proposal-specific.
- *
- * Editing global Deck Builder art therefore flows into a proposal on its next
- * republish, while each proposal keeps its own copy and chosen pages.
+ * The proposal working copy (`proposal_sections`) is the source of truth at
+ * publish time. Master templates only fill gaps when a proposal row is missing
+ * or incomplete. After publish, frozen snapshots render verbatim.
  */
 export function resolvePublishedSections(
   proposalSections: Array<Partial<ExperienceSectionSnapshot> & { sectionType: string }>,
   masterTemplates?: ExperienceMasterTemplate[] | null
 ): ExperienceSectionSnapshot[] {
-  return EXPERIENCE_SECTION_TYPES.map((sectionType) => {
+  const systemSections = EXPERIENCE_SECTION_TYPES.map((sectionType) => {
     const master = getExperienceDefaultFromMaster(sectionType, masterTemplates);
     if (!master) return null;
 
     const proposalSection = proposalSections.find((s) => s.sectionType === sectionType);
     if (!proposalSection) return master;
 
-    const marketOverrides: Partial<ExperienceContentBlocks> = {};
+    const merged = mergeSectionWithDefaults(
+      proposalSection as ExperienceSectionSnapshot,
+      master
+    );
+
     const pcb = proposalSection.contentBlocks;
-    if (pcb?.aircraftMarketUrl != null) marketOverrides.aircraftMarketUrl = pcb.aircraftMarketUrl;
-    if (pcb?.aircraftMarketButtonLabel != null) {
-      marketOverrides.aircraftMarketButtonLabel = pcb.aircraftMarketButtonLabel;
-    }
     if (pcb?.navLinks != null) {
-      marketOverrides.navLinks = sanitizeExperiencePageLinks(pcb.navLinks);
+      merged.contentBlocks = {
+        ...(merged.contentBlocks ?? {}),
+        navLinks: sanitizeExperiencePageLinks(pcb.navLinks),
+      };
     }
 
-    return {
-      ...master,
-      title: proposalSection.title ?? master.title,
-      bodyCopy: proposalSection.bodyCopy ?? master.bodyCopy,
-      visible: proposalSection.visible ?? master.visible,
-      sortOrder: proposalSection.sortOrder ?? master.sortOrder,
-      signatoryName: proposalSection.signatoryName ?? master.signatoryName,
-      signatoryTitle: proposalSection.signatoryTitle ?? master.signatoryTitle,
-      contentBlocks:
-        Object.keys(marketOverrides).length > 0
-          ? { ...(master.contentBlocks ?? {}), ...marketOverrides }
-          : master.contentBlocks,
-    };
+    return merged;
   }).filter((s): s is ExperienceSectionSnapshot => s !== null);
+
+  const customSections = proposalSections
+    .filter((s) => s.sectionType === "custom_page")
+    .map((proposalSection) => {
+      const master = masterTemplates?.find(
+        (t) =>
+          t.sectionType === "custom_page" &&
+          t.pageSlug &&
+          proposalSection.pageSlug &&
+          t.pageSlug === proposalSection.pageSlug
+      );
+      const base: ExperienceSectionSnapshot = master
+        ? masterToSectionSnapshot(master)
+        : {
+            sectionType: "custom_page",
+            pageSlug: proposalSection.pageSlug ?? null,
+            title: proposalSection.title ?? "Custom Page",
+            bodyCopy: proposalSection.bodyCopy ?? null,
+            visible: proposalSection.visible ?? true,
+            sortOrder: proposalSection.sortOrder ?? 999,
+            imageUrl: proposalSection.imageUrl ?? null,
+            videoUrl: proposalSection.videoUrl ?? null,
+            posterUrl: proposalSection.posterUrl ?? null,
+            signatoryName: proposalSection.signatoryName ?? null,
+            signatoryTitle: proposalSection.signatoryTitle ?? null,
+            layoutVariant: proposalSection.layoutVariant ?? null,
+            calloutMetricLabel: proposalSection.calloutMetricLabel ?? null,
+            calloutMetricValue: proposalSection.calloutMetricValue ?? null,
+            contentBlocks: proposalSection.contentBlocks ?? null,
+          };
+
+      return mergeSectionWithDefaults(proposalSection as ExperienceSectionSnapshot, base);
+    });
+
+  return [...systemSections, ...customSections].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 /**

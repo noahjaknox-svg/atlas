@@ -18,6 +18,7 @@ export function EditorialImageGrid({
   primaryIndex = 0,
   className,
   slide = false,
+  designMode = false,
 }: {
   items?: ExperienceGalleryItem[] | null;
   title?: string;
@@ -25,8 +26,10 @@ export function EditorialImageGrid({
   primaryIndex?: number;
   className?: string;
   slide?: boolean;
+  designMode?: boolean;
 }) {
   const [active, setActive] = useState<number | null>(null);
+  const openLightbox = designMode ? undefined : (index: number) => setActive(index);
 
   if (!items || items.length === 0) return null;
 
@@ -42,10 +45,12 @@ export function EditorialImageGrid({
             alt={primary.caption ?? ""}
             caption={primary.caption}
             variant="landscape-wide"
-            onClick={() => setActive(primaryIndex)}
+            onClick={openLightbox ? () => openLightbox(primaryIndex) : undefined}
           />
         </section>
-        <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+        {!designMode ? (
+          <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+        ) : null}
       </RevealOnScroll>
     );
   }
@@ -78,7 +83,7 @@ export function EditorialImageGrid({
             caption={primary.caption}
             variant="editorial-large"
             sizing="fill"
-            onClick={() => setActive(primaryIndex)}
+            onClick={openLightbox ? () => openLightbox(primaryIndex) : undefined}
           />
           <ProposalImage
             src={secondary.url}
@@ -86,12 +91,14 @@ export function EditorialImageGrid({
             caption={secondary.caption}
             variant="editorial-small"
             sizing="fill"
-            onClick={() => setActive(secondaryIndex)}
+            onClick={openLightbox ? () => openLightbox(secondaryIndex) : undefined}
           />
         </div>
       </section>
 
-      <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+      {!designMode ? (
+        <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+      ) : null}
     </RevealOnScroll>
   );
 }

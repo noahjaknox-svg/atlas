@@ -48,6 +48,7 @@ export function ExperienceGallery({
   className,
   featuredIndex,
   slide = false,
+  designMode = false,
 }: {
   items?: ExperienceGalleryItem[] | null;
   title?: string;
@@ -58,8 +59,11 @@ export function ExperienceGallery({
   featuredIndex?: number;
   /** Compact sizing for full-viewport slide pages. */
   slide?: boolean;
+  /** Disable lightbox interactions while editing in the portal designer. */
+  designMode?: boolean;
 }) {
   const [active, setActive] = useState<number | null>(null);
+  const openLightbox = designMode ? undefined : (index: number) => setActive(index);
 
   if (!items || items.length === 0) return null;
 
@@ -88,7 +92,13 @@ export function ExperienceGallery({
 
   if (layout === "editorialPair" && items.length >= 2) {
     return (
-      <EditorialImageGrid items={items} title={title} className={className} slide={slide} />
+      <EditorialImageGrid
+        items={items}
+        title={title}
+        className={className}
+        slide={slide}
+        designMode={designMode}
+      />
     );
   }
 
@@ -108,7 +118,7 @@ export function ExperienceGallery({
               caption={portrait.caption}
               variant="portrait-featured"
               sizing={slide ? "fill" : "variant"}
-              onClick={() => setActive(0)}
+              onClick={openLightbox ? () => openLightbox(0) : undefined}
               frameClassName={slide ? "min-h-0 flex-1" : undefined}
             />
           ) : null}
@@ -119,12 +129,14 @@ export function ExperienceGallery({
                 alt={secondary.caption ?? ""}
                 caption={secondary.caption}
                 variant="editorial-small"
-                onClick={() => setActive(1)}
+                onClick={openLightbox ? () => openLightbox(1) : undefined}
               />
             </div>
           ) : null}
         </section>
-        <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+        {!designMode ? (
+          <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+        ) : null}
       </RevealOnScroll>
     );
   }
@@ -179,7 +191,7 @@ export function ExperienceGallery({
                 caption={item.caption}
                 variant={imageVariant}
                 sizing={slide ? "fill" : "variant"}
-                onClick={() => setActive(index)}
+                onClick={openLightbox ? () => openLightbox(index) : undefined}
                 frameClassName={slide ? "min-h-0 flex-1" : undefined}
               />
             );
@@ -187,7 +199,9 @@ export function ExperienceGallery({
         </div>
       </section>
 
-      <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+      {!designMode ? (
+        <ExperienceImageLightbox items={items} active={active} onClose={() => setActive(null)} />
+      ) : null}
     </RevealOnScroll>
   );
 }

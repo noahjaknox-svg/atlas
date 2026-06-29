@@ -2,11 +2,8 @@
 
 import { useCallback, useContext, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  SECTION_TYPE_TO_SLUG,
-  type ExperienceSectionSnapshot,
-  type ExperienceSectionType,
-} from "@/lib/experience-content";
+import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
+import { sectionNavSlug } from "@/lib/experience-page-slug";
 import {
   experienceHref,
   getExperiencePageSlugs,
@@ -89,15 +86,13 @@ export function useChapterNavigation({
     return () => window.removeEventListener("keydown", onKey);
   }, [deck, goToAdjacentSlide]);
 
-  function tabHref(sectionType: string) {
-    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-    return withDraft(experienceHref(slug, pageSlug));
+  function tabHref(section: ExperienceSectionSnapshot) {
+    return withDraft(experienceHref(slug, sectionNavSlug(section)));
   }
 
-  function isActive(sectionType: string) {
-    if (deck) return deck.isActive(sectionType);
-    const pageSlug = SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-    return currentSlug === pageSlug;
+  function isActive(section: ExperienceSectionSnapshot) {
+    if (deck) return deck.isActive(section);
+    return currentSlug === sectionNavSlug(section);
   }
 
   return {

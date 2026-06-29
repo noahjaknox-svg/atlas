@@ -1,4 +1,6 @@
-/** Client-safe experience section types and route mapping. */
+import { resolveSectionByPageSlug, sectionNavSlug } from "./experience-page-slug";
+import type { ProposalImageVariant } from "./experience-image-system";
+import type { BlockVisibility } from "./portal-layout-settings";
 
 export const EXPERIENCE_SECTION_TYPES = [
   "welcome",
@@ -20,7 +22,12 @@ export type ExperienceSectionType = (typeof EXPERIENCE_SECTION_TYPES)[number];
  * global Proposal Design edits never alter an already-published proposal. Older
  * snapshots without it fall back to live master-template merging for compatibility.
  */
-export const RENDER_SCHEMA_VERSION = 2;
+export const RENDER_SCHEMA_VERSION = 3;
+
+/** Snapshots at v3+ freeze fleet showcase and extended portal branding on publish. */
+export function isSnapshotFleetFrozen(renderSchemaVersion?: number): boolean {
+  return (renderSchemaVersion ?? 0) >= 3;
+}
 
 /** Client portal uses the v2 presentation shell (prism stage, glass nav, bottom dock). */
 export function isExperienceRenderV2(renderSchemaVersion?: number): boolean {
@@ -112,6 +119,107 @@ export type ExperiencePageLink = {
   url: string;
 };
 
+export type ExperienceGalleryLayout =
+  | "single"
+  | "leadership"
+  | "leadershipRow"
+  | "editorialPair"
+  | "welcome"
+  | "compact";
+
+export type BlockWidth = "auto" | "narrow" | "medium" | "full";
+export type BlockAlign = "left" | "center" | "right";
+export type BlockVerticalAlign = "top" | "center" | "bottom";
+export type BlockPadding = "none" | "sm" | "md" | "lg";
+export type RowPreset = "equal-2" | "equal-3" | "wide-narrow" | "narrow-wide";
+export type RowGap = "sm" | "md" | "lg";
+
+export type RowDisplay = "columns" | "rows";
+
+export type GridDimension = 1 | 2 | 3 | 4;
+
+export type ContainerCellAlign = "start" | "stretch";
+
+export type BlockLayout = {
+  /** @deprecated use widthDesktop / widthMobile preset ids */
+  width?: BlockWidth;
+  widthDesktop?: string;
+  widthMobile?: string;
+  visibility?: BlockVisibility;
+  /** Horizontal alignment within the column or page content area. */
+  align?: BlockAlign;
+  /** Vertical alignment within a grid cell (when the cell is taller than the block). */
+  verticalAlign?: BlockVerticalAlign;
+  padding?: BlockPadding;
+};
+
+type LeafBlockBase = { id: string; blockLayout?: BlockLayout };
+
+export type ImageFocalPoint = { x: number; y: number };
+export type ImageCropRect = { x: number; y: number; width: number; height: number };
+export type ImageDisplaySize = "icon" | "small" | "fit" | "large";
+
+export type ExperiencePageBlock =
+  | (LeafBlockBase & { type: "text"; markdown: string })
+  | (LeafBlockBase & { type: "heading"; level: 1 | 2 | 3; text: string })
+  | (LeafBlockBase & {
+      type: "image";
+      url: string;
+      alt?: string;
+      caption?: string;
+      /** @deprecated Portal designer uses imageSize; kept for galleries and legacy pages. */
+      variant?: ProposalImageVariant;
+      imageSize?: ImageDisplaySize;
+      /** Width/height of cropped region (pixels); set when saving crop in designer. */
+      cropAspectRatio?: number;
+      focalPoint?: ImageFocalPoint;
+      crop?: ImageCropRect;
+    })
+  | (LeafBlockBase & {
+      type: "gallery";
+      layout?: ExperienceGalleryLayout;
+      items: ExperienceGalleryItem[];
+    })
+  | (LeafBlockBase & { type: "html"; html: string })
+  | (LeafBlockBase & { type: "spacer"; size?: "sm" | "md" | "lg" })
+  | (LeafBlockBase & { type: "quote"; text: string; attribution?: string })
+  | (LeafBlockBase & {
+      type: "cta";
+      label: string;
+      url: string;
+      variant?: "primary" | "secondary";
+    })
+  | (LeafBlockBase & {
+      type: "video";
+      url: string;
+      posterUrl?: string;
+      caption?: string;
+    })
+  | {
+      id: string;
+      type: "row";
+      preset: RowPreset;
+      gap?: RowGap;
+      /** Side-by-side columns vs stacked rows on wide viewports. Defaults to columns. */
+      display?: RowDisplay;
+      /** Relative column widths (e.g. [2, 1, 1] → 2fr 1fr 1fr). Defaults from preset when omitted. */
+      columnWeights?: number[];
+      columns: ExperiencePageBlock[][];
+    }
+  | {
+      id: string;
+      type: "container";
+      rows: GridDimension;
+      cols: GridDimension;
+      gap?: RowGap;
+      columnWeights?: number[];
+      rowWeights?: number[];
+      width?: BlockWidth;
+      align?: BlockAlign;
+      cellAlign?: ContainerCellAlign;
+      cells: ExperiencePageBlock[][][];
+    };
+
 export type ExperienceContentBlocks = {
   pillars?: ExperiencePillar[];
   timeline?: ExperienceTimelinePhase[];
@@ -137,12 +245,15 @@ export type ExperienceContentBlocks = {
   /** External link shown in portal header (Edit presentation → Portal links). */
   aircraftMarketUrl?: string | null;
   aircraftMarketButtonLabel?: string | null;
+  /** Optional freeform block stack — when present, generic renderer is used. */
+  pageBlocks?: ExperiencePageBlock[];
 };
 
 export type ExperienceNavLink = ExperiencePageLink;
 
 export type ExperienceSectionSnapshot = {
   sectionType: string;
+  pageSlug?: string | null;
   title: string;
   bodyCopy: string | null;
   visible: boolean;
@@ -233,9 +344,7 @@ export function getSectionBySlug(
   sections: ExperienceSectionSnapshot[],
   pageSlug: string
 ): ExperienceSectionSnapshot | undefined {
-  const sectionType = SLUG_TO_SECTION_TYPE[pageSlug];
-  if (!sectionType) return undefined;
-  return sections.find((s) => s.sectionType === sectionType);
+  return resolveSectionByPageSlug(sections, pageSlug);
 }
 
 export function getFirstExperienceSlug(sections: ExperienceSectionSnapshot[]): string {
@@ -243,12 +352,7 @@ export function getFirstExperienceSlug(sections: ExperienceSectionSnapshot[]): s
   if (welcome) return "welcome";
 
   const chapters = getExperienceChapterSections(sections);
-  if (chapters[0]) {
-    return (
-      SECTION_TYPE_TO_SLUG[chapters[0].sectionType as ExperienceSectionType] ??
-      chapters[0].sectionType
-    );
-  }
+  if (chapters[0]) return sectionNavSlug(chapters[0]);
 
   if (isProFormaSectionVisible(sections)) return "pro-forma";
 

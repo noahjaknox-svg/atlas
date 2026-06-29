@@ -6,6 +6,8 @@ import {
   getBootstrapSection,
   useExperienceBootstrap,
 } from "./experience-bootstrap-context";
+import { resolveLayoutSettings } from "@/lib/portal-layout-settings";
+import { useMemo } from "react";
 
 function ProFormaLoadingSkeleton() {
   return (
@@ -53,6 +55,11 @@ export function ExperienceChapterSlide({
     );
   }
 
+  const layoutSettings = useMemo(
+    () => resolveLayoutSettings(payload.branding?.layoutSettings),
+    [payload.branding?.layoutSettings]
+  );
+
   const pageContent = (
     <ExperiencePageContent
       pageSlug={pageSlug}
@@ -68,6 +75,7 @@ export function ExperienceChapterSlide({
       client={clientSnapshot ?? undefined}
       aircraftParam={aircraftParam}
       renderV2
+      layoutSettings={layoutSettings}
     />
   );
 

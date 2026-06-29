@@ -7,7 +7,8 @@ export const PROSPECT_PORTAL_DESIGNER = "Prospect Portal Designer";
 export const EDIT_PROSPECT = "Edit prospect";
 export const PROSPECT_NAME_LABEL = "Prospect name";
 
-export const EDIT_PROSPECT_PORTAL = "Edit Prospect Portal";
+export const EDIT_PROSPECT_PORTAL = "Portal pages";
+export const OPEN_PORTAL_DESIGNER = "Open Portal Designer";
 export const PREVIEW_PROSPECT_PORTAL = "Preview Prospect Portal";
 export const PUBLISH_PROSPECT_PORTAL = "Publish Prospect Portal";
 export const REPUBLISH_PROSPECT_PORTAL = "Republish Prospect Portal";

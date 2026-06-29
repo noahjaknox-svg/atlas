@@ -3,16 +3,15 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import {
-  sanitizeExperiencePageLinks,
-  type ExperienceContentBlocks,
-} from "@/lib/experience-content";
+  proposalSectionPatchSchema,
+  sanitizeSectionContentBlocks,
+} from "@/lib/experience-section-schema";
+import type { ExperienceContentBlocks } from "@/lib/experience-content";
+import { normalizePageSlug, validatePageSlug } from "@/lib/experience-page-slug";
 
 /**
- * Per-proposal section edits are limited to copy, page selection (visible),
- * order, signatory, the per-proposal aircraft market link, and custom page
- * link buttons. Structure, media, layout, and rich content blocks are owned
- * globally by the Deck Builder (Proposal Design) and are intentionally ignored
- * here.
+ * Per-proposal section edits update the proposal working copy (draft layer).
+ * Published client portals read only from snapshots until republish.
  */
 export async function PATCH(
   request: Request,
@@ -29,38 +28,63 @@ export async function PATCH(
     }
 
     const results = [];
-    for (const item of items) {
-      if (!item.id) return jsonError("Each section requires id");
+    for (const raw of items) {
+      const parsed = proposalSectionPatchSchema.safeParse(raw);
+      if (!parsed.success) {
+        return jsonError(parsed.error.errors[0]?.message ?? "Invalid section payload");
+      }
+      const item = parsed.data;
+
       const existing = await prisma.proposalSection.findFirst({
         where: { id: item.id, proposalId },
-        select: { id: true, contentBlocks: true },
+        select: { id: true, contentBlocks: true, sectionType: true, pageSlug: true },
       });
       if (!existing) return jsonError("Section not found", 404);
 
-      const data: Prisma.ProposalSectionUpdateInput = {
-        title: item.title,
-        bodyCopy: item.bodyCopy,
-        visible: typeof item.visible === "boolean" ? item.visible : undefined,
-        sortOrder: typeof item.sortOrder === "number" ? item.sortOrder : undefined,
-        signatoryName: item.signatoryName !== undefined ? item.signatoryName : undefined,
-        signatoryTitle: item.signatoryTitle !== undefined ? item.signatoryTitle : undefined,
-      };
+      const data: Prisma.ProposalSectionUpdateInput = {};
+      if (item.title !== undefined) data.title = item.title;
+      if (item.bodyCopy !== undefined) data.bodyCopy = item.bodyCopy;
+      if (item.visible !== undefined) data.visible = item.visible;
+      if (item.sortOrder !== undefined) data.sortOrder = item.sortOrder;
+      if (item.signatoryName !== undefined) data.signatoryName = item.signatoryName;
+      if (item.signatoryTitle !== undefined) data.signatoryTitle = item.signatoryTitle;
+      if (item.imageUrl !== undefined) data.imageUrl = item.imageUrl;
+      if (item.videoUrl !== undefined) data.videoUrl = item.videoUrl;
+      if (item.posterUrl !== undefined) data.posterUrl = item.posterUrl;
+      if (item.layoutVariant !== undefined) data.layoutVariant = item.layoutVariant;
+      if (item.calloutMetricLabel !== undefined) {
+        data.calloutMetricLabel = item.calloutMetricLabel;
+      }
+      if (item.calloutMetricValue !== undefined) {
+        data.calloutMetricValue = item.calloutMetricValue;
+      }
 
-      // Only the per-proposal aircraft market link is editable within contentBlocks.
-      if (item.contentBlocks && typeof item.contentBlocks === "object") {
-        const incoming = item.contentBlocks as ExperienceContentBlocks;
+      if (item.pageSlug !== undefined) {
+        if (existing.sectionType !== "custom_page") {
+          return jsonError("Only custom pages can change URL slug");
+        }
+        if (item.pageSlug == null || !item.pageSlug.trim()) {
+          return jsonError("Custom pages require a URL slug");
+        }
+        const normalized = normalizePageSlug(item.pageSlug);
+        const slugError = validatePageSlug(normalized);
+        if (slugError) return jsonError(slugError);
+        if (normalized !== existing.pageSlug) {
+          const conflict = await prisma.proposalSection.findFirst({
+            where: { proposalId, pageSlug: normalized, NOT: { id: item.id } },
+          });
+          if (conflict) return jsonError("A page with this URL slug already exists");
+        }
+        data.pageSlug = normalized;
+      }
+
+      if (item.contentBlocks !== undefined) {
         const current = (existing.contentBlocks as ExperienceContentBlocks | null) ?? {};
-        const merged: ExperienceContentBlocks = { ...current };
-        if ("aircraftMarketUrl" in incoming) {
-          merged.aircraftMarketUrl = incoming.aircraftMarketUrl ?? null;
-        }
-        if ("aircraftMarketButtonLabel" in incoming) {
-          merged.aircraftMarketButtonLabel = incoming.aircraftMarketButtonLabel ?? null;
-        }
-        if ("navLinks" in incoming) {
-          merged.navLinks = sanitizeExperiencePageLinks(incoming.navLinks);
-        }
-        data.contentBlocks = merged as unknown as Prisma.InputJsonValue;
+        const sanitized = sanitizeSectionContentBlocks(item.contentBlocks);
+        data.contentBlocks = {
+          ...current,
+          ...sanitized,
+        } as unknown as Prisma.InputJsonValue;
       }
 
       const result = await prisma.proposalSection.update({

@@ -4,7 +4,12 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { FleetShowcaseItem, PortalContentData, ServicePillar } from "@/lib/portal-content";
+import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
+import {
+  DEFAULT_LAYOUT_SETTINGS,
+  type LayoutWidthPreset,
+  type PortalLayoutSettings,
+} from "@/lib/portal-layout-settings";
 
 async function uploadFile(file: File): Promise<string> {
   const form = new FormData();
@@ -54,14 +59,6 @@ export function ProposalDesignEditor({
     setContent((c) => ({ ...c, ...patch }));
   }
 
-  function patchPillar(index: number, patch: Partial<ServicePillar>) {
-    setContent((c) => {
-      const pillars = [...c.servicesPillars];
-      pillars[index] = { ...pillars[index], ...patch };
-      return { ...c, servicesPillars: pillars };
-    });
-  }
-
   async function handleUpload(
     field: "heroCloudImageUrl" | "heroCloudVideoUrl" | "logoUrl",
     file: File
@@ -80,11 +77,16 @@ export function ProposalDesignEditor({
   }
 
   return (
-    <div className="mt-8 space-y-10">
+    <div className="space-y-8">
+      <p className="max-w-2xl text-sm text-atlas-muted">
+        Global portal assets and fleet showcase. Page content (About, Services, Contact, and
+        chapter copy) is edited under <strong className="text-atlas-text">Pages &amp; blocks</strong>.
+      </p>
+
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
-        <h2 className="atlas-section-title">Branding & clouds</h2>
+        <h2 className="atlas-section-title">Portal assets</h2>
         <p className="atlas-caption mt-1">
-          Experience pages, aircraft portal, PIN gate, and global portal pages use these assets.
+          Logo and cloud backgrounds for the PIN gate, portal shell, and experience pages.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <Field
@@ -118,62 +120,56 @@ export function ProposalDesignEditor({
       </section>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
-        <h2 className="atlas-section-title">About</h2>
-        <div className="mt-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <Label>Title</Label>
-            <Input
-              value={content.aboutTitle}
-              onChange={(e) => patchContent({ aboutTitle: e.target.value })}
-              className="mt-1"
-            />
+            <h2 className="atlas-section-title">Layout widths</h2>
+            <p className="atlas-caption mt-1">
+              Named width tiers as a percent of the page column or grid cell. Blocks pick a tier
+              for desktop and mobile separately.
+            </p>
           </div>
-          <div>
-            <Label>Body</Label>
-            <textarea
-              value={content.aboutBody}
-              onChange={(e) => patchContent({ aboutBody: e.target.value })}
-              rows={6}
-              className="atlas-input mt-1 min-h-[8rem]"
-            />
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => patchContent({ layoutSettings: DEFAULT_LAYOUT_SETTINGS })}
+          >
+            Reset to defaults
+          </Button>
         </div>
-      </section>
-
-      <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
-        <h2 className="atlas-section-title">Services (5 pillars)</h2>
-        <div className="mt-4 space-y-3">
-          <div>
-            <Label>Page title</Label>
-            <Input
-              value={content.servicesTitle}
-              onChange={(e) => patchContent({ servicesTitle: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          {content.servicesPillars.map((p, i) => (
-            <div key={i} className="rounded border border-atlas-border/60 p-3 space-y-2">
-              <Input
-                value={p.title}
-                onChange={(e) => patchPillar(i, { title: e.target.value })}
-                placeholder="Pillar title"
-              />
-              <textarea
-                value={p.description}
-                onChange={(e) => patchPillar(i, { description: e.target.value })}
-                rows={2}
-                className="atlas-input w-full"
-              />
-            </div>
-          ))}
-        </div>
+        <LayoutWidthsTable
+          settings={content.layoutSettings ?? DEFAULT_LAYOUT_SETTINGS}
+          onChange={(layoutSettings) => patchContent({ layoutSettings })}
+        />
       </section>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
         <h2 className="atlas-section-title">Fleet showcase</h2>
-        <div className="mt-4 space-y-4">
+        <p className="atlas-caption mt-1">
+          Shown on the aircraft portal page for prospects browsing your managed fleet.
+        </p>
+        <div className="mt-4 space-y-3">
+          <div>
+            <Label>Section title</Label>
+            <Input
+              value={content.fleetTitle}
+              onChange={(e) => patchContent({ fleetTitle: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label>Section intro</Label>
+            <textarea
+              value={content.fleetBody ?? ""}
+              onChange={(e) => patchContent({ fleetBody: e.target.value || null })}
+              rows={3}
+              className="atlas-input mt-1 w-full"
+            />
+          </div>
+        </div>
+        <div className="mt-6 space-y-4">
           {fleet.map((item, i) => (
-            <div key={item.id} className="rounded border border-atlas-border/60 p-3 space-y-2">
+            <div key={item.id} className="space-y-2 rounded border border-atlas-border/60 p-3">
               <Input
                 value={item.title}
                 onChange={(e) => {
@@ -181,6 +177,7 @@ export function ProposalDesignEditor({
                   next[i] = { ...item, title: e.target.value };
                   setFleet(next);
                 }}
+                placeholder="Aircraft title"
               />
               <Input
                 value={item.imageUrl ?? ""}
@@ -219,43 +216,72 @@ export function ProposalDesignEditor({
         </div>
       </section>
 
-      <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
-        <h2 className="atlas-section-title">Contact</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Title</Label>
-            <Input
-              value={content.contactTitle}
-              onChange={(e) => patchContent({ contactTitle: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Email</Label>
-            <Input
-              value={content.contactEmail}
-              onChange={(e) => patchContent({ contactEmail: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <Label>Body</Label>
-            <textarea
-              value={content.contactBody ?? ""}
-              onChange={(e) => patchContent({ contactBody: e.target.value })}
-              rows={3}
-              className="atlas-input mt-1 w-full"
-            />
-          </div>
-        </div>
-      </section>
-
       <div className="flex items-center gap-4">
         <Button type="button" onClick={() => void save()} disabled={saving || uploadingField !== null}>
           {saving ? "Saving…" : "Save portal content"}
         </Button>
         {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
       </div>
+    </div>
+  );
+}
+
+function LayoutWidthsTable({
+  settings,
+  onChange,
+}: {
+  settings: PortalLayoutSettings;
+  onChange: (next: PortalLayoutSettings) => void;
+}) {
+  function patchPreset(index: number, patch: Partial<LayoutWidthPreset>) {
+    const next = settings.widthPresets.map((p, i) => (i === index ? { ...p, ...patch } : p));
+    onChange({ ...settings, widthPresets: next });
+  }
+
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[28rem] text-sm">
+        <thead>
+          <tr className="border-b border-atlas-border text-left text-xs text-atlas-muted">
+            <th className="pb-2 pr-4 font-medium">Preset</th>
+            <th className="pb-2 pr-4 font-medium">Desktop %</th>
+            <th className="pb-2 font-medium">Mobile %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {settings.widthPresets.map((preset, index) => (
+            <tr key={preset.id} className="border-b border-atlas-border/40">
+              <td className="py-2 pr-4 font-medium text-atlas-text">{preset.label}</td>
+              <td className="py-2 pr-4">
+                <Input
+                  type="number"
+                  min={25}
+                  max={100}
+                  value={preset.desktopPercent}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n)) patchPreset(index, { desktopPercent: n });
+                  }}
+                  className="h-8 w-20"
+                />
+              </td>
+              <td className="py-2">
+                <Input
+                  type="number"
+                  min={25}
+                  max={100}
+                  value={preset.mobilePercent}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n)) patchPreset(index, { mobilePercent: n });
+                  }}
+                  className="h-8 w-20"
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

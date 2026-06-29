@@ -4,6 +4,11 @@ import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { SLUG_TO_SECTION_TYPE } from "@/lib/experience-content";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import type { ClientSnapshotView } from "@/lib/client-serializer";
+import { buildPortalVariableContext } from "@/lib/portal-variables";
+import { sectionUsesPageBlocks } from "@/lib/page-blocks-utils";
+import type { PortalLayoutSettings } from "@/lib/portal-layout-settings";
+import { sectionHasPageBlocks } from "./experience-block-renderer";
+import { GenericChapterV2 } from "./v2/layouts/generic-chapter-v2";
 import { WelcomePage } from "./welcome-page";
 import { AboutUsPage } from "./about-us-page";
 import { AircraftManagementPage } from "./aircraft-management-page";
@@ -33,6 +38,7 @@ export function ExperiencePageContent({
   client,
   aircraftParam,
   renderV2 = false,
+  layoutSettings,
 }: {
   pageSlug: string;
   section: ExperienceSectionSnapshot;
@@ -44,10 +50,34 @@ export function ExperiencePageContent({
   aircraftParam?: string | null;
   /** Use v2 presentation layouts (prism stage shell). */
   renderV2?: boolean;
+  layoutSettings?: PortalLayoutSettings;
 }) {
   if (!section.visible) return null;
 
   const sectionType = SLUG_TO_SECTION_TYPE[pageSlug] ?? section.sectionType;
+  const variableContext = buildPortalVariableContext(payload, contactName);
+
+  if (renderV2 && sectionUsesPageBlocks(section)) {
+    if (sectionType === "pro_forma" && client) {
+      return (
+        <ExperienceProFormaPageV2
+          slug={slug}
+          section={section}
+          client={client}
+          aircraftParam={aircraftParam}
+          contactName={contactName}
+          payloadMetrics={payload.metrics}
+        />
+      );
+    }
+    return (
+      <GenericChapterV2
+        section={section}
+        variableContext={variableContext}
+        layoutSettings={layoutSettings}
+      />
+    );
+  }
 
   if (renderV2) {
     switch (sectionType) {
@@ -82,6 +112,15 @@ export function ExperiencePageContent({
           />
         );
       default:
+        if (sectionHasPageBlocks(section)) {
+          return (
+            <GenericChapterV2
+              section={section}
+              variableContext={variableContext}
+              layoutSettings={layoutSettings}
+            />
+          );
+        }
         return null;
     }
   }
@@ -122,6 +161,15 @@ export function ExperiencePageContent({
         />
       );
     default:
+      if (sectionHasPageBlocks(section)) {
+        return (
+          <GenericChapterV2
+            section={section}
+            variableContext={variableContext}
+            layoutSettings={layoutSettings}
+          />
+        );
+      }
       return null;
   }
 }

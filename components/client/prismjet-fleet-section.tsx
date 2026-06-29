@@ -1,4 +1,4 @@
-import { FleetShowcaseGrid } from "@/components/client/portal-global-page";
+import { FleetShowcaseGrid } from "@/components/client/fleet-showcase-grid";
 import type { FleetShowcaseItem } from "@/lib/portal-content";
 
 export function PrismJetFleetSection({

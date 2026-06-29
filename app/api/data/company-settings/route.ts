@@ -26,6 +26,7 @@ export async function PATCH(request: Request) {
         annualManagementFee: parseOptionalInt(body.annualManagementFee),
         annualMaintenanceManagementFee: parseOptionalInt(body.annualMaintenanceManagementFee),
         charterPaybackPercent: parseOptionalDecimal(body.charterPaybackPercent),
+        charterBlockToFlightRatio: parseOptionalDecimal(body.charterBlockToFlightRatio),
         crewBenefitsPercent: parseOptionalDecimal(body.crewBenefitsPercent),
         fuelTaxRefund: parseOptionalDecimal(body.fuelTaxRefund),
         defaultInsuranceMode:

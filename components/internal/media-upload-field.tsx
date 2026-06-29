@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { MediaBrowserDialog } from "@/components/internal/media-browser-dialog";
 
 export async function uploadMedia(file: File, proposalId?: string): Promise<string> {
   const form = new FormData();
@@ -29,6 +31,7 @@ export function MediaUploadField({
   accept = "image/*,video/mp4,video/webm",
   className,
   hint,
+  browseContent = false,
 }: {
   label?: string;
   value: string | null;
@@ -37,11 +40,13 @@ export function MediaUploadField({
   accept?: string;
   className?: string;
   hint?: string;
+  browseContent?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [browseOpen, setBrowseOpen] = useState(false);
 
   async function handleFile(file: File) {
     setUploading(true);
@@ -60,6 +65,17 @@ export function MediaUploadField({
     <div className={className}>
       {label ? (
         <p className="atlas-kicker mb-1.5">{label}</p>
+      ) : null}
+      {browseContent ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="mb-2 w-full"
+          onClick={() => setBrowseOpen(true)}
+        >
+          Browse Content
+        </Button>
       ) : null}
       <div
         role="button"
@@ -106,7 +122,7 @@ export function MediaUploadField({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onChange(null);
+                  onChange("");
                 }}
                 className="rounded bg-red-500/80 px-2 py-1 text-xs text-white hover:bg-red-500"
               >
@@ -137,6 +153,15 @@ export function MediaUploadField({
         />
       </div>
       {error ? <p className="mt-1 text-xs text-red-400">{error}</p> : null}
+      {browseContent ? (
+        <MediaBrowserDialog
+          open={browseOpen}
+          onClose={() => setBrowseOpen(false)}
+          onSelect={(url) => onChange(url)}
+          selectedUrl={value}
+          proposalId={proposalId}
+        />
+      ) : null}
     </div>
   );
 }
