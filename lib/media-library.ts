@@ -83,29 +83,29 @@ async function listSupabasePrefix(
 
 async function listLocalUploadDir(dir: string, urlPrefix: string): Promise<ListedUpload[]> {
   const results: ListedUpload[] = [];
-  let entries: Awaited<ReturnType<typeof readdir>>;
   try {
-    entries = await readdir(dir, { withFileTypes: true });
+    const entries = await readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const publicPath = `${urlPrefix}/${entry.name}`;
+      if (entry.isDirectory()) {
+        const nested = await listLocalUploadDir(fullPath, publicPath);
+        results.push(...nested);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const fileStat = await stat(fullPath);
+      results.push({
+        url: publicPath,
+        label: entry.name,
+        sortKey: uploadSortKeyFromName(entry.name) || fileStat.mtimeMs,
+      });
+    }
   } catch {
     return results;
   }
 
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    const publicPath = `${urlPrefix}/${entry.name}`;
-    if (entry.isDirectory()) {
-      const nested = await listLocalUploadDir(fullPath, publicPath);
-      results.push(...nested);
-      continue;
-    }
-    if (!entry.isFile()) continue;
-    const fileStat = await stat(fullPath);
-    results.push({
-      url: publicPath,
-      label: entry.name,
-      sortKey: uploadSortKeyFromName(entry.name) || fileStat.mtimeMs,
-    });
-  }
   return results;
 }
 
