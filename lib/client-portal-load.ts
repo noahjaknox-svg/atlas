@@ -3,6 +3,10 @@ import { getInternalUser, getPortalSession, type PortalSession } from "@/lib/aut
 import { prisma } from "@/lib/db";
 import { getPortalContent, getFleetShowcase } from "@/lib/portal-content";
 import { resolvePortalBranding } from "@/lib/portal-constants";
+import {
+  resolveSnapshotFleetCopy,
+  resolveSnapshotFleetShowcase,
+} from "@/lib/portal-publish-status";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
 export async function requirePortalSession(slug: string): Promise<PortalSession> {
@@ -48,16 +52,23 @@ export async function loadActivePortal(slug: string) {
     ? (snapshot.snapshotJson as unknown as ProposalSnapshotPayload)
     : null;
 
-  const [content, fleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
+  const [content, liveFleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);
 
   const branding = resolvePortalBranding(content, payload?.branding, {
     preferSnapshot: true,
   });
 
+  const fleet = resolveSnapshotFleetShowcase(payload, liveFleet);
+  const fleetCopy = resolveSnapshotFleetCopy(payload, content);
+
   return {
     portal,
     payload,
-    content,
+    content: {
+      ...content,
+      fleetTitle: fleetCopy.fleetTitle,
+      fleetBody: fleetCopy.fleetBody,
+    },
     fleet,
     branding,
     contactName: portal.proposal.prospect.contactName,

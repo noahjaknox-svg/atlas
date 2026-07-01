@@ -101,6 +101,7 @@ export const CORE_COMPANY_FIELDS = [
   { key: "annualManagementFee", label: "Annual Management Fee ($)" },
   { key: "annualMaintenanceManagementFee", label: "Annual Maintenance Mgmt Fee ($)" },
   { key: "charterPaybackPercent", label: "Charter Payback (%)", hint: "e.g. 82.5" },
+  { key: "charterBlockToFlightRatio", label: "Block-to-Flight Factor", hint: "e.g. 1.13" },
   { key: "crewBenefitsPercent", label: "Crew Benefits (fraction)", hint: "e.g. 0.16" },
   { key: "fuelTaxRefund", label: "FET fuel tax refund ($/gal)", hint: "e.g. 0.175" },
 ] as const satisfies readonly CompanySettingsFieldDef[];

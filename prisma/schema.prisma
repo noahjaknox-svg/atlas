@@ -158,6 +158,7 @@ enum SectionType {
   maintenance
   sales_acquisitions
   conformity_process
+  custom_page
 }
 
 model User {
@@ -334,6 +335,7 @@ model CompanySettings {
   charterPaybackPercent          Decimal  @default(82.5) @map("charter_payback_percent") @db.Decimal(6, 3)
   crewBenefitsPercent            Decimal  @default(0.16) @map("crew_benefits_percent") @db.Decimal(6, 4)
   fuelTaxRefund                  Decimal  @default(0.175) @map("fuel_tax_refund") @db.Decimal(10, 4)
+  charterBlockToFlightRatio      Decimal  @default(1.13) @map("charter_block_to_flight_ratio") @db.Decimal(6, 4)
   defaultInsuranceMode           String?  @map("default_insurance_mode")
   defaultInsuranceAnnual         Int?     @map("default_insurance_annual")
   defaultInsurancePremiumPercent Decimal? @map("default_insurance_premium_percent") @db.Decimal(6, 3)
@@ -692,6 +694,7 @@ model ProposalSection {
   id                 String      @id @default(uuid()) @db.Uuid
   proposalId         String      @map("proposal_id") @db.Uuid
   sectionType        SectionType @map("section_type")
+  pageSlug           String?     @map("page_slug")
   title              String
   bodyCopy           String?     @map("body_copy") @db.Text
   visible            Boolean     @default(true)
@@ -711,6 +714,7 @@ model ProposalSection {
 
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
+  @@unique([proposalId, pageSlug])
   @@map("proposal_sections")
 }
 
@@ -747,6 +751,7 @@ model PortalContent {
   fleetTitle          String   @default("Our Aircraft") @map("fleet_title")
   fleetBody           String?  @map("fleet_body") @db.Text
   sectionDefaults     Json?    @map("section_defaults") @db.JsonB
+  layoutSettings      Json?    @map("layout_settings") @db.JsonB
   experienceTemplates Json?    @map("experience_templates") @db.JsonB
   updatedAt           DateTime @updatedAt @map("updated_at")
 

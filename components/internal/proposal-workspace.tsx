@@ -8,6 +8,7 @@ import { AircraftTabsPanel } from "@/components/internal/workspace/aircraft-tabs
 import type { PortalPresentationState } from "@/components/internal/workspace/portal-presentation-panel";
 import { PortalPresentationDialog } from "@/components/internal/workspace/portal-presentation-dialog";
 import { PROSPECT_PORTAL_UPDATED_MESSAGE } from "@/lib/product-terminology";
+import { ROUTES } from "@/lib/routes";
 import { WorkspaceLayout } from "@/components/internal/workspace/workspace-layout";
 import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { WorkspaceProposalFooter } from "@/components/internal/workspace/workspace-proposal-footer";
@@ -57,7 +58,6 @@ import { buildDefaultsQueryParams } from "@/lib/build-defaults-query";
 import { needsWarehouseSeed } from "@/lib/needs-warehouse-seed";
 import type { ProspectFormState, ProspectSavePayload } from "@/lib/workspace-sections";
 import type { AtlasUserOption } from "@/components/internal/workspace/prospect-panel";
-import { ROUTES } from "@/lib/routes";
 
 type SectionRow = {
   id: string;
@@ -1171,6 +1171,7 @@ export function ProposalWorkspace({
             onRestorePortal={() => void handleSetPortalActive(true)}
             onRegeneratePin={() => void handleRegeneratePin()}
             onEditPresentation={() => setPortalPresentationOpen(true)}
+            onOpenDesigner={() => router.push(ROUTES.aircraftManagement.proposalDesignView(data.id))}
           />
           )
         }
@@ -1216,12 +1217,8 @@ export function ProposalWorkspace({
           open={portalPresentationOpen}
           onOpenChange={setPortalPresentationOpen}
           proposalId={data.id}
-          aircraftId={selected.id}
-          initial={portalPresentationFor(selected)}
-          onSaved={(next) => handlePortalPresentationSaved(selected.id, next)}
           sections={sections as ExperienceSectionRow[]}
           onSectionsChange={setSections}
-          portalSlug={portalSlug}
           onExperienceSaved={() => markNeedsRepublish()}
         />
       ) : null}

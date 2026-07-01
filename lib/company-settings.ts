@@ -8,6 +8,7 @@ export const COMPANY_SETTINGS_DEFAULTS = {
   charterPaybackPercent: 82.5,
   crewBenefitsPercent: 0.16,
   fuelTaxRefund: 0.175,
+  charterBlockToFlightRatio: 1.13,
 };
 
 type CompanySettingsDelegate = {
@@ -41,6 +42,8 @@ function fallbackCompanySettings(): CompanySettings {
     charterPaybackPercent: COMPANY_SETTINGS_DEFAULTS.charterPaybackPercent as unknown as CompanySettings["charterPaybackPercent"],
     crewBenefitsPercent: COMPANY_SETTINGS_DEFAULTS.crewBenefitsPercent as unknown as CompanySettings["crewBenefitsPercent"],
     fuelTaxRefund: COMPANY_SETTINGS_DEFAULTS.fuelTaxRefund as unknown as CompanySettings["fuelTaxRefund"],
+    charterBlockToFlightRatio:
+      COMPANY_SETTINGS_DEFAULTS.charterBlockToFlightRatio as unknown as CompanySettings["charterBlockToFlightRatio"],
     defaultInsuranceMode: null,
     defaultInsuranceAnnual: null,
     defaultInsurancePremiumPercent: null,
@@ -62,6 +65,7 @@ export function serializeCompanySettings(s: CompanySettings) {
     charterPaybackPercent: Number(s.charterPaybackPercent),
     crewBenefitsPercent: Number(s.crewBenefitsPercent),
     fuelTaxRefund: Number(s.fuelTaxRefund),
+    charterBlockToFlightRatio: Number(s.charterBlockToFlightRatio),
     defaultInsuranceMode: s.defaultInsuranceMode,
     defaultInsuranceAnnual: s.defaultInsuranceAnnual,
     defaultInsurancePremiumPercent:

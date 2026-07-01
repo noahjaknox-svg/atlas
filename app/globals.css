@@ -490,6 +490,40 @@
   .atlas-proforma-line {
     @apply min-w-0 truncate whitespace-nowrap text-sm leading-none;
   }
+
+  /* Portal page-block rows — grid-template-columns via CSS var (dynamic Tailwind grid-cols-[…] is not JIT-safe). */
+  .portal-row-grid[data-row-layout="horizontal"] {
+    grid-template-columns: var(--portal-row-template);
+  }
+
+  @media (min-width: 1024px) {
+    .portal-row-grid[data-row-layout="responsive"] {
+      grid-template-columns: var(--portal-row-template);
+    }
+  }
+
+  .portal-container-grid[data-layout="horizontal"] {
+    grid-template-columns: var(--portal-col-template);
+    grid-template-rows: var(--portal-row-template);
+  }
+
+  @media (min-width: 1024px) {
+    .portal-container-grid[data-layout="responsive"] {
+      grid-template-columns: var(--portal-col-template);
+      grid-template-rows: var(--portal-row-template);
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .portal-container-grid[data-layout="responsive"] {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto !important;
+    }
+
+    .portal-row-grid[data-row-layout="responsive"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
 }
 
 @layer utilities {
@@ -555,6 +589,48 @@
 
   .atlas-scroll-x::-webkit-scrollbar-thumb:hover {
     background: rgba(201, 168, 76, 0.4);
+  }
+
+  /** Block container width from --block-width / --block-width-mobile CSS vars. */
+  .block-width-responsive {
+    width: var(--block-width);
+    max-width: 100%;
+  }
+
+  @media (max-width: 767px) {
+    .block-width-responsive {
+      width: var(--block-width-mobile);
+    }
+  }
+
+  /* Designer preview toggle overrides browser breakpoint. */
+  [data-design-viewport="desktop"] .block-width-responsive {
+    width: var(--block-width) !important;
+  }
+
+  [data-design-viewport="mobile"] .block-width-responsive {
+    width: var(--block-width-mobile) !important;
+  }
+
+  /* Designer mobile frame: no page horizontal inset (browser md: breakpoints must not apply). */
+  [data-design-viewport="mobile"] .portal-design-mobile-layout,
+  [data-design-viewport="mobile"] .portal-design-mobile-layout > * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Designer desktop frame: same full-bleed behavior as mobile. */
+  [data-design-viewport="desktop"] .portal-design-desktop-layout,
+  [data-design-viewport="desktop"] .portal-design-desktop-layout > * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Block-based portal pages: no page horizontal inset (live + designer). */
+  .portal-block-page-layout,
+  .portal-block-page-layout > * {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 }
 

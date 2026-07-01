@@ -12,9 +12,13 @@ export const experienceDockV2 = cn(
   "border-white/12 bg-[#0B0F1A]/65"
 );
 
-export const experiencePageXV2 = "px-4 sm:px-8 lg:px-16";
+/** Horizontal page inset — block width presets control spacing at all viewports. */
+export const experiencePageXV2 = "px-0";
 
 export const experienceContentMaxV2 = "mx-auto w-full max-w-6xl min-h-0";
+
+/** Block-based portal pages — full width of content band; spacing from block presets. */
+export const experienceBlockPageContentV2 = "mx-0 w-full max-w-none min-h-0";
 
 export const experienceSlideV2 = "flex min-h-0 flex-col";
 

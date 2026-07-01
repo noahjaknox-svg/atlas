@@ -5,6 +5,7 @@ import { EXPERIENCE_DEFAULT_SECTIONS, getExperienceDefault } from "./experience-
 /** Master template for one experience page — stored on portal_content.experience_templates. */
 export type ExperienceMasterTemplate = {
   sectionType: string;
+  pageSlug?: string | null;
   title: string;
   bodyCopy: string | null;
   visible: boolean;
@@ -48,6 +49,7 @@ export function parseExperienceMasterTemplates(raw: unknown): ExperienceMasterTe
     if (!row.sectionType || !row.title) continue;
     parsed.push({
       sectionType: row.sectionType,
+      pageSlug: row.pageSlug ?? null,
       title: row.title,
       bodyCopy: row.bodyCopy ?? null,
       visible: row.visible !== false,
@@ -99,6 +101,7 @@ export function masterToSectionSnapshot(
   return mergeSectionWithDefaults(
     {
       sectionType: master.sectionType,
+      pageSlug: master.pageSlug ?? null,
       title: master.title,
       bodyCopy: master.bodyCopy,
       visible: master.visible,

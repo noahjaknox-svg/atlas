@@ -13,10 +13,9 @@ import {
 import {
   getSectionBySlug,
   isProFormaSectionVisible,
-  SECTION_TYPE_TO_SLUG,
   type ExperienceSectionSnapshot,
-  type ExperienceSectionType,
 } from "@/lib/experience-content";
+import { sectionNavSlug } from "@/lib/experience-page-slug";
 import {
   serializeClientSnapshotFromPayload,
   type ClientSnapshotView,
@@ -62,8 +61,8 @@ type ExperienceBootstrapContextValue = {
   mountedSlugs: ReadonlySet<string>;
   markSlugVisited: (pageSlug: string) => void;
   withDraft: (href: string) => string;
-  tabHref: (sectionType: string) => string;
-  isActive: (sectionType: string) => boolean;
+  tabHref: (section: ExperienceSectionSnapshot) => string;
+  isActive: (section: ExperienceSectionSnapshot) => boolean;
   currentSlug: string;
 };
 
@@ -346,20 +345,13 @@ export function ExperienceBootstrapProvider({
   }, [goToAdjacentSlide]);
 
   const tabHref = useCallback(
-    (sectionType: string) => {
-      const pageSlug =
-        SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-      return withDraft(experienceHref(slug, pageSlug));
-    },
+    (section: ExperienceSectionSnapshot) =>
+      withDraft(experienceHref(slug, sectionNavSlug(section))),
     [slug, withDraft]
   );
 
   const isActive = useCallback(
-    (sectionType: string) => {
-      const pageSlug =
-        SECTION_TYPE_TO_SLUG[sectionType as ExperienceSectionType] ?? sectionType;
-      return activeSlug === pageSlug;
-    },
+    (section: ExperienceSectionSnapshot) => activeSlug === sectionNavSlug(section),
     [activeSlug]
   );
 

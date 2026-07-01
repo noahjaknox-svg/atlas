@@ -3,14 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  PortalPresentationForm,
-  type PortalPresentationState,
-} from "@/components/internal/workspace/portal-presentation-panel";
-import {
-  ExperienceManagerForm,
-  type ExperienceSectionRow,
-} from "@/components/internal/workspace/experience-manager-panel";
+import { type ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
+import { PortalPagesPanel } from "@/components/internal/workspace/portal-pages-panel";
 import { PortalMarketLinkForm } from "@/components/internal/workspace/portal-market-link-form";
 import {
   EXPERIENCE_SECTION_TYPES,
@@ -22,27 +16,12 @@ import {
   EDIT_PROSPECT_PORTAL,
 } from "@/lib/product-terminology";
 
-type PresentationBaseline = {
-  sections: ExperienceSectionRow[];
-  presentation: PortalPresentationState;
-};
-
 function cloneSections(sections: ExperienceSectionRow[]): ExperienceSectionRow[] {
   return JSON.parse(JSON.stringify(sections)) as ExperienceSectionRow[];
 }
 
-function clonePresentation(state: PortalPresentationState): PortalPresentationState {
-  return {
-    ...state,
-    portalSpecHighlights: [...state.portalSpecHighlights],
-  };
-}
-
-function snapshotsEqual(a: PresentationBaseline, b: PresentationBaseline): boolean {
-  return (
-    JSON.stringify(a.sections) === JSON.stringify(b.sections) &&
-    JSON.stringify(a.presentation) === JSON.stringify(b.presentation)
-  );
+function sectionsEqual(a: ExperienceSectionRow[], b: ExperienceSectionRow[]) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function experienceSectionsForSave(sections: ExperienceSectionRow[]) {
@@ -73,54 +52,34 @@ export function PortalPresentationDialog({
   open,
   onOpenChange,
   proposalId,
-  aircraftId,
-  initial,
   onSaved,
   sections,
   onSectionsChange,
-  portalSlug,
   onExperienceSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   proposalId: string;
-  aircraftId: string;
-  initial: PortalPresentationState;
-  onSaved?: (next: PortalPresentationState) => void;
+  onSaved?: () => void;
   sections: ExperienceSectionRow[];
   onSectionsChange: (next: ExperienceSectionRow[]) => void;
-  portalSlug?: string | null;
   onExperienceSaved?: () => void;
 }) {
-  const [baseline, setBaseline] = useState<PresentationBaseline>(() => ({
-    sections: cloneSections(sections),
-    presentation: clonePresentation(initial),
-  }));
+  const [baseline, setBaseline] = useState<ExperienceSectionRow[]>(() => cloneSections(sections));
 
   const [draftSections, setDraftSections] = useState<ExperienceSectionRow[]>(() =>
     cloneSections(sections)
-  );
-  const [draftPresentation, setDraftPresentation] = useState<PortalPresentationState>(() =>
-    clonePresentation(initial)
   );
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const resetDraft = useCallback(
-    (nextSections: ExperienceSectionRow[], nextPresentation: PortalPresentationState) => {
-      const nextBaseline = {
-        sections: cloneSections(nextSections),
-        presentation: clonePresentation(nextPresentation),
-      };
-      setBaseline(nextBaseline);
-      setDraftSections(cloneSections(nextSections));
-      setDraftPresentation(clonePresentation(nextPresentation));
-      setStatusMessage(null);
-      setError(null);
-    },
-    []
-  );
+  const resetDraft = useCallback((nextSections: ExperienceSectionRow[]) => {
+    setBaseline(cloneSections(nextSections));
+    setDraftSections(cloneSections(nextSections));
+    setStatusMessage(null);
+    setError(null);
+  }, []);
 
   const wasOpenRef = useRef(false);
 
@@ -128,22 +87,17 @@ export function PortalPresentationDialog({
     const justOpened = open && !wasOpenRef.current;
     wasOpenRef.current = open;
     if (justOpened) {
-      resetDraft(sections, initial);
+      resetDraft(sections);
     }
-  }, [open, sections, initial, aircraftId, resetDraft]);
+  }, [open, sections, resetDraft]);
 
   const dirty = useMemo(
-    () =>
-      !snapshotsEqual(baseline, {
-        sections: draftSections,
-        presentation: draftPresentation,
-      }),
-    [baseline, draftSections, draftPresentation]
+    () => !sectionsEqual(baseline, draftSections),
+    [baseline, draftSections]
   );
 
   function handleDiscard() {
-    setDraftSections(cloneSections(baseline.sections));
-    setDraftPresentation(clonePresentation(baseline.presentation));
+    setDraftSections(cloneSections(baseline));
     setStatusMessage(null);
     setError(null);
   }
@@ -155,48 +109,18 @@ export function PortalPresentationDialog({
     setStatusMessage(null);
     setError(null);
 
-    const sectionsChanged = JSON.stringify(draftSections) !== JSON.stringify(baseline.sections);
-    const presentationChanged =
-      JSON.stringify(draftPresentation) !== JSON.stringify(baseline.presentation);
-
     try {
-      if (sectionsChanged) {
-        const res = await fetch(`/api/proposals/${proposalId}/sections`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sections: sectionsForSave(draftSections) }),
-        });
-        if (!res.ok) throw new Error("Could not save experience pages or nav buttons.");
-      }
-
-      if (presentationChanged) {
-        const res = await fetch(`/api/proposals/${proposalId}/aircraft/${aircraftId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientSummary: draftPresentation.clientSummary || null,
-            portalImageUrl: draftPresentation.portalImageUrl || null,
-            portalVideoUrl: draftPresentation.portalVideoUrl || null,
-            portalSpecHighlights: draftPresentation.portalSpecHighlights.filter((s) =>
-              s.trim()
-            ),
-          }),
-        });
-        if (!res.ok) throw new Error("Could not save aircraft portal hero.");
-      }
-
-      setBaseline({
-        sections: cloneSections(draftSections),
-        presentation: clonePresentation(draftPresentation),
+      const res = await fetch(`/api/proposals/${proposalId}/sections`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sections: sectionsForSave(draftSections) }),
       });
+      if (!res.ok) throw new Error("Could not save portal pages.");
 
-      if (sectionsChanged) {
-        onSectionsChange(cloneSections(draftSections));
-        onExperienceSaved?.();
-      }
-      if (presentationChanged) {
-        onSaved?.(clonePresentation(draftPresentation));
-      }
+      setBaseline(cloneSections(draftSections));
+      onSectionsChange(cloneSections(draftSections));
+      onExperienceSaved?.();
+      onSaved?.();
 
       setStatusMessage(PROSPECT_PORTAL_SAVE_HINT);
     } catch (e) {
@@ -236,11 +160,26 @@ export function PortalPresentationDialog({
           <div className="shrink-0 border-b border-atlas-border px-6 py-4">
             <Dialog.Title className="font-serif text-xl">{EDIT_PROSPECT_PORTAL}</Dialog.Title>
             <Dialog.Description className="mt-1 text-sm text-atlas-muted">
-              Experience pages, nav buttons, and aircraft hero media for the prospect portal.
+              Page visibility, welcome letter, pro forma intro, and nav menu buttons.
             </Dialog.Description>
           </div>
 
           <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">
+                Portal pages
+              </h3>
+              <div className="mt-3">
+                <PortalPagesPanel
+                  proposalId={proposalId}
+                  sections={draftSections}
+                  onSectionsChange={setDraftSections}
+                />
+              </div>
+            </section>
+
+            <div className="my-8 border-t border-atlas-border" aria-hidden />
+
             <section>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">
                 Nav menu buttons
@@ -249,39 +188,6 @@ export function PortalPresentationDialog({
                 <PortalMarketLinkForm
                   sections={draftSections}
                   onSectionsChange={setDraftSections}
-                />
-              </div>
-            </section>
-
-            <div className="my-8 border-t border-atlas-border" aria-hidden />
-
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">
-                Client experience
-              </h3>
-              <div className="mt-3">
-                <ExperienceManagerForm
-                  sections={draftSections}
-                  onSectionsChange={setDraftSections}
-                  portalSlug={portalSlug}
-                />
-              </div>
-            </section>
-
-            <div className="my-8 border-t border-atlas-border" aria-hidden />
-
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">
-                Aircraft portal hero
-              </h3>
-              <p className="mt-1 text-xs text-atlas-muted">
-                Hero media and copy for the selected aircraft on the prospect portal.
-              </p>
-              <div className="mt-3">
-                <PortalPresentationForm
-                  key={aircraftId}
-                  value={draftPresentation}
-                  onChange={setDraftPresentation}
                 />
               </div>
             </section>

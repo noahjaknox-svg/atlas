@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { PinGate } from "@/components/client/pin-gate";
 import { getPortalContent } from "@/lib/portal-content";
-import { resolveHeroCloudVideoUrl } from "@/lib/portal-constants";
+import { resolveHeroCloudVideoUrl, resolvePortalBranding } from "@/lib/portal-constants";
+import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
 export default async function ClientPortalPinPage({
   params,
@@ -17,6 +18,7 @@ export default async function ClientPortalPinPage({
         include: {
           prospect: true,
           sections: { where: { sectionType: "cover" }, take: 1 },
+          snapshots: { orderBy: { versionNumber: "desc" }, take: 1 },
         },
       },
     },
@@ -34,15 +36,21 @@ export default async function ClientPortalPinPage({
     );
   }
 
-  const content = await getPortalContent();
+  const liveContent = await getPortalContent();
+  const snapshotPayload = portal.proposal.snapshots[0]?.snapshotJson as unknown as
+    | ProposalSnapshotPayload
+    | undefined;
+  const branding = resolvePortalBranding(liveContent, snapshotPayload?.branding, {
+    preferSnapshot: true,
+  });
 
   return (
     <PinGate
       slug={slug}
       title={title}
-      heroCloudImageUrl={content.heroCloudImageUrl}
-      heroCloudVideoUrl={resolveHeroCloudVideoUrl(content.heroCloudVideoUrl)}
-      logoUrl={content.logoUrl}
+      heroCloudImageUrl={branding.heroCloudImageUrl}
+      heroCloudVideoUrl={resolveHeroCloudVideoUrl(branding.heroCloudVideoUrl)}
+      logoUrl={branding.logoUrl}
     />
   );
 }

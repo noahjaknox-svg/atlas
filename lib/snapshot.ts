@@ -1,7 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { perfTimed } from "./perf-log";
-import { getPortalContent, getExperienceMasterTemplates } from "./portal-content";
+import type { FleetShowcaseItem } from "./portal-constants";
+import { getPortalContent, getExperienceMasterTemplates, getFleetShowcase } from "./portal-content";
+import { parsePortalLayoutSettings, type PortalLayoutSettings } from "./portal-layout-settings";
 import type { AssumptionMap } from "./assumptions";
 import { assumptionsToMap } from "./assumptions";
 import type { ProFormaResult } from "./proforma";
@@ -59,6 +61,7 @@ export interface ProposalSnapshotPayload {
   >;
   sections: Array<{
     sectionType: string;
+    pageSlug?: string | null;
     title: string;
     bodyCopy: string | null;
     visible: boolean;
@@ -77,7 +80,14 @@ export interface ProposalSnapshotPayload {
     heroCloudImageUrl: string | null;
     heroCloudVideoUrl: string | null;
     logoUrl: string | null;
+    aboutTitle?: string | null;
+    aboutBody?: string | null;
+    fleetTitle?: string | null;
+    fleetBody?: string | null;
+    layoutSettings?: PortalLayoutSettings;
   };
+  /** Frozen fleet carousel cards (renderSchemaVersion >= 3). */
+  fleetShowcase?: Array<Omit<FleetShowcaseItem, "active"> & { active?: boolean }>;
   proForma: ProFormaResult;
   metrics: {
     netAnnualCost: number;
@@ -183,14 +193,14 @@ export async function buildSnapshotPayload(
 
   const master = proposal.aircraftInstance?.warehouseAircraft;
   const portalBranding = await getPortalContent();
+  const fleetShowcase = await getFleetShowcase();
   const primaryAircraft = primaryEntry ?? null;
 
-  // Fully resolve experience sections against the current master templates at
-  // publish time so the snapshot is self-contained. Client rendering reads these
-  // verbatim — global Proposal Design edits afterwards never touch this proposal.
+  // Proposal working copy is resolved at publish; snapshot stores the full result.
   const masterTemplates = await getExperienceMasterTemplates();
   const rawSections = proposal.sections.map((s) => ({
     sectionType: s.sectionType,
+    pageSlug: s.pageSlug ?? null,
     title: s.title,
     bodyCopy: s.bodyCopy,
     visible: s.visible,
@@ -242,7 +252,23 @@ export async function buildSnapshotPayload(
       heroCloudImageUrl: portalBranding.heroCloudImageUrl,
       heroCloudVideoUrl: portalBranding.heroCloudVideoUrl,
       logoUrl: portalBranding.logoUrl,
+      aboutTitle: portalBranding.aboutTitle,
+      aboutBody: portalBranding.aboutBody,
+      fleetTitle: portalBranding.fleetTitle,
+      fleetBody: portalBranding.fleetBody,
+      layoutSettings: parsePortalLayoutSettings(portalBranding.layoutSettings),
     },
+    fleetShowcase: fleetShowcase.map((item) => ({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle,
+      imageUrl: item.imageUrl,
+      videoUrl: item.videoUrl,
+      posterUrl: item.posterUrl,
+      specs: item.specs,
+      sortOrder: item.sortOrder,
+      active: item.active,
+    })),
     proForma,
     metrics: primaryAircraft?.metrics ?? {
       netAnnualCost: proForma.netAnnualCost,

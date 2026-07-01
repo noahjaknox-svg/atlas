@@ -1,9 +1,8 @@
+import { sectionNavSlug } from "@/lib/experience-page-slug";
 import type { ExperienceSectionSnapshot } from "@/lib/experience-content";
 import {
   getExperienceChapterSections,
   isProFormaSectionVisible,
-  SECTION_TYPE_TO_SLUG,
-  type ExperienceSectionType,
 } from "@/lib/experience-content";
 
 const prefetchedHrefs = new Set<string>();
@@ -26,9 +25,7 @@ export function getExperiencePageSlugs(sections: ExperienceSectionSnapshot[]): s
   if (welcome) slugs.push("welcome");
 
   for (const chapter of getExperienceChapterSections(sections)) {
-    slugs.push(
-      SECTION_TYPE_TO_SLUG[chapter.sectionType as ExperienceSectionType] ?? chapter.sectionType
-    );
+    slugs.push(sectionNavSlug(chapter));
   }
 
   if (isProFormaSectionVisible(sections)) {

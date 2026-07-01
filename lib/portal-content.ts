@@ -16,8 +16,9 @@ import {
   parseExperienceMasterTemplates,
   type ExperienceMasterTemplate,
 } from "@/lib/experience-master";
+import { parsePortalLayoutSettings, type PortalLayoutSettings } from "@/lib/portal-layout-settings";
 
-export type { FleetShowcaseItem, PortalContentData, SectionMediaDefaults, ServicePillar };
+export type { FleetShowcaseItem, PortalContentData, SectionMediaDefaults, ServicePillar, PortalLayoutSettings };
 export {
   DEFAULT_CLOUD_IMAGE,
   DEFAULT_FLEET_ITEMS,
@@ -61,6 +62,7 @@ function rowToContent(row: {
   fleetTitle: string;
   fleetBody: string | null;
   sectionDefaults: unknown;
+  layoutSettings?: unknown;
   experienceTemplates?: unknown;
 }): PortalContentData {
   return {
@@ -80,6 +82,7 @@ function rowToContent(row: {
     fleetTitle: row.fleetTitle,
     fleetBody: row.fleetBody,
     sectionDefaults: parseSectionDefaults(row.sectionDefaults),
+    layoutSettings: parsePortalLayoutSettings(row.layoutSettings),
     experienceTemplates:
       parseExperienceMasterTemplates(row.experienceTemplates) ?? codeDefaultsAsMasterTemplates(),
   };
@@ -100,6 +103,7 @@ export async function getPortalContent(): Promise<PortalContentData> {
           aboutBody: DEFAULT_PORTAL_CONTENT.aboutBody,
           servicesPillars: DEFAULT_SERVICES_PILLARS,
           sectionDefaults: DEFAULT_PORTAL_CONTENT.sectionDefaults,
+          layoutSettings: DEFAULT_PORTAL_CONTENT.layoutSettings,
         },
       });
       return {
@@ -173,6 +177,7 @@ export async function upsertPortalContent(
       fleetTitle: data.fleetTitle ?? DEFAULT_PORTAL_CONTENT.fleetTitle,
       fleetBody: data.fleetBody,
       sectionDefaults: data.sectionDefaults ?? DEFAULT_PORTAL_CONTENT.sectionDefaults,
+      layoutSettings: data.layoutSettings ?? DEFAULT_PORTAL_CONTENT.layoutSettings,
       experienceTemplates:
         data.experienceTemplates !== undefined
           ? data.experienceTemplates
@@ -194,6 +199,7 @@ export async function upsertPortalContent(
       fleetTitle: data.fleetTitle,
       fleetBody: data.fleetBody,
       sectionDefaults: data.sectionDefaults,
+      layoutSettings: data.layoutSettings,
       experienceTemplates: data.experienceTemplates,
     },
   });
