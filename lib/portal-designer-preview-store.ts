@@ -31,9 +31,9 @@ function previewStore(): Map<string, StoredPreview> {
 function purgeExpired() {
   const now = Date.now();
   const previews = previewStore();
-  for (const [id, entry] of previews) {
+  previews.forEach((entry, id) => {
     if (entry.expiresAt <= now) previews.delete(id);
-  }
+  });
 }
 
 export function storeDesignerPreview(
