@@ -54,32 +54,49 @@ function SortablePageRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "min-h-[4.5rem] rounded-md border border-transparent",
+        "rounded-md border border-transparent py-1",
         active && "border-atlas-accent/30 bg-atlas-accent/10",
         isDragging && "opacity-70"
       )}
     >
-      <div className="flex items-center gap-1 px-1 py-1.5">
+      <div className="flex items-start gap-1 px-1">
         <button
           type="button"
-          className="cursor-grab px-1 text-[10px] text-atlas-muted active:cursor-grabbing"
+          className="mt-0.5 cursor-grab px-1 text-[10px] text-atlas-muted active:cursor-grabbing"
           aria-label="Drag to reorder"
           {...listeners}
           {...attributes}
         >
           ⋮⋮
         </button>
-        <button type="button" onClick={onSelect} className="min-w-0 flex-1 px-1 py-0.5 text-left text-sm">
-          <span className="block truncate font-medium leading-tight text-atlas-text">{label}</span>
-          <span
-            className={cn(
-              "mt-0.5 block h-4 truncate font-mono text-xs leading-tight text-atlas-muted",
-              !slugPreview && "invisible"
-            )}
-          >
-            {slugPreview ? `/${slugPreview}` : "/—"}
-          </span>
-        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onSelect}
+              className="min-w-0 flex-1 px-1 py-0.5 text-left text-sm font-medium leading-tight text-atlas-text"
+            >
+              {label}
+            </button>
+            <label
+              className="flex shrink-0 items-center gap-1 text-xs text-atlas-muted"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={section.visible}
+                onChange={(e) => onToggleVisible(e.target.checked)}
+                className="accent-atlas-accent"
+              />
+              Visible
+            </label>
+          </div>
+          {slugPreview ? (
+            <span className="mt-0.5 block truncate px-1 font-mono text-xs leading-tight text-atlas-muted">
+              /{slugPreview}
+            </span>
+          ) : null}
+        </div>
         {onDelete ? (
           <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-[10px]" onClick={onDelete}>
             Delete
@@ -88,15 +105,6 @@ function SortablePageRow({
           <span className="w-[3.25rem] shrink-0" aria-hidden />
         )}
       </div>
-      <label className="flex h-7 items-center gap-1.5 px-2 pb-1.5 text-xs text-atlas-muted">
-        <input
-          type="checkbox"
-          checked={section.visible}
-          onChange={(e) => onToggleVisible(e.target.checked)}
-          className="accent-atlas-accent"
-        />
-        Visible
-      </label>
     </div>
   );
 }

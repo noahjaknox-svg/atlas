@@ -726,7 +726,7 @@ export function PortalDesignerShell({
           />
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-[220px_1fr_340px]">
+        <div className="grid min-h-0 flex-1 grid-cols-[300px_1fr_340px]">
           <aside className="flex min-h-0 flex-col border-r border-atlas-border bg-atlas-surface/20">
             <PortalDesignerPageList
               sections={sections}
