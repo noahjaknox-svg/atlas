@@ -165,7 +165,7 @@ export function PortalDesignerInspector({
           </p>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="h-9 w-full gap-2 text-sm"
             onClick={() => void copyHtmlAiInstructions()}
           >
