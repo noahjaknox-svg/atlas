@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getSectionPageBlocks,
+  isEmptyPortalHtml,
   sectionUsesPageBlocks,
   synthesizePageBlocksFromLegacy,
 } from "./page-blocks-utils";
@@ -47,5 +48,12 @@ describe("page-blocks-utils", () => {
   it("sectionUsesPageBlocks is false when pageBlocks was never set", () => {
     expect(sectionUsesPageBlocks({ contentBlocks: null })).toBe(false);
     expect(sectionUsesPageBlocks({ contentBlocks: {} })).toBe(false);
+  });
+
+  it("isEmptyPortalHtml treats blank and legacy default as empty", () => {
+    expect(isEmptyPortalHtml("")).toBe(true);
+    expect(isEmptyPortalHtml("   ")).toBe(true);
+    expect(isEmptyPortalHtml("<!-- Custom HTML -->")).toBe(true);
+    expect(isEmptyPortalHtml("<p>Hello</p>")).toBe(false);
   });
 });

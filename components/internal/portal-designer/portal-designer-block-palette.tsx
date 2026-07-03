@@ -20,6 +20,7 @@ export const PALETTE_ITEMS: { id: string; label: string; item: PaletteItem }[] =
   { id: `${PALETTE_PREFIX}cta`, label: "Button", item: { kind: "block", blockType: "cta" } },
   { id: `${PALETTE_PREFIX}video`, label: "Video", item: { kind: "block", blockType: "video" } },
   { id: `${PALETTE_PREFIX}gallery`, label: "Gallery", item: { kind: "block", blockType: "gallery" } },
+  { id: `${PALETTE_PREFIX}html`, label: "HTML", item: { kind: "block", blockType: "html" } },
   { id: `${PALETTE_PREFIX}spacer`, label: "Spacer", item: { kind: "block", blockType: "spacer" } },
   { id: `${PALETTE_PREFIX}container`, label: "Container", item: { kind: "container", rows: 1, cols: 1 } },
 ];

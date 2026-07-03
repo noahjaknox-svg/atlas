@@ -30,6 +30,7 @@ import {
 } from "@/lib/portal-layout-settings";
 import type { BlockLayout } from "@/lib/experience-content";
 import { sanitizePortalHtml } from "@/lib/sanitize-portal-html";
+import { isEmptyPortalHtml } from "@/lib/page-blocks-utils";
 import { ExperienceGallery } from "./experience-gallery";
 import { resolveImageDisplaySize } from "@/lib/experience-image-system";
 import { PortalDesignerEmptyBlockPlaceholder } from "@/components/internal/portal-designer/portal-designer-empty-block-placeholder";
@@ -208,6 +209,9 @@ function renderLeafContent(block: ExperiencePageBlock, designMode = false): Reac
         />
       );
     case "html":
+      if (designMode && isEmptyPortalHtml(block.html)) {
+        return <PortalDesignerEmptyBlockPlaceholder type="html" />;
+      }
       return (
         <div
           className="portal-custom-html"

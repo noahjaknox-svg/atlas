@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, VideoIcon } from "lucide-react";
+import { Code2, ImageIcon, VideoIcon } from "lucide-react";
 import { getImageSizeClasses } from "@/lib/experience-image-system";
 import type { ImageDisplaySize } from "@/lib/experience-content";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,10 @@ const PLACEHOLDER_COPY = {
     title: "Empty video",
     hint: "Add a video URL in the sidebar",
   },
+  html: {
+    title: "Empty HTML block",
+    hint: "Paste HTML or an embed in the sidebar",
+  },
 } as const;
 
 export function PortalDesignerEmptyBlockPlaceholder({
@@ -21,12 +25,12 @@ export function PortalDesignerEmptyBlockPlaceholder({
   imageSize = "fit",
   className,
 }: {
-  type: "image" | "video";
+  type: "image" | "video" | "html";
   imageSize?: ImageDisplaySize;
   className?: string;
 }) {
   const copy = PLACEHOLDER_COPY[type];
-  const Icon = type === "image" ? ImageIcon : VideoIcon;
+  const Icon = type === "image" ? ImageIcon : type === "video" ? VideoIcon : Code2;
 
   return (
     <div

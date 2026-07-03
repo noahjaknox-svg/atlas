@@ -28,6 +28,11 @@ export function createBlockId(): string {
   return `blk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function isEmptyPortalHtml(html: string): boolean {
+  const trimmed = html.trim();
+  return !trimmed || trimmed === "<!-- Custom HTML -->";
+}
+
 export function createEmptyContainer(
   rows: GridDimension = 1,
   cols: GridDimension = 1
@@ -132,7 +137,7 @@ export function createEmptyBlock(type: ExperiencePageBlock["type"]): ExperienceP
     case "gallery":
       return { id: createBlockId(), type: "gallery", items: [], layout: "editorialPair" };
     case "html":
-      return { id: createBlockId(), type: "html", html: "<!-- Custom HTML -->" };
+      return { id: createBlockId(), type: "html", html: "" };
     case "spacer":
       return { id: createBlockId(), type: "spacer", size: "md" };
     case "quote":

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Copy, Check } from "lucide-react";
 import type {
   BlockAlign,
   BlockLayout,
@@ -39,6 +40,7 @@ import { isCustomPortalPage } from "@/lib/experience-page-slug";
 import { resolveImageDisplaySize } from "@/lib/experience-image-system";
 import { PortalDesignerImageCropModal } from "./portal-designer-image-crop-modal";
 import type { DesignerSection, PreviewViewport } from "./portal-designer-types";
+import { PORTAL_HTML_AI_INSTRUCTIONS } from "@/lib/portal-html-ai-instructions";
 import { cn } from "@/lib/utils";
 
 export function PortalDesignerInspector({
@@ -67,14 +69,25 @@ export function PortalDesignerInspector({
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
     : [];
+  const [aiInstructionsCopied, setAiInstructionsCopied] = useState(false);
+
+  async function copyHtmlAiInstructions() {
+    try {
+      await navigator.clipboard.writeText(PORTAL_HTML_AI_INSTRUCTIONS);
+      setAiInstructionsCopied(true);
+      window.setTimeout(() => setAiInstructionsCopied(false), 2000);
+    } catch {
+      window.prompt("Copy these instructions:", PORTAL_HTML_AI_INSTRUCTIONS);
+    }
+  }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-11 shrink-0 items-center border-b border-atlas-border px-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">Settings</p>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
         <div>
           <Label className="text-sm">Page name</Label>
           <p className="mt-0.5 text-xs text-atlas-muted">
@@ -143,6 +156,33 @@ export function PortalDesignerInspector({
           </p>
         )}
       </div>
+
+      {selectedBlock?.type === "html" ? (
+        <div className="shrink-0 border-t border-atlas-border bg-atlas-surface/20 p-4">
+          <p className="mb-2 text-xs text-atlas-muted">
+            Paste into another AI, add your request, then copy its single code block (use the copy
+            button on the block — not the surrounding text) and paste into the field above.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full gap-2 text-sm"
+            onClick={() => void copyHtmlAiInstructions()}
+          >
+            {aiInstructionsCopied ? (
+              <>
+                <Check className="h-4 w-4" aria-hidden />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" aria-hidden />
+                Copy AI instructions
+              </>
+            )}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -784,8 +824,9 @@ function BlockEditor({
           <div>
             <Label className="text-sm">Custom HTML</Label>
             <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
-              Custom HTML can affect layout, mobile behavior, and performance. Use for animations
-              or special embeds only.
+              Use for custom layout, CSS, animations, or iframe embeds (YouTube, maps, forms).
+              HTML can affect mobile layout and performance — test on both desktop and mobile
+              viewports.
             </p>
             <textarea
               value={block.html}

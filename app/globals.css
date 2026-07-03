@@ -632,6 +632,11 @@
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
+
+  .portal-custom-html iframe {
+    max-width: 100%;
+    border: 0;
+  }
 }
 
 @media print {
