@@ -1,4 +1,5 @@
 import "server-only";
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getPasswordResetRedirectUrl } from "@/lib/app-url";
@@ -27,15 +28,68 @@ async function createSupabaseAnonServerClient() {
   });
 }
 
+function requireSupabaseAdmin() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!serviceKey || !supabaseUrl) {
+    throw new Error(
+      "Cannot send password reset: configure SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL."
+    );
+  }
+
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+function assertRecoveryRedirectAccepted(actionLink: string, redirectTo: string) {
+  let redirectParam: string | null = null;
+  try {
+    redirectParam = new URL(actionLink).searchParams.get("redirect_to");
+  } catch {
+    throw new Error("Supabase returned an invalid password reset link.");
+  }
+
+  if (!redirectParam) return;
+
+  const decoded = decodeURIComponent(redirectParam);
+  if (decoded.includes("/auth/callback/recovery")) return;
+
+  throw new Error(
+    `Supabase rejected the password reset redirect. Add "${redirectTo}" under Authentication → URL Configuration → Redirect URLs, save, then try again.`
+  );
+}
+
 export async function sendPasswordResetEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) {
     throw new Error("VALIDATION");
   }
 
+  const redirectTo = getPasswordResetRedirectUrl();
+  const admin = requireSupabaseAdmin();
+
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: normalizedEmail,
+    options: { redirectTo },
+  });
+
+  if (linkError) {
+    throw new Error(linkError.message);
+  }
+
+  const actionLink = linkData.properties?.action_link;
+  if (!actionLink) {
+    throw new Error("Supabase did not return a password reset link.");
+  }
+
+  assertRecoveryRedirectAccepted(actionLink, redirectTo);
+
   const supabase = await createSupabaseAnonServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-    redirectTo: getPasswordResetRedirectUrl(),
+    redirectTo,
   });
 
   if (error) {
