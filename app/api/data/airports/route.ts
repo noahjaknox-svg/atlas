@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { fetchDataHubList } from "@/lib/data-hub-list";
@@ -7,7 +7,7 @@ import { findAirportReferencesUsFirst } from "@/lib/ourairports/us-first-list";
 // Read-only browser/search over the OurAirports reference data.
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const result = await fetchDataHubList(
       request,
       "airports",

@@ -10,9 +10,13 @@ datasource db {
 
 enum UserRole {
   admin
-  sales
-  reviewer
+  staff
+}
+
+enum AppDepartment {
+  aircraft_management
   charter
+  data_warehouse
 }
 
 enum ProspectType {
@@ -167,9 +171,10 @@ model User {
   email        String   @unique
   passwordHash String?  @map("password_hash")
   supabaseId   String?  @unique @map("supabase_id")
-  role         UserRole @default(sales)
-  active       Boolean  @default(true)
-  permissions  Json?    @db.JsonB
+  role         UserRole        @default(staff)
+  departments  AppDepartment[] @default([])
+  active       Boolean         @default(true)
+  permissions  Json?           @db.JsonB
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -512,10 +517,11 @@ enum UserInviteStatus {
 }
 
 model UserInvite {
-  id         String           @id @default(uuid()) @db.Uuid
-  email      String
-  role       UserRole
-  invitedBy  String           @map("invited_by") @db.Uuid
+  id          String           @id @default(uuid()) @db.Uuid
+  email       String
+  role        UserRole
+  departments AppDepartment[]  @default([])
+  invitedBy   String           @map("invited_by") @db.Uuid
   invitedAt  DateTime         @default(now()) @map("invited_at")
   acceptedAt DateTime?        @map("accepted_at")
   status     UserInviteStatus @default(pending)

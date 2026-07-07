@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { dec } from "@/lib/data-hub-serialize";
@@ -15,7 +15,7 @@ async function validIcao(icao: string): Promise<boolean> {
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const result = await fetchDataHubList(
       request,
       "fbos",
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     const fboName = parseOptionalString(body.fboName);
     const airportIcao = parseOptionalString(body.airportIcao)?.toUpperCase();

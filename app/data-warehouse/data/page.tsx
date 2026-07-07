@@ -6,7 +6,8 @@ import {
   prefetchDataHubTab,
   type DataHubListPayload,
 } from "@/lib/data-hub-prefetch";
-import { ROUTES } from "@/lib/routes";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { DataHubClient } from "@/components/internal/data-hub-client";
 
@@ -17,7 +18,7 @@ export default async function DataHubPage({
 }) {
   const user = await getInternalUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect(ROUTES.home);
+  requireDepartmentPageAccess(user, "data_warehouse");
 
   const params = await searchParams;
   const activeTab = params.tab ?? "aircraft";
@@ -28,8 +29,10 @@ export default async function DataHubPage({
     initialTabData = await prefetchDataHubTab(activeTab, filterParams);
   }
 
+  const shell = getInternalShellProps(user);
+
   return (
-    <InternalShell userName={user.name} isAdmin workspace>
+    <InternalShell {...shell} workspace>
       <DataHubClient initialTab={activeTab} initialTabData={initialTabData} />
     </InternalShell>
   );

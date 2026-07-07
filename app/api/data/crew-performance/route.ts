@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import type { CrewPerformanceMetric } from "@prisma/client";
@@ -6,7 +6,7 @@ import type { CrewGridValues } from "@/lib/crew/types";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const rows = await prisma.crewPerformanceGrid.findMany({
       include: { aircraftType: true },
       orderBy: [{ aircraftType: { code: "asc" } }, { metric: "asc" }],
@@ -34,7 +34,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     const aircraftTypeId = String(body.aircraftTypeId ?? "").trim();
     const metric = String(body.metric ?? "").trim() as CrewPerformanceMetric;

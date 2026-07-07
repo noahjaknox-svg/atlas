@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import {
@@ -10,7 +10,7 @@ import { runwayDesignator } from "@/lib/ourairports/runway-admin";
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const url = new URL(request.url);
     const icao = url.searchParams.get("icao")?.trim();
     if (!icao) {

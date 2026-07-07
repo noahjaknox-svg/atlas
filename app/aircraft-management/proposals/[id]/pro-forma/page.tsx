@@ -8,6 +8,8 @@ import {
 } from "@/lib/aircraft-workspace";
 import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { InternalShell } from "@/components/internal/internal-shell";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { ProFormaView } from "@/components/internal/pro-forma-view";
 import { loadProFormaData } from "@/lib/proforma-load";
 
@@ -22,6 +24,8 @@ export default async function ProFormaPage({
   const { aircraft: aircraftParam } = await searchParams;
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+  const shell = getInternalShellProps(user);
 
   const proposal = await prisma.proposal.findUnique({
     where: { id },
@@ -77,7 +81,7 @@ export default async function ProFormaPage({
   const initialData = await loadProFormaData(proposal.id, selected.id);
 
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"} workspace>
+    <InternalShell {...shell} workspace>
       <ProFormaView
         proposalId={proposal.id}
         aircraftInstanceId={selected.id}

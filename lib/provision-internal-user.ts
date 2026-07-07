@@ -31,6 +31,7 @@ export async function provisionInternalUserFromAuth(
       email: normalized,
       name,
       role: invite.role,
+      departments: invite.role === "admin" ? [] : invite.departments,
       active: true,
     },
   });

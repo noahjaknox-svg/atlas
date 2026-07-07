@@ -1,11 +1,11 @@
-import { requireCharterAccess } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import type { CharterRequestStatus } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
-    await requireCharterAccess();
+    await requireDepartmentAccess("charter");
     const params = new URL(request.url).searchParams;
     const status = params.get("status") as CharterRequestStatus | null;
     const id = params.get("id");

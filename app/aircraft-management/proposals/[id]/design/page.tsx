@@ -3,6 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { InternalShell } from "@/components/internal/internal-shell";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { PortalDesignerShell } from "@/components/internal/portal-designer/portal-designer-shell";
 import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
 import { computePortalPublishStatus } from "@/lib/portal-publish-status";
@@ -24,6 +26,8 @@ export default async function ProposalPortalDesignPage({
 }) {
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+  const shell = getInternalShellProps(user);
 
   const { id } = await params;
 
@@ -83,7 +87,7 @@ export default async function ProposalPortalDesignPage({
   const portalContent = await getPortalContent();
 
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"} workspace>
+    <InternalShell {...shell} workspace>
       <div className="flex h-full min-h-0 flex-col">
         <div className="shrink-0 border-b border-atlas-border px-4 py-2">
           <Link
@@ -104,7 +108,6 @@ export default async function ProposalPortalDesignPage({
             publishedSnapshot={publishedSnapshot}
             publishStatus={publishStatus}
             lastPublishedAt={lastSnapshot?.publishedAt?.toISOString() ?? null}
-            isAdmin={user.role === "admin"}
             initialHero={
               primaryAircraft
                 ? {

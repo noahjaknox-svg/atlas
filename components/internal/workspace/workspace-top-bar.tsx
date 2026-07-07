@@ -12,7 +12,6 @@ import {
 export function WorkspaceTopBar({
   saveLabel,
   portalSlug,
-  isAdmin,
   publishLoading,
   onPreview,
   onPublish,
@@ -20,7 +19,6 @@ export function WorkspaceTopBar({
 }: {
   saveLabel: string;
   portalSlug: string | null;
-  isAdmin: boolean;
   publishLoading: boolean;
   onPreview: () => void;
   onPublish: () => void;
@@ -47,11 +45,9 @@ export function WorkspaceTopBar({
         >
           {PREVIEW_PROSPECT_PORTAL}
         </Button>
-        {isAdmin && (
-          <Button type="button" size="sm" disabled={publishLoading} onClick={onPublish}>
-            {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
-          </Button>
-        )}
+        <Button type="button" size="sm" disabled={publishLoading} onClick={onPublish}>
+          {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
+        </Button>
         <Button
           type="button"
           variant="ghost"

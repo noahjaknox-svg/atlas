@@ -1,4 +1,4 @@
-import { requireCharterAccess } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError, jsonError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { runTripMatch } from "@/lib/charter/run-trip-match";
@@ -13,7 +13,7 @@ const VALID_TRIP_TYPES = new Set<CharterTripType>([
 
 export async function POST(request: Request) {
   try {
-    const user = await requireCharterAccess();
+    const user = await requireDepartmentAccess("charter");
     const body = (await request.json()) as TripMatchInput;
 
     if (!body.tripType || !VALID_TRIP_TYPES.has(body.tripType)) {

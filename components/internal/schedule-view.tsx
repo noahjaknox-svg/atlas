@@ -35,12 +35,10 @@ export function ScheduleView({
   initialTimeline,
   initialSource,
   initialFleet,
-  isAdmin,
 }: {
   initialTimeline: ScheduleTimelineData;
   initialSource: ScheduleSource | null;
   initialFleet: FleetTail[];
-  isAdmin?: boolean;
 }) {
   const [timeline, setTimeline] = useState(initialTimeline);
   const [source, setSource] = useState<ScheduleSource | null>(initialSource);
@@ -268,11 +266,9 @@ export function ScheduleView({
           </span>
         )}
 
-        {isAdmin && (
-          <Button type="button" size="sm" disabled={syncing || navigating} onClick={() => void syncNow()}>
-            {syncing ? "Syncing…" : "Sync JetInsight"}
-          </Button>
-        )}
+        <Button type="button" size="sm" disabled={syncing || navigating} onClick={() => void syncNow()}>
+          {syncing ? "Syncing…" : "Sync JetInsight"}
+        </Button>
         {syncMsg && <span className="text-xs text-atlas-muted">{syncMsg}</span>}
       </div>
 

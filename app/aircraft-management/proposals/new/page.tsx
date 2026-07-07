@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 import { Button } from "@/components/ui/button";
@@ -7,9 +9,12 @@ import { Button } from "@/components/ui/button";
 export default async function NewProposalPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+
+  const shell = getInternalShellProps(user);
 
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
+    <InternalShell {...shell}>
       <div className="mx-auto max-w-lg py-16 text-center">
         <h1 className="font-serif text-3xl">New Proposal</h1>
         <p className="mt-2 text-atlas-muted">

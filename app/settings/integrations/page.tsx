@@ -1,22 +1,23 @@
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
-import { ROUTES } from "@/lib/routes";
 import { prisma } from "@/lib/db";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { IntegrationsClient } from "@/components/internal/settings/integrations-client";
 
 export default async function IntegrationsSettingsPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect(ROUTES.home);
 
   const scheduleSource = await prisma.scheduleSource.findFirst({
     where: { enabled: true },
     orderBy: { updatedAt: "desc" },
   });
 
+  const shell = getInternalShellProps(user);
+
   return (
-    <InternalShell userName={user.name} isAdmin>
+    <InternalShell {...shell}>
       <IntegrationsClient
         initial={{
           iflightConfigured: Boolean(process.env.IFLIGHTPLANNER_API_KEY?.trim()),

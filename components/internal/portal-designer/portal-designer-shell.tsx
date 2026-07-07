@@ -68,7 +68,6 @@ export function PortalDesignerShell({
   publishedSnapshot,
   publishStatus,
   lastPublishedAt,
-  isAdmin,
   onPublished,
 }: {
   mode: PortalDesignerMode;
@@ -82,7 +81,6 @@ export function PortalDesignerShell({
   publishedSnapshot?: ProposalSnapshotPayload | null;
   publishStatus?: PortalPublishStatus;
   lastPublishedAt?: string | null;
-  isAdmin?: boolean;
   onPublished?: () => void;
 }) {
   const initialState: DesignerState = useMemo(
@@ -422,7 +420,7 @@ export function PortalDesignerShell({
   }
 
   async function publishPortal() {
-    if (!proposalId || !isAdmin) return;
+    if (!proposalId) return;
     setPublishing(true);
     setError(null);
     try {
@@ -690,7 +688,7 @@ export function PortalDesignerShell({
           <Button type="button" size="sm" disabled={!dirty || saving} onClick={() => void saveDraft()}>
             {saving ? "Saving…" : "Save draft"}
           </Button>
-          {mode === "proposal" && isAdmin ? (
+          {mode === "proposal" ? (
             <Button
               type="button"
               size="sm"
