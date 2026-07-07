@@ -3,10 +3,10 @@
 import { Suspense } from "react";
 import { AuthCallbackContent, AuthCallbackFallback } from "@/components/auth-callback-content";
 
-export default function AuthCallbackPage() {
+export default function AuthRecoveryCallbackPage() {
   return (
     <Suspense fallback={<AuthCallbackFallback />}>
-      <AuthCallbackContent />
+      <AuthCallbackContent forcedFlow="recovery" />
     </Suspense>
   );
 }

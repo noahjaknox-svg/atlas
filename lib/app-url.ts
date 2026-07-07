@@ -33,11 +33,25 @@ export function getAppBaseUrl(): string {
 }
 
 export function getInviteRedirectUrl(): string {
-  return `${getExternalAppUrl()}/auth/callback?flow=invite&next=${encodeURIComponent(ROUTES.home)}`;
+  return `${getExternalAppUrl()}/auth/callback/invite`;
 }
 
 export function getPasswordResetRedirectUrl(): string {
-  return `${getExternalAppUrl()}/auth/callback?flow=recovery&next=${encodeURIComponent(ROUTES.home)}`;
+  return `${getExternalAppUrl()}/auth/callback/recovery`;
+}
+
+/** Add these under Supabase → Authentication → URL Configuration → Redirect URLs. */
+export function getRequiredSupabaseRedirectUrls(): string[] {
+  const base = getExternalAppUrl();
+  return [
+    `${base}/auth/callback/recovery`,
+    `${base}/auth/callback/invite`,
+    `${base}/auth/callback`,
+    `${base}/**`,
+    "http://localhost:3005/auth/callback/recovery",
+    "http://localhost:3005/auth/callback/invite",
+    "http://localhost:3005/auth/callback**",
+  ];
 }
 
 export function getAuthCallbackUrl(next: string = ROUTES.home): string {

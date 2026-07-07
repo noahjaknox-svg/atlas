@@ -9,12 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ROUTES } from "@/lib/routes";
 
 const AUTH_CALLBACK_ERRORS: Record<string, string> = {
-  auth_callback_failed: "That sign-in link expired or was already used. Request a new invite.",
+  auth_callback_failed:
+    "That link expired or was already used. Request a new password reset or invite.",
   missing_auth_code: "Invalid sign-in link. Request a new invite from your admin.",
   auth_not_configured: "Authentication is not configured on the server.",
   not_provisioned:
     "Your account is not provisioned in Atlas yet. Ask an admin to send an invite.",
 };
+
+function callbackPathForType(type: string | null) {
+  if (type === "invite") return "/auth/callback/invite";
+  if (type === "recovery") return "/auth/callback/recovery";
+  return "/auth/callback";
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,19 +34,34 @@ export default function LoginPage() {
 
   useEffect(() => {
     const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("code")) {
+      const callbackPath = callbackPathForType(params.get("type"));
+      window.location.replace(`${callbackPath}${window.location.search}${hash}`);
+      return;
+    }
+
     if (hash.includes("access_token")) {
-      const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
-      const isInvite = hashParams.get("type") === "invite";
       const next = params.get("next") ?? ROUTES.home;
-      const flow = isInvite ? "&flow=invite" : "";
+      const callbackPath = callbackPathForType(hashParams.get("type"));
       window.location.replace(
-        `/auth/callback?next=${encodeURIComponent(next)}${flow}${hash}`
+        `${callbackPath}?next=${encodeURIComponent(next)}${hash}`
       );
       return;
     }
 
-    const authError = new URLSearchParams(window.location.search).get("error");
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+    if (hashParams.get("error") || hashParams.get("error_code")) {
+      const errorCode = hashParams.get("error_code");
+      const loginError =
+        errorCode === "otp_expired" ? "auth_callback_failed" : "missing_auth_code";
+      window.location.replace(`/login?error=${loginError}`);
+      return;
+    }
+
+    const authError = params.get("error");
     if (authError) {
       setError(
         AUTH_CALLBACK_ERRORS[authError] ??
