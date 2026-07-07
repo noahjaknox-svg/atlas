@@ -13,6 +13,8 @@ import {
 } from "@/lib/aircraft-workspace";
 import { mergeAssumptionRowsForInstance } from "@/lib/proposal-assumption-load";
 import { InternalShell } from "@/components/internal/internal-shell";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
@@ -93,6 +95,8 @@ export default async function ProposalWorkspacePage({
   );
 
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+  const shell = getInternalShellProps(user);
   if (!proposal) notFound();
 
   const [aircraftList, ownersByAircraftRaw] = await Promise.all([
@@ -258,11 +262,8 @@ export default async function ProposalWorkspacePage({
   };
 
   return (
-    <InternalShell userName={user?.name} isAdmin={user?.role === "admin"} workspace>
-      <ProposalWorkspace
-        data={workspaceData}
-        isAdmin={user?.role === "admin"}
-      />
+    <InternalShell {...shell} workspace>
+      <ProposalWorkspace data={workspaceData} />
     </InternalShell>
   );
 }

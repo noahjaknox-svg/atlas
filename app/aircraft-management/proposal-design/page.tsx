@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { PortalDesignerShell } from "@/components/internal/portal-designer/portal-designer-shell";
 import { getPortalContent, getFleetShowcase, getExperienceMasterTemplates } from "@/lib/portal-content";
@@ -14,6 +16,9 @@ export const metadata: Metadata = {
 export default async function ProposalDesignPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+
+  const shell = getInternalShellProps(user);
 
   const [content, fleet, templates] = await Promise.all([
     getPortalContent(),
@@ -34,7 +39,7 @@ export default async function ProposalDesignPage() {
   }));
 
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"} workspace>
+    <InternalShell {...shell} workspace>
       <PortalDesignerShell
         mode="master"
         initialSections={initialSections}

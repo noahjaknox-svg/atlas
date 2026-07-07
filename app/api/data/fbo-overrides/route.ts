@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { parseOptionalInt, parseOptionalString } from "@/lib/data-hub-parse";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const rows = await prisma.fboHangarOverride.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -35,7 +35,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     const fboId = parseOptionalString(body.fboId);
     const warehouseAircraftId = parseOptionalString(body.warehouseAircraftId);

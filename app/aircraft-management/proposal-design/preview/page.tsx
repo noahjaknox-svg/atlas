@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
 import { verifyDesignerPreviewToken } from "@/lib/portal-designer-preview-token";
 import { getPortalContent } from "@/lib/portal-content";
 import { resolvePortalBranding } from "@/lib/portal-constants";
@@ -76,6 +77,7 @@ export default async function MasterDesignerPreviewPage({
 }) {
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
 
   const { previewToken, page } = await searchParams;
   if (!previewToken) redirect("/aircraft-management/proposal-design");

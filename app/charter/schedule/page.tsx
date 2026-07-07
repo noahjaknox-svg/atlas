@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { loadScheduleTimeline } from "@/lib/schedule/load-timeline";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ScheduleView } from "@/components/internal/schedule-view";
 
 export default async function SchedulePage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "charter");
 
   const timelineData = await loadScheduleTimeline(prisma, {});
 
@@ -26,8 +29,10 @@ export default async function SchedulePage() {
     typeCode: f.typeCode,
   }));
 
+  const shell = getInternalShellProps(user);
+
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"} workspace>
+    <InternalShell {...shell} workspace>
       <div className="flex h-full min-h-0 flex-col px-3 py-4 lg:px-4">
         <div className="shrink-0">
           <h1 className="font-serif text-2xl">Schedule</h1>
@@ -39,7 +44,6 @@ export default async function SchedulePage() {
           initialTimeline={timelineData.timeline}
           initialSource={initialSource}
           initialFleet={initialFleet}
-          isAdmin={user.role === "admin"}
         />
       </div>
     </InternalShell>

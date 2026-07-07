@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import {
@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     const row = await prisma.warehouseAircraft.findUnique({ where: { id } });
     if (!row) return jsonError("Not found", 404);
@@ -30,7 +30,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     const body = await request.json();
     const saveAs = parseSaveAs(body);
@@ -76,7 +76,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     await prisma.warehouseAircraft.delete({ where: { id } });
     return jsonOk({ deleted: true });

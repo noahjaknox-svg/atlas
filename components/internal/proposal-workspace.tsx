@@ -117,10 +117,8 @@ function mergeAssumptions(
 
 export function ProposalWorkspace({
   data,
-  isAdmin,
 }: {
   data: ProposalWorkspaceData;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [prospect, setProspect] = useState(data.prospect);
@@ -1160,7 +1158,6 @@ export function ProposalWorkspace({
             publishLoading={publishLoading}
             needsRepublish={needsRepublish}
             lastPublishedAt={lastPublishedAt}
-            isAdmin={isAdmin}
             hasSelectedAircraft={!!selected}
             previewLoading={previewLoading}
             previewDisabled={previewDisabled}

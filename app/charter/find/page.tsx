@@ -1,16 +1,19 @@
 import { redirect } from "next/navigation";
-import { getInternalUser, hasCharterAccess } from "@/lib/auth";
-import { ROUTES } from "@/lib/routes";
+import { getInternalUser } from "@/lib/auth";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { CharterShell } from "@/components/internal/charter/charter-shell";
 import { TripFinderForm } from "@/components/internal/charter/trip-finder-form";
 
 export default async function CharterFindPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
-  if (!hasCharterAccess(user.role)) redirect(ROUTES.home);
+  requireDepartmentPageAccess(user, "charter");
+
+  const shell = getInternalShellProps(user);
 
   return (
-    <CharterShell userName={user.name} isAdmin={user.role === "admin"}>
+    <CharterShell {...shell}>
       <div>
         <h1 className="font-serif text-2xl">Find aircraft</h1>
         <p className="mt-1 text-sm text-atlas-muted">

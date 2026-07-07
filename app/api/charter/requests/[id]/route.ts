@@ -1,4 +1,4 @@
-import { requireCharterAccess } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError, jsonError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { matchCharterRequest, matchCharterLegs } from "@/lib/schedule/match-request";
@@ -18,7 +18,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireCharterAccess();
+    await requireDepartmentAccess("charter");
     const { id } = await params;
 
     const row = await prisma.charterRequest.findUnique({
@@ -54,7 +54,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireCharterAccess();
+    await requireDepartmentAccess("charter");
     const { id } = await params;
     const body = (await request.json()) as { status?: CharterRequestStatus; action?: string };
 

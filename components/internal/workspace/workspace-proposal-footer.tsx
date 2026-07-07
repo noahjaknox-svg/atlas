@@ -20,7 +20,6 @@ export function WorkspaceProposalFooter({
   publishLoading,
   needsRepublish,
   lastPublishedAt,
-  isAdmin,
   hasSelectedAircraft,
   previewLoading = false,
   previewDisabled = false,
@@ -40,7 +39,6 @@ export function WorkspaceProposalFooter({
   publishLoading: boolean;
   needsRepublish: boolean;
   lastPublishedAt: string | null;
-  isAdmin: boolean;
   hasSelectedAircraft: boolean;
   previewLoading?: boolean;
   previewDisabled?: boolean;
@@ -72,8 +70,8 @@ export function WorkspaceProposalFooter({
     (portalActive && !needsRepublish) ||
     (!portalActive && !!portalPin && !needsRepublish);
 
-  const showTakeDown = isAdmin && portalActive;
-  const showRestore = isAdmin && !portalActive && !!portalPin;
+  const showTakeDown = portalActive;
+  const showRestore = !portalActive && !!portalPin;
   const previewBlocked = previewDisabled || previewLoading;
 
   return (
@@ -179,21 +177,19 @@ export function WorkspaceProposalFooter({
             <span className="text-atlas-text">{publishedLabel}</span>
           </span>
 
-          {isAdmin ? (
-            <Button
-              type="button"
-              size="sm"
-              className="shrink-0 text-xs"
-              disabled={publishDisabled}
-              onClick={() => onPublish(!!portalPin)}
-            >
-              {publishLoading
-                ? "Publishing…"
-                : portalPin
-                  ? REPUBLISH_PROSPECT_PORTAL
-                  : PUBLISH_PROSPECT_PORTAL}
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 text-xs"
+            disabled={publishDisabled}
+            onClick={() => onPublish(!!portalPin)}
+          >
+            {publishLoading
+              ? "Publishing…"
+              : portalPin
+                ? REPUBLISH_PROSPECT_PORTAL
+                : PUBLISH_PROSPECT_PORTAL}
+          </Button>
         </div>
       </div>
     </div>

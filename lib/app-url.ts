@@ -36,6 +36,10 @@ export function getInviteRedirectUrl(): string {
   return `${getExternalAppUrl()}/auth/callback?flow=invite&next=${encodeURIComponent(ROUTES.home)}`;
 }
 
+export function getPasswordResetRedirectUrl(): string {
+  return `${getExternalAppUrl()}/auth/callback?flow=recovery&next=${encodeURIComponent(ROUTES.home)}`;
+}
+
 export function getAuthCallbackUrl(next: string = ROUTES.home): string {
   return `${getExternalAppUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 }

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { loadPipelinePage } from "@/lib/pipeline-load";
 import { perfTimed } from "@/lib/perf-log";
+import { requireDepartmentPageAccess } from "@/lib/require-department-page";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { PipelineBoard } from "@/components/internal/pipeline-board";
 
@@ -12,6 +14,9 @@ export default async function PipelinePage({
 }) {
   const user = await perfTimed("pipeline auth", () => getInternalUser());
   if (!user) redirect("/login");
+  requireDepartmentPageAccess(user, "aircraft_management");
+
+  const shell = getInternalShellProps(user);
 
   const { archived: archivedParam } = await searchParams;
   const showArchived = archivedParam === "1";
@@ -22,7 +27,7 @@ export default async function PipelinePage({
   );
 
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
+    <InternalShell {...shell}>
       <h1 className="font-serif text-2xl">Pipeline</h1>
       <p className="mt-1 text-sm text-atlas-muted">
         {showArchived ? "Archived deals" : "Sales workflow"}
@@ -36,7 +41,6 @@ export default async function PipelinePage({
       <PipelineBoard
         initialCards={cards}
         atlasUsers={atlasUsers}
-        isAdmin={user.role === "admin"}
         totalCount={totalCount}
         hasMore={hasMore}
         showArchived={showArchived}

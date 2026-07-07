@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
+import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { ROUTES } from "@/lib/routes";
 
@@ -8,8 +9,10 @@ export default async function HelpPage() {
   const user = await getInternalUser();
   if (!user) redirect("/login");
 
+  const shell = getInternalShellProps(user);
+
   return (
-    <InternalShell userName={user.name} isAdmin={user.role === "admin"}>
+    <InternalShell {...shell}>
       <div className="mx-auto max-w-2xl space-y-8">
         <div>
           <h1 className="font-serif text-2xl">Help</h1>
@@ -39,9 +42,9 @@ export default async function HelpPage() {
         <section className="space-y-3 rounded-lg border border-atlas-border p-5">
           <h2 className="font-medium">Data Hub</h2>
           <p className="text-sm text-atlas-muted">
-            Admins manage reference data under{" "}
+            Staff with Data Warehouse access manage reference data under{" "}
             <Link href={ROUTES.dataWarehouse.data} className="text-atlas-accent hover:underline">
-              Data
+              Data Warehouse
             </Link>
             . Use <strong>Re-import seed CSV</strong> for the bundled reference file, or upload a
             matching CSV on the Aircraft tab. Fuel index sync requires{" "}
@@ -56,8 +59,9 @@ export default async function HelpPage() {
         <section className="space-y-3 rounded-lg border border-atlas-border p-5">
           <h2 className="font-medium">Access</h2>
           <p className="text-sm text-atlas-muted">
-            You must be invited and provisioned in Atlas before login succeeds. Contact an admin
-            under{" "}
+            You must be invited and provisioned in Atlas before login succeeds. Admins assign each
+            staff member a role and which departments they can view: Aircraft Management, Charter,
+            and Data Warehouse. Contact an admin under{" "}
             <Link href="/settings/users" className="text-atlas-accent hover:underline">
               Settings → Users
             </Link>

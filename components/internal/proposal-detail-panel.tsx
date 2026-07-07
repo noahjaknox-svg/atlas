@@ -57,7 +57,6 @@ export function ProposalDetailPanel({
   onOpenChange,
   onUpdated,
   atlasUsers,
-  isAdmin,
 }: {
   proposalId: string | null;
   initialCard?: PipelineCardData | null;
@@ -65,7 +64,6 @@ export function ProposalDetailPanel({
   onOpenChange: (open: boolean) => void;
   onUpdated?: () => void;
   atlasUsers: AtlasUser[];
-  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState<ProposalDetail | null>(null);
@@ -412,17 +410,15 @@ export function ProposalDetailPanel({
                     >
                       {PREVIEW_PROSPECT_PORTAL}
                     </Button>
-                    {isAdmin && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="text-xs"
-                        disabled={publishLoading}
-                        onClick={() => void handlePublish()}
-                      >
-                        {publishLoading ? "…" : PUBLISH_PROSPECT_PORTAL}
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="text-xs"
+                      disabled={publishLoading}
+                      onClick={() => void handlePublish()}
+                    >
+                      {publishLoading ? "…" : PUBLISH_PROSPECT_PORTAL}
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient, type User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { getInviteRedirectUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/db";
-import type { UserRole } from "@prisma/client";
+import type { AppDepartment, UserRole } from "@prisma/client";
 
 function requireSupabaseAdmin(): {
   supabase: SupabaseClient;
@@ -47,6 +47,21 @@ async function resendSignupEmail(
   });
 }
 
+async function findSupabaseAuthUser(supabase: SupabaseClient, email: string) {
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw new Error(error.message);
+
+    const match = data.users.find((user) => user.email?.toLowerCase() === email);
+    if (match) return match;
+
+    if (data.users.length < 200) return null;
+    page += 1;
+  }
+}
+
 /** Send (or resend) a Supabase invite email. */
 export async function sendSupabaseInviteEmail(email: string, name: string) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -73,6 +88,13 @@ export async function sendSupabaseInviteEmail(email: string, name: string) {
     throw new Error(inviteError.message);
   }
 
+  const authUser = await findSupabaseAuthUser(supabase, normalizedEmail);
+  if (authUser?.email_confirmed_at) {
+    throw new Error(
+      "This email already completed signup. Reactivate the account if needed, then use Reset password instead of Resend invite."
+    );
+  }
+
   const { error: resendError } = await resendSignupEmail(
     supabaseUrl,
     anonKey,
@@ -92,9 +114,12 @@ export async function sendSupabaseInviteEmail(email: string, name: string) {
 export async function upsertPendingInvite(input: {
   email: string;
   role: UserRole;
+  departments?: AppDepartment[];
   invitedBy: string;
 }) {
   const email = input.email.trim().toLowerCase();
+  const departments =
+    input.role === "admin" ? [] : (input.departments ?? ["aircraft_management"]);
   const existing = await prisma.userInvite.findFirst({
     where: { email, status: "pending" },
   });
@@ -104,6 +129,7 @@ export async function upsertPendingInvite(input: {
       where: { id: existing.id },
       data: {
         role: input.role,
+        departments,
         invitedBy: input.invitedBy,
         invitedAt: new Date(),
       },
@@ -114,6 +140,7 @@ export async function upsertPendingInvite(input: {
     data: {
       email,
       role: input.role,
+      departments,
       invitedBy: input.invitedBy,
       status: "pending",
     },
@@ -147,7 +174,7 @@ export async function syncPendingInvites(adminId: string) {
 
   for (const invite of pending) {
     const atlasUser = await prisma.user.findFirst({
-      where: { email: invite.email, active: true },
+      where: { email: invite.email },
     });
     if (atlasUser) {
       await prisma.userInvite.update({
@@ -191,7 +218,8 @@ export async function syncPendingInvites(adminId: string) {
     await prisma.userInvite.create({
       data: {
         email,
-        role: "sales",
+        role: "staff",
+        departments: ["aircraft_management"],
         invitedBy: adminId,
         status: "pending",
       },

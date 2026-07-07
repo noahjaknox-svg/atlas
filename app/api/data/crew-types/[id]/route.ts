@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 
@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     const body = await request.json();
     const row = await prisma.crewAircraftType.update({
@@ -29,7 +29,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     await prisma.crewAircraftType.delete({ where: { id } });
     return jsonOk({ ok: true });

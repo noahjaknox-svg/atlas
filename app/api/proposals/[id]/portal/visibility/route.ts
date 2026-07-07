@@ -11,11 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireInternalUser();
-    if (user.role !== "admin") {
-      return jsonError("Only admins can change portal visibility", 403);
-    }
-
+    await requireInternalUser();
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const active = Boolean((body as { active?: boolean }).active);

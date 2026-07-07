@@ -10,10 +10,6 @@ export async function POST(
 ) {
   try {
     const user = await requireInternalUser();
-    if (user.role !== "admin") {
-      return jsonError("Only admins can publish proposals", 403);
-    }
-
     const { id } = await params;
 
     const existing = await getProposalArchiveState(id);

@@ -32,7 +32,6 @@ export function WorkspaceSidebar({
   scenario,
   portalSlug,
   portalUrl,
-  isAdmin,
   saveStatus,
   onRecalculate,
   onPublish,
@@ -46,7 +45,6 @@ export function WorkspaceSidebar({
   scenario: ScenarioSummary | null;
   portalSlug: string | null;
   portalUrl: string | null;
-  isAdmin: boolean;
   saveStatus: "idle" | "saving" | "saved" | "error";
   onRecalculate: () => void;
   onPublish: () => Promise<{ portalUrl: string; pin: string } | null>;
@@ -184,11 +182,9 @@ export function WorkspaceSidebar({
             Preview prospect portal (publish first)
           </Button>
         )}
-        {isAdmin && (
-          <Button className="w-full" onClick={handlePublish} disabled={publishLoading}>
-            {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
-          </Button>
-        )}
+        <Button className="w-full" onClick={handlePublish} disabled={publishLoading}>
+          {publishLoading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
+        </Button>
         {portalUrl && portalSlug && (
           <Link href={`/${portalSlug}/experience/welcome`} target="_blank" className="block">
             <Button variant="ghost" className="w-full">

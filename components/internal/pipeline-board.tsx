@@ -50,14 +50,12 @@ function parseAssigneeFilter(raw: string | null): Set<string> {
 export function PipelineBoard({
   initialCards,
   atlasUsers,
-  isAdmin,
   totalCount,
   hasMore: initialHasMore,
   showArchived: showArchivedProp = false,
 }: {
   initialCards: PipelineCardData[];
   atlasUsers: AtlasUser[];
-  isAdmin?: boolean;
   totalCount?: number;
   hasMore?: boolean;
   showArchived?: boolean;
@@ -494,7 +492,6 @@ export function PipelineBoard({
         onOpenChange={handlePanelOpenChange}
         onUpdated={refresh}
         atlasUsers={atlasUsers}
-        isAdmin={isAdmin}
       />
     </>
   );

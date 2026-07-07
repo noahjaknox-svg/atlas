@@ -7,11 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireInternalUser();
-    if (user.role !== "admin") {
-      return jsonError("Only admins can regenerate portal PINs", 403);
-    }
-
+    await requireInternalUser();
     const { id } = await params;
     const result = await regeneratePortalPin(id);
     return jsonOk(result);

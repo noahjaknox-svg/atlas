@@ -226,11 +226,9 @@ function WizardMoneyField({
 function ReviewStep({
   proposal,
   proposalId,
-  isAdmin,
 }: {
   proposal: ProposalWithRelations;
   proposalId: string;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [publishResult, setPublishResult] = useState<{
@@ -311,7 +309,7 @@ function ReviewStep({
             <Button variant="secondary">{PREVIEW_PROSPECT_PORTAL}</Button>
           </Link>
         )}
-        {isAdmin && !publishResult && (
+        {!publishResult && (
           <Button onClick={handlePublish} disabled={loading}>
             {loading ? "Publishing…" : PUBLISH_PROSPECT_PORTAL}
           </Button>
@@ -344,12 +342,10 @@ export function ProposalWizardStep({
   proposalId,
   step,
   proposal,
-  isAdmin,
 }: {
   proposalId: string;
   step: number;
   proposal: ProposalWithRelations;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const next = () => router.push(ROUTES.aircraftManagement.proposal(proposalId, step + 1));
@@ -368,7 +364,7 @@ export function ProposalWizardStep({
   };
 
   if (step === 10) {
-    return <ReviewStep proposal={proposal} proposalId={proposalId} isAdmin={isAdmin} />;
+    return <ReviewStep proposal={proposal} proposalId={proposalId} />;
   }
 
   const fieldSets: Record<

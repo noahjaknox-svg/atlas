@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { fetchDataHubList } from "@/lib/data-hub-list";
@@ -13,7 +13,7 @@ import { defaultWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-profor
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const result = await fetchDataHubList(
       request,
       "aircraft",
@@ -55,7 +55,7 @@ function bodyAsValues(body: Record<string, unknown>): Record<string, string | nu
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
 
     if (body.copyFromId) {

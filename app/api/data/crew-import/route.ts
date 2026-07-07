@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { importCrewInitialData } from "@/lib/crew/import";
 import { getAtlasInitialCrewData } from "@/lib/crew/initial-data";
@@ -6,7 +6,7 @@ import { normalizeCrewInitialData } from "@/lib/crew/normalize-initial-data";
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json().catch(() => ({}));
     const useBundled = body.useBundled === true;
     const raw = useBundled ? getAtlasInitialCrewData() : body.data ?? body;

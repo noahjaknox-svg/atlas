@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { getCompanySettings, serializeCompanySettings } from "@/lib/company-settings";
@@ -6,7 +6,7 @@ import { parseOptionalDecimal, parseOptionalInt } from "@/lib/data-hub-parse";
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const settings = await getCompanySettings();
     return jsonOk(serializeCompanySettings(settings));
   } catch (e) {
@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAdmin();
+    await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     await getCompanySettings();
     const updated = await prisma.companySettings.update({

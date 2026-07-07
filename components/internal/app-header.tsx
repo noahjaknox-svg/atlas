@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/routes";
+import { DEPARTMENTS, type DepartmentId } from "@/lib/departments";
 import { NewProposalDialog } from "@/components/internal/new-proposal-dialog";
 import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
 import { ThemeAppearanceMenu } from "@/components/theme/theme-appearance-menu";
@@ -14,43 +15,40 @@ type NavLink = { kind: "link"; href: string; label: string };
 type NavAction = { kind: "action"; action: "new-proposal"; label: string };
 type NavItem = NavLink | NavAction;
 
-type Department = {
-  id: string;
+type NavDepartment = {
+  id: DepartmentId;
   label: string;
   prefix: string;
+  homeHref: string;
   items: readonly NavItem[];
 };
 
-const CHARTER: Department = {
-  id: "charter",
-  label: "Charter",
-  prefix: "/charter",
-  items: [
-    { kind: "link", href: ROUTES.charter.find, label: "Find Aircraft" },
-    { kind: "link", href: ROUTES.charter.trips, label: "Trips" },
-    { kind: "link", href: ROUTES.charter.schedule, label: "Schedule" },
-  ],
-};
-
-const AIRCRAFT_MANAGEMENT: Department = {
-  id: "aircraft-management",
-  label: "Aircraft Management",
-  prefix: "/aircraft-management",
-  items: [
+const NAV_ITEMS: Record<DepartmentId, readonly NavItem[]> = {
+  aircraft_management: [
     { kind: "link", href: ROUTES.aircraftManagement.pipeline, label: "Pipeline" },
     { kind: "link", href: ROUTES.aircraftManagement.proposalDesign, label: PROSPECT_PORTAL_DESIGNER },
     { kind: "action", action: "new-proposal", label: "New proposal" },
   ],
+  charter: [
+    { kind: "link", href: ROUTES.charter.find, label: "Find Aircraft" },
+    { kind: "link", href: ROUTES.charter.trips, label: "Trips" },
+    { kind: "link", href: ROUTES.charter.schedule, label: "Schedule" },
+  ],
+  data_warehouse: [
+    { kind: "link", href: ROUTES.dataWarehouse.data, label: "Data Warehouse" },
+  ],
 };
 
-const DATA_WAREHOUSE: Department = {
-  id: "data-warehouse",
-  label: "Data Warehouse",
-  prefix: "/data-warehouse",
-  items: [{ kind: "link", href: ROUTES.dataWarehouse.data, label: "Data Warehouse" }],
-};
-
-const ALL_DEPARTMENTS = [CHARTER, AIRCRAFT_MANAGEMENT, DATA_WAREHOUSE] as const;
+function buildNavDepartments(allowedDepartments: DepartmentId[]): NavDepartment[] {
+  const allowed = new Set(allowedDepartments);
+  return DEPARTMENTS.filter((department) => allowed.has(department.id)).map((department) => ({
+    id: department.id,
+    label: department.label,
+    prefix: department.prefix,
+    homeHref: department.homeHref,
+    items: NAV_ITEMS[department.id],
+  }));
+}
 
 function isLinkActive(pathname: string, href: string) {
   const base = href.split("?")[0];
@@ -64,15 +62,9 @@ function isItemActive(pathname: string, item: NavItem) {
   return isLinkActive(pathname, item.href);
 }
 
-function getActiveDepartment(pathname: string): Department {
-  const match = ALL_DEPARTMENTS.find((department) => pathname.startsWith(department.prefix));
-  return match ?? AIRCRAFT_MANAGEMENT;
-}
-
-function departmentHomeHref(department: Department): string {
-  if (department.id === CHARTER.id) return ROUTES.charter.find;
-  if (department.id === DATA_WAREHOUSE.id) return ROUTES.dataWarehouse.data;
-  return ROUTES.home;
+function getActiveDepartment(pathname: string, departments: NavDepartment[]): NavDepartment {
+  const match = departments.find((department) => pathname.startsWith(department.prefix));
+  return match ?? departments[0] ?? buildNavDepartments(["aircraft_management"])[0];
 }
 
 function navItemClass(active: boolean) {
@@ -87,9 +79,11 @@ function navItemClass(active: boolean) {
 export function AppHeader({
   userName,
   isAdmin,
+  allowedDepartments = DEPARTMENTS.map((department) => department.id),
 }: {
   userName?: string;
   isAdmin?: boolean;
+  allowedDepartments?: DepartmentId[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -98,10 +92,15 @@ export function AppHeader({
   const departmentMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const activeDepartment = getActiveDepartment(pathname);
+  const visibleDepartments = useMemo(
+    () => buildNavDepartments(allowedDepartments),
+    [allowedDepartments]
+  );
+  const activeDepartment = getActiveDepartment(pathname, visibleDepartments);
   const centerItems = activeDepartment.items;
   const showCenterNav =
     centerItems.length > 1 || centerItems.some((item) => item.kind === "action");
+  const showDepartmentSwitcher = visibleDepartments.length > 1;
 
   useEffect(() => {
     setDepartmentMenuOpen(false);
@@ -142,7 +141,7 @@ export function AppHeader({
     router.refresh();
   }
 
-  const homeHref = departmentHomeHref(activeDepartment);
+  const homeHref = activeDepartment.homeHref;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-14 border-b border-atlas-border bg-atlas-chrome/95 backdrop-blur">
@@ -152,55 +151,61 @@ export function AppHeader({
             <ThemeLogo className="h-9 w-auto object-contain" priority />
           </Link>
 
-          <div className="relative" ref={departmentMenuRef}>
-            <button
-              type="button"
-              onClick={() => setDepartmentMenuOpen((open) => !open)}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-sm font-medium text-atlas-text transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
-              aria-haspopup="menu"
-              aria-expanded={departmentMenuOpen}
-              aria-label={`Department: ${activeDepartment.label}`}
-            >
-              <span>{activeDepartment.label}</span>
-              <svg
-                viewBox="0 0 12 12"
-                className={cn(
-                  "h-3 w-3 text-atlas-muted transition-transform",
-                  departmentMenuOpen && "rotate-180"
-                )}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden
+          {showDepartmentSwitcher ? (
+            <div className="relative" ref={departmentMenuRef}>
+              <button
+                type="button"
+                onClick={() => setDepartmentMenuOpen((open) => !open)}
+                className="flex items-center gap-1.5 rounded px-2 py-1 text-sm font-medium text-atlas-text transition-colors hover:text-atlas-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent/50"
+                aria-haspopup="menu"
+                aria-expanded={departmentMenuOpen}
+                aria-label={`Department: ${activeDepartment.label}`}
               >
-                <path d="M3 4.5 6 7.5 9 4.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+                <span>{activeDepartment.label}</span>
+                <svg
+                  viewBox="0 0 12 12"
+                  className={cn(
+                    "h-3 w-3 text-atlas-muted transition-transform",
+                    departmentMenuOpen && "rotate-180"
+                  )}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden
+                >
+                  <path d="M3 4.5 6 7.5 9 4.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
 
-            {departmentMenuOpen && (
-              <div
-                role="menu"
-                className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
-              >
-                {ALL_DEPARTMENTS.map((department) => (
-                  <Link
-                    key={department.id}
-                    href={departmentHomeHref(department)}
-                    role="menuitem"
-                    onClick={() => setDepartmentMenuOpen(false)}
-                    className={cn(
-                      "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
-                      department.id === activeDepartment.id
-                        ? "text-atlas-accent"
-                        : "text-atlas-text"
-                    )}
-                  >
-                    {department.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+              {departmentMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-md border border-atlas-border bg-atlas-surface py-1 shadow-lg"
+                >
+                  {visibleDepartments.map((department) => (
+                    <Link
+                      key={department.id}
+                      href={department.homeHref}
+                      role="menuitem"
+                      onClick={() => setDepartmentMenuOpen(false)}
+                      className={cn(
+                        "block px-3 py-2 text-sm transition-colors hover:bg-atlas-border/30 hover:text-atlas-text",
+                        department.id === activeDepartment.id
+                          ? "text-atlas-accent"
+                          : "text-atlas-text"
+                      )}
+                    >
+                      {department.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="px-2 py-1 text-sm font-medium text-atlas-text">
+              {activeDepartment.label}
+            </span>
+          )}
         </div>
 
         {showCenterNav ? (
@@ -262,17 +267,15 @@ export function AppHeader({
                 >
                   Settings
                 </Link>
-                {isAdmin && (
-                  <Link
-                    href="/settings/integrations"
-                    role="menuitem"
-                    onClick={() => setAccountMenuOpen(false)}
-                    className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
-                  >
-                    Integrations
-                  </Link>
-                )}
-                {isAdmin && (
+                <Link
+                  href="/settings/integrations"
+                  role="menuitem"
+                  onClick={() => setAccountMenuOpen(false)}
+                  className="block px-3 py-2 text-sm hover:bg-atlas-border/30 hover:text-atlas-text"
+                >
+                  Integrations
+                </Link>
+                {isAdmin ? (
                   <Link
                     href="/settings/users"
                     role="menuitem"
@@ -281,7 +284,7 @@ export function AppHeader({
                   >
                     Manage users
                   </Link>
-                )}
+                ) : null}
                 <Link
                   href="/help"
                   role="menuitem"

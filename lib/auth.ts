@@ -4,8 +4,10 @@ import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
+import type { AppDepartment, User } from "@prisma/client";
 import { prisma } from "./db";
 import { ATLAS_USER_EMAIL_HEADER } from "./auth-constants";
+import { hasDepartmentAccess } from "./departments";
 
 const PORTAL_COOKIE = "atlas_portal_session";
 const PIN_ATTEMPT_COOKIE = "atlas_pin_attempts";
@@ -73,16 +75,16 @@ export async function requireAdmin() {
   return user;
 }
 
-export async function requireCharterAccess() {
+export async function requireDepartmentAccess(department: AppDepartment) {
   const user = await requireInternalUser();
-  if (user.role !== "admin" && user.role !== "charter") {
+  if (!hasDepartmentAccess(user, department)) {
     throw new Error("FORBIDDEN");
   }
   return user;
 }
 
-export function hasCharterAccess(role: string) {
-  return role === "admin" || role === "charter";
+export function isAdminUser(user: Pick<User, "role">) {
+  return user.role === "admin";
 }
 
 function portalSecret() {

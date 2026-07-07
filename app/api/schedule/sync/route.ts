@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdmin, requireInternalUser } from "@/lib/auth";
+import { requireDepartmentAccess, requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import {
@@ -22,7 +22,7 @@ function isCronAuthorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   try {
     const cron = isCronAuthorized(req);
-    if (!cron) await requireAdmin();
+    if (!cron) await requireDepartmentAccess("charter");
 
     const body = await req.json().catch(() => ({}));
     const icsUrl =
