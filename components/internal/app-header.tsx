@@ -33,6 +33,8 @@ const NAV_ITEMS: Record<DepartmentId, readonly NavItem[]> = {
     { kind: "link", href: ROUTES.charter.find, label: "Find Aircraft" },
     { kind: "link", href: ROUTES.charter.trips, label: "Trips" },
     { kind: "link", href: ROUTES.charter.schedule, label: "Schedule" },
+    { kind: "link", href: ROUTES.charter.emptyLegs, label: "Empty Legs" },
+    { kind: "link", href: ROUTES.charter.leads, label: "Leads" },
   ],
   data_warehouse: [
     { kind: "link", href: ROUTES.dataWarehouse.data, label: "Data Warehouse" },
@@ -238,6 +240,20 @@ export function AppHeader({
         )}
 
         <div className="flex items-center justify-end gap-3">
+          {activeDepartment.id === "charter" &&
+            allowedDepartments.includes("charter") && (
+              <Link
+                href={ROUTES.charter.settings}
+                className={cn(
+                  "rounded px-3 py-1.5 text-sm transition-colors",
+                  isLinkActive(pathname, ROUTES.charter.settings)
+                    ? "bg-atlas-accent/15 text-atlas-accent"
+                    : "text-atlas-muted hover:text-atlas-text"
+                )}
+              >
+                Charter Settings
+              </Link>
+            )}
           <div className="relative" ref={accountMenuRef}>
             <button
               type="button"

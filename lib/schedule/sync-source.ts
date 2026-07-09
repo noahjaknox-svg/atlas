@@ -1,12 +1,17 @@
 import type { PrismaClient, Prisma } from "@prisma/client";
 import type { NormalizedScheduleEvent } from "@/lib/schedule/types";
 import { parseIcsText } from "@/lib/schedule/parse-ics";
+import {
+  syncEmptyLegsFromSchedule,
+  type EmptyLegSyncStats,
+} from "@/lib/charter/empty-legs/sync";
 
 export interface SyncSourceResult {
   sourceId: string;
   eventsUpserted: number;
   eventsDeleted: number;
   unmatchedTails: string[];
+  emptyLegs: EmptyLegSyncStats;
 }
 
 export async function ensureScheduleSource(
@@ -64,7 +69,15 @@ export async function syncScheduleSource(
       },
     });
 
-    return { sourceId, eventsUpserted: upserted, eventsDeleted: deleted, unmatchedTails };
+    const emptyLegs = await syncEmptyLegsFromSchedule(db, { sourceId });
+
+    return {
+      sourceId,
+      eventsUpserted: upserted,
+      eventsDeleted: deleted,
+      unmatchedTails,
+      emptyLegs,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";
     await db.scheduleSyncRun.update({
