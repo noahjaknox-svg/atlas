@@ -8,6 +8,12 @@ import { PricingBreakdownButton } from "@/components/internal/charter/empty-legs
 
 type DetailRow = EmptyLegRow & { relatedHistory?: EmptyLegRow[] };
 
+type PublicListOption = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString();
@@ -23,11 +29,14 @@ function formatDuration(minutes: number) {
 
 export function EmptyLegsInventory() {
   const [rows, setRows] = useState<EmptyLegRow[]>([]);
+  const [lists, setLists] = useState<PublicListOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [includePast, setIncludePast] = useState(false);
   const [availability, setAvailability] = useState("");
   const [forceState, setForceState] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [publicListId, setPublicListId] = useState("");
+  const [placementStatus, setPlacementStatus] = useState("");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -36,6 +45,23 @@ export function EmptyLegsInventory() {
   const [actionMsg, setActionMsg] = useState("");
   const [editingPlacementId, setEditingPlacementId] = useState<string | null>(null);
 
+  useEffect(() => {
+    void fetch("/api/charter/empty-legs/public-lists")
+      .then(async (res) => {
+        const json = await res.json();
+        if (res.ok && Array.isArray(json)) {
+          setLists(
+            json.map((list: PublicListOption) => ({
+              id: list.id,
+              name: list.name,
+              isActive: list.isActive,
+            }))
+          );
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -43,16 +69,30 @@ export function EmptyLegsInventory() {
     if (availability) params.set("availabilityStatus", availability);
     if (forceState) params.set("forceState", forceState);
     if (featuredOnly) params.set("isFeatured", "true");
+    if (publicListId) params.set("publicListId", publicListId);
+    if (placementStatus) params.set("placementStatus", placementStatus);
     if (q.trim()) params.set("q", q.trim());
     const res = await fetch(`/api/charter/empty-legs?${params}`);
     const json = await res.json();
     setLoading(false);
     if (res.ok) setRows(json);
-  }, [includePast, availability, forceState, featuredOnly, q]);
+  }, [
+    includePast,
+    availability,
+    forceState,
+    featuredOnly,
+    publicListId,
+    placementStatus,
+    q,
+  ]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [publicListId, placementStatus, availability, forceState, featuredOnly, includePast, q]);
 
   useEffect(() => {
     if (!expandedId) {
@@ -90,10 +130,22 @@ export function EmptyLegsInventory() {
   async function runBulk(action: string, extra: Record<string, unknown> = {}) {
     if (selected.size === 0) return;
     setActionMsg("Working…");
+    const listScoped =
+      publicListId &&
+      (action === "set_placement_status" ||
+        action === "add_to_lists" ||
+        action === "remove_from_lists")
+        ? { publicListIds: [publicListId] }
+        : {};
     const res = await fetch("/api/charter/empty-legs/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: Array.from(selected), action, ...extra }),
+      body: JSON.stringify({
+        ids: Array.from(selected),
+        action,
+        ...listScoped,
+        ...extra,
+      }),
     });
     const json = await res.json();
     setActionMsg(res.ok ? `Updated ${json.updated}` : json.error ?? "Failed");
@@ -184,94 +236,144 @@ export function EmptyLegsInventory() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs text-atlas-muted">
-          Search
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="mt-1 block w-48 rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm text-atlas-text"
-            placeholder="Trip, tail, route…"
-          />
-        </label>
-        <label className="text-xs text-atlas-muted">
-          Status
-          <select
-            value={availability}
-            onChange={(e) => setAvailability(e.target.value)}
-            className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
-          >
-            <option value="">All</option>
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
-          </select>
-        </label>
-        <label className="text-xs text-atlas-muted">
-          Force
-          <select
-            value={forceState}
-            onChange={(e) => setForceState(e.target.value)}
-            className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
-          >
-            <option value="">All</option>
-            <option value="force_available">Force Available</option>
-            <option value="force_unavailable">Force Unavailable</option>
-            <option value="none">No force</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm text-atlas-muted">
-          <input
-            type="checkbox"
-            checked={featuredOnly}
-            onChange={(e) => setFeaturedOnly(e.target.checked)}
-          />
-          Featured only
-        </label>
-        <label className="flex items-center gap-2 text-sm text-atlas-muted">
-          <input
-            type="checkbox"
-            checked={includePast}
-            onChange={(e) => setIncludePast(e.target.checked)}
-          />
-          Show past
-        </label>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden overscroll-none">
+      <div className="shrink-0 space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-xs text-atlas-muted">
+            Search
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="mt-1 block w-48 rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm text-atlas-text"
+              placeholder="Trip, tail, route…"
+            />
+          </label>
+          <label className="text-xs text-atlas-muted">
+            Status
+            <select
+              value={availability}
+              onChange={(e) => setAvailability(e.target.value)}
+              className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+            >
+              <option value="">All</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </label>
+          <label className="text-xs text-atlas-muted">
+            Force
+            <select
+              value={forceState}
+              onChange={(e) => setForceState(e.target.value)}
+              className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+            >
+              <option value="">All</option>
+              <option value="force_available">Force Available</option>
+              <option value="force_unavailable">Force Unavailable</option>
+              <option value="none">No force</option>
+            </select>
+          </label>
+          <label className="text-xs text-atlas-muted">
+            Public list
+            <select
+              value={publicListId}
+              onChange={(e) => {
+                setPublicListId(e.target.value);
+                if (!e.target.value) setPlacementStatus("");
+              }}
+              className="mt-1 block min-w-[10rem] rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+            >
+              <option value="">All lists</option>
+              {lists.map((list) => (
+                <option key={list.id} value={list.id}>
+                  {list.name}
+                  {!list.isActive ? " (inactive)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {publicListId ? (
+            <label className="text-xs text-atlas-muted">
+              Placement
+              <select
+                value={placementStatus}
+                onChange={(e) => setPlacementStatus(e.target.value)}
+                className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+              >
+                <option value="">Any status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="hidden">Hidden</option>
+                <option value="expired">Expired</option>
+              </select>
+            </label>
+          ) : null}
+          <label className="flex items-center gap-2 text-sm text-atlas-muted">
+            <input
+              type="checkbox"
+              checked={featuredOnly}
+              onChange={(e) => setFeaturedOnly(e.target.checked)}
+            />
+            Featured only
+          </label>
+          <label className="flex items-center gap-2 text-sm text-atlas-muted">
+            <input
+              type="checkbox"
+              checked={includePast}
+              onChange={(e) => setIncludePast(e.target.checked)}
+            />
+            Show past
+          </label>
+        </div>
+
+        {publicListId && !loading ? (
+          <p className="text-xs text-atlas-muted">
+            Showing {rows.length} trip{rows.length === 1 ? "" : "s"} on this list.
+            {rows.length > 0
+              ? " Use the checkbox in the table header to select all of them."
+              : ""}
+          </p>
+        ) : null}
+
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded border border-atlas-border bg-atlas-surface p-3 text-sm">
+            <span className="text-atlas-muted">{selected.size} selected</span>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("force_available")}>Force Available</button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("force_unavailable")}>Force Unavailable</button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("remove_force")}>Remove Force</button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("promote")}>Promote</button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("unpromote")}>Unpromote</button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("set_placement_status", { placementStatus: "approved" })}>
+              {publicListId ? "Approve on this list" : "Approve placements"}
+            </button>
+            <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("set_placement_status", { placementStatus: "hidden" })}>
+              {publicListId ? "Hide on this list" : "Hide placements"}
+            </button>
+            {actionMsg ? <span className="text-xs text-atlas-muted">{actionMsg}</span> : null}
+          </div>
+        )}
       </div>
 
-      {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded border border-atlas-border bg-atlas-surface p-3 text-sm">
-          <span className="text-atlas-muted">{selected.size} selected</span>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("force_available")}>Force Available</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("force_unavailable")}>Force Unavailable</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("remove_force")}>Remove Force</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("promote")}>Promote</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("unpromote")}>Unpromote</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("set_placement_status", { placementStatus: "approved" })}>Approve placements</button>
-          <button type="button" className="rounded border border-atlas-border px-2 py-1 text-xs" onClick={() => void runBulk("set_placement_status", { placementStatus: "hidden" })}>Hide placements</button>
-          {actionMsg ? <span className="text-xs text-atlas-muted">{actionMsg}</span> : null}
-        </div>
-      )}
-
-      <div className="overflow-hidden rounded-lg border border-atlas-border">
-        <table className="w-full text-sm">
-          <thead className="border-b border-atlas-border bg-atlas-surface/80 text-left text-xs text-atlas-muted">
+      <div className="atlas-scroll min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-none rounded-lg border border-atlas-border">
+        <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-sm">
+          <thead className="text-left text-xs text-atlas-muted">
             <tr>
-              <th className="px-2 py-2">
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
-              <th className="px-2 py-2 font-medium">Status</th>
-              <th className="px-2 py-2 font-medium">Tail</th>
-              <th className="px-2 py-2 font-medium">Aircraft Type</th>
-              <th className="px-2 py-2 font-medium">Route</th>
-              <th className="px-2 py-2 font-medium">Departure</th>
-              <th className="px-2 py-2 font-medium">Duration</th>
-              <th className="px-2 py-2 font-medium">Base Price</th>
-              <th className="px-2 py-2 font-medium">Public Lists</th>
-              <th className="px-2 py-2 font-medium">Views</th>
-              <th className="px-2 py-2 font-medium">Submissions</th>
-              <th className="px-2 py-2 font-medium">Featured</th>
-              <th className="px-2 py-2 font-medium">Force</th>
-              <th className="px-2 py-2 font-medium">Last Synced</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Status</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Tail</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Aircraft Type</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Route</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Departure</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Duration</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Base Price</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Public Lists</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Views</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Submissions</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Featured</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Force</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Last Synced</th>
             </tr>
           </thead>
           <tbody>
@@ -285,7 +387,9 @@ export function EmptyLegsInventory() {
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={14} className="px-3 py-8 text-center text-atlas-muted">
-                  No empty legs yet. Run Charter sync to detect positioning flights.
+                  {publicListId
+                    ? "No empty legs on this list match the current filters."
+                    : "No empty legs yet. Run Charter sync to detect positioning flights."}
                 </td>
               </tr>
             )}

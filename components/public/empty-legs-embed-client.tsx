@@ -61,10 +61,18 @@ function money(n: number | null | undefined) {
 }
 
 function departureLabel(item: PublicItem) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   if (item.slidingWindowStartAt && item.slidingWindowEndAt) {
-    return `${new Date(item.slidingWindowStartAt).toLocaleString()} – ${new Date(item.slidingWindowEndAt).toLocaleString()}`;
+    return `${fmt(item.slidingWindowStartAt)} – ${fmt(item.slidingWindowEndAt)}`;
   }
-  return new Date(item.scheduledDepartureAt).toLocaleString();
+  return fmt(item.scheduledDepartureAt);
 }
 
 export function EmptyLegsEmbedClient({ token }: { token: string }) {
@@ -174,40 +182,41 @@ export function EmptyLegsEmbedClient({ token }: { token: string }) {
 
   return (
     <div ref={rootRef} className="min-h-[200px] bg-white p-4 text-slate-900 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {payload?.branding?.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={payload.branding.logoUrl} alt="" className="h-8 w-auto" />
-          ) : null}
-          <h1 className="text-xl font-semibold">
-            {payload?.branding?.headerText || payload?.list?.name || "Empty Legs"}
-          </h1>
-        </div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        {payload?.branding?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={payload.branding.logoUrl} alt="" className="h-8 w-auto" />
+        ) : null}
+        <h1 className="text-xl font-semibold tracking-tight">
+          {payload?.branding?.headerText || payload?.list?.name || "Empty Legs"}
+        </h1>
       </div>
 
-      <form onSubmit={runSearch} className="mb-6 grid gap-2 sm:grid-cols-4">
+      <form
+        onSubmit={runSearch}
+        className="mb-6 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:flex-row sm:items-center"
+      >
         <input
           value={dep}
           onChange={(e) => setDep(e.target.value)}
           placeholder="From (airport or city)"
-          className="rounded border border-slate-300 px-3 py-2 text-sm"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
         />
         <input
           value={arr}
           onChange={(e) => setArr(e.target.value)}
           placeholder="To (airport or city)"
-          className="rounded border border-slate-300 px-3 py-2 text-sm"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400"
         />
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded border border-slate-300 px-3 py-2 text-sm"
+          className="h-10 min-w-0 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-400 sm:w-40"
         />
         <button
           type="submit"
-          className="rounded px-3 py-2 text-sm font-medium text-white"
+          className="h-10 shrink-0 rounded-lg px-5 text-sm font-medium text-white"
           style={{ backgroundColor: accent }}
         >
           Search
@@ -217,11 +226,11 @@ export function EmptyLegsEmbedClient({ token }: { token: string }) {
       {searchMsg && <p className="mb-4 text-sm text-slate-600">{searchMsg}</p>}
 
       {promptCustom && (
-        <div className="mb-4 rounded border border-slate-200 p-4">
-          <p className="text-sm">Need a trip that isn’t listed?</p>
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-700">Need a trip that isn’t listed?</p>
           <button
             type="button"
-            className="mt-2 rounded px-3 py-1.5 text-sm text-white"
+            className="h-10 shrink-0 rounded-lg px-4 text-sm font-medium text-white"
             style={{ backgroundColor: accent }}
             onClick={() =>
               setRequestFor({ item: null, type: "custom_quote" })
@@ -329,38 +338,59 @@ function ItemGrid({
 
   if (layout === "compact_list") {
     return (
-      <ul className="divide-y divide-slate-200 rounded border border-slate-200">
+      <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200">
         {items.map((item) => (
-          <li key={item.placementId} className="flex flex-wrap items-center gap-3 p-3">
-            <button type="button" className="flex-1 text-left" onClick={() => onOpen(item)}>
-              <div className="font-medium">
-                {vf?.aircraftType !== false ? item.aircraftType : "Aircraft"}
+          <li
+            key={item.placementId}
+            className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4"
+          >
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left"
+              onClick={() => onOpen(item)}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">
+                  {vf?.aircraftType !== false
+                    ? (item.aircraftType ?? "Aircraft")
+                    : "Empty leg"}
+                </span>
                 {item.isFeatured ? (
-                  <span className="ml-2 text-xs font-normal text-amber-700">
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
                     {promotionLabel}
                   </span>
                 ) : null}
               </div>
-              <div className="text-sm text-slate-600">
-                {vf?.route !== false ? `${item.depIcao} → ${item.arrIcao}` : null}
-                {vf?.departure !== false ? ` · ${departureLabel(item)}` : null}
+              <div className="mt-1 text-sm text-slate-600">
+                {vf?.route !== false ? (
+                  <span className="font-medium text-slate-800">
+                    {item.depIcao} → {item.arrIcao}
+                  </span>
+                ) : null}
+                {vf?.departure !== false ? (
+                  <span className="block text-xs text-slate-500 sm:mt-0.5">
+                    {departureLabel(item)}
+                  </span>
+                ) : null}
               </div>
             </button>
-            {vf?.price !== false && !item.pricing.priceHidden && (
-              <span className="text-sm font-semibold">
-                {money(item.pricing.finalDisplayPrice) ?? "—"}
-              </span>
-            )}
-            {vf?.requestButton !== false && (
-              <button
-                type="button"
-                className="rounded px-3 py-1.5 text-sm text-white"
-                style={{ backgroundColor: accent }}
-                onClick={() => onRequest(item)}
-              >
-                {buttonText || "Request"}
-              </button>
-            )}
+            <div className="flex shrink-0 items-center gap-3 sm:justify-end">
+              {vf?.price !== false && !item.pricing.priceHidden && (
+                <span className="min-w-[4.5rem] text-right text-sm font-semibold tabular-nums">
+                  {money(item.pricing.finalDisplayPrice) ?? "—"}
+                </span>
+              )}
+              {vf?.requestButton !== false && (
+                <button
+                  type="button"
+                  className="h-9 rounded-lg px-4 text-sm font-medium text-white"
+                  style={{ backgroundColor: accent }}
+                  onClick={() => onRequest(item)}
+                >
+                  {buttonText || "Request"}
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>
@@ -368,76 +398,90 @@ function ItemGrid({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
         <article
           key={item.placementId}
-          className="overflow-hidden rounded-lg border border-slate-200 shadow-sm"
+          className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
-          <button type="button" className="block w-full text-left" onClick={() => onOpen(item)}>
+          <button
+            type="button"
+            className="flex min-h-0 flex-1 flex-col text-left"
+            onClick={() => onOpen(item)}
+          >
             {vf?.aircraftPhoto !== false && item.primaryPhotoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.primaryPhotoUrl}
                 alt=""
-                className="h-40 w-full object-cover"
+                className="h-36 w-full shrink-0 object-cover"
               />
             ) : (
-              <div className="flex h-28 items-center justify-center bg-slate-100 text-sm text-slate-500">
+              <div className="flex h-24 shrink-0 items-center justify-center bg-slate-100 text-sm text-slate-500">
                 {item.aircraftType ?? "Aircraft"}
               </div>
             )}
-            <div className="space-y-1 p-3">
-              {item.isFeatured && (
-                <p className="text-xs font-medium text-amber-700">{promotionLabel}</p>
-              )}
-              {vf?.aircraftType !== false && (
-                <h2 className="font-semibold">{item.aircraftType ?? "Aircraft"}</h2>
-              )}
+            <div className="flex flex-1 flex-col gap-2 p-4">
+              {item.isFeatured ? (
+                <p className="text-[11px] font-medium uppercase tracking-wide text-amber-700">
+                  {promotionLabel}
+                </p>
+              ) : null}
+              {vf?.aircraftType !== false ? (
+                <h2 className="text-base font-semibold leading-snug">
+                  {item.aircraftType ?? "Aircraft"}
+                </h2>
+              ) : null}
               {vf?.tailNumber && item.tailNumber ? (
                 <p className="font-mono text-xs text-slate-500">{item.tailNumber}</p>
               ) : null}
-              {vf?.route !== false && (
-                <p className="text-sm">
+              {vf?.route !== false ? (
+                <p className="text-sm font-medium text-slate-800">
                   {item.depIcao} → {item.arrIcao}
                 </p>
-              )}
-              {vf?.departure !== false && (
-                <p className="text-xs text-slate-600">{departureLabel(item)}</p>
-              )}
-              {vf?.seats !== false && item.seatCount != null && (
-                <p className="text-xs text-slate-600">{item.seatCount} seats</p>
-              )}
-              {vf?.price !== false && !item.pricing.priceHidden && (
-                <p className="pt-1 text-sm font-semibold">
-                  {item.pricing.displayDiscountMode === "show_both" &&
-                  item.pricing.basePrice != null &&
-                  item.pricing.discountApplied ? (
-                    <>
-                      <span className="mr-2 text-slate-400 line-through">
-                        {money(item.pricing.basePrice)}
-                      </span>
-                      {money(item.pricing.finalDisplayPrice)}
-                    </>
-                  ) : (
-                    money(item.pricing.finalDisplayPrice) ?? "—"
-                  )}
+              ) : null}
+              {vf?.departure !== false ? (
+                <p className="text-xs leading-relaxed text-slate-500">
+                  {departureLabel(item)}
                 </p>
-              )}
+              ) : null}
+              {vf?.seats !== false && item.seatCount != null ? (
+                <p className="text-xs text-slate-500">{item.seatCount} seats</p>
+              ) : null}
+              <div className="mt-auto pt-3">
+                {vf?.price !== false && !item.pricing.priceHidden ? (
+                  <p className="text-lg font-semibold tabular-nums">
+                    {item.pricing.displayDiscountMode === "show_both" &&
+                    item.pricing.basePrice != null &&
+                    item.pricing.discountApplied ? (
+                      <>
+                        <span className="mr-2 text-sm font-normal text-slate-400 line-through">
+                          {money(item.pricing.basePrice)}
+                        </span>
+                        {money(item.pricing.finalDisplayPrice)}
+                      </>
+                    ) : (
+                      (money(item.pricing.finalDisplayPrice) ?? "—")
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-400">Price on request</p>
+                )}
+              </div>
             </div>
           </button>
-          {vf?.requestButton !== false && (
+          {vf?.requestButton !== false ? (
             <div className="border-t border-slate-100 p-3">
               <button
                 type="button"
-                className="w-full rounded px-3 py-2 text-sm font-medium text-white"
+                className="h-10 w-full rounded-lg text-sm font-medium text-white"
                 style={{ backgroundColor: accent }}
                 onClick={() => onRequest(item)}
               >
                 {buttonText || "Request"}
               </button>
             </div>
-          )}
+          ) : null}
         </article>
       ))}
     </div>

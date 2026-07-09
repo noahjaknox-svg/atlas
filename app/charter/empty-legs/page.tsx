@@ -15,6 +15,7 @@ export default async function EmptyLegsInventoryPage() {
   return (
     <EmptyLegsShell
       {...shell}
+      fillHeight
       title="Empty Legs Inventory"
       description="Positioning flights detected from JetInsight — manage availability, placements, and promotion"
     >
