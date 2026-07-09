@@ -143,5 +143,3 @@ function serializeList(r: {
     updatedAt: r.updatedAt.toISOString(),
   };
 }
-
-export { serializeList as serializePublicList };
