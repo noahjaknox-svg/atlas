@@ -187,6 +187,8 @@ model User {
   snapshotsPublished     ProposalSnapshot[] @relation("SnapshotPublishedBy")
   proposalComments       ProposalComment[]
   charterRequestsCreated CharterRequest[]   @relation("CharterRequestCreatedBy")
+  emptyLegsForceApplied  EmptyLeg[]         @relation("EmptyLegForceAppliedBy")
+  charterLeadsAssigned   CharterLead[]      @relation("CharterLeadAssignedTo")
 
   @@map("users")
 }
@@ -1099,4 +1101,306 @@ model CharterRequestMatch {
 
   @@index([requestId, rank])
   @@map("charter_request_matches")
+}
+
+// ——— Empty legs, public lists, leads ———
+
+enum EmptyLegAvailabilityStatus {
+  available
+  unavailable
+}
+
+enum EmptyLegForceState {
+  force_available
+  force_unavailable
+}
+
+enum EmptyLegLifecycleStatus {
+  active
+  history
+}
+
+enum EmptyLegHistoryReason {
+  route_changed
+  trip_removed
+  unbooked_hold
+}
+
+enum EmptyLegPlacementStatus {
+  needs_approval
+  approved
+  hidden
+}
+
+enum EmptyLegPricingMode {
+  calculated
+  custom
+  hide_price
+}
+
+enum EmptyLegLayoutStyle {
+  card_grid
+  compact_list
+}
+
+enum EmptyLegRoutingProfileScope {
+  global
+  public_list
+}
+
+enum EmptyLegDiscountDisplayMode {
+  show_both
+  discounted_only
+  none
+}
+
+enum CharterLeadRequestType {
+  direct_empty_leg
+  off_routing_empty_leg
+  custom_quote
+}
+
+enum CharterLeadEmailStatus {
+  pending
+  sent
+  failed
+}
+
+enum EmptyLegViewEventType {
+  list_view
+  detail_open
+}
+
+model EmptyLeg {
+  id                     String                     @id @default(uuid()) @db.Uuid
+  tripNumber             String                     @map("trip_number")
+  routeKey               String                     @map("route_key")
+  depIcao                String                     @map("dep_icao")
+  arrIcao                String                     @map("arr_icao")
+  tailNumber             String                     @map("tail_number")
+  aircraftType           String?                    @map("aircraft_type")
+  sourceScheduleEventId  String?                    @map("source_schedule_event_id") @db.Uuid
+  sourceIcalUid          String?                    @map("source_ical_uid")
+  sourceJetInsightUrl    String?                    @map("source_jetinsight_url")
+  scheduledDepartureAt   DateTime                   @map("scheduled_departure_at")
+  scheduledArrivalAt     DateTime                   @map("scheduled_arrival_at")
+  durationMinutes        Int                        @map("duration_minutes")
+  lastSyncedAt           DateTime?                  @map("last_synced_at")
+  availabilityStatus     EmptyLegAvailabilityStatus @default(available) @map("availability_status")
+  forceState             EmptyLegForceState?        @map("force_state")
+  forceAppliedByUserId   String?                    @map("force_applied_by_user_id") @db.Uuid
+  forceAppliedAt         DateTime?                  @map("force_applied_at")
+  isFeatured             Boolean                    @default(false) @map("is_featured")
+  slidingWindowStartAt   DateTime?                  @map("sliding_window_start_at")
+  slidingWindowEndAt     DateTime?                  @map("sliding_window_end_at")
+  internalNotes          String?                    @map("internal_notes") @db.Text
+  lifecycleStatus        EmptyLegLifecycleStatus    @default(active) @map("lifecycle_status")
+  historyReason          EmptyLegHistoryReason?     @map("history_reason")
+  viewCount              Int                        @default(0) @map("view_count")
+  detailOpenCount        Int                        @default(0) @map("detail_open_count")
+  submissionCount        Int                        @default(0) @map("submission_count")
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  updatedAt              DateTime                   @updatedAt @map("updated_at")
+
+  forceAppliedBy User?                 @relation("EmptyLegForceAppliedBy", fields: [forceAppliedByUserId], references: [id], onDelete: SetNull)
+  placements     EmptyLegPlacement[]
+  leads          CharterLead[]
+  viewEvents     EmptyLegViewEvent[]
+
+  @@index([tripNumber])
+  @@index([tailNumber])
+  @@index([depIcao, arrIcao])
+  @@index([scheduledDepartureAt])
+  @@index([lifecycleStatus, scheduledDepartureAt])
+  @@index([tripNumber, routeKey, lifecycleStatus])
+  @@map("empty_legs")
+}
+
+model EmptyLegPublicList {
+  id                                   String                   @id @default(uuid()) @db.Uuid
+  name                                 String
+  slug                                 String                   @unique
+  isActive                             Boolean                  @default(true) @map("is_active")
+  token                                String                   @unique
+  tokenRevokedAt                       DateTime?                @map("token_revoked_at")
+  defaultPlacementStatus               EmptyLegPlacementStatus  @default(needs_approval) @map("default_placement_status")
+  layoutStyle                          EmptyLegLayoutStyle      @default(card_grid) @map("layout_style")
+  defaultPricingMode                   EmptyLegPricingMode      @default(calculated) @map("default_pricing_mode")
+  discountPercent                      Decimal?                 @map("discount_percent") @db.Decimal(6, 3)
+  discountDisplayMode                  EmptyLegDiscountDisplayMode @default(none) @map("discount_display_mode")
+  minimumQuotableHours                 Decimal?                 @map("minimum_quotable_hours") @db.Decimal(6, 2)
+  settingsJson                         Json                     @default("{}") @map("settings_json") @db.JsonB
+  recipientEmailOverride               String?                  @map("recipient_email_override")
+  confirmationTemplateOverride         String?                  @map("confirmation_template_override") @db.Text
+  internalNotificationTemplateOverride String?                  @map("internal_notification_template_override") @db.Text
+  brandingOverrideJson                 Json                     @default("{}") @map("branding_override_json") @db.JsonB
+  visibleFieldsJson                    Json                     @default("{}") @map("visible_fields_json") @db.JsonB
+  consentTextOverride                  String?                  @map("consent_text_override") @db.Text
+  disclaimerOverride                   String?                  @map("disclaimer_override") @db.Text
+  createdAt                            DateTime                 @default(now()) @map("created_at")
+  updatedAt                            DateTime                 @updatedAt @map("updated_at")
+
+  placements      EmptyLegPlacement[]
+  routingProfiles EmptyLegRoutingProfile[]
+  leads           CharterLead[]
+  viewEvents      EmptyLegViewEvent[]
+
+  @@map("empty_leg_public_lists")
+}
+
+model EmptyLegPlacement {
+  id                   String                      @id @default(uuid()) @db.Uuid
+  emptyLegId           String                      @map("empty_leg_id") @db.Uuid
+  publicListId         String                      @map("public_list_id") @db.Uuid
+  status               EmptyLegPlacementStatus     @default(needs_approval)
+  pricingMode          EmptyLegPricingMode         @default(calculated) @map("pricing_mode")
+  customPrice          Decimal?                    @map("custom_price") @db.Decimal(12, 2)
+  displayDiscountMode  EmptyLegDiscountDisplayMode @default(none) @map("display_discount_mode")
+  pricingResultJson    Json                        @default("{}") @map("pricing_result_json") @db.JsonB
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+
+  emptyLeg   EmptyLeg           @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
+  publicList EmptyLegPublicList @relation(fields: [publicListId], references: [id], onDelete: Cascade)
+  leads      CharterLead[]
+  viewEvents EmptyLegViewEvent[]
+
+  @@unique([emptyLegId, publicListId])
+  @@index([publicListId, status])
+  @@map("empty_leg_placements")
+}
+
+model EmptyLegRoutingProfile {
+  id           String                       @id @default(uuid()) @db.Uuid
+  name         String
+  scope        EmptyLegRoutingProfileScope  @default(global)
+  publicListId String?                      @map("public_list_id") @db.Uuid
+  depIcao      String                       @map("dep_icao")
+  arrIcao      String                       @map("arr_icao")
+  fixedPrice   Decimal                      @map("fixed_price") @db.Decimal(12, 2)
+  tailNumbers  String[]                     @default([]) @map("tail_numbers")
+  isActive     Boolean                      @default(true) @map("is_active")
+  createdAt    DateTime                     @default(now()) @map("created_at")
+  updatedAt    DateTime                     @updatedAt @map("updated_at")
+
+  publicList EmptyLegPublicList? @relation(fields: [publicListId], references: [id], onDelete: Cascade)
+
+  @@index([depIcao, arrIcao])
+  @@index([scope, publicListId])
+  @@map("empty_leg_routing_profiles")
+}
+
+model EmptyLegAircraftProfile {
+  id                           String   @id @default(uuid()) @db.Uuid
+  name                         String
+  defaultHourlyRate            Decimal  @map("default_hourly_rate") @db.Decimal(12, 2)
+  minimumQuotableTimeFallback  Decimal? @map("minimum_quotable_time_fallback") @db.Decimal(6, 2)
+  offRoutingTimeAllowanceHours Decimal? @map("off_routing_time_allowance_hours") @db.Decimal(6, 2)
+  isActive                     Boolean  @default(true) @map("is_active")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+
+  fleetTails EmptyLegFleetTailConfig[]
+
+  @@map("empty_leg_aircraft_profiles")
+}
+
+model EmptyLegFleetTailConfig {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tailNumber         String   @unique @map("tail_number")
+  aircraftType       String   @map("aircraft_type")
+  publicDisplayType  String?  @map("public_display_type")
+  aircraftProfileId  String?  @map("aircraft_profile_id") @db.Uuid
+  seatCount          Int?     @map("seat_count")
+  luggageNote        String?  @map("luggage_note")
+  wifi               Boolean  @default(false)
+  amenitiesJson      Json     @default("[]") @map("amenities_json") @db.JsonB
+  description        String?  @db.Text
+  primaryPhotoUrl    String?  @map("primary_photo_url")
+  photoUrlsJson      Json     @default("[]") @map("photo_urls_json") @db.JsonB
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  aircraftProfile EmptyLegAircraftProfile? @relation(fields: [aircraftProfileId], references: [id], onDelete: SetNull)
+
+  @@map("empty_leg_fleet_tail_configs")
+}
+
+model EmptyLegSettings {
+  id                              String              @id @default("default")
+  defaultLeadRecipientEmail       String?             @map("default_lead_recipient_email")
+  customerConfirmationTemplate    String?             @map("customer_confirmation_template") @db.Text
+  internalNotificationTemplate    String?             @map("internal_notification_template") @db.Text
+  consentText                     String?             @map("consent_text") @db.Text
+  disclaimerText                  String?             @map("disclaimer_text") @db.Text
+  brandingJson                    Json                @default("{}") @map("branding_json") @db.JsonB
+  promotionLabel                  String              @default("Featured Empty Leg") @map("promotion_label")
+  citySearchRadiusNm              Int                 @default(50) @map("city_search_radius_nm")
+  defaultLayoutStyle              EmptyLegLayoutStyle @default(card_grid) @map("default_layout_style")
+  defaultVisibleFieldsJson        Json                @default("{}") @map("default_visible_fields_json") @db.JsonB
+  defaultPricingMode              EmptyLegPricingMode @default(calculated) @map("default_pricing_mode")
+  defaultMinimumQuotableHours     Decimal             @default(1.5) @map("default_minimum_quotable_hours") @db.Decimal(6, 2)
+  defaultDiscountPercent          Decimal?            @map("default_discount_percent") @db.Decimal(6, 3)
+  defaultDiscountDisplayMode      EmptyLegDiscountDisplayMode @default(none) @map("default_discount_display_mode")
+  sendCustomerConfirmation        Boolean             @default(true) @map("send_customer_confirmation")
+  lastCharterSyncAt               DateTime?           @map("last_charter_sync_at")
+  lastCharterSyncStatus           String?             @map("last_charter_sync_status")
+  lastCharterSyncStatsJson        Json                @default("{}") @map("last_charter_sync_stats_json") @db.JsonB
+  createdAt                       DateTime            @default(now()) @map("created_at")
+  updatedAt                       DateTime            @updatedAt @map("updated_at")
+
+  @@map("empty_leg_settings")
+}
+
+model CharterLead {
+  id                           String                 @id @default(uuid()) @db.Uuid
+  submittedAt                  DateTime               @default(now()) @map("submitted_at")
+  firstName                    String                 @map("first_name")
+  lastName                     String                 @map("last_name")
+  email                        String
+  phone                        String
+  notes                        String?                @db.Text
+  consentAccepted              Boolean                @default(false) @map("consent_accepted")
+  requestType                  CharterLeadRequestType @map("request_type")
+  requestedDep                 String?                @map("requested_dep")
+  requestedArr                 String?                @map("requested_arr")
+  requestedDate                DateTime?              @map("requested_date")
+  requestedSearchJson          Json                   @default("{}") @map("requested_search_json") @db.JsonB
+  emptyLegId                   String?                @map("empty_leg_id") @db.Uuid
+  sourcePublicListId           String                 @map("source_public_list_id") @db.Uuid
+  sourcePlacementId            String?                @map("source_placement_id") @db.Uuid
+  assignedRepresentativeUserId String?                @map("assigned_representative_user_id") @db.Uuid
+  emailStatus                  CharterLeadEmailStatus @default(pending) @map("email_status")
+  emailError                   String?                @map("email_error")
+  createdAt                    DateTime               @default(now()) @map("created_at")
+  updatedAt                    DateTime               @updatedAt @map("updated_at")
+
+  emptyLeg               EmptyLeg?           @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
+  publicList             EmptyLegPublicList  @relation(fields: [sourcePublicListId], references: [id], onDelete: Restrict)
+  placement              EmptyLegPlacement?  @relation(fields: [sourcePlacementId], references: [id], onDelete: SetNull)
+  assignedRepresentative User?               @relation("CharterLeadAssignedTo", fields: [assignedRepresentativeUserId], references: [id], onDelete: SetNull)
+
+  @@index([submittedAt(sort: Desc)])
+  @@index([sourcePublicListId])
+  @@index([emailStatus])
+  @@index([requestType])
+  @@map("charter_leads")
+}
+
+model EmptyLegViewEvent {
+  id           String                @id @default(uuid()) @db.Uuid
+  emptyLegId   String?               @map("empty_leg_id") @db.Uuid
+  publicListId String                @map("public_list_id") @db.Uuid
+  placementId  String?               @map("placement_id") @db.Uuid
+  eventType    EmptyLegViewEventType @map("event_type")
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  emptyLeg   EmptyLeg?           @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
+  publicList EmptyLegPublicList  @relation(fields: [publicListId], references: [id], onDelete: Cascade)
+  placement  EmptyLegPlacement?  @relation(fields: [placementId], references: [id], onDelete: SetNull)
+
+  @@index([publicListId, createdAt(sort: Desc)])
+  @@index([emptyLegId, eventType])
+  @@map("empty_leg_view_events")
 }

@@ -10,7 +10,7 @@ import type {
 import type { AvailabilityWindow } from "@/lib/schedule/types";
 import { TIMELINE_LEGEND } from "@/lib/schedule/timeline-types";
 import { inferLocationAt } from "@/lib/schedule/location";
-import { resolveRowTimezone } from "@/lib/schedule/airport-timezones";
+import { resolveRowTimezone } from "@/lib/schedule/airport-timezone-format";
 import {
   addZonedDays,
   formatZonedDateKey,
