@@ -8,9 +8,10 @@ import {
   type EmptyLegBranding,
   type EmptyLegVisibleFields,
 } from "@/lib/charter/empty-legs/defaults";
-import { EMPTY_LEG_DISPLAY_TIMEZONE } from "@/lib/charter/empty-legs/display-timezone";
+import { resolveEmptyLegDepartureTimezone } from "@/lib/charter/empty-legs/display-timezone";
 import { isEmptyLegPast } from "@/lib/charter/empty-legs/eligibility";
 import { calculateEmptyLegPrice } from "@/lib/charter/empty-legs/pricing";
+import { loadEmptyLegTimezoneLayers } from "@/lib/schedule/airport-timezones";
 
 export async function getPublicListByToken(db: PrismaClient, token: string) {
   return db.emptyLegPublicList.findUnique({ where: { token } });
@@ -52,15 +53,20 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
   const now = new Date();
   const live = placements.filter((p) => !isEmptyLegPast(p.emptyLeg, now));
 
-  const [fleetConfigs, listProfiles, globalProfiles] = await Promise.all([
-    db.emptyLegFleetTailConfig.findMany({ where: { isActive: true } }),
-    db.emptyLegRoutingProfile.findMany({
-      where: { isActive: true, scope: "public_list", publicListId: list.id },
-    }),
-    db.emptyLegRoutingProfile.findMany({
-      where: { isActive: true, scope: "global" },
-    }),
-  ]);
+  const [fleetConfigs, listProfiles, globalProfiles, timezoneLayers] =
+    await Promise.all([
+      db.emptyLegFleetTailConfig.findMany({ where: { isActive: true } }),
+      db.emptyLegRoutingProfile.findMany({
+        where: { isActive: true, scope: "public_list", publicListId: list.id },
+      }),
+      db.emptyLegRoutingProfile.findMany({
+        where: { isActive: true, scope: "global" },
+      }),
+      loadEmptyLegTimezoneLayers(
+        db,
+        live.map((p) => p.emptyLeg.depIcao)
+      ),
+    ]);
 
   const fleetByTail = new Map(fleetConfigs.map((f) => [f.tailNumber.toUpperCase(), f]));
   const profiles = await db.emptyLegAircraftProfile.findMany({ where: { isActive: true } });
@@ -96,6 +102,8 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
         tailNumber: leg.tailNumber,
       });
 
+      const tz = resolveEmptyLegDepartureTimezone(leg.depIcao, timezoneLayers);
+
       return {
         placementId: placement.id,
         emptyLegId: leg.id,
@@ -103,7 +111,9 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
         routeKey: toIcaoRouteKey(leg.depIcao, leg.arrIcao),
         depIcao: toIcaoDisplay(leg.depIcao),
         arrIcao: toIcaoDisplay(leg.arrIcao),
-        depTimezone: EMPTY_LEG_DISPLAY_TIMEZONE,
+        depTimezone: tz.timeZone,
+        depTimezoneConfidence: tz.confidence,
+        depTimezoneSource: tz.source,
         scheduledDepartureAt: leg.scheduledDepartureAt.toISOString(),
         scheduledArrivalAt: leg.scheduledArrivalAt.toISOString(),
         slidingWindowStartAt: leg.slidingWindowStartAt?.toISOString() ?? null,

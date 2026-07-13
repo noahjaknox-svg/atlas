@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { find as findTimezones } from "geo-tz";
 import { airportCodeKey, toIcaoDisplay } from "@/lib/airports/code-match";
+import type { EmptyLegTimezoneLayers } from "@/lib/charter/empty-legs/display-timezone";
 import {
   FALLBACK_TIMEZONES,
   lookupFallbackTimezone,
@@ -9,7 +10,10 @@ import {
 export {
   FALLBACK_TIMEZONES,
   formatEmptyLegDateTime,
+  formatEmptyLegDepartureDateOnly,
   formatEmptyLegDepartureLabel,
+  formatEmptyLegDepartureLabelPublic,
+  formatEmptyLegUtcInstant,
   formatScheduleTime,
   formatScheduleTimeRange,
   getBrowserTimezone,
@@ -30,6 +34,18 @@ function timezoneFromLatLon(lat: number, lon: number): string | null {
   }
 }
 
+function assignAlias(
+  target: Record<string, string>,
+  code: string | null | undefined,
+  tz: string
+) {
+  if (!code?.trim()) return;
+  const upper = code.trim().toUpperCase();
+  target[upper] = tz;
+  target[airportCodeKey(upper)] = tz;
+  target[toIcaoDisplay(upper)] = tz;
+}
+
 /**
  * Resolve IANA timezones for airport codes using AirportReference coordinates + geo-tz,
  * with a static fallback map for misses.
@@ -39,8 +55,28 @@ export async function loadAirportTimezones(
   db: PrismaClient | { airportReference: PrismaClient["airportReference"] },
   icaos: string[]
 ): Promise<Record<string, string>> {
+  const { geoByIcao } = await loadAirportGeoTimezones(db, icaos);
   const unique = Array.from(new Set(icaos.map((c) => c.toUpperCase()).filter(Boolean)));
-  if (unique.length === 0) return { ...FALLBACK_TIMEZONES };
+  const resolved: Record<string, string> = { ...FALLBACK_TIMEZONES, ...geoByIcao };
+  for (const code of unique) {
+    if (resolved[code] && resolved[code] !== "UTC") continue;
+    resolved[code] =
+      geoByIcao[code] ??
+      geoByIcao[airportCodeKey(code)] ??
+      geoByIcao[toIcaoDisplay(code)] ??
+      lookupFallbackTimezone(code) ??
+      "UTC";
+  }
+  return resolved;
+}
+
+/** Geo-tz / coordinate resolutions only — no fallback fill, no UTC. */
+export async function loadAirportGeoTimezones(
+  db: PrismaClient | { airportReference: PrismaClient["airportReference"] },
+  icaos: string[]
+): Promise<{ geoByIcao: Record<string, string> }> {
+  const unique = Array.from(new Set(icaos.map((c) => c.toUpperCase()).filter(Boolean)));
+  if (unique.length === 0) return { geoByIcao: {} };
 
   const lookupKeys = new Set<string>();
   for (const code of unique) {
@@ -63,46 +99,90 @@ export async function loadAirportTimezones(
       ident: true,
       gpsCode: true,
       localCode: true,
+      isoCountry: true,
       latitudeDeg: true,
       longitudeDeg: true,
     },
   });
 
-  const fromCoords: Record<string, string> = {};
+  const geoByIcao: Record<string, string> = {};
 
-  function assign(code: string | null | undefined, tz: string) {
-    if (!code?.trim()) return;
-    const upper = code.trim().toUpperCase();
-    fromCoords[upper] = tz;
-    fromCoords[airportCodeKey(upper)] = tz;
-    fromCoords[toIcaoDisplay(upper)] = tz;
-  }
+  // Prefer US ICAO (K…) first so a foreign localCode like AR "SDL" cannot
+  // overwrite Scottsdale when both match the same FAA-style lookup key.
+  const ordered = [...airports].sort((a, b) => {
+    const aUs = (a.isoCountry ?? "").toUpperCase() === "US" ? 0 : 1;
+    const bUs = (b.isoCountry ?? "").toUpperCase() === "US" ? 0 : 1;
+    if (aUs !== bUs) return aUs - bUs;
+    const aK = (a.icao ?? a.ident ?? "").startsWith("K") ? 0 : 1;
+    const bK = (b.icao ?? b.ident ?? "").startsWith("K") ? 0 : 1;
+    return aK - bK;
+  });
 
-  for (const airport of airports) {
+  for (const airport of ordered) {
     if (airport.latitudeDeg == null || airport.longitudeDeg == null) continue;
     const lat = Number(airport.latitudeDeg);
     const lon = Number(airport.longitudeDeg);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
     const tz = timezoneFromLatLon(lat, lon);
-    if (!tz) continue;
-    assign(airport.icao, tz);
-    assign(airport.ident, tz);
-    assign(airport.gpsCode, tz);
-    assign(airport.localCode, tz);
+    if (!tz || tz === "UTC") continue;
+    const isUs = (airport.isoCountry ?? "").toUpperCase() === "US";
+    assignAlias(geoByIcao, airport.icao, tz);
+    assignAlias(geoByIcao, airport.ident, tz);
+    assignAlias(geoByIcao, airport.gpsCode, tz);
+    // Non-US localCode aliases collide with US FAA LIDs (e.g. Saladillo "SDL").
+    if (isUs) assignAlias(geoByIcao, airport.localCode, tz);
   }
 
-  // Ensure every requested code has an entry (coords → fallback → UTC).
-  const resolved: Record<string, string> = { ...FALLBACK_TIMEZONES, ...fromCoords };
+  return { geoByIcao };
+}
+
+export async function loadAirportTimezoneOverrides(
+  db: PrismaClient | {
+    airportTimezoneOverride?: PrismaClient["airportTimezoneOverride"];
+  },
+  icaos: string[]
+): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(icaos.map((c) => c.toUpperCase()).filter(Boolean)));
+  if (unique.length === 0) return {};
+
+  const delegate = db.airportTimezoneOverride;
+  if (
+    !delegate ||
+    typeof (delegate as { findMany?: unknown }).findMany !== "function"
+  ) {
+    return {};
+  }
+
+  const lookupKeys = new Set<string>();
   for (const code of unique) {
-    if (resolved[code]) continue;
-    resolved[code] =
-      fromCoords[airportCodeKey(code)] ??
-      fromCoords[toIcaoDisplay(code)] ??
-      lookupFallbackTimezone(code) ??
-      "UTC";
+    lookupKeys.add(code);
+    lookupKeys.add(airportCodeKey(code));
+    lookupKeys.add(toIcaoDisplay(code));
   }
 
-  return resolved;
+  const rows = await delegate.findMany({
+    where: { icao: { in: Array.from(lookupKeys) } },
+    select: { icao: true, ianaTimezone: true },
+  });
+
+  const overridesByIcao: Record<string, string> = {};
+  for (const row of rows) {
+    if (!row.ianaTimezone || row.ianaTimezone === "UTC") continue;
+    assignAlias(overridesByIcao, row.icao, row.ianaTimezone);
+  }
+  return overridesByIcao;
+}
+
+/** Layers used by empty-leg serialize / public payloads. */
+export async function loadEmptyLegTimezoneLayers(
+  db: PrismaClient,
+  icaos: string[]
+): Promise<EmptyLegTimezoneLayers> {
+  const [{ geoByIcao }, overridesByIcao] = await Promise.all([
+    loadAirportGeoTimezones(db, icaos),
+    loadAirportTimezoneOverrides(db, icaos),
+  ]);
+  return { geoByIcao, overridesByIcao };
 }
 
 export function collectIcaosFromSchedule(

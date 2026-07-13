@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EmptyLegVisibleFields } from "@/lib/charter/empty-legs/defaults";
-import { EMPTY_LEG_DISPLAY_TIMEZONE } from "@/lib/charter/empty-legs/display-timezone";
-import { formatEmptyLegDepartureLabel } from "@/lib/schedule/airport-timezone-format";
+import { resolveEmptyLegDepartureTimezone } from "@/lib/charter/empty-legs/display-timezone";
+import { formatEmptyLegDepartureLabelPublic } from "@/lib/schedule/airport-timezone-format";
 
 type PublicItem = {
   placementId: string;
@@ -12,7 +12,9 @@ type PublicItem = {
   routeKey: string;
   depIcao: string;
   arrIcao: string;
-  depTimezone: string;
+  depTimezone: string | null;
+  depTimezoneConfidence?: string;
+  depTimezoneSource?: string;
   scheduledDepartureAt: string;
   slidingWindowStartAt: string | null;
   slidingWindowEndAt: string | null;
@@ -67,11 +69,11 @@ function departureLabel(item: PublicItem) {
   const tz =
     item.depTimezone && item.depTimezone !== "UTC"
       ? item.depTimezone
-      : EMPTY_LEG_DISPLAY_TIMEZONE;
+      : resolveEmptyLegDepartureTimezone(item.depIcao).timeZone;
   if (item.slidingWindowStartAt && item.slidingWindowEndAt) {
-    return `${formatEmptyLegDepartureLabel(item.slidingWindowStartAt, tz)} – ${formatEmptyLegDepartureLabel(item.slidingWindowEndAt, tz)}`;
+    return `${formatEmptyLegDepartureLabelPublic(item.slidingWindowStartAt, tz)} – ${formatEmptyLegDepartureLabelPublic(item.slidingWindowEndAt, tz)}`;
   }
-  return formatEmptyLegDepartureLabel(item.scheduledDepartureAt, tz);
+  return formatEmptyLegDepartureLabelPublic(item.scheduledDepartureAt, tz);
 }
 
 export function EmptyLegsEmbedClient({ token }: { token: string }) {

@@ -5,8 +5,14 @@ import { cn } from "@/lib/utils";
 import { jetInsightTripUrl } from "@/lib/charter/empty-legs/eligibility";
 import type { EmptyLegRow } from "@/lib/charter/empty-legs/serialize";
 import { PricingBreakdownButton } from "@/components/internal/charter/empty-legs/pricing-breakdown-button";
-import { EMPTY_LEG_DISPLAY_TIMEZONE } from "@/lib/charter/empty-legs/display-timezone";
-import { formatEmptyLegDepartureLabel } from "@/lib/schedule/airport-timezone-format";
+import {
+  isEmptyLegTimezoneConfident,
+  resolveEmptyLegDepartureTimezone,
+} from "@/lib/charter/empty-legs/display-timezone";
+import {
+  formatEmptyLegDepartureLabel,
+  formatEmptyLegUtcInstant,
+} from "@/lib/schedule/airport-timezone-format";
 
 type DetailRow = EmptyLegRow & { relatedHistory?: EmptyLegRow[] };
 
@@ -16,16 +22,40 @@ type PublicListOption = {
   isActive: boolean;
 };
 
+const COMMON_TZ_OPTIONS = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Phoenix",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "America/Boise",
+  "America/Detroit",
+  "America/Indiana/Indianapolis",
+];
+
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString();
 }
 
-function formatDeparture(iso: string, timeZone?: string | null) {
-  return formatEmptyLegDepartureLabel(
-    iso,
-    timeZone && timeZone !== "UTC" ? timeZone : EMPTY_LEG_DISPLAY_TIMEZONE
-  );
+function departureNeedsTimezone(row: Pick<EmptyLegRow, "depTimezone" | "depTimezoneConfidence">) {
+  return !isEmptyLegTimezoneConfident({
+    timeZone: row.depTimezone,
+    confidence: row.depTimezoneConfidence ?? "unknown",
+  });
+}
+
+function formatDeparture(
+  iso: string,
+  timeZone?: string | null,
+  depIcao?: string
+) {
+  const resolved =
+    timeZone && timeZone !== "UTC"
+      ? timeZone
+      : resolveEmptyLegDepartureTimezone(depIcao).timeZone;
+  return formatEmptyLegDepartureLabel(iso, resolved);
 }
 
 function formatDuration(minutes: number) {
@@ -62,6 +92,7 @@ export function EmptyLegsInventory() {
   const [availability, setAvailability] = useState("");
   const [forceState, setForceState] = useState("");
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [timezoneIssuesOnly, setTimezoneIssuesOnly] = useState(false);
   const [publicListId, setPublicListId] = useState("");
   const [placementStatus, setPlacementStatus] = useState("");
   const [q, setQ] = useState("");
@@ -105,7 +136,7 @@ export function EmptyLegsInventory() {
     const res = await fetch(`/api/charter/empty-legs?${params}`);
     const json = await res.json();
     setLoading(false);
-    if (res.ok) setRows(json);
+    if (res.ok && Array.isArray(json)) setRows(json);
   }, [
     includePast,
     availability,
@@ -122,7 +153,16 @@ export function EmptyLegsInventory() {
 
   useEffect(() => {
     setSelected(new Set());
-  }, [publicListId, placementStatus, availability, forceState, featuredOnly, includePast, q]);
+  }, [
+    publicListId,
+    placementStatus,
+    availability,
+    forceState,
+    featuredOnly,
+    timezoneIssuesOnly,
+    includePast,
+    q,
+  ]);
 
   useEffect(() => {
     if (!expandedId) {
@@ -138,14 +178,26 @@ export function EmptyLegsInventory() {
       .finally(() => setDetailLoading(false));
   }, [expandedId]);
 
+  const timezoneIssueCount = useMemo(
+    () => rows.filter((r) => departureNeedsTimezone(r)).length,
+    [rows]
+  );
+
+  const visibleRows = useMemo(
+    () =>
+      timezoneIssuesOnly ? rows.filter((r) => departureNeedsTimezone(r)) : rows,
+    [rows, timezoneIssuesOnly]
+  );
+
   const allSelected = useMemo(
-    () => rows.length > 0 && rows.every((r) => selected.has(r.id)),
-    [rows, selected]
+    () =>
+      visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id)),
+    [visibleRows, selected]
   );
 
   function toggleAll() {
     if (allSelected) setSelected(new Set());
-    else setSelected(new Set(rows.map((r) => r.id)));
+    else setSelected(new Set(visibleRows.map((r) => r.id)));
   }
 
   function toggleOne(id: string) {
@@ -348,6 +400,19 @@ export function EmptyLegsInventory() {
           <label className="flex items-center gap-2 text-sm text-atlas-muted">
             <input
               type="checkbox"
+              checked={timezoneIssuesOnly}
+              onChange={(e) => setTimezoneIssuesOnly(e.target.checked)}
+            />
+            Timezone issues only
+            {timezoneIssueCount > 0 ? (
+              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                {timezoneIssueCount}
+              </span>
+            ) : null}
+          </label>
+          <label className="flex items-center gap-2 text-sm text-atlas-muted">
+            <input
+              type="checkbox"
               checked={includePast}
               onChange={(e) => setIncludePast(e.target.checked)}
             />
@@ -355,10 +420,19 @@ export function EmptyLegsInventory() {
           </label>
         </div>
 
+        {!loading && timezoneIssueCount > 0 ? (
+          <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            {timezoneIssueCount} active empty leg
+            {timezoneIssueCount === 1 ? " has" : "s have"} an unresolved departure
+            airport timezone. Compare JetInsight Local Time, then set an override
+            in the trip detail.
+          </p>
+        ) : null}
+
         {publicListId && !loading ? (
           <p className="text-xs text-atlas-muted">
-            Showing {rows.length} trip{rows.length === 1 ? "" : "s"} on this list.
-            {rows.length > 0
+            Showing {visibleRows.length} trip{visibleRows.length === 1 ? "" : "s"} on this list.
+            {visibleRows.length > 0
               ? " Status, price, and list fields reflect this list’s placement."
               : ""}
           </p>
@@ -431,12 +505,22 @@ export function EmptyLegsInventory() {
                   </div>
                 </td>
               </tr>
+            ) : visibleRows.length === 0 ? (
+              <tr>
+                <td colSpan={14} className="h-[min(24rem,50vh)] align-middle">
+                  <div className="flex h-full min-h-[12rem] items-center justify-center text-sm text-atlas-muted">
+                    No empty legs with unresolved departure timezones for the current
+                    filters.
+                  </div>
+                </td>
+              </tr>
             ) : (
-              rows.map((row) => {
-              const listPlacement = getActivePlacement(row, publicListId);
+              visibleRows.map((row) => {
+                const listPlacement = getActivePlacement(row, publicListId);
               const listPriceHidden = listPlacement?.priceHidden ?? false;
               const listPrice =
                 listPlacement?.finalDisplayPrice ?? listPlacement?.basePrice ?? null;
+              const needsTz = departureNeedsTimezone(row);
               return (
               <Fragment key={row.id}>
                 <tr
@@ -468,7 +552,27 @@ export function EmptyLegsInventory() {
                   <td className="px-2 py-2">{row.aircraftType ?? "—"}</td>
                   <td className="px-2 py-2 font-mono text-xs">{row.routeKey}</td>
                   <td className="px-2 py-2 text-atlas-muted">
-                    {formatDeparture(row.scheduledDepartureAt, row.depTimezone)}
+                    <div
+                      className="space-y-1"
+                      title={
+                        needsTz
+                          ? `Atlas could not resolve ${row.depIcao} local time. JetInsight Zulu: ${formatEmptyLegUtcInstant(row.scheduledDepartureAt)}. Compare JetInsight Local Time and set an override.`
+                          : `${row.depTimezone} (${row.depTimezoneSource ?? "resolved"}) · Zulu ${formatEmptyLegUtcInstant(row.scheduledDepartureAt)}`
+                      }
+                    >
+                      <div>
+                        {formatDeparture(
+                          row.scheduledDepartureAt,
+                          row.depTimezone,
+                          row.depIcao
+                        )}
+                      </div>
+                      {needsTz ? (
+                        <span className="inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                          Needs timezone
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-2 py-2">{formatDuration(row.durationMinutes)}</td>
                   <td className="px-2 py-2 text-atlas-muted">
@@ -521,6 +625,13 @@ export function EmptyLegsInventory() {
                           onSaveWindow={saveSlidingWindow}
                           onMerge={mergeFrom}
                           onSavePlacement={savePlacement}
+                          onTimezoneSaved={async () => {
+                            await load();
+                            const detailRes = await fetch(
+                              `/api/charter/empty-legs/${detail.id}`
+                            );
+                            if (detailRes.ok) setDetail(await detailRes.json());
+                          }}
                         />
                       )}
                     </td>
@@ -575,6 +686,7 @@ function ExpandedDetail({
   onSaveWindow,
   onMerge,
   onSavePlacement,
+  onTimezoneSaved,
 }: {
   detail: DetailRow;
   editingPlacementId: string | null;
@@ -589,6 +701,7 @@ function ExpandedDetail({
     placementId: string,
     patch: Record<string, unknown>
   ) => Promise<void>;
+  onTimezoneSaved: () => Promise<void>;
 }) {
   const [notes, setNotes] = useState(detail.internalNotes ?? "");
   const [windowStart, setWindowStart] = useState(
@@ -597,12 +710,47 @@ function ExpandedDetail({
   const [windowEnd, setWindowEnd] = useState(
     detail.slidingWindowEndAt ? detail.slidingWindowEndAt.slice(0, 16) : ""
   );
+  const [tzValue, setTzValue] = useState(detail.depTimezone ?? "");
+  const [tzCustom, setTzCustom] = useState("");
+  const [tzMsg, setTzMsg] = useState("");
+  const [tzSaving, setTzSaving] = useState(false);
+  const needsTz = departureNeedsTimezone(detail);
 
   useEffect(() => {
     setNotes(detail.internalNotes ?? "");
     setWindowStart(detail.slidingWindowStartAt ? detail.slidingWindowStartAt.slice(0, 16) : "");
     setWindowEnd(detail.slidingWindowEndAt ? detail.slidingWindowEndAt.slice(0, 16) : "");
+    setTzValue(detail.depTimezone ?? "");
+    setTzCustom("");
+    setTzMsg("");
   }, [detail]);
+
+  async function saveTimezoneOverride() {
+    const ianaTimezone = (tzCustom.trim() || tzValue).trim();
+    if (!ianaTimezone) {
+      setTzMsg("Pick or type an IANA timezone");
+      return;
+    }
+    setTzSaving(true);
+    setTzMsg("Saving…");
+    const res = await fetch("/api/charter/empty-legs/airport-timezones", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        icao: detail.depIcao,
+        ianaTimezone,
+        note: `Set from empty leg ${detail.tripNumber}`,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setTzSaving(false);
+    if (!res.ok) {
+      setTzMsg(json.error ?? "Failed to save timezone");
+      return;
+    }
+    setTzMsg("Saved airport timezone override");
+    await onTimezoneSaved();
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -634,7 +782,90 @@ function ExpandedDetail({
             <dt className="text-atlas-muted">Aircraft</dt>
             <dd>{detail.aircraftType ?? "—"}</dd>
           </div>
+          <div className="col-span-2">
+            <dt className="text-atlas-muted">Departure (airport local)</dt>
+            <dd className="space-y-1">
+              <div>
+                {formatDeparture(
+                  detail.scheduledDepartureAt,
+                  detail.depTimezone,
+                  detail.depIcao
+                )}
+              </div>
+              <div className="text-xs text-atlas-muted">
+                Source: {detail.depTimezoneSource ?? "none"} · confidence:{" "}
+                {detail.depTimezoneConfidence ?? "unknown"} · Zulu{" "}
+                {formatEmptyLegUtcInstant(detail.scheduledDepartureAt)}
+              </div>
+            </dd>
+          </div>
         </dl>
+
+        <div
+          className={cn(
+            "space-y-2 rounded border p-3",
+            needsTz
+              ? "border-amber-500/50 bg-amber-500/10"
+              : "border-atlas-border bg-atlas-surface/40"
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-xs font-medium uppercase tracking-wide text-atlas-muted">
+              Departure airport timezone
+            </h4>
+            {needsTz ? (
+              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                Needs timezone
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-atlas-muted">
+            Match JetInsight Local Time for {detail.depIcao}. Saving an override
+            fixes every empty leg from this airport.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-atlas-muted">
+              Zone
+              <select
+                value={
+                  (COMMON_TZ_OPTIONS as readonly string[]).includes(tzValue)
+                    ? tzValue
+                    : ""
+                }
+                onChange={(e) => {
+                  setTzValue(e.target.value);
+                  setTzCustom("");
+                }}
+                className="mt-1 block min-w-[14rem] rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+              >
+                <option value="">Select…</option>
+                {COMMON_TZ_OPTIONS.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-atlas-muted">
+              Or custom IANA
+              <input
+                value={tzCustom}
+                onChange={(e) => setTzCustom(e.target.value)}
+                placeholder="America/Denver"
+                className="mt-1 block min-w-[12rem] rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={tzSaving}
+              className="rounded bg-atlas-accent px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+              onClick={() => void saveTimezoneOverride()}
+            >
+              Save override
+            </button>
+          </div>
+          {tzMsg ? <p className="text-xs text-atlas-muted">{tzMsg}</p> : null}
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <button
