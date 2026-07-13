@@ -8,15 +8,17 @@ import { SCHEDULE_VIEW_DAYS } from "@/lib/schedule/view-range";
 import {
   getBrowserTimezone,
   type ScheduleTimeMode,
-} from "@/lib/schedule/airport-timezones";
+} from "@/lib/schedule/airport-timezone-format";
 import {
   addZonedDays,
   resolveScheduleGridTimezone,
   zonedStartFromDateKey,
 } from "@/lib/schedule/zoned-time";
 import { ScheduleTimeline } from "@/components/internal/schedule-timeline";
+import { ScheduleSyncProgressBar } from "@/components/internal/schedule-sync-progress";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { runScheduleSyncStream } from "@/lib/schedule/sync-client";
 
 interface ScheduleSource {
   id: string;
@@ -49,6 +51,9 @@ export function ScheduleView({
   const [syncing, setSyncing] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [progressDetail, setProgressDetail] = useState("");
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [tailFilter, setTailFilter] = useState("all");
   const [timeMode, setTimeMode] = useState<ScheduleTimeMode>("aircraft");
   const userTimezone = useMemo(() => getBrowserTimezone(), []);
@@ -129,13 +134,24 @@ export function ScheduleView({
   async function syncNow() {
     setSyncing(true);
     setSyncMsg("");
+    setProgressError(null);
+    setProgressPercent(0);
+    setProgressDetail("Starting sync…");
     try {
-      const res = await fetch("/api/schedule/sync", { method: "POST" });
-      const json = await res.json();
-      setSyncMsg(
-        json.message ?? json.error ?? (res.ok ? "Sync complete" : `Sync failed (${res.status})`)
-      );
-      if (res.ok) await fetchRange(viewDateKey, tailFilter, gridTimezone);
+      const result = await runScheduleSyncStream({
+        onProgress: (p) => {
+          setProgressPercent(p.percent);
+          setProgressDetail(p.detail);
+        },
+      });
+      setSyncMsg(result.message || "Sync complete");
+      setProgressPercent(100);
+      setProgressDetail("Sync complete");
+      await fetchRange(viewDateKey, tailFilter, gridTimezone);
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "Sync failed";
+      setSyncMsg(err);
+      setProgressError(err);
     } finally {
       setSyncing(false);
     }
@@ -271,6 +287,15 @@ export function ScheduleView({
         </Button>
         {syncMsg && <span className="text-xs text-atlas-muted">{syncMsg}</span>}
       </div>
+
+      {(syncing || progressPercent > 0 || progressError) && (
+        <ScheduleSyncProgressBar
+          className="mt-2 max-w-md shrink-0"
+          percent={progressPercent}
+          detail={progressDetail}
+          error={progressError}
+        />
+      )}
 
       <div className={cn("min-h-0 flex-1", navigating && "pointer-events-none opacity-60")}>
         <ScheduleTimeline

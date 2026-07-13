@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { CharterLead, EmptyLeg, EmptyLegPublicList, EmptyLegSettings, User } from "@prisma/client";
+import { toIcaoRouteKey, toIcaoRouteLabel } from "@/lib/airports/code-match";
 import {
   DEFAULT_CUSTOMER_EMAIL_TEMPLATE,
   DEFAULT_INTERNAL_EMAIL_TEMPLATE,
@@ -23,9 +24,9 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 export function buildLeadTemplateVars(ctx: LeadEmailContext): Record<string, string> {
   const fullName = `${ctx.lead.firstName} ${ctx.lead.lastName}`.trim();
   const route = ctx.emptyLeg
-    ? `${ctx.emptyLeg.depIcao} → ${ctx.emptyLeg.arrIcao}`
+    ? toIcaoRouteLabel(ctx.emptyLeg.depIcao, ctx.emptyLeg.arrIcao)
     : ctx.lead.requestedDep && ctx.lead.requestedArr
-      ? `${ctx.lead.requestedDep} → ${ctx.lead.requestedArr}`
+      ? toIcaoRouteLabel(ctx.lead.requestedDep, ctx.lead.requestedArr)
       : "";
   return {
     firstName: ctx.lead.firstName,
@@ -42,11 +43,11 @@ export function buildLeadTemplateVars(ctx: LeadEmailContext): Record<string, str
     notes: ctx.lead.notes ?? "",
     requestType: ctx.lead.requestType.replace(/_/g, " "),
     matchedEmptyLeg: ctx.emptyLeg
-      ? `${ctx.emptyLeg.tripNumber} · ${ctx.emptyLeg.routeKey}`
+      ? `${ctx.emptyLeg.tripNumber} · ${toIcaoRouteKey(ctx.emptyLeg.depIcao, ctx.emptyLeg.arrIcao)}`
       : "—",
     requestedRoute:
       ctx.lead.requestedDep && ctx.lead.requestedArr
-        ? `${ctx.lead.requestedDep} → ${ctx.lead.requestedArr}`
+        ? toIcaoRouteLabel(ctx.lead.requestedDep, ctx.lead.requestedArr)
         : "—",
     requestedDate: ctx.lead.requestedDate?.toISOString() ?? "—",
     assignedRepresentative: ctx.assigned?.name ?? "Unassigned",

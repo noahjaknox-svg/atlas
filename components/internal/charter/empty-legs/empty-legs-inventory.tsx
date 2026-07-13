@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { jetInsightTripUrl } from "@/lib/charter/empty-legs/eligibility";
 import type { EmptyLegRow } from "@/lib/charter/empty-legs/serialize";
 import { PricingBreakdownButton } from "@/components/internal/charter/empty-legs/pricing-breakdown-button";
+import { EMPTY_LEG_DISPLAY_TIMEZONE } from "@/lib/charter/empty-legs/display-timezone";
+import { formatEmptyLegDepartureLabel } from "@/lib/schedule/airport-timezone-format";
 
 type DetailRow = EmptyLegRow & { relatedHistory?: EmptyLegRow[] };
 
@@ -19,12 +21,37 @@ function formatWhen(iso: string | null) {
   return new Date(iso).toLocaleString();
 }
 
+function formatDeparture(iso: string, timeZone?: string | null) {
+  return formatEmptyLegDepartureLabel(
+    iso,
+    timeZone && timeZone !== "UTC" ? timeZone : EMPTY_LEG_DISPLAY_TIMEZONE
+  );
+}
+
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h <= 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
+}
+
+function formatMoney(n: number | null | undefined) {
+  if (n == null) return null;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function getActivePlacement(row: EmptyLegRow, publicListId: string) {
+  if (!publicListId) return null;
+  return row.placements.find((p) => p.publicListId === publicListId) ?? null;
+}
+
+function formatPlacementStatus(status: string) {
+  return status.replace(/_/g, " ");
 }
 
 export function EmptyLegsInventory() {
@@ -64,6 +91,9 @@ export function EmptyLegsInventory() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setRows([]);
+    setExpandedId(null);
+    setDetail(null);
     const params = new URLSearchParams();
     if (includePast) params.set("includePast", "true");
     if (availability) params.set("availabilityStatus", availability);
@@ -274,7 +304,7 @@ export function EmptyLegsInventory() {
             </select>
           </label>
           <label className="text-xs text-atlas-muted">
-            Public list
+            List
             <select
               value={publicListId}
               onChange={(e) => {
@@ -283,7 +313,7 @@ export function EmptyLegsInventory() {
               }}
               className="mt-1 block min-w-[10rem] rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
             >
-              <option value="">All lists</option>
+              <option value="">Global</option>
               {lists.map((list) => (
                 <option key={list.id} value={list.id}>
                   {list.name}
@@ -301,10 +331,9 @@ export function EmptyLegsInventory() {
                 className="mt-1 block rounded border border-atlas-border bg-atlas-surface px-2 py-1.5 text-sm"
               >
                 <option value="">Any status</option>
-                <option value="pending">Pending</option>
+                <option value="needs_approval">Needs approval</option>
                 <option value="approved">Approved</option>
                 <option value="hidden">Hidden</option>
-                <option value="expired">Expired</option>
               </select>
             </label>
           ) : null}
@@ -330,7 +359,7 @@ export function EmptyLegsInventory() {
           <p className="text-xs text-atlas-muted">
             Showing {rows.length} trip{rows.length === 1 ? "" : "s"} on this list.
             {rows.length > 0
-              ? " Use the checkbox in the table header to select all of them."
+              ? " Status, price, and list fields reflect this list’s placement."
               : ""}
           </p>
         ) : null}
@@ -354,12 +383,17 @@ export function EmptyLegsInventory() {
         )}
       </div>
 
-      <div className="atlas-scroll min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-none rounded-lg border border-atlas-border">
+      <div className="atlas-scroll relative min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-none rounded-lg border border-atlas-border">
         <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-sm">
           <thead className="text-left text-xs text-atlas-muted">
             <tr>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  disabled={loading || rows.length === 0}
+                />
               </th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Status</th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Tail</th>
@@ -368,7 +402,9 @@ export function EmptyLegsInventory() {
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Departure</th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Duration</th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Base Price</th>
-              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Public Lists</th>
+              <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">
+                {publicListId ? "List" : "Public Lists"}
+              </th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Views</th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Submissions</th>
               <th className="sticky top-0 z-10 border-b border-atlas-border bg-atlas-surface px-2 py-2 font-medium">Featured</th>
@@ -377,23 +413,31 @@ export function EmptyLegsInventory() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
+            {loading ? (
               <tr>
-                <td colSpan={14} className="px-3 py-8 text-center text-atlas-muted">
-                  Loading…
+                <td colSpan={14} className="h-[min(24rem,50vh)] align-middle">
+                  <div className="flex h-full min-h-[12rem] items-center justify-center text-sm text-atlas-muted">
+                    Loading…
+                  </div>
                 </td>
               </tr>
-            )}
-            {!loading && rows.length === 0 && (
+            ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-3 py-8 text-center text-atlas-muted">
-                  {publicListId
-                    ? "No empty legs on this list match the current filters."
-                    : "No empty legs yet. Run Charter sync to detect positioning flights."}
+                <td colSpan={14} className="h-[min(24rem,50vh)] align-middle">
+                  <div className="flex h-full min-h-[12rem] items-center justify-center text-sm text-atlas-muted">
+                    {publicListId
+                      ? "No empty legs on this list match the current filters."
+                      : "No empty legs yet. Run Charter sync to detect positioning flights."}
+                  </div>
                 </td>
               </tr>
-            )}
-            {rows.map((row) => (
+            ) : (
+              rows.map((row) => {
+              const listPlacement = getActivePlacement(row, publicListId);
+              const listPriceHidden = listPlacement?.priceHidden ?? false;
+              const listPrice =
+                listPlacement?.finalDisplayPrice ?? listPlacement?.basePrice ?? null;
+              return (
               <Fragment key={row.id}>
                 <tr
                   onClick={() => setExpandedId((id) => (id === row.id ? null : row.id))}
@@ -410,17 +454,47 @@ export function EmptyLegsInventory() {
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <StatusPill status={row.availabilityStatus} />
+                    {publicListId ? (
+                      listPlacement ? (
+                        <StatusPill status={listPlacement.status} kind="placement" />
+                      ) : (
+                        <span className="text-xs text-atlas-muted">—</span>
+                      )
+                    ) : (
+                      <StatusPill status={row.availabilityStatus} kind="availability" />
+                    )}
                   </td>
                   <td className="px-2 py-2 font-mono text-xs">{row.tailNumber}</td>
                   <td className="px-2 py-2">{row.aircraftType ?? "—"}</td>
                   <td className="px-2 py-2 font-mono text-xs">{row.routeKey}</td>
-                  <td className="px-2 py-2 text-atlas-muted">{formatWhen(row.scheduledDepartureAt)}</td>
+                  <td className="px-2 py-2 text-atlas-muted">
+                    {formatDeparture(row.scheduledDepartureAt, row.depTimezone)}
+                  </td>
                   <td className="px-2 py-2">{formatDuration(row.durationMinutes)}</td>
-                  <td className="px-2 py-2 text-atlas-muted">—</td>
+                  <td className="px-2 py-2 text-atlas-muted">
+                    {publicListId
+                      ? listPriceHidden
+                        ? "Hidden"
+                        : formatMoney(listPrice) ?? "—"
+                      : row.priceHidden
+                        ? "Hidden"
+                        : formatMoney(row.finalDisplayPrice ?? row.basePrice) ?? "—"}
+                  </td>
                   <td className="px-2 py-2 text-xs">
-                    {row.placements.filter((p) => p.status === "approved").length}/
-                    {row.placements.length}
+                    {publicListId ? (
+                      listPlacement ? (
+                        <span className="capitalize text-atlas-muted">
+                          {formatPlacementStatus(listPlacement.status)}
+                        </span>
+                      ) : (
+                        "—"
+                      )
+                    ) : (
+                      <>
+                        {row.placements.filter((p) => p.status === "approved").length}/
+                        {row.placements.length}
+                      </>
+                    )}
                   </td>
                   <td className="px-2 py-2">{row.detailOpenCount}</td>
                   <td className="px-2 py-2">{row.submissionCount}</td>
@@ -453,7 +527,9 @@ export function EmptyLegsInventory() {
                   </tr>
                 )}
               </Fragment>
-            ))}
+              );
+            })
+            )}
           </tbody>
         </table>
       </div>
@@ -461,17 +537,30 @@ export function EmptyLegsInventory() {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({
+  status,
+  kind = "availability",
+}: {
+  status: string;
+  kind?: "availability" | "placement";
+}) {
+  const label = formatPlacementStatus(status);
+  const className =
+    kind === "placement"
+      ? status === "approved"
+        ? "bg-emerald-500/20 text-emerald-300"
+        : status === "hidden"
+          ? "bg-slate-500/20 text-slate-300"
+          : status === "needs_approval"
+            ? "bg-amber-500/20 text-amber-300"
+            : "bg-atlas-border/40 text-atlas-muted"
+      : status === "available"
+        ? "bg-emerald-500/20 text-emerald-300"
+        : "bg-red-500/20 text-red-300";
+
   return (
-    <span
-      className={cn(
-        "rounded px-2 py-0.5 text-xs capitalize",
-        status === "available"
-          ? "bg-emerald-500/20 text-emerald-300"
-          : "bg-red-500/20 text-red-300"
-      )}
-    >
-      {status}
+    <span className={cn("rounded px-2 py-0.5 text-xs capitalize", className)}>
+      {label}
     </span>
   );
 }
@@ -667,8 +756,13 @@ function ExpandedDetail({
                     <td className="px-2 py-1.5">{p.publicListName}</td>
                     <td className="px-2 py-1.5 capitalize">{p.status.replace(/_/g, " ")}</td>
                     <td className="px-2 py-1.5 capitalize">
-                      {p.pricingMode.replace(/_/g, " ")}
-                      {p.customPrice != null ? ` · $${p.customPrice}` : ""}
+                      {p.priceHidden
+                        ? "Hidden"
+                        : formatMoney(p.finalDisplayPrice ?? p.basePrice) ??
+                          p.pricingMode.replace(/_/g, " ")}
+                      {!p.priceHidden && p.finalDisplayPrice == null && p.customPrice != null
+                        ? ` · $${p.customPrice}`
+                        : ""}
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <div className="flex flex-col items-end gap-1">

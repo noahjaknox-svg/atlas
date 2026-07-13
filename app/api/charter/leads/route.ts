@@ -1,6 +1,7 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { toIcaoDisplay, toIcaoRouteKey } from "@/lib/airports/code-match";
 import type { CharterLeadEmailStatus, CharterLeadRequestType } from "@prisma/client";
 
 export async function GET(request: Request) {
@@ -38,7 +39,14 @@ export async function GET(request: Request) {
       take: 500,
       include: {
         emptyLeg: {
-          select: { id: true, tripNumber: true, routeKey: true, tailNumber: true },
+          select: {
+            id: true,
+            tripNumber: true,
+            routeKey: true,
+            depIcao: true,
+            arrIcao: true,
+            tailNumber: true,
+          },
         },
         publicList: { select: { id: true, name: true } },
         assignedRepresentative: { select: { id: true, name: true } },
@@ -55,12 +63,19 @@ export async function GET(request: Request) {
         phone: r.phone,
         notes: r.notes,
         requestType: r.requestType,
-        requestedDep: r.requestedDep,
-        requestedArr: r.requestedArr,
+        requestedDep: r.requestedDep ? toIcaoDisplay(r.requestedDep) : r.requestedDep,
+        requestedArr: r.requestedArr ? toIcaoDisplay(r.requestedArr) : r.requestedArr,
         requestedDate: r.requestedDate?.toISOString() ?? null,
         emailStatus: r.emailStatus,
         emailError: r.emailError,
-        emptyLeg: r.emptyLeg,
+        emptyLeg: r.emptyLeg
+          ? {
+              id: r.emptyLeg.id,
+              tripNumber: r.emptyLeg.tripNumber,
+              routeKey: toIcaoRouteKey(r.emptyLeg.depIcao, r.emptyLeg.arrIcao),
+              tailNumber: r.emptyLeg.tailNumber,
+            }
+          : null,
         publicList: r.publicList,
         assignedRepresentative: r.assignedRepresentative,
       }))

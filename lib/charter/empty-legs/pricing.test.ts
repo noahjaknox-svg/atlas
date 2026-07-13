@@ -77,6 +77,26 @@ describe("calculateEmptyLegPrice", () => {
     expect(result.finalDisplayPrice).toBe(9500);
   });
 
+  it("matches ICAO routing profile against FAA empty-leg codes", () => {
+    const result = calculateEmptyLegPrice({
+      ...baseInput,
+      depIcao: "SDL",
+      arrIcao: "COE",
+      globalRoutingProfiles: [
+        profile({
+          name: "COE",
+          depIcao: "KSDL",
+          arrIcao: "KCOE",
+          fixedPrice: new Decimal(15000),
+          tailNumbers: ["N611AV", "N365AV"],
+        }),
+      ],
+    });
+    expect(result.source).toBe("global_routing_profile");
+    expect(result.basePrice).toBe(15000);
+    expect(result.finalDisplayPrice).toBe(15000);
+  });
+
   it("matches routing profile by tail when restricted", () => {
     const result = calculateEmptyLegPrice({
       ...baseInput,

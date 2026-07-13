@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import {
   buildEmptyLegWhere,
   emptyLegListInclude,
-  serializeEmptyLeg,
+  serializeEmptyLegsWithPricing,
   type EmptyLegFilters,
 } from "@/lib/charter/empty-legs/serialize";
 import type {
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       take: 500,
     });
 
-    return jsonOk(rows.map(serializeEmptyLeg));
+    return jsonOk(await serializeEmptyLegsWithPricing(prisma, rows));
   } catch (e) {
     return handleApiError(e);
   }

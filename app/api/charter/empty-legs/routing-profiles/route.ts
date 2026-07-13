@@ -1,6 +1,7 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { toIcaoDisplay } from "@/lib/airports/code-match";
 import type { EmptyLegRoutingProfileScope } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -22,8 +23,8 @@ function serialize(r: {
     name: r.name,
     scope: r.scope,
     publicListId: r.publicListId,
-    depIcao: r.depIcao,
-    arrIcao: r.arrIcao,
+    depIcao: toIcaoDisplay(r.depIcao),
+    arrIcao: toIcaoDisplay(r.arrIcao),
     fixedPrice: Number(r.fixedPrice),
     tailNumbers: r.tailNumbers,
     isActive: r.isActive,
@@ -68,8 +69,8 @@ export async function POST(request: Request) {
         name: String(body.name).trim(),
         scope,
         publicListId: scope === "public_list" ? body.publicListId : null,
-        depIcao: String(body.depIcao).trim().toUpperCase(),
-        arrIcao: String(body.arrIcao).trim().toUpperCase(),
+        depIcao: toIcaoDisplay(String(body.depIcao)),
+        arrIcao: toIcaoDisplay(String(body.arrIcao)),
         fixedPrice: new Decimal(body.fixedPrice),
         tailNumbers,
         isActive: body.isActive !== false,

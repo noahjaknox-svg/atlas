@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ScheduleSyncProgressBar } from "@/components/internal/schedule-sync-progress";
 import { ROUTES } from "@/lib/routes";
+import { runScheduleSyncStream } from "@/lib/schedule/sync-client";
 
 type Status = {
   iflightConfigured: boolean;
@@ -31,27 +33,43 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
   const [scheduleSyncMsg, setScheduleSyncMsg] = useState("");
   const [scheduleSyncing, setScheduleSyncing] = useState(false);
   const [jetinsightSource, setJetinsightSource] = useState(initial.jetinsightSource);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [progressDetail, setProgressDetail] = useState("");
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   async function syncJetInsight() {
     setScheduleSyncing(true);
     setScheduleSyncMsg("");
+    setProgressError(null);
+    setProgressPercent(0);
+    setProgressDetail("Starting sync…");
     try {
-      const res = await fetch("/api/schedule/sync", { method: "POST" });
-      const json = await res.json();
-      setScheduleSyncMsg(
-        json.message ?? json.error ?? (res.ok ? "Sync complete" : `Sync failed (${res.status})`)
+      const result = await runScheduleSyncStream({
+        onProgress: (p) => {
+          setProgressPercent(p.percent);
+          setProgressDetail(p.detail);
+        },
+      });
+      setScheduleSyncMsg(result.message || "Sync complete");
+      setProgressPercent(100);
+      setProgressDetail("Sync complete");
+      setJetinsightSource((prev) =>
+        prev
+          ? {
+              ...prev,
+              lastSyncedAt: new Date().toISOString(),
+              lastSyncStatus: "ok",
+            }
+          : {
+              name: "PrismJet JetInsight",
+              lastSyncedAt: new Date().toISOString(),
+              lastSyncStatus: "ok",
+            }
       );
-      if (res.ok) {
-        setJetinsightSource((prev) =>
-          prev
-            ? {
-                ...prev,
-                lastSyncedAt: new Date().toISOString(),
-                lastSyncStatus: "ok",
-              }
-            : prev
-        );
-      }
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "Sync failed";
+      setScheduleSyncMsg(err);
+      setProgressError(err);
     } finally {
       setScheduleSyncing(false);
     }
@@ -125,7 +143,21 @@ export function IntegrationsClient({ initial }: { initial: Status }) {
           <Link href={ROUTES.charter.schedule} className="text-sm text-atlas-accent hover:underline">
             Open schedule board →
           </Link>
+          <Link
+            href={ROUTES.charter.settings}
+            className="text-sm text-atlas-accent hover:underline"
+          >
+            Auto-sync settings →
+          </Link>
         </div>
+        {(scheduleSyncing || progressPercent > 0 || progressError) && (
+          <ScheduleSyncProgressBar
+            className="mt-3"
+            percent={progressPercent}
+            detail={progressDetail}
+            error={progressError}
+          />
+        )}
         {scheduleSyncMsg ? (
           <p className="mt-2 text-sm text-atlas-muted">{scheduleSyncMsg}</p>
         ) : null}

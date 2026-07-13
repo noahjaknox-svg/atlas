@@ -1,17 +1,34 @@
 import type {
-  EmptyLeg,
   EmptyLegAvailabilityStatus,
   EmptyLegForceState,
   EmptyLegLifecycleStatus,
   EmptyLegPlacementStatus,
   Prisma,
+  PrismaClient,
 } from "@prisma/client";
+import { toIcaoDisplay, toIcaoRouteKey } from "@/lib/airports/code-match";
+import {
+  EMPTY_LEG_DISPLAY_TIMEZONE,
+} from "@/lib/charter/empty-legs/display-timezone";
+import type { PricingBreakdown } from "@/lib/charter/empty-legs/pricing";
+import {
+  loadEmptyLegPricingContext,
+  pricePlacementWithContext,
+  type EmptyLegPricingContext,
+} from "@/lib/charter/empty-legs/price-placement";
 
 export const emptyLegListInclude = {
   placements: {
     include: {
       publicList: {
-        select: { id: true, name: true, slug: true, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          isActive: true,
+          discountPercent: true,
+          minimumQuotableHours: true,
+        },
       },
     },
   },
@@ -22,13 +39,49 @@ export type EmptyLegListItem = Prisma.EmptyLegGetPayload<{
   include: typeof emptyLegListInclude;
 }>;
 
-export function serializeEmptyLeg(leg: EmptyLegListItem) {
+export type EmptyLegRow = ReturnType<typeof serializeEmptyLeg>;
+
+export function serializeEmptyLeg(
+  leg: EmptyLegListItem,
+  pricingByPlacementId?: Map<string, PricingBreakdown>
+) {
+  const depIcao = toIcaoDisplay(leg.depIcao);
+  const arrIcao = toIcaoDisplay(leg.arrIcao);
+  const placements = leg.placements.map((p) => {
+    const pricing = pricingByPlacementId?.get(p.id) ?? null;
+    return {
+      id: p.id,
+      publicListId: p.publicListId,
+      publicListName: p.publicList.name,
+      publicListSlug: p.publicList.slug,
+      publicListActive: p.publicList.isActive,
+      status: p.status,
+      pricingMode: p.pricingMode,
+      customPrice: p.customPrice != null ? Number(p.customPrice) : null,
+      displayDiscountMode: p.displayDiscountMode,
+      pricingResultJson: p.pricingResultJson,
+      basePrice: pricing?.basePrice ?? null,
+      finalDisplayPrice: pricing?.finalDisplayPrice ?? null,
+      priceHidden: pricing?.priceHidden ?? false,
+      pricingSource: pricing?.source ?? null,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+    };
+  });
+
+  const displayPlacement =
+    placements.find((p) => p.status === "approved" && p.finalDisplayPrice != null) ??
+    placements.find((p) => p.finalDisplayPrice != null) ??
+    null;
+
   return {
     id: leg.id,
     tripNumber: leg.tripNumber,
-    routeKey: leg.routeKey,
-    depIcao: leg.depIcao,
-    arrIcao: leg.arrIcao,
+    routeKey: toIcaoRouteKey(leg.depIcao, leg.arrIcao),
+    depIcao,
+    arrIcao,
+    /** Fleet Local Time (JetInsight Local Time) — never UTC for display. */
+    depTimezone: EMPTY_LEG_DISPLAY_TIMEZONE,
     tailNumber: leg.tailNumber,
     aircraftType: leg.aircraftType,
     sourceScheduleEventId: leg.sourceScheduleEventId,
@@ -53,21 +106,59 @@ export function serializeEmptyLeg(leg: EmptyLegListItem) {
     submissionCount: leg.submissionCount,
     createdAt: leg.createdAt.toISOString(),
     updatedAt: leg.updatedAt.toISOString(),
-    placements: leg.placements.map((p) => ({
-      id: p.id,
-      publicListId: p.publicListId,
-      publicListName: p.publicList.name,
-      publicListSlug: p.publicList.slug,
-      publicListActive: p.publicList.isActive,
-      status: p.status,
-      pricingMode: p.pricingMode,
-      customPrice: p.customPrice != null ? Number(p.customPrice) : null,
-      displayDiscountMode: p.displayDiscountMode,
-      pricingResultJson: p.pricingResultJson,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    })),
+    basePrice: displayPlacement?.basePrice ?? null,
+    finalDisplayPrice: displayPlacement?.finalDisplayPrice ?? null,
+    priceHidden: displayPlacement?.priceHidden ?? false,
+    placements,
   };
+}
+
+export async function serializeEmptyLegsWithPricing(
+  db: PrismaClient,
+  legs: EmptyLegListItem[]
+) {
+  if (legs.length === 0) return [];
+  const ctx = await loadEmptyLegPricingContext(db);
+  return legs.map((leg) => serializeEmptyLeg(leg, priceMapForLeg(ctx, leg)));
+}
+
+export async function serializeEmptyLegWithPricing(
+  db: PrismaClient,
+  leg: EmptyLegListItem
+) {
+  const rows = await serializeEmptyLegsWithPricing(db, [leg]);
+  return rows[0]!;
+}
+
+function priceMapForLeg(ctx: EmptyLegPricingContext, leg: EmptyLegListItem) {
+  const map = new Map<string, PricingBreakdown>();
+  for (const placement of leg.placements) {
+    map.set(
+      placement.id,
+      pricePlacementWithContext(
+        ctx,
+        {
+          id: placement.id,
+          publicListId: placement.publicListId,
+          pricingMode: placement.pricingMode,
+          customPrice: placement.customPrice,
+          displayDiscountMode: placement.displayDiscountMode,
+          publicList: {
+            id: placement.publicList.id,
+            discountPercent: placement.publicList.discountPercent,
+            minimumQuotableHours: placement.publicList.minimumQuotableHours,
+          },
+        },
+        {
+          depIcao: leg.depIcao,
+          arrIcao: leg.arrIcao,
+          tailNumber: leg.tailNumber,
+          durationMinutes: leg.durationMinutes,
+        }
+      )
+    );
+  }
+  return map;
 }
 
 export type EmptyLegFilters = {
@@ -154,10 +245,4 @@ export function summarizePlacements(
   if (placements.length === 0) return "—";
   const approved = placements.filter((p) => p.status === "approved").length;
   return `${approved}/${placements.length} approved`;
-}
-
-export type EmptyLegRow = ReturnType<typeof serializeEmptyLeg>;
-
-export function isEmptyLeg(value: unknown): value is EmptyLeg {
-  return !!value && typeof value === "object" && "tripNumber" in value;
 }

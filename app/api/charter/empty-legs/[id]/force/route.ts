@@ -1,7 +1,7 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { emptyLegListInclude, serializeEmptyLeg } from "@/lib/charter/empty-legs/serialize";
+import { emptyLegListInclude, serializeEmptyLegWithPricing } from "@/lib/charter/empty-legs/serialize";
 import {
   hasHardBlockOverlap,
   resolveEmptyLegAvailability,
@@ -51,7 +51,7 @@ export async function POST(
       include: emptyLegListInclude,
     });
 
-    return jsonOk(serializeEmptyLeg(updated));
+    return jsonOk(await serializeEmptyLegWithPricing(prisma, updated));
   } catch (e) {
     return handleApiError(e);
   }

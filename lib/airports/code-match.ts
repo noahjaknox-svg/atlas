@@ -26,3 +26,13 @@ export function toIcaoDisplay(code: string): string {
   if (c.length === 3 && /^[A-Z0-9]{3}$/.test(c)) return `K${c}`;
   return c;
 }
+
+/** Format a route as ICAO codes, e.g. SDL-COE → KSDL-KCOE. */
+export function toIcaoRouteKey(depIcao: string, arrIcao: string): string {
+  return `${toIcaoDisplay(depIcao)}-${toIcaoDisplay(arrIcao)}`;
+}
+
+/** Format a route arrow label in ICAO, e.g. SDL → COE becomes KSDL → KCOE. */
+export function toIcaoRouteLabel(depIcao: string, arrIcao: string, sep = " → "): string {
+  return `${toIcaoDisplay(depIcao)}${sep}${toIcaoDisplay(arrIcao)}`;
+}

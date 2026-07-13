@@ -16,7 +16,7 @@ export default async function EmptyLegsFleetPage() {
     <EmptyLegsShell
       {...shell}
       title="Fleet Config"
-      description="Public display details, photos, and aircraft profile links per tail"
+      description="Public display details, photos, and pricing profile links per tail"
     >
       <FleetConfigAdmin />
     </EmptyLegsShell>

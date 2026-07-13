@@ -1123,6 +1123,7 @@ enum EmptyLegLifecycleStatus {
 enum EmptyLegHistoryReason {
   route_changed
   trip_removed
+  unbooked_hold
 }
 
 enum EmptyLegPlacementStatus {

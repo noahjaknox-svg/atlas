@@ -24,6 +24,8 @@ describe("isEligibleEmptyLegEvent", () => {
     depIcao: "KSDL",
     arrIcao: "KASE",
     deletedAt: null as Date | null,
+    isHold: false,
+    availabilityClass: "repo_opportunity" as const,
   };
 
   it("accepts positioning with pax 0 and trip metadata", () => {
@@ -51,6 +53,13 @@ describe("isEligibleEmptyLegEvent", () => {
 
   it("rejects missing airports", () => {
     expect(isEligibleEmptyLegEvent({ ...base, depIcao: "" })).toBe(false);
+  });
+
+  it("rejects JetInsight HOLD / soft_hold (unbooked)", () => {
+    expect(isEligibleEmptyLegEvent({ ...base, isHold: true })).toBe(false);
+    expect(
+      isEligibleEmptyLegEvent({ ...base, isHold: false, availabilityClass: "soft_hold" })
+    ).toBe(false);
   });
 });
 

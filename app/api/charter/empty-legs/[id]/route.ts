@@ -1,7 +1,10 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { emptyLegListInclude, serializeEmptyLeg } from "@/lib/charter/empty-legs/serialize";
+import {
+  emptyLegListInclude,
+  serializeEmptyLegWithPricing,
+} from "@/lib/charter/empty-legs/serialize";
 
 export async function GET(
   _req: Request,
@@ -28,9 +31,14 @@ export async function GET(
       include: emptyLegListInclude,
     });
 
+    const [detail, history] = await Promise.all([
+      serializeEmptyLegWithPricing(prisma, row),
+      Promise.all(relatedHistory.map((h) => serializeEmptyLegWithPricing(prisma, h))),
+    ]);
+
     return jsonOk({
-      ...serializeEmptyLeg(row),
-      relatedHistory: relatedHistory.map(serializeEmptyLeg),
+      ...detail,
+      relatedHistory: history,
     });
   } catch (e) {
     return handleApiError(e);
@@ -71,7 +79,7 @@ export async function PATCH(
       include: emptyLegListInclude,
     });
 
-    return jsonOk(serializeEmptyLeg(updated));
+    return jsonOk(await serializeEmptyLegWithPricing(prisma, updated));
   } catch (e) {
     return handleApiError(e);
   }

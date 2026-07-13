@@ -99,7 +99,7 @@ export function AircraftProfilesAdmin() {
 
       <div className="rounded border border-atlas-border bg-atlas-surface p-4">
         <h2 className="font-serif text-lg">
-          {editingId ? "Edit aircraft profile" : "New aircraft profile"}
+          {editingId ? "Edit pricing profile" : "New pricing profile"}
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field

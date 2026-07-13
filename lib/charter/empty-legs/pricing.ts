@@ -3,6 +3,7 @@ import type {
   EmptyLegPricingMode,
   EmptyLegRoutingProfile,
 } from "@prisma/client";
+import { airportCodesMatch } from "@/lib/airports/code-match";
 
 export type PricingSource =
   | "list_routing_profile"
@@ -52,8 +53,9 @@ function profileMatches(
   tailNumber: string
 ): boolean {
   if (!profile.isActive) return false;
-  if (profile.depIcao.toUpperCase() !== depIcao.toUpperCase()) return false;
-  if (profile.arrIcao.toUpperCase() !== arrIcao.toUpperCase()) return false;
+  // JetInsight legs often use FAA (SDL); routing profiles may use ICAO (KSDL).
+  if (!airportCodesMatch(profile.depIcao, depIcao)) return false;
+  if (!airportCodesMatch(profile.arrIcao, arrIcao)) return false;
   if (profile.tailNumbers.length === 0) return true;
   return profile.tailNumbers.some((t) => t.toUpperCase() === tailNumber.toUpperCase());
 }

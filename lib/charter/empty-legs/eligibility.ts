@@ -7,10 +7,20 @@ export function buildRouteKey(depIcao: string, arrIcao: string): string {
 export function isEligibleEmptyLegEvent(
   event: Pick<
     ScheduleEvent,
-    "rawEventType" | "paxCount" | "externalUrl" | "externalTripCode" | "depIcao" | "arrIcao" | "deletedAt"
+    | "rawEventType"
+    | "paxCount"
+    | "externalUrl"
+    | "externalTripCode"
+    | "depIcao"
+    | "arrIcao"
+    | "deletedAt"
+    | "isHold"
+    | "availabilityClass"
   >
 ): boolean {
   if (event.deletedAt) return false;
+  // JetInsight HOLD: = unbooked / not confirmed — never publish as empty legs.
+  if (event.isHold || event.availabilityClass === "soft_hold") return false;
   if (event.rawEventType !== "positioning") return false;
   if (event.paxCount !== 0) return false;
   if (!event.externalUrl?.trim()) return false;

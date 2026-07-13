@@ -11,7 +11,7 @@ const SUBNAV: { href: string; label: string; exact?: boolean }[] = [
   { href: ROUTES.charter.emptyLegs, label: "Inventory", exact: true },
   { href: ROUTES.charter.emptyLegsPublicLists, label: "Public Lists" },
   { href: ROUTES.charter.emptyLegsRoutingProfiles, label: "Routing Profiles" },
-  { href: ROUTES.charter.emptyLegsAircraftProfiles, label: "Aircraft Profiles" },
+  { href: ROUTES.charter.emptyLegsAircraftProfiles, label: "Pricing Profiles" },
   { href: ROUTES.charter.emptyLegsFleet, label: "Fleet Config" },
   { href: ROUTES.charter.emptyLegsSettings, label: "Settings" },
 ];

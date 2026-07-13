@@ -1,5 +1,11 @@
 import { randomBytes } from "crypto";
-import type { Prisma, PrismaClient, ScheduleEvent } from "@prisma/client";
+import type {
+  EmptyLegHistoryReason,
+  Prisma,
+  PrismaClient,
+  ScheduleEvent,
+} from "@prisma/client";
+import { airportCodesMatch } from "@/lib/airports/code-match";
 import {
   buildRouteKey,
   durationMinutesBetween,
@@ -92,7 +98,7 @@ export async function syncEmptyLegsFromSchedule(
   const now = new Date();
   const seenActiveKeys = new Set<string>();
 
-  // Route changes / removals for existing active legs
+  // Route changes / removals / HOLD (unbooked) for existing active legs
   for (const leg of activeLegs) {
     const key = `${leg.tripNumber}::${leg.routeKey}`;
     const match = eligibleByTripRoute.get(key);
@@ -102,7 +108,27 @@ export async function syncEmptyLegsFromSchedule(
     }
 
     const sameTrip = eligibleByTrip.get(leg.tripNumber) ?? [];
-    const reason = sameTrip.length > 0 ? "route_changed" : "trip_removed";
+    let reason: EmptyLegHistoryReason =
+      sameTrip.length > 0 ? "route_changed" : "trip_removed";
+
+    // Prefer a clearer reason when the source event still exists but is HOLD/unbooked.
+    const sourceEvent =
+      (leg.sourceScheduleEventId
+        ? events.find((e) => e.id === leg.sourceScheduleEventId)
+        : null) ??
+      events.find(
+        (e) =>
+          e.externalTripCode?.toUpperCase() === leg.tripNumber.toUpperCase() &&
+          airportCodesMatch(e.depIcao, leg.depIcao) &&
+          airportCodesMatch(e.arrIcao, leg.arrIcao)
+      ) ??
+      events.find(
+        (e) => e.externalTripCode?.toUpperCase() === leg.tripNumber.toUpperCase()
+      );
+    if (sourceEvent && (sourceEvent.isHold || sourceEvent.availabilityClass === "soft_hold")) {
+      reason = "unbooked_hold";
+    }
+
     await db.emptyLeg.update({
       where: { id: leg.id },
       data: {

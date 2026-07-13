@@ -47,6 +47,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "framer-motion": "^11.15.0",
+    "geo-tz": "^8.1.7",
     "isomorphic-dompurify": "^3.18.0",
     "jose": "^5.9.6",
     "lucide-react": "^0.469.0",

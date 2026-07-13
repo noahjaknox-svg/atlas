@@ -12,7 +12,7 @@ import {
   formatScheduleTimeRange,
   timezoneAbbr,
   type ScheduleTimeMode,
-} from "@/lib/schedule/airport-timezones";
+} from "@/lib/schedule/airport-timezone-format";
 import { isTodayInTimezone, isWeekendInTimezone } from "@/lib/schedule/zoned-time";
 import { cn } from "@/lib/utils";
 

@@ -232,7 +232,7 @@ export function FleetConfigAdmin() {
             onChange={(v) => setForm({ ...form, publicDisplayType: v })}
           />
           <div>
-            <label className="mb-1 block text-xs text-atlas-muted">Aircraft profile</label>
+            <label className="mb-1 block text-xs text-atlas-muted">Pricing profile</label>
             <select
               value={form.aircraftProfileId}
               onChange={(e) => setForm({ ...form, aircraftProfileId: e.target.value })}

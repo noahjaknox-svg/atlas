@@ -1,6 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { isEmptyLegPast } from "@/lib/charter/empty-legs/eligibility";
-import { calculateEmptyLegPrice } from "@/lib/charter/empty-legs/pricing";
+import { toIcaoDisplay, toIcaoRouteKey } from "@/lib/airports/code-match";
 import {
   DEFAULT_CONSENT_TEXT,
   DEFAULT_DISCLAIMER_TEXT,
@@ -9,6 +8,9 @@ import {
   type EmptyLegBranding,
   type EmptyLegVisibleFields,
 } from "@/lib/charter/empty-legs/defaults";
+import { EMPTY_LEG_DISPLAY_TIMEZONE } from "@/lib/charter/empty-legs/display-timezone";
+import { isEmptyLegPast } from "@/lib/charter/empty-legs/eligibility";
+import { calculateEmptyLegPrice } from "@/lib/charter/empty-legs/pricing";
 
 export async function getPublicListByToken(db: PrismaClient, token: string) {
   return db.emptyLegPublicList.findUnique({ where: { token } });
@@ -98,9 +100,10 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
         placementId: placement.id,
         emptyLegId: leg.id,
         tripNumber: leg.tripNumber,
-        routeKey: leg.routeKey,
-        depIcao: leg.depIcao,
-        arrIcao: leg.arrIcao,
+        routeKey: toIcaoRouteKey(leg.depIcao, leg.arrIcao),
+        depIcao: toIcaoDisplay(leg.depIcao),
+        arrIcao: toIcaoDisplay(leg.arrIcao),
+        depTimezone: EMPTY_LEG_DISPLAY_TIMEZONE,
         scheduledDepartureAt: leg.scheduledDepartureAt.toISOString(),
         scheduledArrivalAt: leg.scheduledArrivalAt.toISOString(),
         slidingWindowStartAt: leg.slidingWindowStartAt?.toISOString() ?? null,

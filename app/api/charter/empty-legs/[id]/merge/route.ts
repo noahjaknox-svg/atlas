@@ -2,7 +2,7 @@ import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { mergeEmptyLegFromHistory } from "@/lib/charter/empty-legs/merge";
-import { emptyLegListInclude, serializeEmptyLeg } from "@/lib/charter/empty-legs/serialize";
+import { emptyLegListInclude, serializeEmptyLegWithPricing } from "@/lib/charter/empty-legs/serialize";
 
 export async function POST(
   request: Request,
@@ -25,7 +25,7 @@ export async function POST(
       include: emptyLegListInclude,
     });
     if (!row) return jsonError("Not found", 404);
-    return jsonOk(serializeEmptyLeg(row));
+    return jsonOk(await serializeEmptyLegWithPricing(prisma, row));
   } catch (e) {
     if (e instanceof Error) return jsonError(e.message, 400);
     return handleApiError(e);
