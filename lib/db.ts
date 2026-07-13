@@ -27,7 +27,9 @@ function modelsReady(client: PrismaClient): boolean {
     delegateReady(client, "fboHangarOverride") &&
     delegateReady(client, "companySettings") &&
     delegateReady(client, "fbo") &&
-    delegateReady(client, "proposalAssumption")
+    delegateReady(client, "proposalAssumption") &&
+    delegateReady(client, "airportTimezoneOverride") &&
+    delegateReady(client, "emptyLeg")
   );
 }
 

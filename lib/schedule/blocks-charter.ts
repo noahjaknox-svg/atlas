@@ -1,8 +1,10 @@
 import type { ScheduleEvent } from "@prisma/client";
 import { isNoCrewBlock } from "@/lib/schedule/parse-summary";
 
+type BlockCheckEvent = Pick<ScheduleEvent, "availabilityClass" | "summaryRaw">;
+
 /** Whether a schedule event actually blocks charter during its time window. */
-export function blocksCharterScheduling(event: ScheduleEvent): boolean {
+export function blocksCharterScheduling(event: BlockCheckEvent): boolean {
   if (event.availabilityClass !== "hard_block") return false;
 
   if (/\baway from home base\b/i.test(event.summaryRaw)) return false;

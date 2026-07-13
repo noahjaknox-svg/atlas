@@ -1,5 +1,20 @@
-import type { EmptyLegAvailabilityStatus, EmptyLegForceState, ScheduleEvent } from "@prisma/client";
+import type {
+  EmptyLegAvailabilityStatus,
+  EmptyLegForceState,
+  ScheduleEvent,
+} from "@prisma/client";
 import { blocksCharterScheduling } from "@/lib/schedule/blocks-charter";
+
+export type HardBlockEvent = Pick<
+  ScheduleEvent,
+  | "id"
+  | "tailNumber"
+  | "startsAt"
+  | "endsAt"
+  | "deletedAt"
+  | "availabilityClass"
+  | "summaryRaw"
+>;
 
 export function resolveEmptyLegAvailability(input: {
   forceState: EmptyLegForceState | null;
@@ -16,7 +31,8 @@ export function hasHardBlockOverlap(input: {
   tailNumber: string;
   startsAt: Date;
   endsAt: Date;
-  events: ScheduleEvent[];
+  /** Prefer passing only that tail’s events when available. */
+  events: HardBlockEvent[];
 }): boolean {
   const tail = input.tailNumber.toUpperCase();
   for (const event of input.events) {

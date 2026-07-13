@@ -8,7 +8,8 @@ import type {
 } from "@prisma/client";
 import { toIcaoDisplay, toIcaoRouteKey } from "@/lib/airports/code-match";
 import {
-  EMPTY_LEG_DISPLAY_TIMEZONE,
+  resolveEmptyLegDepartureTimezone,
+  type EmptyLegTimezoneLayers,
 } from "@/lib/charter/empty-legs/display-timezone";
 import type { PricingBreakdown } from "@/lib/charter/empty-legs/pricing";
 import {
@@ -16,6 +17,7 @@ import {
   pricePlacementWithContext,
   type EmptyLegPricingContext,
 } from "@/lib/charter/empty-legs/price-placement";
+import { loadEmptyLegTimezoneLayers } from "@/lib/schedule/airport-timezones";
 
 export const emptyLegListInclude = {
   placements: {
@@ -43,10 +45,12 @@ export type EmptyLegRow = ReturnType<typeof serializeEmptyLeg>;
 
 export function serializeEmptyLeg(
   leg: EmptyLegListItem,
-  pricingByPlacementId?: Map<string, PricingBreakdown>
+  pricingByPlacementId?: Map<string, PricingBreakdown>,
+  timezoneLayers?: EmptyLegTimezoneLayers
 ) {
   const depIcao = toIcaoDisplay(leg.depIcao);
   const arrIcao = toIcaoDisplay(leg.arrIcao);
+  const tz = resolveEmptyLegDepartureTimezone(leg.depIcao, timezoneLayers);
   const placements = leg.placements.map((p) => {
     const pricing = pricingByPlacementId?.get(p.id) ?? null;
     return {
@@ -80,8 +84,10 @@ export function serializeEmptyLeg(
     routeKey: toIcaoRouteKey(leg.depIcao, leg.arrIcao),
     depIcao,
     arrIcao,
-    /** Fleet Local Time (JetInsight Local Time) — never UTC for display. */
-    depTimezone: EMPTY_LEG_DISPLAY_TIMEZONE,
+    /** Departure-airport local IANA zone when known; null if unresolved. */
+    depTimezone: tz.timeZone,
+    depTimezoneConfidence: tz.confidence,
+    depTimezoneSource: tz.source,
     tailNumber: leg.tailNumber,
     aircraftType: leg.aircraftType,
     sourceScheduleEventId: leg.sourceScheduleEventId,
@@ -118,8 +124,16 @@ export async function serializeEmptyLegsWithPricing(
   legs: EmptyLegListItem[]
 ) {
   if (legs.length === 0) return [];
-  const ctx = await loadEmptyLegPricingContext(db);
-  return legs.map((leg) => serializeEmptyLeg(leg, priceMapForLeg(ctx, leg)));
+  const [ctx, timezoneLayers] = await Promise.all([
+    loadEmptyLegPricingContext(db),
+    loadEmptyLegTimezoneLayers(
+      db,
+      legs.map((leg) => leg.depIcao)
+    ),
+  ]);
+  return legs.map((leg) =>
+    serializeEmptyLeg(leg, priceMapForLeg(ctx, leg), timezoneLayers)
+  );
 }
 
 export async function serializeEmptyLegWithPricing(

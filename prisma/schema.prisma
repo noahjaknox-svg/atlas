@@ -189,6 +189,7 @@ model User {
   charterRequestsCreated CharterRequest[]   @relation("CharterRequestCreatedBy")
   emptyLegsForceApplied  EmptyLeg[]         @relation("EmptyLegForceAppliedBy")
   charterLeadsAssigned   CharterLead[]      @relation("CharterLeadAssignedTo")
+  airportTimezoneOverridesUpdated AirportTimezoneOverride[] @relation("AirportTimezoneOverrideUpdatedBy")
 
   @@map("users")
 }
@@ -1403,4 +1404,19 @@ model EmptyLegViewEvent {
   @@index([publicListId, createdAt(sort: Desc)])
   @@index([emptyLegId, eventType])
   @@map("empty_leg_view_events")
+}
+
+/** Staff overrides when automatic airport→IANA resolution is missing or wrong. */
+model AirportTimezoneOverride {
+  id            String   @id @default(uuid()) @db.Uuid
+  icao          String   @unique
+  ianaTimezone  String   @map("iana_timezone")
+  note          String?  @db.Text
+  updatedById   String?  @map("updated_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  updatedBy User? @relation("AirportTimezoneOverrideUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("airport_timezone_overrides")
 }

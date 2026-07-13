@@ -88,6 +88,26 @@ export async function syncScheduleSource(
     report({ phase: "tombstone", percent: 85, detail: "Removing stale events…" });
     const deleted = await tombstoneMissingEvents(db, sourceId, normalized);
 
+    report({ phase: "empty_legs", percent: 90, detail: "Processing empty legs…" });
+    let emptyLegs: EmptyLegSyncStats;
+    try {
+      emptyLegs = await syncEmptyLegsFromSchedule(db, {
+        sourceId,
+        onProgress: ({ done, total, detail }) => {
+          const pct =
+            total <= 0 ? 99 : 90 + Math.round((done / total) * 9);
+          report({
+            phase: "empty_legs",
+            percent: Math.min(99, Math.max(90, pct)),
+            detail,
+          });
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Empty legs sync failed";
+      throw new Error(`empty legs incomplete: ${message}`);
+    }
+
     await db.scheduleSyncRun.update({
       where: { id: run.id },
       data: {
@@ -104,9 +124,6 @@ export async function syncScheduleSource(
         lastSyncStatus: "ok",
       },
     });
-
-    report({ phase: "empty_legs", percent: 90, detail: "Processing empty legs…" });
-    const emptyLegs = await syncEmptyLegsFromSchedule(db, { sourceId });
 
     report({ phase: "done", percent: 100, detail: "Sync complete" });
 
