@@ -1,15 +1,15 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { serializeWarehouseAircraft } from "@/lib/warehouse-aircraft-fields";
+import { serializeAircraftType } from "@/lib/warehouse-aircraft-fields";
 
 export async function GET() {
   try {
     await requireInternalUser();
-    const aircraft = await prisma.warehouseAircraft.findMany({
+    const aircraft = await prisma.aircraftType.findMany({
       orderBy: { displayName: "asc" },
     });
-    return jsonOk(aircraft.map(serializeWarehouseAircraft));
+    return jsonOk(aircraft.map(serializeAircraftType));
   } catch (e) {
     return handleApiError(e);
   }

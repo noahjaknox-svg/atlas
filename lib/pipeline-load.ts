@@ -18,7 +18,7 @@ export async function loadPipelinePage(
       where,
       include: {
         prospect: true,
-        aircraftInstance: { include: { warehouseAircraft: true } },
+        aircraftInstance: { include: { aircraftType: true } },
         clientPortal: true,
         assumptions: {
           select: { assumptionName: true, value: true, confidence: true },
@@ -55,7 +55,7 @@ export async function loadPipelinePage(
     assignedToId: p.prospect.assignedToId,
     assigneeName:
       atlasUsers.find((u) => u.id === p.prospect.assignedToId)?.name ?? null,
-    aircraftCategory: p.aircraftInstance?.warehouseAircraft?.aircraftCategory ?? null,
+    aircraftCategory: p.aircraftInstance?.aircraftType?.aircraftCategory ?? null,
     badges: getPipelineBadges({
       status: p.status,
       pipelineStage: p.pipelineStage,

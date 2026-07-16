@@ -71,7 +71,7 @@ export async function PATCH(
 
       const [events, fleetRows] = await Promise.all([
         prisma.scheduleEvent.findMany({ where: { deletedAt: null } }),
-        prisma.crewFleetAircraft.findMany({
+        prisma.aircraftTail.findMany({
           where: { status: "active" },
           include: {
             aircraftType: {

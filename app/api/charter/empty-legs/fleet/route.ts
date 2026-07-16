@@ -1,13 +1,14 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { Decimal } from "@prisma/client/runtime/library";
+import { aircraftTypeLabel } from "@/lib/charter/empty-legs/price-placement";
 
-function serialize(r: {
+type TailWithType = {
   id: string;
   tailNumber: string;
-  aircraftType: string;
+  aircraftTypeId: string;
   publicDisplayType: string | null;
-  aircraftProfileId: string | null;
   seatCount: number | null;
   luggageNote: string | null;
   wifi: boolean;
@@ -15,16 +16,24 @@ function serialize(r: {
   description: string | null;
   primaryPhotoUrl: string | null;
   photoUrlsJson: unknown;
-  isActive: boolean;
+  isPublicActive: boolean;
+  emptyLegHourlyRateOverride: Decimal | null;
   createdAt: Date;
   updatedAt: Date;
-}) {
+  aircraftType: {
+    manufacturer: string | null;
+    model: string | null;
+    displayName: string;
+  } | null;
+};
+
+function serialize(r: TailWithType) {
   return {
     id: r.id,
     tailNumber: r.tailNumber,
-    aircraftType: r.aircraftType,
+    aircraftTypeId: r.aircraftTypeId,
+    aircraftType: aircraftTypeLabel(r.aircraftType),
     publicDisplayType: r.publicDisplayType,
-    aircraftProfileId: r.aircraftProfileId,
     seatCount: r.seatCount,
     luggageNote: r.luggageNote,
     wifi: r.wifi,
@@ -32,7 +41,9 @@ function serialize(r: {
     description: r.description,
     primaryPhotoUrl: r.primaryPhotoUrl,
     photoUrls: Array.isArray(r.photoUrlsJson) ? (r.photoUrlsJson as string[]) : [],
-    isActive: r.isActive,
+    isPublicActive: r.isPublicActive,
+    emptyLegHourlyRateOverride:
+      r.emptyLegHourlyRateOverride != null ? Number(r.emptyLegHourlyRateOverride) : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -41,30 +52,14 @@ function serialize(r: {
 export async function GET() {
   try {
     await requireDepartmentAccess("charter");
-    const configs = await prisma.emptyLegFleetTailConfig.findMany({
-      orderBy: { tailNumber: "asc" },
-    });
-
-    if (configs.length > 0) {
-      return jsonOk({
-        configs: configs.map(serialize),
-        suggestions: [],
-      });
-    }
-
-    const crewFleet = await prisma.crewFleetAircraft.findMany({
-      where: { status: "active" },
+    const configs = await prisma.aircraftTail.findMany({
       include: { aircraftType: true },
       orderBy: { tailNumber: "asc" },
     });
 
     return jsonOk({
-      configs: [],
-      suggestions: crewFleet.map((f) => ({
-        tailNumber: f.tailNumber,
-        aircraftType: f.aircraftType.code,
-        seatCount: f.aircraftType.maxPassengers,
-      })),
+      configs: configs.map(serialize),
+      suggestions: [],
     });
   } catch (e) {
     return handleApiError(e);
@@ -76,17 +71,16 @@ export async function POST(request: Request) {
     await requireDepartmentAccess("charter");
     const body = await request.json();
     if (!body.tailNumber?.trim()) return jsonError("tailNumber is required", 400);
-    if (!body.aircraftType?.trim()) return jsonError("aircraftType is required", 400);
+    if (!body.aircraftTypeId?.trim()) return jsonError("aircraftTypeId is required", 400);
 
     const amenities = parseStringList(body.amenities);
     const photoUrls = parseStringList(body.photoUrls, "\n");
 
-    const created = await prisma.emptyLegFleetTailConfig.create({
+    const created = await prisma.aircraftTail.create({
       data: {
         tailNumber: String(body.tailNumber).trim().toUpperCase(),
-        aircraftType: String(body.aircraftType).trim(),
+        aircraftTypeId: String(body.aircraftTypeId).trim(),
         publicDisplayType: body.publicDisplayType?.trim() || null,
-        aircraftProfileId: body.aircraftProfileId || null,
         seatCount: body.seatCount != null ? Number(body.seatCount) : null,
         luggageNote: body.luggageNote ?? null,
         wifi: Boolean(body.wifi),
@@ -94,8 +88,14 @@ export async function POST(request: Request) {
         description: body.description ?? null,
         primaryPhotoUrl: body.primaryPhotoUrl ?? null,
         photoUrlsJson: photoUrls,
-        isActive: body.isActive !== false,
+        isPublicActive: body.isPublicActive !== false,
+        emptyLegHourlyRateOverride:
+          body.emptyLegHourlyRateOverride != null &&
+          body.emptyLegHourlyRateOverride !== ""
+            ? new Decimal(body.emptyLegHourlyRateOverride)
+            : null,
       },
+      include: { aircraftType: true },
     });
 
     return jsonOk(serialize(created), 201);

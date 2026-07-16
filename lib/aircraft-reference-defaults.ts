@@ -3,7 +3,7 @@ import { getCompanySettings } from "@/lib/company-settings";
 import { loadCompanySettingsDefaults } from "@/lib/company-settings-defaults";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
 import {
-  loadWarehouseAircraftDefaults,
+  loadAircraftTypeDefaults,
   stripExcludedWarehouseKeys,
 } from "@/lib/warehouse-assumption-map";
 
@@ -12,17 +12,17 @@ import {
  * and (when ICAO is known) FBO fuel/hangar. Only non-null Data Hub values are included.
  */
 export async function loadAircraftReferenceDefaults(params: {
-  warehouseAircraftId: string;
+  aircraftTypeId: string;
   airportIcao?: string | null;
   fboName?: string | null;
 }): Promise<Record<string, string>> {
-  const aircraft = await prisma.warehouseAircraft.findUnique({
-    where: { id: params.warehouseAircraftId },
+  const aircraft = await prisma.aircraftType.findUnique({
+    where: { id: params.aircraftTypeId },
   });
   if (!aircraft) return {};
 
   const map: Record<string, string> = {
-    ...stripExcludedWarehouseKeys(loadWarehouseAircraftDefaults(aircraft)),
+    ...stripExcludedWarehouseKeys(loadAircraftTypeDefaults(aircraft)),
     ...loadCompanySettingsDefaults(await getCompanySettings()),
   };
 
@@ -47,9 +47,9 @@ export async function loadAircraftReferenceDefaults(params: {
 
       const override = await prisma.fboHangarOverride.findUnique({
         where: {
-          fboId_warehouseAircraftId: {
+          fboId_aircraftTypeId: {
             fboId: fboPick.id,
-            warehouseAircraftId: aircraft.id,
+            aircraftTypeId: aircraft.id,
           },
         },
       });

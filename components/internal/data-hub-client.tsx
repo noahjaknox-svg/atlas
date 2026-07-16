@@ -51,7 +51,7 @@ const FBO_WORKBENCH_FIELDS: WorkbenchField[] = [
 ];
 
 const REFERENCE_TABS = [
-  { id: "aircraft", label: "Aircraft" },
+  { id: "aircraft", label: "Aircraft types" },
   { id: "airports", label: "Airports" },
   { id: "fbos", label: "FBOs" },
   { id: "general", label: "General and Company" },
@@ -59,7 +59,7 @@ const REFERENCE_TABS = [
   { id: "registration-taxes", label: "Registration & Taxes" },
 ] as const;
 
-const CREW_TAB = { id: "performance-data", label: "PrismJet Crew Data" } as const;
+const CREW_TAB = { id: "performance-data", label: "Fleet & performance" } as const;
 
 export function DataHubClient({
   initialTab,
@@ -260,7 +260,7 @@ export function DataHubClient({
                       placeholder: "Search FBO…",
                     },
                     {
-                      key: "warehouseAircraftId",
+                      key: "aircraftTypeId",
                       label: "Aircraft",
                       type: "searchable",
                       searchKind: "aircraft",

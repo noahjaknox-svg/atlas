@@ -1,27 +1,36 @@
+import type { AircraftTypeStatus } from "@prisma/client";
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { Decimal } from "@prisma/client/runtime/library";
+import { aircraftTypeLabel } from "@/lib/charter/empty-legs/price-placement";
 
-function serialize(r: {
+// URL path kept for compatibility, but these "pricing profiles" now operate on
+// AircraftType empty-leg default fields (unified aircraft model).
+type AircraftTypeRow = {
   id: string;
-  name: string;
-  defaultHourlyRate: Decimal;
-  minimumQuotableTimeFallback: Decimal | null;
-  offRoutingTimeAllowanceHours: Decimal | null;
-  isActive: boolean;
+  displayName: string;
+  manufacturer: string | null;
+  model: string | null;
+  emptyLegHourlyRate: Decimal | null;
+  emptyLegMinimumHours: Decimal | null;
+  emptyLegOffRoutingHours: Decimal | null;
+  status: AircraftTypeStatus;
   createdAt: Date;
   updatedAt: Date;
-}) {
+};
+
+function serialize(r: AircraftTypeRow) {
   return {
     id: r.id,
-    name: r.name,
-    defaultHourlyRate: Number(r.defaultHourlyRate),
+    name: r.displayName,
+    label: aircraftTypeLabel(r),
+    defaultHourlyRate: r.emptyLegHourlyRate != null ? Number(r.emptyLegHourlyRate) : null,
     minimumQuotableTimeFallback:
-      r.minimumQuotableTimeFallback != null ? Number(r.minimumQuotableTimeFallback) : null,
+      r.emptyLegMinimumHours != null ? Number(r.emptyLegMinimumHours) : null,
     offRoutingTimeAllowanceHours:
-      r.offRoutingTimeAllowanceHours != null ? Number(r.offRoutingTimeAllowanceHours) : null,
-    isActive: r.isActive,
+      r.emptyLegOffRoutingHours != null ? Number(r.emptyLegOffRoutingHours) : null,
+    isActive: r.status === "published",
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -30,8 +39,8 @@ function serialize(r: {
 export async function GET() {
   try {
     await requireDepartmentAccess("charter");
-    const rows = await prisma.emptyLegAircraftProfile.findMany({
-      orderBy: { name: "asc" },
+    const rows = await prisma.aircraftType.findMany({
+      orderBy: { displayName: "asc" },
     });
     return jsonOk(rows.map(serialize));
   } catch (e) {
@@ -48,19 +57,19 @@ export async function POST(request: Request) {
       return jsonError("defaultHourlyRate is required", 400);
     }
 
-    const created = await prisma.emptyLegAircraftProfile.create({
+    const created = await prisma.aircraftType.create({
       data: {
-        name: String(body.name).trim(),
-        defaultHourlyRate: new Decimal(body.defaultHourlyRate),
-        minimumQuotableTimeFallback:
+        displayName: String(body.name).trim(),
+        emptyLegHourlyRate: new Decimal(body.defaultHourlyRate),
+        emptyLegMinimumHours:
           body.minimumQuotableTimeFallback != null
             ? new Decimal(body.minimumQuotableTimeFallback)
             : null,
-        offRoutingTimeAllowanceHours:
+        emptyLegOffRoutingHours:
           body.offRoutingTimeAllowanceHours != null
             ? new Decimal(body.offRoutingTimeAllowanceHours)
             : null,
-        isActive: body.isActive !== false,
+        status: body.isActive === false ? "draft" : "published",
       },
     });
 

@@ -26,7 +26,7 @@ export async function validateAddAircraftBody(
     return { ok: false, error: "Select an aircraft model from the warehouse." };
   }
 
-  const warehouse = await prisma.warehouseAircraft.findUnique({
+  const warehouse = await prisma.aircraftType.findUnique({
     where: { id: aircraftMasterId },
     select: {
       id: true,

@@ -6,7 +6,16 @@
       "code": "B300",
       "manufacturer": "Beechcraft",
       "model": "King Air 350",
-      "region": "UNITED STATES"
+      "region": "UNITED STATES",
+      "performanceModel": {
+        "takeoffSlopePctPerPct": 0.08,
+        "headwindFactorPerKt": 0.008,
+        "tailwindFactorPerKt": 0.024,
+        "landingSlopePctPerPct": 0.05,
+        "landingRefFt": 2940,
+        "climbRefLow": { "altitudeFt": 5000, "minutes": 3, "fuelLb": 54, "nm": 8 },
+        "climbRefHigh": { "altitudeFt": 25000, "minutes": 16, "fuelLb": 237, "nm": 52 }
+      }
     }
   ],
   "fleet": [

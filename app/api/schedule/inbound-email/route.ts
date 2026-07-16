@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         prisma.scheduleEvent.findMany({
           where: { deletedAt: null },
         }),
-        prisma.crewFleetAircraft.findMany({
+        prisma.aircraftTail.findMany({
           where: { status: "active" },
           select: { id: true, tailNumber: true, homeBase: true },
         }),

@@ -24,7 +24,7 @@ export function buildPrismaWhere(
 
   switch (entity) {
     case "aircraft": {
-      const and: Prisma.WarehouseAircraftWhereInput[] = [];
+      const and: Prisma.AircraftTypeWhereInput[] = [];
       if (filters.category) {
         and.push({ aircraftCategory: filters.category as Prisma.EnumAircraftCategoryNullableFilter });
       }

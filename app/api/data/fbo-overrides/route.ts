@@ -10,16 +10,16 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       include: {
         fbo: { select: { fboName: true, airportIcao: true } },
-        warehouseAircraft: { select: { displayName: true } },
+        aircraftType: { select: { displayName: true } },
       },
     });
     return jsonOk({
       rows: rows.map((r) => ({
         id: r.id,
         fboId: r.fboId,
-        warehouseAircraftId: r.warehouseAircraftId,
+        aircraftTypeId: r.aircraftTypeId,
         fboName: `${r.fbo.airportIcao} — ${r.fbo.fboName}`,
-        aircraft: r.warehouseAircraft.displayName,
+        aircraft: r.aircraftType.displayName,
         annualRate: r.annualRate,
       })),
       total: rows.length,
@@ -38,13 +38,13 @@ export async function POST(request: Request) {
     await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     const fboId = parseOptionalString(body.fboId);
-    const warehouseAircraftId = parseOptionalString(body.warehouseAircraftId);
+    const aircraftTypeId = parseOptionalString(body.aircraftTypeId);
     const annualRate = parseOptionalInt(body.annualRate);
-    if (!fboId || !warehouseAircraftId || annualRate === undefined) {
-      return jsonError("fboId, warehouseAircraftId, and annualRate are required");
+    if (!fboId || !aircraftTypeId || annualRate === undefined) {
+      return jsonError("fboId, aircraftTypeId, and annualRate are required");
     }
     const row = await prisma.fboHangarOverride.create({
-      data: { fboId, warehouseAircraftId, annualRate },
+      data: { fboId, aircraftTypeId, annualRate },
     });
     return jsonOk(row, 201);
   } catch (e) {

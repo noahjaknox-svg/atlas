@@ -66,10 +66,10 @@ export default async function ProFormaPage({
     proposedHomeBaseIcao: selected.proposedHomeBaseIcao,
     estimatedValue: selected.estimatedValue?.toString() ?? null,
     valueSource: selected.valueSource,
-    aircraftMaster: selected.warehouseAircraft
+    aircraftMaster: selected.aircraftType
       ? {
-          manufacturer: selected.warehouseAircraft.manufacturer,
-          model: selected.warehouseAircraft.model,
+          manufacturer: selected.aircraftType.manufacturer,
+          model: selected.aircraftType.model,
         }
       : null,
   };

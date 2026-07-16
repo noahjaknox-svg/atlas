@@ -38,7 +38,7 @@ export async function seedAircraftWarehouseAssumptions(params: {
     seeded.aircraft_master_id = resolvedMasterId;
     await prisma.aircraftInstance.update({
       where: { id: params.aircraftInstanceId },
-      data: { warehouseAircraftId: resolvedMasterId },
+      data: { aircraftTypeId: resolvedMasterId },
     });
   }
 

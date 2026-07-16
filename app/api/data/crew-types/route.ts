@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   try {
     await requireDepartmentAccess("data_warehouse");
-    const rows = await prisma.crewAircraftType.findMany({
+    const rows = await prisma.aircraftType.findMany({
       orderBy: { code: "asc" },
     });
     return jsonOk({
@@ -34,8 +34,9 @@ export async function POST(request: Request) {
     if (!code || !manufacturer || !model) {
       return handleApiError(new Error("code, manufacturer, and model are required"));
     }
-    const row = await prisma.crewAircraftType.create({
-      data: { code, manufacturer, model },
+    const displayName = [manufacturer, model].filter(Boolean).join(" ").trim() || code;
+    const row = await prisma.aircraftType.create({
+      data: { code, displayName, manufacturer, model },
     });
     return jsonOk({
       id: row.id,

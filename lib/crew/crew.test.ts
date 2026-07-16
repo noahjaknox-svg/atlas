@@ -5,6 +5,12 @@ import { normalizeCrewInitialData } from "@/lib/crew/normalize-initial-data";
 import { metricToWire, operatingToWire } from "@/lib/crew/wire-format";
 import { B300_PERFORMANCE_AXES, buildB300Grid } from "@/lib/crew/seed-grids";
 import {
+  B300_PERFORMANCE_MODEL,
+  CREW_SYNC_POLICY,
+  parsePerformanceModel,
+  resolvePerformanceModel,
+} from "@/lib/crew/performance-model";
+import {
   computeRunwayGradientEstimated,
   computeRunwayGradientHighEndEstimated,
   runwayEndMatches,
@@ -198,6 +204,42 @@ describe("normalize Crew export", () => {
     expect(normalized.fleet[0].aircraftTypeCode).toBe("B300");
     expect(normalized.fleet[0].operating.basicEmptyWeightLb).toBe(9872);
     expect(normalized.performance[0].metric).toBe("takeoffFieldLength");
+  });
+
+  it("preserves optional performanceModel on types", () => {
+    const normalized = normalizeCrewInitialData({
+      aircraftTypes: [
+        {
+          code: "B300",
+          manufacturer: "Beechcraft",
+          model: "King Air 350",
+          performanceModel: B300_PERFORMANCE_MODEL,
+        },
+        { code: "CL35", manufacturer: "Bombardier", model: "Challenger 350" },
+      ],
+      fleet: [],
+      performance: [],
+    });
+    expect(normalized.aircraftTypes[0].performanceModel).toEqual(B300_PERFORMANCE_MODEL);
+    expect(normalized.aircraftTypes[1].performanceModel).toBeUndefined();
+  });
+});
+
+describe("performance model", () => {
+  it("parses kingAir350 shape and rejects garbage", () => {
+    expect(parsePerformanceModel(B300_PERFORMANCE_MODEL)).toEqual(B300_PERFORMANCE_MODEL);
+    expect(parsePerformanceModel(null)).toBeNull();
+    expect(parsePerformanceModel({ takeoffSlopePctPerPct: 0.08 })).toBeNull();
+  });
+
+  it("resolves B300 from code fallback when DB empty", () => {
+    expect(resolvePerformanceModel("B300", null)).toEqual(B300_PERFORMANCE_MODEL);
+    expect(resolvePerformanceModel("CL35", null)).toBeUndefined();
+  });
+
+  it("ships org policy defaults for sync", () => {
+    expect(CREW_SYNC_POLICY.minRunwayFt).toBe(5000);
+    expect(CREW_SYNC_POLICY.forecastLeadMinutes).toBe(120);
   });
 });
 

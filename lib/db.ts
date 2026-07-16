@@ -23,7 +23,8 @@ function modelsReady(client: PrismaClient): boolean {
     delegateReady(client, "proposalOwnerProfile") &&
     delegateReady(client, "portalContent") &&
     delegateReady(client, "airportReference") &&
-    delegateReady(client, "warehouseAircraft") &&
+    delegateReady(client, "aircraftType") &&
+    delegateReady(client, "aircraftTail") &&
     delegateReady(client, "fboHangarOverride") &&
     delegateReady(client, "companySettings") &&
     delegateReady(client, "fbo") &&

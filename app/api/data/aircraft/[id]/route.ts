@@ -3,10 +3,10 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import {
   applyPublishDefaults,
-  buildWarehouseAircraftData,
+  buildAircraftTypeData,
   getMissingPublishFields,
   parseSaveAs,
-  serializeWarehouseAircraft,
+  serializeAircraftType,
   WAREHOUSE_AIRCRAFT_FIELDS,
 } from "@/lib/warehouse-aircraft-fields";
 
@@ -17,9 +17,9 @@ export async function GET(
   try {
     await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
-    const row = await prisma.warehouseAircraft.findUnique({ where: { id } });
+    const row = await prisma.aircraftType.findUnique({ where: { id } });
     if (!row) return jsonError("Not found", 404);
-    return jsonOk(serializeWarehouseAircraft(row));
+    return jsonOk(serializeAircraftType(row));
   } catch (e) {
     return handleApiError(e);
   }
@@ -36,7 +36,7 @@ export async function PATCH(
     const saveAs = parseSaveAs(body);
 
     if (saveAs === "publish") {
-      const existing = await prisma.warehouseAircraft.findUnique({ where: { id } });
+      const existing = await prisma.aircraftType.findUnique({ where: { id } });
       if (!existing) return jsonError("Not found", 404);
       const merged: Record<string, string | null | undefined> = {};
       for (const f of WAREHOUSE_AIRCRAFT_FIELDS) {
@@ -60,12 +60,12 @@ export async function PATCH(
       return jsonError("Display Name is required");
     }
 
-    let data = buildWarehouseAircraftData(body, { partial: true });
+    let data = buildAircraftTypeData(body, { partial: true });
     data.status = saveAs === "publish" ? "published" : "draft";
     if (saveAs === "publish") data = applyPublishDefaults({ ...data, status: "published" });
 
-    const row = await prisma.warehouseAircraft.update({ where: { id }, data });
-    return jsonOk(serializeWarehouseAircraft(row));
+    const row = await prisma.aircraftType.update({ where: { id }, data });
+    return jsonOk(serializeAircraftType(row));
   } catch (e) {
     return handleApiError(e);
   }
@@ -78,7 +78,7 @@ export async function DELETE(
   try {
     await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
-    await prisma.warehouseAircraft.delete({ where: { id } });
+    await prisma.aircraftType.delete({ where: { id } });
     return jsonOk({ deleted: true });
   } catch (e) {
     return handleApiError(e);

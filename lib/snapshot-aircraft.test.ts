@@ -57,6 +57,8 @@ const baseAssumptionRows = [
 function mockAircraft(id: string, tail: string) {
   return {
     id,
+    aircraftTypeId: "m1",
+    aircraftTailId: null,
     warehouseAircraftId: null,
     prospectId: "p1",
     proposalId: "prop1",
@@ -87,9 +89,10 @@ function mockAircraft(id: string, tail: string) {
     fboName: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    warehouseAircraft: {
+    aircraftType: {
       id: "m1",
       status: "published" as const,
+      code: null,
       proformaFieldVisibility: null,
       displayName: id === "a1" ? "G550" : "Challenger 350",
       manufacturer: id === "a1" ? "Gulfstream" : "Bombardier",
@@ -130,6 +133,23 @@ function mockAircraft(id: string, tail: string) {
       fuelSurchargePaybackBasis: "block_time" as const,
       fuelSurcharge: null,
       pilotCharterIncentive: null,
+      maxPassengers: null,
+      airframeProgram: null,
+      maintenanceReserve: null,
+      defaultCabinAttendantCount: null,
+      wifiAnnual: null,
+      subscriptionsAnnual: null,
+      cleaningAnnual: null,
+      suppliesAnnual: null,
+      airportFeesAnnual: null,
+      performanceModel: null,
+      emptyLegHourlyRate: null,
+      emptyLegMinimumHours: null,
+      emptyLegOffRoutingHours: null,
+      externalSource: "atlas",
+      externalId: null,
+      externalSyncedAt: null,
+      legacyWarehouseAircraftId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -184,7 +204,7 @@ describe("buildAircraftSnapshotList", () => {
     expect(list[0]?.portalImageUrl).toContain("a1");
     expect(list[0]?.portalSpecHighlights).toEqual(["8 pax", "3,200 nm"]);
     expect(list[0]?.metrics.ownerHours).toBe(250);
-    expect(list[0]?.calculationAssumptions.aircraft_value).toBe("25000000");
+    expect(list[0]?.calculationAssumptions?.aircraft_value).toBe("25000000");
   });
 
   it("embeds proforma_line_visibility in calculationAssumptions and hides lines on portal", async () => {
@@ -273,8 +293,8 @@ describe("buildAircraftSnapshotList", () => {
       allAssumptions: visibleAssumptions.filter((a) => a.category === "ac_a1"),
       prospectOpportunityType: "aircraft_management",
     });
-    expect(list[0]?.calculationAssumptions.financing_scenario_mode).toBe("remove");
-    expect(list[0]?.calculationAssumptions.financing_enabled).toBe("no");
+    expect(list[0]?.calculationAssumptions?.financing_scenario_mode).toBe("remove");
+    expect(list[0]?.calculationAssumptions?.financing_enabled).toBe("no");
   });
 
   it("prefers assumption owner hours over stale base scenario row", async () => {
@@ -323,6 +343,7 @@ describe("buildAircraftSnapshotList", () => {
         netAnnualCost: null,
         netMonthlyCost: null,
         costPerOwnerHour: null,
+        notes: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

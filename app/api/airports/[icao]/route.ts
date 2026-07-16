@@ -1,5 +1,6 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
+import { resolveEmptyLegDepartureTimezone } from "@/lib/charter/empty-legs/display-timezone";
 import { prisma } from "@/lib/db";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
 import {
@@ -7,6 +8,10 @@ import {
   findAirportReferenceByCode,
 } from "@/lib/ourairports/lookup";
 import { serializeCrewAirport } from "@/lib/ourairports/crew-wire";
+import {
+  loadEmptyLegTimezoneLayers,
+  timezoneAbbr,
+} from "@/lib/schedule/airport-timezones";
 
 export async function GET(
   request: Request,
@@ -17,7 +22,7 @@ export async function GET(
     const { icao } = await params;
     const code = icao.toUpperCase();
     const url = new URL(request.url);
-    const warehouseAircraftId = url.searchParams.get("warehouseAircraftId");
+    const aircraftTypeId = url.searchParams.get("aircraftTypeId");
 
     const reference = await findAirportReferenceByCode(prisma, icao);
     if (!reference) return jsonError("Airport not found", 404);
@@ -32,13 +37,13 @@ export async function GET(
 
     // Hangar: per-aircraft override wins; else hangarCostPerSqft x aircraft sqft.
     let hangarMonthly: string | null = null;
-    if (warehouseAircraftId) {
-      const aircraft = await prisma.warehouseAircraft.findUnique({
-        where: { id: warehouseAircraftId },
+    if (aircraftTypeId) {
+      const aircraft = await prisma.aircraftType.findUnique({
+        where: { id: aircraftTypeId },
         select: { squareFootage: true },
       });
       const override = await prisma.fboHangarOverride.findFirst({
-        where: { warehouseAircraftId, fbo: { airportIcao: { equals: code, mode: "insensitive" } } },
+        where: { aircraftTypeId, fbo: { airportIcao: { equals: code, mode: "insensitive" } } },
       });
       if (override) {
         hangarMonthly = (override.annualRate / 12).toFixed(2);
@@ -56,6 +61,30 @@ export async function GET(
     const referenceWire = await enrichAirportReference(prisma, reference);
     const crew = serializeCrewAirport(reference);
 
+    const timezoneCodes = Array.from(
+      new Set(
+        [code, reference.icao, reference.ident, reference.gpsCode, reference.localCode]
+          .filter((c): c is string => Boolean(c?.trim()))
+          .map((c) => c.trim().toUpperCase())
+      )
+    );
+    const layers = await loadEmptyLegTimezoneLayers(prisma, timezoneCodes);
+    let timezoneResolution = resolveEmptyLegDepartureTimezone(
+      referenceWire?.icao ?? code,
+      layers
+    );
+    if (!timezoneResolution.timeZone) {
+      for (const candidate of timezoneCodes) {
+        timezoneResolution = resolveEmptyLegDepartureTimezone(candidate, layers);
+        if (timezoneResolution.timeZone) break;
+      }
+    }
+    const timezoneIana = timezoneResolution.timeZone;
+    const timezoneShort =
+      timezoneIana != null
+        ? timezoneAbbr(new Date().toISOString(), timezoneIana)
+        : null;
+
     return jsonOk({
       icao: referenceWire?.icao ?? code,
       ident: referenceWire?.ident ?? code,
@@ -68,6 +97,12 @@ export async function GET(
       latitudeDeg: referenceWire?.latitudeDeg ?? null,
       longitudeDeg: referenceWire?.longitudeDeg ?? null,
       longestRunwayFt: referenceWire?.longestRunwayFt ?? null,
+      timezone: {
+        iana: timezoneIana,
+        abbreviation: timezoneShort,
+        source: timezoneResolution.source,
+        confidence: timezoneResolution.confidence,
+      },
       fuelPrice,
       hangarMonthly,
       fbos: fbos.map((f) => ({

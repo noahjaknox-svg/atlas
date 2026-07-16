@@ -158,19 +158,25 @@ export async function syncEmptyLegsFromSchedule(
         discountDisplayMode: true,
       },
     }),
-    db.crewFleetAircraft.findMany({
+    db.aircraftTail.findMany({
       include: {
-        aircraftType: { select: { manufacturer: true, model: true } },
+        aircraftType: {
+          select: { manufacturer: true, model: true, displayName: true },
+        },
       },
     }),
   ]);
 
-  const aircraftTypeByTail = new Map<string, string>();
+  const fleetByTail = new Map<string, { id: string; typeLabel: string }>();
   for (const fleet of fleetRows) {
-    aircraftTypeByTail.set(
-      fleet.tailNumber.toUpperCase(),
-      `${fleet.aircraftType.manufacturer} ${fleet.aircraftType.model}`
-    );
+    const combined = [fleet.aircraftType.manufacturer, fleet.aircraftType.model]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    fleetByTail.set(fleet.tailNumber.toUpperCase(), {
+      id: fleet.id,
+      typeLabel: combined || fleet.aircraftType.displayName,
+    });
   }
 
   const now = new Date();
@@ -273,8 +279,9 @@ export async function syncEmptyLegsFromSchedule(
     const key = `${row.tripNumber}::${row.routeKey}`;
     const existing = activeByTripRoute.get(key) ?? null;
     const tail = row.event.tailNumber.toUpperCase();
-    const aircraftType =
-      aircraftTypeByTail.get(tail) ?? existing?.aircraftType ?? null;
+    const fleet = fleetByTail.get(tail);
+    const aircraftType = fleet?.typeLabel ?? existing?.aircraftType ?? null;
+    const aircraftTailId = fleet?.id ?? existing?.aircraftTailId ?? null;
 
     const calendarBlocked = hasHardBlockOverlap({
       emptyLegEventId: row.event.id,
@@ -297,6 +304,7 @@ export async function syncEmptyLegsFromSchedule(
       depIcao: row.depIcao,
       arrIcao: row.arrIcao,
       tailNumber: tail,
+      aircraftTailId,
       aircraftType,
       sourceScheduleEventId: row.event.id,
       sourceIcalUid: row.event.externalUid,

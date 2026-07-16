@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
-import { resolveValidWarehouseAircraftId } from "@/lib/resolve-warehouse-aircraft-id";
+import { resolveValidAircraftTypeId } from "@/lib/resolve-warehouse-aircraft-id";
 import { normalizeAircraftProfileMode } from "@/lib/aircraft-profile-mode";
 import {
   PROFORMA_VISIBILITY_KEY,
@@ -17,14 +17,14 @@ import { buildDefaultsFromReferences } from "@/lib/aircraft-defaults";
 function buildDefaultsContext(
   assumptions: AssumptionMap,
   instance: {
-    warehouseAircraftId: string | null;
+    aircraftTypeId: string | null;
     proposedHomeBaseIcao: string | null;
     fboName: string | null;
   } | null
 ): AssumptionMap {
   const ctx: AssumptionMap = { ...assumptions };
-  if (instance?.warehouseAircraftId) {
-    ctx.aircraft_master_id = instance.warehouseAircraftId;
+  if (instance?.aircraftTypeId) {
+    ctx.aircraft_master_id = instance.aircraftTypeId;
   }
   if (instance?.proposedHomeBaseIcao) {
     ctx.home_airport_icao = instance.proposedHomeBaseIcao;
@@ -50,7 +50,7 @@ export async function resolveAircraftDefaults(params: {
   const instance = await prisma.aircraftInstance.findUnique({
     where: { id: params.aircraftInstanceId },
     include: {
-      warehouseAircraft: true,
+      aircraftType: true,
       proposal: { select: { prospect: { select: { opportunityType: true } } } },
     },
   });
@@ -65,29 +65,29 @@ export async function resolveAircraftDefaults(params: {
     instance?.proposedHomeBaseIcao ||
     null;
 
-  const warehouseResolution = await resolveValidWarehouseAircraftId({
-    instanceWarehouseId: instance?.warehouseAircraftId,
+  const warehouseResolution = await resolveValidAircraftTypeId({
+    instanceWarehouseId: instance?.aircraftTypeId,
     assumptionMasterId: ctx.aircraft_master_id,
-    manufacturer: ctx.aircraft_manufacturer ?? instance?.warehouseAircraft?.manufacturer,
-    model: ctx.aircraft_model ?? instance?.warehouseAircraft?.model,
+    manufacturer: ctx.aircraft_manufacturer ?? instance?.aircraftType?.manufacturer,
+    model: ctx.aircraft_model ?? instance?.aircraftType?.model,
   });
-  const warehouseAircraftId = warehouseResolution.id;
+  const aircraftTypeId = warehouseResolution.id;
 
-  if (warehouseAircraftId) {
+  if (aircraftTypeId) {
     mergeNonEmpty(
       map,
       await loadAircraftReferenceDefaults({
-        warehouseAircraftId,
+        aircraftTypeId,
         airportIcao: icao,
         fboName: ctx.fbo_name ?? instance?.fboName,
       })
     );
   }
 
-  let aircraft = instance?.warehouseAircraft ?? null;
-  if (!aircraft && warehouseAircraftId) {
-    aircraft = await prisma.warehouseAircraft.findUnique({
-      where: { id: warehouseAircraftId },
+  let aircraft = instance?.aircraftType ?? null;
+  if (!aircraft && aircraftTypeId) {
+    aircraft = await prisma.aircraftType.findUnique({
+      where: { id: aircraftTypeId },
     });
   }
 
@@ -136,20 +136,20 @@ export async function resolveWarehouseLineVisibilityDefaults(params: {
 }): Promise<string | undefined> {
   const instance = await prisma.aircraftInstance.findUnique({
     where: { id: params.aircraftInstanceId },
-    include: { warehouseAircraft: true },
+    include: { aircraftType: true },
   });
 
   const ctx = buildDefaultsContext(params.assumptions, instance);
-  const warehouseResolution = await resolveValidWarehouseAircraftId({
-    instanceWarehouseId: instance?.warehouseAircraftId,
+  const warehouseResolution = await resolveValidAircraftTypeId({
+    instanceWarehouseId: instance?.aircraftTypeId,
     assumptionMasterId: ctx.aircraft_master_id,
-    manufacturer: ctx.aircraft_manufacturer ?? instance?.warehouseAircraft?.manufacturer,
-    model: ctx.aircraft_model ?? instance?.warehouseAircraft?.model,
+    manufacturer: ctx.aircraft_manufacturer ?? instance?.aircraftType?.manufacturer,
+    model: ctx.aircraft_model ?? instance?.aircraftType?.model,
   });
 
-  let aircraft = instance?.warehouseAircraft ?? null;
+  let aircraft = instance?.aircraftType ?? null;
   if (!aircraft && warehouseResolution.id) {
-    aircraft = await prisma.warehouseAircraft.findUnique({
+    aircraft = await prisma.aircraftType.findUnique({
       where: { id: warehouseResolution.id },
     });
   }

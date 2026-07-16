@@ -79,7 +79,7 @@ async function main() {
 
   for (const a of AIRCRAFT) {
     const displayName = `${a.manufacturer} ${a.model}`;
-    await prisma.warehouseAircraft.upsert({
+    await prisma.aircraftType.upsert({
       where: { displayName },
       update: { status: "published" },
       create: {

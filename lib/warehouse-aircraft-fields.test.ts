@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildWarehouseAircraftData,
+  buildAircraftTypeData,
   normalizePaybackBasis,
 } from "@/lib/warehouse-aircraft-fields";
 
-describe("buildWarehouseAircraftData", () => {
+describe("buildAircraftTypeData", () => {
   it("parses comma-formatted money fields", () => {
-    const data = buildWarehouseAircraftData({
+    const data = buildAircraftTypeData({
       leadPilotSalary: "240,000",
       leadPilotTrainingCost: "35,000",
       defaultMinimumCrew: "3",
@@ -18,7 +18,7 @@ describe("buildWarehouseAircraftData", () => {
   });
 
   it("normalizes legacy payback basis values", () => {
-    const data = buildWarehouseAircraftData({
+    const data = buildAircraftTypeData({
       charterPaybackBasis: "block_hours",
       fuelSurchargePaybackBasis: "flight_hours",
     });
@@ -29,7 +29,7 @@ describe("buildWarehouseAircraftData", () => {
 
   it("rejects invalid numeric input with a readable error", () => {
     expect(() =>
-      buildWarehouseAircraftData({
+      buildAircraftTypeData({
         leadPilotTrainingCost: "not-a-number",
       })
     ).toThrow("Lead Pilot Training Cost must be a valid number");

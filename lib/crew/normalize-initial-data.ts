@@ -1,6 +1,7 @@
 import type { CrewGridValues, CrewInitialDataFile, CrewOperatingData } from "@/lib/crew/types";
 import { CREW_OPERATING_DEFAULTS } from "@/lib/crew/types";
 import { metricFromWire } from "@/lib/crew/wire-format";
+import { parsePerformanceModel } from "@/lib/crew/performance-model";
 
 type RawExport = {
   aircraftTypes?: Array<{
@@ -8,6 +9,7 @@ type RawExport = {
     manufacturer: string;
     model: string;
     region?: string;
+    performanceModel?: unknown;
   }>;
   fleet?: Array<{
     tailNumber: string;
@@ -82,11 +84,15 @@ export function normalizeCrewInitialData(raw: unknown): CrewInitialDataFile {
   }
 
   return {
-    aircraftTypes: data.aircraftTypes.map((t) => ({
-      code: t.code,
-      manufacturer: t.manufacturer,
-      model: t.model,
-    })),
+    aircraftTypes: data.aircraftTypes.map((t) => {
+      const performanceModel = parsePerformanceModel(t.performanceModel);
+      return {
+        code: t.code,
+        manufacturer: t.manufacturer,
+        model: t.model,
+        ...(performanceModel ? { performanceModel } : {}),
+      };
+    }),
     fleet: (data.fleet ?? []).map((ac) => ({
       tailNumber: ac.tailNumber,
       aircraftTypeCode: typeCode(ac),

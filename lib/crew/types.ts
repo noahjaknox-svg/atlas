@@ -2,6 +2,7 @@
  * Crew operating block — wire keys match crew_data_sample.json / PrismJet Crew app.
  */
 import { parseOperatingFromWire } from "@/lib/crew/normalize-initial-data";
+import type { CrewPerformanceModel } from "@/lib/crew/performance-model";
 export type CrewOperatingData = {
   basicEmptyWeightLb: number;
   mtowLb: number;
@@ -90,6 +91,7 @@ export type CrewInitialDataFile = {
     code: string;
     manufacturer: string;
     model: string;
+    performanceModel?: CrewPerformanceModel;
   }>;
   fleet: Array<{
     tailNumber: string;

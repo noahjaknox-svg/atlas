@@ -1,9 +1,9 @@
-import type { WarehouseAircraftField } from "@/lib/warehouse-aircraft-fields";
+import type { AircraftTypeField } from "@/lib/warehouse-aircraft-fields";
 import { WAREHOUSE_AIRCRAFT_FIELDS } from "@/lib/warehouse-aircraft-fields";
 
 /** Optional warehouse field → pro forma line-item keys hidden when field is set to Hide. */
 export const WAREHOUSE_FIELD_PROFORMA_LINES: Partial<
-  Record<WarehouseAircraftField["key"], string[]>
+  Record<AircraftTypeField["key"], string[]>
 > = {
   partsProgram: ["charter_parts", "owner_parts"],
   engineProgram: ["charter_engine", "owner_engine"],

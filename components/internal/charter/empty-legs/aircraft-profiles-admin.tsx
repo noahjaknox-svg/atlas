@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 type AircraftProfile = {
   id: string;
   name: string;
-  defaultHourlyRate: number;
+  label: string | null;
+  defaultHourlyRate: number | null;
   minimumQuotableTimeFallback: number | null;
   offRoutingTimeAllowanceHours: number | null;
   isActive: boolean;
@@ -43,7 +44,8 @@ export function AircraftProfilesAdmin() {
     setEditingId(row.id);
     setForm({
       name: row.name,
-      defaultHourlyRate: String(row.defaultHourlyRate),
+      defaultHourlyRate:
+        row.defaultHourlyRate != null ? String(row.defaultHourlyRate) : "",
       minimumQuotableTimeFallback:
         row.minimumQuotableTimeFallback != null ? String(row.minimumQuotableTimeFallback) : "",
       offRoutingTimeAllowanceHours:
@@ -177,7 +179,11 @@ export function AircraftProfilesAdmin() {
                       <span className="ml-1 text-xs text-atlas-muted">(inactive)</span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2">${row.defaultHourlyRate.toLocaleString()}/hr</td>
+                  <td className="px-3 py-2">
+                    {row.defaultHourlyRate != null
+                      ? `$${row.defaultHourlyRate.toLocaleString()}/hr`
+                      : "—"}
+                  </td>
                   <td className="px-3 py-2">{row.minimumQuotableTimeFallback ?? "—"}</td>
                   <td className="px-3 py-2">{row.offRoutingTimeAllowanceHours ?? "—"}</td>
                   <td className="px-3 py-2 text-right">

@@ -98,8 +98,10 @@ Client: local assumption state → debounced persist()
 ```
 RSC prefetch (aircraft/fbos tabs only) → DataHubClient
 Other tabs: client fetch via CrudTab → /api/data/*
-Defaults: WarehouseAircraft + Fbo + CompanySettings → resolveAircraftDefaults()
+Defaults: AircraftType (+ optional AircraftTail) → resolveAircraftDefaults()
 ```
+
+**Unified aircraft masters:** `AircraftType` (identity, base performance / fuel burn, Crew grids, AM economics, empty-leg default rates) and `AircraftTail` (ops identity, actual weights, empty-leg marketing + rate override). External vendor hooks: `externalSource` / `externalId` / `externalSyncedAt` (JetNet / Conklin later).
 
 **Key files:** `lib/data-hub-prefetch.ts`, `components/internal/data-hub/crud-tab.tsx`, `lib/resolve-aircraft-defaults.ts`
 

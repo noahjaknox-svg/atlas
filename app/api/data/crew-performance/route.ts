@@ -1,13 +1,13 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import type { CrewPerformanceMetric } from "@prisma/client";
+import type { AircraftPerformanceMetric } from "@prisma/client";
 import type { CrewGridValues } from "@/lib/crew/types";
 
 export async function GET() {
   try {
     await requireDepartmentAccess("data_warehouse");
-    const rows = await prisma.crewPerformanceGrid.findMany({
+    const rows = await prisma.aircraftPerformanceGrid.findMany({
       include: { aircraftType: true },
       orderBy: [{ aircraftType: { code: "asc" } }, { metric: "asc" }],
     });
@@ -37,11 +37,11 @@ export async function POST(request: Request) {
     await requireDepartmentAccess("data_warehouse");
     const body = await request.json();
     const aircraftTypeId = String(body.aircraftTypeId ?? "").trim();
-    const metric = String(body.metric ?? "").trim() as CrewPerformanceMetric;
+    const metric = String(body.metric ?? "").trim() as AircraftPerformanceMetric;
     if (!aircraftTypeId || !metric) {
       return handleApiError(new Error("aircraftTypeId and metric are required"));
     }
-    const row = await prisma.crewPerformanceGrid.upsert({
+    const row = await prisma.aircraftPerformanceGrid.upsert({
       where: {
         aircraftTypeId_metric: { aircraftTypeId, metric },
       },

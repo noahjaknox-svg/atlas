@@ -6,8 +6,8 @@ export type WarehouseIdResolution = {
   staleAssumptionId: string | null;
 };
 
-async function warehouseAircraftExists(id: string): Promise<boolean> {
-  const row = await prisma.warehouseAircraft.findUnique({
+async function aircraftTypeExists(id: string): Promise<boolean> {
+  const row = await prisma.aircraftType.findUnique({
     where: { id },
     select: { id: true },
   });
@@ -15,7 +15,7 @@ async function warehouseAircraftExists(id: string): Promise<boolean> {
 }
 
 /** Resolve a warehouse aircraft id, healing stale/deleted assumption references. */
-export async function resolveValidWarehouseAircraftId(params: {
+export async function resolveValidAircraftTypeId(params: {
   instanceWarehouseId?: string | null;
   assumptionMasterId?: string | null;
   manufacturer?: string | null;
@@ -24,7 +24,7 @@ export async function resolveValidWarehouseAircraftId(params: {
   const staleAssumptionId = params.assumptionMasterId?.trim() || null;
 
   const instanceId = params.instanceWarehouseId?.trim();
-  if (instanceId && (await warehouseAircraftExists(instanceId))) {
+  if (instanceId && (await aircraftTypeExists(instanceId))) {
     return {
       id: instanceId,
       source: "instance",
@@ -34,14 +34,14 @@ export async function resolveValidWarehouseAircraftId(params: {
   }
 
   const assumptionId = params.assumptionMasterId?.trim();
-  if (assumptionId && (await warehouseAircraftExists(assumptionId))) {
+  if (assumptionId && (await aircraftTypeExists(assumptionId))) {
     return { id: assumptionId, source: "assumption", staleAssumptionId: null };
   }
 
   const manufacturer = params.manufacturer?.trim();
   const model = params.model?.trim();
   if (manufacturer && model) {
-    const match = await prisma.warehouseAircraft.findFirst({
+    const match = await prisma.aircraftType.findFirst({
       where: {
         status: "published",
         manufacturer: { equals: manufacturer, mode: "insensitive" },

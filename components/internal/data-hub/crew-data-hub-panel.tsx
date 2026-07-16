@@ -160,28 +160,31 @@ export function CrewDataHubPanel() {
     <div className="space-y-10">
       <div className="rounded-lg border border-atlas-border bg-atlas-surface/40 p-4">
         <p className="text-sm text-atlas-muted">
-          Operational charter fleet and POH performance tables for the PrismJet Crew iOS app.
-          Crew pulls <code className="text-atlas-accent">GET /api/v1/crew/sync</code> with a
-          read-only API key — no direct Supabase edits needed.
+          Unified fleet tails and type-level POH performance for Crew, Schedule, and Empty Legs.
+          <strong className="font-medium text-atlas-text"> Type</strong> holds base performance
+          grids; <strong className="font-medium text-atlas-text"> Tail</strong> holds actual
+          airframe weights (BEW, MTOW, etc.) and operating factors. Crew sync uses{" "}
+          <code className="text-atlas-accent">GET /api/v1/crew/sync</code>.
         </p>
         <div className="mt-4 rounded-md border border-atlas-accent/20 bg-atlas-accent/5 p-4">
           <h3 className="text-sm font-medium text-atlas-text">Adding a new aircraft type</h3>
           <p className="mt-1 text-sm text-atlas-muted">
-            Create all three in this order so the type flows through <code>/sync</code>:
+            Prefer creating the commercial type under{" "}
+            <span className="text-atlas-text">Aircraft types</span>, then add performance + tails
+            here. Order for Crew sync:
           </p>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-atlas-muted">
             <li>
               <span className="text-atlas-text">Aircraft type</span> — code (e.g. C25B),
-              manufacturer, model
+              manufacturer, model (and AM / empty-leg defaults on the Aircraft types tab)
             </li>
             <li>
               <span className="text-atlas-text">Performance grids</span> for that type — takeoff
-              field length and landing distance, each a grid over pressure altitude × weight × OAT
-              (same structure as the King Air B300)
+              field length and landing distance
             </li>
             <li>
-              <span className="text-atlas-text">One or more tails</span> referencing that type,
-              each with its full operating block (BEW, MTOW, pax weights, GOM factors, etc.)
+              <span className="text-atlas-text">One or more tails</span> of that type, each with
+              actual weights (BEW, MTOW, MZFW) and remaining operating factors
             </li>
           </ol>
         </div>

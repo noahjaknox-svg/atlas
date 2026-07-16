@@ -2,12 +2,12 @@ import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { parseOperatingJson } from "@/lib/crew/types";
-import type { CrewFleetStatus } from "@prisma/client";
+import type { AircraftTailStatus } from "@prisma/client";
 
 export async function GET() {
   try {
     await requireDepartmentAccess("data_warehouse");
-    const rows = await prisma.crewFleetAircraft.findMany({
+    const rows = await prisma.aircraftTail.findMany({
       include: { aircraftType: true },
       orderBy: { tailNumber: "asc" },
     });
@@ -41,14 +41,20 @@ export async function POST(request: Request) {
     if (!tailNumber || !aircraftTypeId) {
       return handleApiError(new Error("tailNumber and aircraftTypeId are required"));
     }
-    const row = await prisma.crewFleetAircraft.create({
+    const operating = parseOperatingJson(body.operating);
+    const row = await prisma.aircraftTail.create({
       data: {
         tailNumber,
         aircraftTypeId,
-        status: (body.status ?? "active") as CrewFleetStatus,
+        status: (body.status ?? "active") as AircraftTailStatus,
         homeBase: body.homeBase ? String(body.homeBase).trim().toUpperCase() : null,
         serialNumber: body.serialNumber ? String(body.serialNumber).trim() : null,
-        operating: parseOperatingJson(body.operating),
+        operating,
+        // Promote key airframe weights into dedicated Tail columns.
+        basicEmptyWeightLb: operating.basicEmptyWeightLb,
+        mtowLb: operating.mtowLb,
+        mzfwLb: operating.mzfwLb,
+        maxBagWeightLb: operating.maxBagWeightLb,
       },
       include: { aircraftType: true },
     });

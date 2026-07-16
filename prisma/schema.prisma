@@ -226,79 +226,164 @@ enum PaybackBasis {
   flight_time
 }
 
-enum WarehouseAircraftStatus {
+enum AircraftTypeStatus {
   draft
   published
 }
 
-// Consolidated warehouse aircraft record (one per aircraft, copyable, unique display name).
-// Matches the "Aircraft" tab in Atlas Database.xlsx.
-model WarehouseAircraft {
-  id                        String                    @id @default(uuid()) @db.Uuid
-  status                    WarehouseAircraftStatus   @default(draft) @map("status")
-  /** Per optional-field Show/Hide for pro forma (xlsx rule A2). Keys = field names, true = show. */
-  proformaFieldVisibility     Json?                     @map("proforma_field_visibility")
-  // General
-  displayName               String                    @unique @map("display_name")
+enum AircraftTailStatus {
+  active
+  retired
+}
+
+enum AircraftPerformanceMetric {
+  takeoffFieldLength
+  landingDistance
+}
+
+/**
+ * Unified aircraft type (warehouse master).
+ * Owns identity, base performance (fuel burn), Crew grids, AM economics,
+ * and empty-leg default pricing. Actual airframe weights live on AircraftTail.
+ */
+model AircraftType {
+  id                        String              @id @default(uuid()) @db.Uuid
+  status                    AircraftTypeStatus  @default(draft) @map("status")
+  /** Crew / ops type code (e.g. B300). Unique when set. */
+  code                      String?             @unique
+  /** AM display name (unique). */
+  displayName               String              @unique @map("display_name")
+  /** Per optional-field Show/Hide for pro forma (xlsx rule A2). */
+  proformaFieldVisibility   Json?               @map("proforma_field_visibility")
   manufacturer              String?
   model                     String?
-  modelCode                 String?                   @map("model_code")
-  aircraftCategory          AircraftCategory?         @map("aircraft_category")
-  passengerCapacity         Int?                      @map("passenger_capacity")
-  emptyRange                Int?                      @map("empty_range")
-  rangeAtMaxPassengers      Int?                      @map("range_at_max_passengers")
-  crewCount                 Int?                      @map("crew_count")
-  squareFootage             Int?                      @map("square_footage")
-  averageCruiseSpeed        Int?                      @map("average_cruise_speed")
+  modelCode                 String?             @map("model_code")
+  aircraftCategory          AircraftCategory?   @map("aircraft_category")
+  passengerCapacity         Int?                @map("passenger_capacity")
+  maxPassengers             Int?                @map("max_passengers")
+  emptyRange                Int?                @map("empty_range")
+  rangeAtMaxPassengers      Int?                @map("range_at_max_passengers")
+  crewCount                 Int?                @map("crew_count")
+  squareFootage             Int?                @map("square_footage")
+  averageCruiseSpeed        Int?                @map("average_cruise_speed")
   wifi                      Boolean?
-  /** Percent of fuel purchased at home base (0–100). */
-  homeFuelPct               Int?                      @map("home_fuel_pct")
-  // Hourly Rates
-  fuelGallonsPerHour        Int?                      @map("fuel_gallons_per_hour")
-  partsProgram              Int?                      @map("parts_program")
-  engineProgram             Int?                      @map("engine_program")
-  apuProgram                Int?                      @map("apu_program")
-  inspectionReserve         Int?                      @map("inspection_reserve")
-  tripExpenseHourly         Int?                      @map("trip_expense_hourly")
-  // Crew
-  /** Minimum total pilots (PIC + SIC) before ladder step-up. */
-  defaultMinimumCrew          Int?                      @map("default_minimum_crew")
-  leadPilotSalary           Int?                      @map("lead_pilot_salary")
-  leadPilotTrainingCost     Int?                      @map("lead_pilot_training_cost")
-  picSalary                 Int?                      @map("pic_salary")
-  sicSalary                 Int?                      @map("sic_salary")
-  cabinAttendantSalary      Int?                      @map("cabin_attendant_salary")
-  picTrainingCost           Int?                      @map("pic_training_cost")
-  sicTrainingCost           Int?                      @map("sic_training_cost")
-  // Utilization (max annual hours by pilot count)
-  maxUsage1Pilot            Int?                      @map("max_usage_1_pilot")
-  maxUsage2Pilots           Int?                      @map("max_usage_2_pilots")
-  maxUsage3Pilots           Int?                      @map("max_usage_3_pilots")
-  maxUsage4Pilots           Int?                      @map("max_usage_4_pilots")
-  maxUsage5Pilots           Int?                      @map("max_usage_5_pilots")
-  maxUsage6Pilots           Int?                      @map("max_usage_6_pilots")
-  // Finances
-  averageCost               Int?                      @map("average_cost")
-  charterHourlyRate         Int?                      @map("charter_hourly_rate")
-  charterPaybackBasis       PaybackBasis?             @map("charter_payback_basis")
-  fuelSurchargePaybackBasis PaybackBasis?             @map("fuel_surcharge_payback_basis")
-  fuelSurcharge             Int?                      @map("fuel_surcharge")
-  pilotCharterIncentive     Int?                      @map("pilot_charter_incentive")
-  airframeProgram           Int?                      @map("airframe_program")
-  maintenanceReserve        Int?                      @map("maintenance_reserve")
-  defaultCabinAttendantCount Int?                     @map("default_cabin_attendant_count")
-  wifiAnnual                Int?                      @map("wifi_annual")
-  subscriptionsAnnual       Int?                      @map("subscriptions_annual")
-  cleaningAnnual            Int?                      @map("cleaning_annual")
-  suppliesAnnual            Int?                      @map("supplies_annual")
-  airportFeesAnnual         Int?                      @map("airport_fees_annual")
-  createdAt                 DateTime                  @default(now()) @map("created_at")
-  updatedAt                 DateTime                  @updatedAt @map("updated_at")
+  homeFuelPct               Int?                @map("home_fuel_pct")
+  /// Base performance — type-level fuel burn (gph).
+  fuelGallonsPerHour        Int?                @map("fuel_gallons_per_hour")
+  partsProgram              Int?                @map("parts_program")
+  engineProgram             Int?                @map("engine_program")
+  apuProgram                Int?                @map("apu_program")
+  inspectionReserve         Int?                @map("inspection_reserve")
+  tripExpenseHourly         Int?                @map("trip_expense_hourly")
+  defaultMinimumCrew        Int?                @map("default_minimum_crew")
+  leadPilotSalary           Int?                @map("lead_pilot_salary")
+  leadPilotTrainingCost     Int?                @map("lead_pilot_training_cost")
+  picSalary                 Int?                @map("pic_salary")
+  sicSalary                 Int?                @map("sic_salary")
+  cabinAttendantSalary      Int?                @map("cabin_attendant_salary")
+  picTrainingCost           Int?                @map("pic_training_cost")
+  sicTrainingCost           Int?                @map("sic_training_cost")
+  maxUsage1Pilot            Int?                @map("max_usage_1_pilot")
+  maxUsage2Pilots           Int?                @map("max_usage_2_pilots")
+  maxUsage3Pilots           Int?                @map("max_usage_3_pilots")
+  maxUsage4Pilots           Int?                @map("max_usage_4_pilots")
+  maxUsage5Pilots           Int?                @map("max_usage_5_pilots")
+  maxUsage6Pilots           Int?                @map("max_usage_6_pilots")
+  averageCost               Int?                @map("average_cost")
+  charterHourlyRate         Int?                @map("charter_hourly_rate")
+  charterPaybackBasis       PaybackBasis?       @map("charter_payback_basis")
+  fuelSurchargePaybackBasis PaybackBasis?       @map("fuel_surcharge_payback_basis")
+  fuelSurcharge             Int?                @map("fuel_surcharge")
+  pilotCharterIncentive     Int?                @map("pilot_charter_incentive")
+  airframeProgram           Int?                @map("airframe_program")
+  maintenanceReserve        Int?                @map("maintenance_reserve")
+  defaultCabinAttendantCount Int?               @map("default_cabin_attendant_count")
+  wifiAnnual                Int?                @map("wifi_annual")
+  subscriptionsAnnual       Int?                @map("subscriptions_annual")
+  cleaningAnnual            Int?                @map("cleaning_annual")
+  suppliesAnnual            Int?                @map("supplies_annual")
+  airportFeesAnnual         Int?                @map("airport_fees_annual")
+  /// Optional Crew PerformanceModel (slope/wind/climb refs).
+  performanceModel          Json?               @map("performance_model") @db.JsonB
+  /// Empty-leg calculated pricing defaults (type-level).
+  emptyLegHourlyRate            Decimal?        @map("empty_leg_hourly_rate") @db.Decimal(12, 2)
+  emptyLegMinimumHours          Decimal?        @map("empty_leg_minimum_hours") @db.Decimal(6, 2)
+  emptyLegOffRoutingHours       Decimal?        @map("empty_leg_off_routing_hours") @db.Decimal(6, 2)
+  /// Future JetNet / Conklin / etc.
+  externalSource            String?             @default("atlas") @map("external_source")
+  externalId                String?             @map("external_id")
+  externalSyncedAt          DateTime?           @map("external_synced_at")
+  legacyWarehouseAircraftId String?             @unique @map("legacy_warehouse_aircraft_id") @db.Uuid
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
 
+  tails           AircraftTail[]
+  performance     AircraftPerformanceGrid[]
   instances       AircraftInstance[]
   hangarOverrides FboHangarOverride[]
 
-  @@map("warehouse_aircraft")
+  @@map("aircraft_types")
+}
+
+/**
+ * Unified fleet tail (one physical airplane).
+ * Owns ops identity, actual weights, empty-leg marketing, and pricing overrides.
+ */
+model AircraftTail {
+  id                        String             @id @default(uuid()) @db.Uuid
+  tailNumber                String             @unique @map("tail_number")
+  aircraftTypeId            String             @map("aircraft_type_id") @db.Uuid
+  status                    AircraftTailStatus @default(active)
+  homeBase                  String?            @map("home_base")
+  serialNumber              String?            @map("serial_number")
+  /// Remaining Crew operating factors (GOM, burn rate, etc.). Key weights also promoted below.
+  operating                 Json               @default("{}") @db.JsonB
+  basicEmptyWeightLb        Int?               @map("basic_empty_weight_lb")
+  mtowLb                    Int?               @map("mtow_lb")
+  mzfwLb                    Int?               @map("mzfw_lb")
+  maxBagWeightLb           Int?               @map("max_bag_weight_lb")
+  publicDisplayType         String?            @map("public_display_type")
+  seatCount                 Int?               @map("seat_count")
+  luggageNote               String?            @map("luggage_note")
+  wifi                      Boolean            @default(false)
+  amenitiesJson             Json               @default("[]") @map("amenities_json") @db.JsonB
+  description               String?            @db.Text
+  primaryPhotoUrl           String?            @map("primary_photo_url")
+  photoUrlsJson             Json               @default("[]") @map("photo_urls_json") @db.JsonB
+  isPublicActive            Boolean            @default(true) @map("is_public_active")
+  emptyLegHourlyRateOverride Decimal?          @map("empty_leg_hourly_rate_override") @db.Decimal(12, 2)
+  externalSource            String?            @default("atlas") @map("external_source")
+  externalId                String?            @map("external_id")
+  externalSyncedAt          DateTime?          @map("external_synced_at")
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+
+  aircraftType          AircraftType           @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
+  scheduleEvents        ScheduleEvent[]
+  charterRequestMatches CharterRequestMatch[]
+  emptyLegs             EmptyLeg[]
+  instances             AircraftInstance[]
+
+  @@index([aircraftTypeId])
+  @@map("aircraft_tails")
+}
+
+model AircraftPerformanceGrid {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  aircraftTypeId     String                     @map("aircraft_type_id") @db.Uuid
+  metric             AircraftPerformanceMetric
+  unit               String                     @default("ft")
+  pressureAltitudeFt Int[]                      @map("pressure_altitude_ft")
+  weightLb           Int[]                      @map("weight_lb")
+  oatC               Int[]                      @map("oat_c")
+  values             Json                       @db.JsonB
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+
+  aircraftType AircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([aircraftTypeId, metric])
+  @@map("aircraft_performance_grids")
 }
 
 // One row per FBO (Atlas Database.xlsx "FBOs" tab).
@@ -320,17 +405,17 @@ model Fbo {
 
 // Per-aircraft hangar annual override for a given FBO ("Specific Hangar Rate").
 model FboHangarOverride {
-  id                  String   @id @default(uuid()) @db.Uuid
-  fboId               String   @map("fbo_id") @db.Uuid
-  warehouseAircraftId String   @map("warehouse_aircraft_id") @db.Uuid
-  annualRate          Int      @map("annual_rate")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid()) @db.Uuid
+  fboId         String   @map("fbo_id") @db.Uuid
+  aircraftTypeId String  @map("aircraft_type_id") @db.Uuid
+  annualRate    Int      @map("annual_rate")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  fbo               Fbo               @relation(fields: [fboId], references: [id], onDelete: Cascade)
-  warehouseAircraft WarehouseAircraft @relation(fields: [warehouseAircraftId], references: [id], onDelete: Cascade)
+  fbo          Fbo          @relation(fields: [fboId], references: [id], onDelete: Cascade)
+  aircraftType AircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
 
-  @@unique([fboId, warehouseAircraftId])
+  @@unique([fboId, aircraftTypeId])
   @@map("fbo_hangar_overrides")
 }
 
@@ -359,6 +444,9 @@ model CompanySettings {
 
 model AircraftInstance {
   id                          String             @id @default(uuid()) @db.Uuid
+  aircraftTypeId              String?            @map("aircraft_type_id") @db.Uuid
+  aircraftTailId              String?            @map("aircraft_tail_id") @db.Uuid
+  /** @deprecated Use aircraftTypeId. Kept for migration compatibility. */
   warehouseAircraftId         String?            @map("warehouse_aircraft_id") @db.Uuid
   prospectId                  String             @map("prospect_id") @db.Uuid
   proposalId                  String?            @map("proposal_id") @db.Uuid
@@ -391,11 +479,12 @@ model AircraftInstance {
   createdAt                   DateTime           @default(now()) @map("created_at")
   updatedAt                   DateTime           @updatedAt @map("updated_at")
 
-  warehouseAircraft WarehouseAircraft? @relation(fields: [warehouseAircraftId], references: [id])
-  prospect          Prospect           @relation(fields: [prospectId], references: [id])
-  proposal          Proposal?          @relation("ProposalAircraft", fields: [proposalId], references: [id], onDelete: Cascade)
-  proposals         Proposal[]         @relation("ProposalPrimaryAircraft")
-  scenarios         ProposalScenario[]
+  aircraftType   AircraftType?  @relation(fields: [aircraftTypeId], references: [id])
+  aircraftTail   AircraftTail?  @relation(fields: [aircraftTailId], references: [id])
+  prospect       Prospect       @relation(fields: [prospectId], references: [id])
+  proposal       Proposal?      @relation("ProposalAircraft", fields: [proposalId], references: [id], onDelete: Cascade)
+  proposals      Proposal[]     @relation("ProposalPrimaryAircraft")
+  scenarios      ProposalScenario[]
 
   @@map("aircraft_instances")
 }
@@ -840,73 +929,6 @@ model ProposalTask {
   @@map("proposal_tasks")
 }
 
-// ——— PrismJet Crew (operational fleet + performance tables) ———
-
-enum CrewFleetStatus {
-  active
-  retired
-}
-
-enum CrewPerformanceMetric {
-  takeoffFieldLength
-  landingDistance
-}
-
-/// Aircraft type catalog for Crew (e.g. B300 / King Air 350).
-model CrewAircraftType {
-  id            String   @id @default(uuid()) @db.Uuid
-  code          String   @unique
-  manufacturer  String
-  model         String
-  maxPassengers Int?     @map("max_passengers")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  fleet       CrewFleetAircraft[]
-  performance CrewPerformanceGrid[]
-
-  @@map("crew_aircraft_types")
-}
-
-/// Operational charter tail — independent of sales proposals.
-model CrewFleetAircraft {
-  id             String          @id @default(uuid()) @db.Uuid
-  tailNumber     String          @unique @map("tail_number")
-  aircraftTypeId String          @map("aircraft_type_id") @db.Uuid
-  status         CrewFleetStatus @default(active)
-  homeBase       String?         @map("home_base")
-  serialNumber   String?         @map("serial_number")
-  operating      Json            @db.JsonB
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-
-  aircraftType          CrewAircraftType      @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
-  scheduleEvents        ScheduleEvent[]
-  charterRequestMatches CharterRequestMatch[]
-
-  @@index([aircraftTypeId])
-  @@map("crew_fleet_aircraft")
-}
-
-/// Type-level performance grid (pressure altitude × weight × OAT → length ft).
-model CrewPerformanceGrid {
-  id                 String                @id @default(uuid()) @db.Uuid
-  aircraftTypeId     String                @map("aircraft_type_id") @db.Uuid
-  metric             CrewPerformanceMetric
-  unit               String                @default("ft")
-  pressureAltitudeFt Int[]                 @map("pressure_altitude_ft")
-  weightLb           Int[]                 @map("weight_lb")
-  oatC               Int[]                 @map("oat_c")
-  values             Json                  @db.JsonB
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
-
-  aircraftType CrewAircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([aircraftTypeId, metric])
-  @@map("crew_performance_grids")
-}
-
 // ——— JetInsight schedule + charter requests ———
 
 enum ScheduleRawEventType {
@@ -998,7 +1020,7 @@ model ScheduleEvent {
   updatedAt         DateTime                  @updatedAt @map("updated_at")
 
   source        ScheduleSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  fleetAircraft CrewFleetAircraft? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+  fleetAircraft AircraftTail? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
 
   @@unique([sourceId, externalUid])
   @@index([tailNumber, startsAt])
@@ -1098,7 +1120,7 @@ model CharterRequestMatch {
   createdAt       DateTime @default(now()) @map("created_at")
 
   request       CharterRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  fleetAircraft CrewFleetAircraft? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+  fleetAircraft AircraftTail? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
 
   @@index([requestId, rank])
   @@map("charter_request_matches")
@@ -1179,6 +1201,7 @@ model EmptyLeg {
   depIcao                String                     @map("dep_icao")
   arrIcao                String                     @map("arr_icao")
   tailNumber             String                     @map("tail_number")
+  aircraftTailId         String?                    @map("aircraft_tail_id") @db.Uuid
   aircraftType           String?                    @map("aircraft_type")
   sourceScheduleEventId  String?                    @map("source_schedule_event_id") @db.Uuid
   sourceIcalUid          String?                    @map("source_ical_uid")
@@ -1203,6 +1226,7 @@ model EmptyLeg {
   createdAt              DateTime                   @default(now()) @map("created_at")
   updatedAt              DateTime                   @updatedAt @map("updated_at")
 
+  aircraftTail   AircraftTail?         @relation(fields: [aircraftTailId], references: [id], onDelete: SetNull)
   forceAppliedBy User?                 @relation("EmptyLegForceAppliedBy", fields: [forceAppliedByUserId], references: [id], onDelete: SetNull)
   placements     EmptyLegPlacement[]
   leads          CharterLead[]
@@ -1210,6 +1234,7 @@ model EmptyLeg {
 
   @@index([tripNumber])
   @@index([tailNumber])
+  @@index([aircraftTailId])
   @@index([depIcao, arrIcao])
   @@index([scheduledDepartureAt])
   @@index([lifecycleStatus, scheduledDepartureAt])
@@ -1289,43 +1314,6 @@ model EmptyLegRoutingProfile {
   @@index([depIcao, arrIcao])
   @@index([scope, publicListId])
   @@map("empty_leg_routing_profiles")
-}
-
-model EmptyLegAircraftProfile {
-  id                           String   @id @default(uuid()) @db.Uuid
-  name                         String
-  defaultHourlyRate            Decimal  @map("default_hourly_rate") @db.Decimal(12, 2)
-  minimumQuotableTimeFallback  Decimal? @map("minimum_quotable_time_fallback") @db.Decimal(6, 2)
-  offRoutingTimeAllowanceHours Decimal? @map("off_routing_time_allowance_hours") @db.Decimal(6, 2)
-  isActive                     Boolean  @default(true) @map("is_active")
-  createdAt                    DateTime @default(now()) @map("created_at")
-  updatedAt                    DateTime @updatedAt @map("updated_at")
-
-  fleetTails EmptyLegFleetTailConfig[]
-
-  @@map("empty_leg_aircraft_profiles")
-}
-
-model EmptyLegFleetTailConfig {
-  id                 String   @id @default(uuid()) @db.Uuid
-  tailNumber         String   @unique @map("tail_number")
-  aircraftType       String   @map("aircraft_type")
-  publicDisplayType  String?  @map("public_display_type")
-  aircraftProfileId  String?  @map("aircraft_profile_id") @db.Uuid
-  seatCount          Int?     @map("seat_count")
-  luggageNote        String?  @map("luggage_note")
-  wifi               Boolean  @default(false)
-  amenitiesJson      Json     @default("[]") @map("amenities_json") @db.JsonB
-  description        String?  @db.Text
-  primaryPhotoUrl    String?  @map("primary_photo_url")
-  photoUrlsJson      Json     @default("[]") @map("photo_urls_json") @db.JsonB
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  aircraftProfile EmptyLegAircraftProfile? @relation(fields: [aircraftProfileId], references: [id], onDelete: SetNull)
-
-  @@map("empty_leg_fleet_tail_configs")
 }
 
 model EmptyLegSettings {

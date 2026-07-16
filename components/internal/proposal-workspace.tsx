@@ -764,7 +764,7 @@ export function ProposalWorkspace({
       proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
       estimatedValue: ac.estimatedValue?.toString() ?? null,
       valueSource: ac.valueSource,
-      aircraftMaster: ac.warehouseAircraft ?? ac.aircraftMaster ?? null,
+      aircraftMaster: ac.aircraftType ?? ac.aircraftMaster ?? null,
       assumptions,
     };
 

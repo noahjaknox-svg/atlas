@@ -10,7 +10,7 @@ export async function PATCH(
     await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
     const body = await request.json();
-    const row = await prisma.crewAircraftType.update({
+    const row = await prisma.aircraftType.update({
       where: { id },
       data: {
         code: body.code != null ? String(body.code).trim().toUpperCase() : undefined,
@@ -31,7 +31,7 @@ export async function DELETE(
   try {
     await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
-    await prisma.crewAircraftType.delete({ where: { id } });
+    await prisma.aircraftType.delete({ where: { id } });
     return jsonOk({ ok: true });
   } catch (e) {
     return handleApiError(e);

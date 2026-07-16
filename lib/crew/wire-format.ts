@@ -1,5 +1,5 @@
 import type { CrewOperatingData } from "@/lib/crew/types";
-import type { CrewPerformanceMetric } from "@prisma/client";
+import type { AircraftPerformanceMetric } from "@prisma/client";
 
 /** Operating block as PrismJet Crew app exports / expects on the wire. */
 export type CrewOperatingWire = {
@@ -48,23 +48,23 @@ export function operatingToWire(data: CrewOperatingData): CrewOperatingWire {
   };
 }
 
-const METRIC_TO_WIRE: Record<CrewPerformanceMetric, string> = {
+const METRIC_TO_WIRE: Record<AircraftPerformanceMetric, string> = {
   takeoffFieldLength: "takeoff_field_length",
   landingDistance: "landing_distance",
 };
 
-const METRIC_FROM_WIRE: Record<string, CrewPerformanceMetric> = {
+const METRIC_FROM_WIRE: Record<string, AircraftPerformanceMetric> = {
   takeoff_field_length: "takeoffFieldLength",
   takeoffFieldLength: "takeoffFieldLength",
   landing_distance: "landingDistance",
   landingDistance: "landingDistance",
 };
 
-export function metricToWire(metric: CrewPerformanceMetric): string {
+export function metricToWire(metric: AircraftPerformanceMetric): string {
   return METRIC_TO_WIRE[metric];
 }
 
-export function metricFromWire(metric: string): CrewPerformanceMetric {
+export function metricFromWire(metric: string): AircraftPerformanceMetric {
   const m = METRIC_FROM_WIRE[metric];
   if (!m) throw new Error(`Unknown performance metric: ${metric}`);
   return m;

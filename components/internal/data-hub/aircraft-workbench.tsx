@@ -7,7 +7,7 @@ import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confi
 import {
   WAREHOUSE_AIRCRAFT_FIELDS,
   getMissingPublishFields,
-  type WarehouseAircraftField,
+  type AircraftTypeField,
 } from "@/lib/warehouse-aircraft-fields";
 import {
   defaultWarehouseFieldVisibility,
@@ -28,7 +28,7 @@ const FIELD_CONTROL = cn(
 const TOGGLE_SLOT_W = "w-[5.75rem] shrink-0";
 
 /** Crew sub-rows: default ladder step, salaries, and training per role. */
-const CREW_ROLE_ROWS: { label: string; keys: WarehouseAircraftField["key"][] }[] = [
+const CREW_ROLE_ROWS: { label: string; keys: AircraftTypeField["key"][] }[] = [
   { label: "Minimum crew", keys: ["defaultMinimumCrew"] },
   { label: "Lead Pilot", keys: ["leadPilotSalary", "leadPilotTrainingCost"] },
   { label: "PIC", keys: ["picSalary", "picTrainingCost"] },
@@ -114,7 +114,7 @@ function AircraftFieldInput({
   onChange,
   dimmed,
 }: {
-  field: WarehouseAircraftField;
+  field: AircraftTypeField;
   value: string;
   onChange: (v: string) => void;
   dimmed?: boolean;
@@ -180,7 +180,7 @@ function FieldCell({
   onValueChange,
   onVisibilityChange,
 }: {
-  field: WarehouseAircraftField;
+  field: AircraftTypeField;
   value: string;
   visibility: Record<string, boolean>;
   onValueChange: (v: string) => void;
@@ -232,7 +232,7 @@ function CrewFieldGrid({
   onValueChange,
   onVisibilityChange,
 }: {
-  fields: WarehouseAircraftField[];
+  fields: AircraftTypeField[];
   values: Record<string, string>;
   visibility: Record<string, boolean>;
   onValueChange: (key: string, v: string) => void;
@@ -358,7 +358,7 @@ export function AircraftWorkbench({
 
   const groups = useMemo(() => {
     const order: string[] = [];
-    const byGroup = new Map<string, WarehouseAircraftField[]>();
+    const byGroup = new Map<string, AircraftTypeField[]>();
     for (const f of WAREHOUSE_AIRCRAFT_FIELDS) {
       if (!byGroup.has(f.group)) {
         byGroup.set(f.group, []);

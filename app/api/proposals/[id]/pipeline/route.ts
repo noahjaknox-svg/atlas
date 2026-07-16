@@ -44,7 +44,7 @@ export async function PATCH(
       },
       include: {
         prospect: true,
-        aircraftInstance: { include: { warehouseAircraft: true } },
+        aircraftInstance: { include: { aircraftType: true } },
         clientPortal: true,
         assumptions: {
           select: { assumptionName: true, value: true, confidence: true },
