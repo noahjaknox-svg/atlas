@@ -52,10 +52,10 @@ export const CREW_OPERATING_FIELD_META: Array<{
   label: string;
   type: "number" | "boolean";
 }> = [
-  { key: "basicEmptyWeightLb", label: "Basic empty weight (lb)", type: "number" },
-  { key: "mtowLb", label: "MTOW (lb)", type: "number" },
-  { key: "mzfwLb", label: "MZFW (lb)", type: "number" },
-  { key: "fullFuelLb", label: "Full fuel (lb)", type: "number" },
+  { key: "basicEmptyWeightLb", label: "Basic empty weight (lb) — this airframe", type: "number" },
+  { key: "mtowLb", label: "MTOW (lb) — this airframe", type: "number" },
+  { key: "mzfwLb", label: "MZFW (lb) — this airframe", type: "number" },
+  { key: "fullFuelLb", label: "Full / usable fuel (lb)", type: "number" },
   { key: "crewWeightLb", label: "Crew weight (lb)", type: "number" },
   { key: "paxWeightSummer", label: "Pax weight summer (lb)", type: "number" },
   { key: "paxWeightWinter", label: "Pax weight winter (lb)", type: "number" },
@@ -67,10 +67,10 @@ export const CREW_OPERATING_FIELD_META: Array<{
   { key: "routePercent", label: "Route %", type: "number" },
   { key: "seatCount", label: "Seat count", type: "number" },
   { key: "maxBagWeightLb", label: "Max bag weight (lb)", type: "number" },
-  { key: "landingRunwayPercent", label: "Landing runway %", type: "number" },
-  { key: "alternateRunwayPercent", label: "Alternate runway %", type: "number" },
-  { key: "wetRunwayPercent", label: "Wet runway %", type: "number" },
-  { key: "singleRunwayAlternate", label: "Single-runway alternate", type: "boolean" },
+  { key: "landingRunwayPercent", label: "Landing runway % (GOM)", type: "number" },
+  { key: "alternateRunwayPercent", label: "Alternate runway % (GOM)", type: "number" },
+  { key: "wetRunwayPercent", label: "Wet runway % (GOM)", type: "number" },
+  { key: "singleRunwayAlternate", label: "Require alt (single runway)", type: "boolean" },
 ];
 
 export function parseOperatingJson(raw: unknown): CrewOperatingData {
@@ -105,6 +105,7 @@ export type CrewInitialDataFile = {
     aircraftTypeCode: string;
     metric: "takeoffFieldLength" | "landingDistance";
     unit?: string;
+    source?: string;
     axes: CrewPerformanceAxes;
     values: CrewGridValues;
   }>;

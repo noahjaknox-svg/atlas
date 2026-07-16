@@ -77,4 +77,6 @@ export type AirportSearchHit = {
   municipality: string | null;
   isoCountry: string;
   type: string;
+  /** IANA timezone when known; omit when unknown. */
+  timeZone?: string;
 };

@@ -16,7 +16,7 @@ export default async function EmptyLegsAircraftProfilesPage() {
     <EmptyLegsShell
       {...shell}
       title="Pricing Profiles"
-      description="Hourly rates and quotable-time defaults by aircraft class"
+      description="Empty-leg hourly rates and quotable-time defaults for warehouse aircraft types"
     >
       <AircraftProfilesAdmin />
     </EmptyLegsShell>

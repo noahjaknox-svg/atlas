@@ -25,13 +25,41 @@ export {
   type ScheduleTimeMode,
 } from "@/lib/schedule/airport-timezone-format";
 
-function timezoneFromLatLon(lat: number, lon: number): string | null {
+export function timezoneFromLatLon(lat: number, lon: number): string | null {
   try {
     const zones = findTimezones(lat, lon);
-    return zones[0] ?? null;
+    const tz = zones[0] ?? null;
+    if (!tz || tz === "UTC") return null;
+    return tz;
   } catch {
     return null;
   }
+}
+
+/**
+ * Crew-safe IANA resolve: override → geo-tz(lat/lon) → static fallback → null.
+ * Never invents "UTC" (unlike schedule fill).
+ */
+export function resolveCrewAirportTimeZone(opts: {
+  icao: string;
+  lat?: number | null;
+  lon?: number | null;
+  override?: string | null;
+}): string | null {
+  const override = opts.override?.trim();
+  if (override && override !== "UTC") return override;
+
+  if (
+    opts.lat != null &&
+    opts.lon != null &&
+    Number.isFinite(opts.lat) &&
+    Number.isFinite(opts.lon)
+  ) {
+    const geo = timezoneFromLatLon(opts.lat, opts.lon);
+    if (geo) return geo;
+  }
+
+  return lookupFallbackTimezone(opts.icao);
 }
 
 function assignAlias(

@@ -47,10 +47,10 @@ export async function PATCH(
     const existing = await prisma.aircraftType.findUnique({ where: { id } });
     if (!existing) return jsonError("Not found", 404);
 
+    // Only empty-leg pricing fields — type identity/status belong to Data Hub.
     const updated = await prisma.aircraftType.update({
       where: { id },
       data: {
-        ...(typeof body.name === "string" ? { displayName: body.name.trim() } : {}),
         ...(body.defaultHourlyRate === null
           ? { emptyLegHourlyRate: null }
           : body.defaultHourlyRate != null
@@ -68,9 +68,6 @@ export async function PATCH(
                 emptyLegOffRoutingHours: new Decimal(body.offRoutingTimeAllowanceHours),
               }
             : {}),
-        ...(typeof body.isActive === "boolean"
-          ? { status: body.isActive ? "published" : "draft" }
-          : {}),
       },
     });
 
