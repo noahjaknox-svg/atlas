@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AirportReferenceWire, AirportRunwayWire } from "@/lib/ourairports/types";
 import type { CrewAirportRunwayWire } from "@/lib/ourairports/crew-wire";
 import { cn, formatFormattedNumber } from "@/lib/utils";
+import { CrewRunwaySlopesPanel } from "@/components/internal/data-hub/crew-runway-slopes-panel";
 
 type SearchHit = { id: string; icao: string; label: string };
 
@@ -411,6 +412,13 @@ export function AirportAuditWorkbench() {
                     <AuditField label="Primary gradient (%)" value={detail.crew.gradientPct} />
                     <AuditField label="Gradient high end" value={detail.crew.gradientHighEndRunway} />
                   </dl>
+                </AuditSection>
+
+                <AuditSection
+                  title="Runway slopes (Crew)"
+                  description="Verify slopes for Crew sync. Unverified runways export as level (null)."
+                >
+                  <CrewRunwaySlopesPanel icao={detail.icao} hideHeading />
                 </AuditSection>
 
                 {reference.runways.length > 0 ? (

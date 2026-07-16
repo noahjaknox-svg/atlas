@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +24,15 @@ type AirportInfo = {
   municipality: string | null;
 };
 
-export function CrewRunwaySlopesPanel() {
-  const [icao, setIcao] = useState("");
+export function CrewRunwaySlopesPanel({
+  icao: lockedIcao,
+  hideHeading = false,
+}: {
+  /** When set, loads this ICAO and hides the search field. */
+  icao?: string;
+  hideHeading?: boolean;
+} = {}) {
+  const [icao, setIcao] = useState(lockedIcao?.toUpperCase() ?? "");
   const [airport, setAirport] = useState<AirportInfo | null>(null);
   const [runways, setRunways] = useState<RunwayRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +71,13 @@ export function CrewRunwaySlopesPanel() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!lockedIcao) return;
+    const next = lockedIcao.trim().toUpperCase();
+    setIcao(next);
+    void load(next);
+  }, [lockedIcao, load]);
 
   function updateRunway(id: string, patch: Partial<RunwayRow>) {
     setRunways((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -127,33 +141,46 @@ export function CrewRunwaySlopesPanel() {
 
   return (
     <div>
-      <h2 className="mb-1 font-serif text-xl">4. Runway slopes (Crew)</h2>
-      <p className="mb-3 text-sm text-atlas-muted">
-        Verified slopes are served to the Crew app; unverified runways export as{" "}
-        <code className="text-atlas-accent">null</code> (level). OurAirports estimates are
-        read-only context for ops review.
-      </p>
+      {!hideHeading ? (
+        <>
+          <h2 className="mb-1 font-serif text-xl">Runway slopes (Crew)</h2>
+          <p className="mb-3 text-sm text-atlas-muted">
+            Verified slopes are served to the Crew app; unverified runways export as{" "}
+            <code className="text-atlas-accent">null</code> (level). OurAirports estimates are
+            read-only context for ops review.
+          </p>
+        </>
+      ) : (
+        <p className="mb-3 text-sm text-atlas-muted">
+          Verified slopes ship to Crew; unverified runways export as{" "}
+          <code className="text-atlas-accent">null</code> (level).
+        </p>
+      )}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <Label htmlFor="runway-slope-icao">ICAO</Label>
-          <Input
-            id="runway-slope-icao"
-            value={icao}
-            onChange={(e) => setIcao(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void load(icao);
-            }}
-            placeholder="KSEZ"
-            className="mt-1 w-32 font-mono"
-          />
+      {!lockedIcao ? (
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="runway-slope-icao">ICAO</Label>
+            <Input
+              id="runway-slope-icao"
+              value={icao}
+              onChange={(e) => setIcao(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void load(icao);
+              }}
+              placeholder="KSEZ"
+              className="mt-1 w-32 font-mono"
+            />
+          </div>
+          <Button type="button" onClick={() => void load(icao)} disabled={loading}>
+            {loading ? "Loading…" : "Load"}
+          </Button>
         </div>
-        <Button type="button" onClick={() => void load(icao)} disabled={loading}>
-          {loading ? "Loading…" : "Load"}
-        </Button>
-      </div>
+      ) : loading ? (
+        <p className="text-sm text-atlas-muted">Loading runways…</p>
+      ) : null}
 
-      {airport ? (
+      {!lockedIcao && airport ? (
         <p className="mt-3 text-sm text-atlas-text">
           {airport.icao} — {airport.name}
           {airport.municipality ? ` (${airport.municipality})` : ""}
@@ -161,6 +188,7 @@ export function CrewRunwaySlopesPanel() {
       ) : null}
 
       {message ? <p className="mt-2 text-sm text-atlas-muted">{message}</p> : null}
+
 
       {runways.length > 0 ? (
         <div className="mt-4 atlas-scroll overflow-x-auto rounded-lg border border-atlas-border">

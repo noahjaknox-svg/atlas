@@ -28,7 +28,7 @@ Internal reference for the read-only Crew integration. **Wire field names match 
 
 ## Admin UI
 
-Data Hub → **Aircraft types** (`/data?tab=aircraft`) for commercial + empty-leg type defaults, and **Fleet & performance** (`/data?tab=performance-data`) for Crew grids + tails.
+Data Hub → **Aircraft types** (`/data?tab=aircraft`) for commercial fields + AFM (PDF document + performance grids), and **Tails** (`/data?tab=tails`) for fleet registry + per-tail operating data. Bottom **PrismJet Crew** status shows sync health and gaps. Org policy lives under **General and Company**; runway slopes under **Airports**.
 
 Atlas owns the database — add types, grids, and tails here (not by editing Supabase directly).
 
@@ -51,9 +51,12 @@ Create all three so the type flows through `GET /api/v1/crew/sync`:
 
 **In the UI today:**
 
-- Types commercial fields: Data Hub → Aircraft types
-- Step 2–3: Fleet & performance tab (types table + Add tail dialog + performance import)
-- Step 2 grids: AFM upload on Fleet & performance (same shape as `/sync` `performance[]` + optional `performanceModel`), or **Load POH seed** / `POST /api/data/crew-import` from `atlas_initial_data.json`
+- Types commercial fields: Data Hub → Aircraft types → section tabs
+- Tails + operating: Data Hub → Tails → select/add tail
+- AFM **PDF** (human source of truth): Aircraft types → type → AFM / Performance → upload PDF (`afm_poh`, revision, effective date). Does **not** auto-fill grids or mark `afmStatus` complete.
+- AFM **grids** (machine form for Crew): same tab → JSON paste / seed (same shape as `/sync` `performance[]` + optional `performanceModel`), or **Load POH seed** from the Crew status panel / `POST /api/data/crew-import` from `atlas_initial_data.json`
+- Org policy: General and Company
+- Runway slopes: Airports → select airport
 
 Per-tail **full `operating{}`** ships on `/sync` (Crew does not merge type→tail). Type defaults in admin only seed new tails. **No CG** yet.
 
@@ -139,7 +142,7 @@ Response includes:
 - `fleet[]` — tails with full `operating` block and `updatedAt`
 - `performance[]` — per-type takeoff + landing grids (`metric`, `unit`, `axes`, `values`, optional `source`, `updatedAt`)
 - `airports[]` — home-base airports (same shape as `/airports`; optional `timeZone`)
-- `policy` — org runway / alternate thresholds (Crew PolicyStore; editable in Data Hub)
+- `policy` — org runway / alternate thresholds (Crew PolicyStore; editable under Data Hub → General)
 
 Granular routes (`/fleet`, `/aircraft-types`, `/performance/{typeId}`) optional; v1 integration targets **`/sync` only**.
 
@@ -217,7 +220,7 @@ Atlas internal UI uses the same reference via `GET /api/airports/search` and `GE
 - **Performance** metrics: `takeoff_field_length`, `landing_distance` (snake_case)
 - **Types** array still includes Atlas UUID `id` per type for bookkeeping
 
-Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Fleet & performance → Load POH seed.
+Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Crew status → Load POH seed.
 
 ## Blocked / later (do not invent data)
 

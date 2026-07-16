@@ -31,6 +31,14 @@ export async function GET() {
           afmNotes: t.afmNotes,
           afmStatus,
           derivedAfmNotes: afmNotes ?? null,
+          afmPdfUrl: t.afmPdfUrl,
+          afmPdfFileName: t.afmPdfFileName,
+          afmPdfCategory: t.afmPdfCategory,
+          afmPdfRevision: t.afmPdfRevision,
+          afmPdfEffectiveDate: t.afmPdfEffectiveDate
+            ? t.afmPdfEffectiveDate.toISOString().slice(0, 10)
+            : null,
+          afmPdfUploadedAt: t.afmPdfUploadedAt?.toISOString() ?? null,
           updatedAt: t.updatedAt.toISOString(),
         };
       }),
