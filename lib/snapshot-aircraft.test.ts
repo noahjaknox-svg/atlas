@@ -143,6 +143,7 @@ function mockAircraft(id: string, tail: string) {
       suppliesAnnual: null,
       airportFeesAnnual: null,
       performanceModel: null,
+      afmNotes: null,
       emptyLegHourlyRate: null,
       emptyLegMinimumHours: null,
       emptyLegOffRoutingHours: null,

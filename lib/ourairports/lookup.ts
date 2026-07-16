@@ -8,6 +8,10 @@ import { normalizeAirportCode } from "@/lib/ourairports/normalize-code";
 import type { AirportReferenceWire, AirportSearchHit } from "@/lib/ourairports/types";
 import { decimalToNumber } from "@/lib/ourairports/lookup-utils";
 import { rankAirportSearchHits } from "@/lib/ourairports/search-rank";
+import {
+  loadAirportTimezoneOverrides,
+  resolveCrewAirportTimeZone,
+} from "@/lib/schedule/airport-timezones";
 
 type AirportWithRelations = AirportReference & {
   runways: AirportRunwayReference[];
@@ -65,7 +69,11 @@ export function serializeAirportReference(
   };
 }
 
-export function serializeSearchHit(airport: AirportReference): AirportSearchHit {
+export function serializeSearchHit(
+  airport: AirportReference,
+  options?: { timeZone?: string | null }
+): AirportSearchHit {
+  const timeZone = options?.timeZone?.trim() || null;
   return {
     icao: airport.icao ?? airport.ident,
     ident: airport.ident,
@@ -74,6 +82,7 @@ export function serializeSearchHit(airport: AirportReference): AirportSearchHit 
     municipality: airport.municipality,
     isoCountry: airport.isoCountry,
     type: airport.airportType,
+    ...(timeZone ? { timeZone } : {}),
   };
 }
 
@@ -164,7 +173,20 @@ export async function searchAirportReference(
     }),
   ]);
 
-  return rankAirportSearchHits(q, [...usRows, ...nonUsRows].map(serializeSearchHit)).slice(0, limit);
+  const candidates = [...usRows, ...nonUsRows];
+  const icaos = candidates.map((r) => (r.icao ?? r.ident).toUpperCase());
+  const overridesByIcao = await loadAirportTimezoneOverrides(db, icaos);
+
+  const hits = candidates.map((row) => {
+    const icao = (row.icao ?? row.ident).toUpperCase();
+    const lat = decimalToNumber(row.latitudeDeg);
+    const lon = decimalToNumber(row.longitudeDeg);
+    const override = overridesByIcao[icao] ?? null;
+    const timeZone = resolveCrewAirportTimeZone({ icao, lat, lon, override });
+    return serializeSearchHit(row, { timeZone });
+  });
+
+  return rankAirportSearchHits(q, hits).slice(0, limit);
 }
 
 export async function enrichAirportReference(

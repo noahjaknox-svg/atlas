@@ -97,6 +97,7 @@ export async function importCrewInitialData(
         weightLb: grid.axes.weightLb,
         oatC: grid.axes.oatC,
         values: grid.values as CrewGridValues,
+        ...(grid.source ? { source: grid.source } : {}),
       },
       update: {
         unit: grid.unit ?? "ft",
@@ -104,6 +105,7 @@ export async function importCrewInitialData(
         weightLb: grid.axes.weightLb,
         oatC: grid.axes.oatC,
         values: grid.values as CrewGridValues,
+        ...(grid.source ? { source: grid.source } : {}),
       },
     });
   }

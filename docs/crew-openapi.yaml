@@ -149,6 +149,17 @@ components:
             - $ref: "#/components/schemas/PerformanceModel"
           description: Optional; omit when type has no model (Crew TypeDTO-safe)
           nullable: true
+        afmStatus:
+          type: string
+          enum: [complete, partial, missing]
+          description: >
+            complete = both POH grids + performanceModel;
+            partial = some pieces or stand-in landing;
+            missing = no usable AFM data
+        afmNotes:
+          type: string
+          nullable: true
+          description: Human-readable AFM provenance / incompleteness notes
         updatedAt: { type: string, format: date-time }
     PerformanceModel:
       type: object
@@ -242,6 +253,10 @@ components:
         values:
           type: array
           description: "3D grid values[paIdx][weightIdx][oatIdx], null outside envelope"
+        source:
+          type: string
+          nullable: true
+          description: Provenance citation (POH/AFM section or calibrated stand-in note)
         updatedAt: { type: string, format: date-time }
     CrewAirport:
       type: object
@@ -267,6 +282,11 @@ components:
           description: Primary (longest open) runway designator, e.g. 03/21
         lat: { type: number, nullable: true }
         lon: { type: number, nullable: true }
+        timeZone:
+          type: string
+          nullable: true
+          description: IANA timezone when known (e.g. America/Phoenix); omit when unknown
+          example: America/Phoenix
         gradientPct:
           type: number
           nullable: true

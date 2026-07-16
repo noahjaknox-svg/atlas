@@ -53,9 +53,13 @@ Create all three so the type flows through `GET /api/v1/crew/sync`:
 
 - Types commercial fields: Data Hub → Aircraft types
 - Step 2–3: Fleet & performance tab (types table + Add tail dialog + performance import)
-- Step 2 grids: import from Crew export JSON (bundled seed or **Load bundled seed** / `POST /api/data/crew-import`), or POST grid JSON to `/api/data/crew-performance`
+- Step 2 grids: AFM upload on Fleet & performance (same shape as `/sync` `performance[]` + optional `performanceModel`), or **Load POH seed** / `POST /api/data/crew-import` from `atlas_initial_data.json`
 
-Per-tail **basic empty weight / MTOW** are first-class columns (also mirrored in the `operating` block for Crew wire compatibility).
+Per-tail **full `operating{}`** ships on `/sync` (Crew does not merge type→tail). Type defaults in admin only seed new tails. **No CG** yet.
+
+Canonical Crew type codes: **B300**, **CL35**, **LR45** (`LJ45` aliases to `LR45` on the wire).
+
+Each type on `/sync` includes **`afmStatus`**: `complete` | `partial` | `missing` (+ optional `afmNotes`).
 
 ## Local setup
 
@@ -131,10 +135,11 @@ Optional: `?ifModifiedSince=<ISO8601>` for conditional refresh (exact 304 vs `{ 
 Response includes:
 
 - `syncedAt`
-- `aircraftTypes[]` — type catalog with `updatedAt`; optional `performanceModel` (B300 = Crew `kingAir350`; omit/null on types without data)
-- `fleet[]` — tails with `operating` block and `updatedAt`
-- `performance[]` — per-type takeoff + landing grids (`metric`, `unit`, `axes`, `values`, `updatedAt`)
-- `policy` — org runway / alternate thresholds (Crew PolicyStore; Atlas ships defaults)
+- `aircraftTypes[]` — type catalog with `updatedAt`; optional `performanceModel`; **`afmStatus`** (`complete` | `partial` | `missing`) + optional `afmNotes`
+- `fleet[]` — tails with full `operating` block and `updatedAt`
+- `performance[]` — per-type takeoff + landing grids (`metric`, `unit`, `axes`, `values`, optional `source`, `updatedAt`)
+- `airports[]` — home-base airports (same shape as `/airports`; optional `timeZone`)
+- `policy` — org runway / alternate thresholds (Crew PolicyStore; editable in Data Hub)
 
 Granular routes (`/fleet`, `/aircraft-types`, `/performance/{typeId}`) optional; v1 integration targets **`/sync` only**.
 
@@ -183,6 +188,7 @@ Each airport in `GET /api/v1/crew/airports` uses these **exact** field names:
 | `runwayId` | string \| null | Primary runway designator, e.g. `03/21` |
 | `lat` | number \| null | WGS84 latitude |
 | `lon` | number \| null | WGS84 longitude |
+| `timeZone` | string (optional) | IANA zone (e.g. `America/Phoenix`); omit when unknown — never raw offsets |
 | `gradientPct` | number \| null | Primary runway verified slope (%); null = level |
 | `gradientHighEndRunway` | string \| null | Higher runway end ident on primary runway |
 | `terrain` | boolean | Apply terrain correction in Crew when true |
@@ -211,7 +217,14 @@ Atlas internal UI uses the same reference via `GET /api/airports/search` and `GE
 - **Performance** metrics: `takeoff_field_length`, `landing_distance` (snake_case)
 - **Types** array still includes Atlas UUID `id` per type for bookkeeping
 
-Import accepts the same shapes via `npm run db:crew-import` or Data Hub → PrismJet Crew Data → Load bundled seed.
+Import accepts the same shapes via `npm run db:crew-import` or Data Hub → Fleet & performance → Load POH seed.
+
+## Blocked / later (do not invent data)
+
+- **B300 landing POH** — still calibrated stand-in; replace via AFM upload when transcribed → then `afmStatus: complete`
+- **CL35 / LR45 AFM + operating** — wait for Nicolas; keep `afmStatus: missing` until real upload
+- **`POST /api/v1/calc/trip`** — Phase B when quotes need it; Crew supplies golden fixtures
+- **CG / moment arms** — out of scope until Crew asks
 
 ## References
 

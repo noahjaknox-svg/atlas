@@ -105,6 +105,7 @@ export function normalizeCrewInitialData(raw: unknown): CrewInitialDataFile {
       aircraftTypeCode: typeCode(grid),
       metric: metricFromWire(grid.metric),
       unit: grid.unit ?? "ft",
+      ...(grid.source ? { source: grid.source } : {}),
       axes: grid.axes,
       values: grid.values,
     })),

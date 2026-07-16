@@ -7,6 +7,7 @@ import { aircraftTypeLabel } from "@/lib/charter/empty-legs/price-placement";
 
 // URL path kept for compatibility, but these "pricing profiles" now operate on
 // AircraftType empty-leg default fields (unified aircraft model).
+// Type creation lives in Data Hub / warehouse — empty legs only lists + edits pricing.
 type AircraftTypeRow = {
   id: string;
   displayName: string;
@@ -48,33 +49,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    await requireDepartmentAccess("charter");
-    const body = await request.json();
-    if (!body.name?.trim()) return jsonError("name is required", 400);
-    if (body.defaultHourlyRate == null || Number.isNaN(Number(body.defaultHourlyRate))) {
-      return jsonError("defaultHourlyRate is required", 400);
-    }
-
-    const created = await prisma.aircraftType.create({
-      data: {
-        displayName: String(body.name).trim(),
-        emptyLegHourlyRate: new Decimal(body.defaultHourlyRate),
-        emptyLegMinimumHours:
-          body.minimumQuotableTimeFallback != null
-            ? new Decimal(body.minimumQuotableTimeFallback)
-            : null,
-        emptyLegOffRoutingHours:
-          body.offRoutingTimeAllowanceHours != null
-            ? new Decimal(body.offRoutingTimeAllowanceHours)
-            : null,
-        status: body.isActive === false ? "draft" : "published",
-      },
-    });
-
-    return jsonOk(serialize(created), 201);
-  } catch (e) {
-    return handleApiError(e);
-  }
+export async function POST() {
+  return jsonError(
+    "Aircraft types are created in Data Hub. Empty legs can only edit pricing on existing types.",
+    405
+  );
 }

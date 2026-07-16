@@ -305,6 +305,8 @@ model AircraftType {
   airportFeesAnnual         Int?                @map("airport_fees_annual")
   /// Optional Crew PerformanceModel (slope/wind/climb refs).
   performanceModel          Json?               @map("performance_model") @db.JsonB
+  /// Ops notes for AFM completeness (also derived notes may ship on /sync).
+  afmNotes                  String?             @map("afm_notes") @db.Text
   /// Empty-leg calculated pricing defaults (type-level).
   emptyLegHourlyRate            Decimal?        @map("empty_leg_hourly_rate") @db.Decimal(12, 2)
   emptyLegMinimumHours          Decimal?        @map("empty_leg_minimum_hours") @db.Decimal(6, 2)
@@ -377,6 +379,8 @@ model AircraftPerformanceGrid {
   weightLb           Int[]                      @map("weight_lb")
   oatC               Int[]                      @map("oat_c")
   values             Json                       @db.JsonB
+  /// Provenance e.g. "King Air 350 B300 POH Section 5…" or "calibrated stand-in".
+  source             String?                    @db.Text
   createdAt          DateTime                   @default(now()) @map("created_at")
   updatedAt          DateTime                   @updatedAt @map("updated_at")
 
@@ -384,6 +388,16 @@ model AircraftPerformanceGrid {
 
   @@unique([aircraftTypeId, metric])
   @@map("aircraft_performance_grids")
+}
+
+/** Org Crew PolicyStore thresholds (singleton id = default). */
+model CrewOrgPolicy {
+  id         String   @id @default("default")
+  thresholds Json     @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("crew_org_policy")
 }
 
 // One row per FBO (Atlas Database.xlsx "FBOs" tab).

@@ -43,6 +43,8 @@ export type CrewAirportWire = {
   terrain: boolean;
   /** True when more than one open runway exists. */
   multiRunway: boolean;
+  /** IANA timezone when known; omit when unknown (Crew treats optional). */
+  timeZone?: string;
   updatedAt: string;
   runways: CrewAirportRunwayWire[];
 };
@@ -120,7 +122,10 @@ function isTerrainAirport(
   return false;
 }
 
-export function serializeCrewAirport(airport: AirportWithRelations): CrewAirportWire {
+export function serializeCrewAirport(
+  airport: AirportWithRelations,
+  options?: { timeZone?: string | null }
+): CrewAirportWire {
   const icao = airport.icao ?? airport.ident;
   const openRunways = airport.runways
     .filter((r) => !r.closed)
@@ -128,6 +133,7 @@ export function serializeCrewAirport(airport: AirportWithRelations): CrewAirport
 
   const primary = openRunways[0] ?? null;
   const primaryGradient = primary ? servedRunwayGradient(primary) : null;
+  const timeZone = options?.timeZone?.trim() || null;
 
   return {
     id: icao,
@@ -146,6 +152,7 @@ export function serializeCrewAirport(airport: AirportWithRelations): CrewAirport
       openRunways.length
     ),
     multiRunway: openRunways.length > 1,
+    ...(timeZone ? { timeZone } : {}),
     updatedAt: airport.updatedAt.toISOString(),
     runways: airport.runways
       .filter((r) => !r.closed)
