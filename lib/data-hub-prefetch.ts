@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { dec } from "@/lib/data-hub-serialize";
 import { fetchDataHubList } from "@/lib/data-hub-list";
 import { parseDataHubFilters, buildDataHubQuery } from "@/lib/data-hub-filters";
-import { serializeWarehouseAircraft } from "@/lib/warehouse-aircraft-fields";
+import { serializeAircraftType } from "@/lib/warehouse-aircraft-fields";
 
 export type DataHubListPayload = {
   rows: Record<string, unknown>[];
@@ -43,14 +43,14 @@ export async function prefetchDataHubTab(
           request,
           "aircraft",
           (where, { skip, take }) =>
-            prisma.warehouseAircraft.findMany({
+            prisma.aircraftType.findMany({
               where,
               skip,
               take,
               orderBy: { displayName: "asc" },
             }),
-          () => prisma.warehouseAircraft.count(),
-          (rows) => rows.map(serializeWarehouseAircraft)
+          () => prisma.aircraftType.count(),
+          (rows) => rows.map(serializeAircraftType)
         )
       );
 

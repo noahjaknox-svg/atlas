@@ -12,7 +12,7 @@ async function main() {
     prisma.user.count(),
     prisma.proposal.count(),
     prisma.aircraftInstance.count(),
-    prisma.warehouseAircraft.count(),
+    prisma.aircraftType.count(),
     prisma.airportReference.count(),
   ]);
 

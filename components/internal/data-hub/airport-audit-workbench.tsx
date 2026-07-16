@@ -14,6 +14,8 @@ type FboRow = {
   hangarCostPerSqft: string | null;
 };
 
+type TimezoneSource = "geo_tz" | "fallback_map" | "override" | "none";
+
 type AirportAuditDetail = {
   icao: string;
   ident: string;
@@ -25,6 +27,12 @@ type AirportAuditDetail = {
   latitudeDeg: number | null;
   longitudeDeg: number | null;
   longestRunwayFt: number | null;
+  timezone?: {
+    iana: string | null;
+    abbreviation: string | null;
+    source: TimezoneSource;
+    confidence: "high" | "medium" | "low" | "unknown";
+  };
   fuelPrice: string | null;
   hangarMonthly: string | null;
   hasAtlasPricing: boolean;
@@ -39,6 +47,28 @@ type AirportAuditDetail = {
     runways: CrewAirportRunwayWire[];
   };
 };
+
+function timezoneSourceHint(source: TimezoneSource | undefined): string | undefined {
+  switch (source) {
+    case "geo_tz":
+      return "Computed from airport coordinates";
+    case "override":
+      return "Staff override";
+    case "fallback_map":
+      return "Fallback map (not from coordinates)";
+    default:
+      return undefined;
+  }
+}
+
+function timezoneDisplay(detail: AirportAuditDetail): string | null {
+  const tz = detail.timezone;
+  if (!tz?.iana) return null;
+  if (tz.abbreviation && tz.abbreviation !== tz.iana) {
+    return `${tz.iana} (${tz.abbreviation})`;
+  }
+  return tz.iana;
+}
 
 const FIELD_CONTROL = cn(
   "flex h-10 w-full rounded-md border border-atlas-border bg-atlas-surface px-3 py-2 text-sm text-atlas-text",
@@ -350,6 +380,11 @@ export function AirportAuditWorkbench() {
                     <AuditField label="Region" value={reference.regionName ?? reference.isoRegion} />
                     <AuditField label="Country" value={reference.countryName ?? reference.isoCountry} />
                     <AuditField label="Continent" value={reference.continent} />
+                    <AuditField
+                      label="Timezone"
+                      value={timezoneDisplay(detail)}
+                      hint={timezoneSourceHint(detail.timezone?.source)}
+                    />
                     <AuditField label="Latitude" value={reference.latitudeDeg} />
                     <AuditField label="Longitude" value={reference.longitudeDeg} />
                     <AuditField label="Elevation (ft)" value={reference.elevationFt} />

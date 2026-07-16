@@ -1,13 +1,14 @@
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { Decimal } from "@prisma/client/runtime/library";
+import { aircraftTypeLabel } from "@/lib/charter/empty-legs/price-placement";
 
-function serialize(r: {
+type TailWithType = {
   id: string;
   tailNumber: string;
-  aircraftType: string;
+  aircraftTypeId: string;
   publicDisplayType: string | null;
-  aircraftProfileId: string | null;
   seatCount: number | null;
   luggageNote: string | null;
   wifi: boolean;
@@ -15,16 +16,24 @@ function serialize(r: {
   description: string | null;
   primaryPhotoUrl: string | null;
   photoUrlsJson: unknown;
-  isActive: boolean;
+  isPublicActive: boolean;
+  emptyLegHourlyRateOverride: Decimal | null;
   createdAt: Date;
   updatedAt: Date;
-}) {
+  aircraftType: {
+    manufacturer: string | null;
+    model: string | null;
+    displayName: string;
+  } | null;
+};
+
+function serialize(r: TailWithType) {
   return {
     id: r.id,
     tailNumber: r.tailNumber,
-    aircraftType: r.aircraftType,
+    aircraftTypeId: r.aircraftTypeId,
+    aircraftType: aircraftTypeLabel(r.aircraftType),
     publicDisplayType: r.publicDisplayType,
-    aircraftProfileId: r.aircraftProfileId,
     seatCount: r.seatCount,
     luggageNote: r.luggageNote,
     wifi: r.wifi,
@@ -32,7 +41,9 @@ function serialize(r: {
     description: r.description,
     primaryPhotoUrl: r.primaryPhotoUrl,
     photoUrls: Array.isArray(r.photoUrlsJson) ? (r.photoUrlsJson as string[]) : [],
-    isActive: r.isActive,
+    isPublicActive: r.isPublicActive,
+    emptyLegHourlyRateOverride:
+      r.emptyLegHourlyRateOverride != null ? Number(r.emptyLegHourlyRateOverride) : null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -61,7 +72,7 @@ export async function PATCH(
     const tailNumber = decodeURIComponent(rawTail).trim().toUpperCase();
     const body = await request.json();
 
-    const existing = await prisma.emptyLegFleetTailConfig.findUnique({
+    const existing = await prisma.aircraftTail.findUnique({
       where: { tailNumber },
     });
 
@@ -71,15 +82,14 @@ export async function PATCH(
       body.photoUrls !== undefined ? parseStringList(body.photoUrls, "\n") : undefined;
 
     if (!existing) {
-      if (!body.aircraftType?.trim()) {
-        return jsonError("aircraftType is required when creating a fleet config", 400);
+      if (!body.aircraftTypeId?.trim()) {
+        return jsonError("aircraftTypeId is required when creating a fleet tail", 400);
       }
-      const created = await prisma.emptyLegFleetTailConfig.create({
+      const created = await prisma.aircraftTail.create({
         data: {
           tailNumber,
-          aircraftType: String(body.aircraftType).trim(),
+          aircraftTypeId: String(body.aircraftTypeId).trim(),
           publicDisplayType: body.publicDisplayType?.trim() || null,
-          aircraftProfileId: body.aircraftProfileId || null,
           seatCount: body.seatCount != null ? Number(body.seatCount) : null,
           luggageNote: body.luggageNote ?? null,
           wifi: Boolean(body.wifi),
@@ -87,23 +97,26 @@ export async function PATCH(
           description: body.description ?? null,
           primaryPhotoUrl: body.primaryPhotoUrl ?? null,
           photoUrlsJson: photoUrls ?? [],
-          isActive: body.isActive !== false,
+          isPublicActive: body.isPublicActive !== false,
+          emptyLegHourlyRateOverride:
+            body.emptyLegHourlyRateOverride != null &&
+            body.emptyLegHourlyRateOverride !== ""
+              ? new Decimal(body.emptyLegHourlyRateOverride)
+              : null,
         },
+        include: { aircraftType: true },
       });
       return jsonOk(serialize(created), 201);
     }
 
-    const updated = await prisma.emptyLegFleetTailConfig.update({
+    const updated = await prisma.aircraftTail.update({
       where: { tailNumber },
       data: {
-        ...(typeof body.aircraftType === "string"
-          ? { aircraftType: body.aircraftType.trim() }
+        ...(typeof body.aircraftTypeId === "string" && body.aircraftTypeId.trim()
+          ? { aircraftTypeId: body.aircraftTypeId.trim() }
           : {}),
         ...(body.publicDisplayType !== undefined
           ? { publicDisplayType: body.publicDisplayType?.trim() || null }
-          : {}),
-        ...(body.aircraftProfileId !== undefined
-          ? { aircraftProfileId: body.aircraftProfileId || null }
           : {}),
         ...(body.seatCount === null
           ? { seatCount: null }
@@ -118,8 +131,19 @@ export async function PATCH(
           ? { primaryPhotoUrl: body.primaryPhotoUrl }
           : {}),
         ...(photoUrls !== undefined ? { photoUrlsJson: photoUrls } : {}),
-        ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
+        ...(typeof body.isPublicActive === "boolean"
+          ? { isPublicActive: body.isPublicActive }
+          : {}),
+        ...(body.emptyLegHourlyRateOverride === null ||
+        body.emptyLegHourlyRateOverride === ""
+          ? { emptyLegHourlyRateOverride: null }
+          : body.emptyLegHourlyRateOverride != null
+            ? {
+                emptyLegHourlyRateOverride: new Decimal(body.emptyLegHourlyRateOverride),
+              }
+            : {}),
       },
+      include: { aircraftType: true },
     });
 
     return jsonOk(serialize(updated));

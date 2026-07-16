@@ -55,7 +55,7 @@ function buildMatchFleet(
 }
 
 async function loadActiveFleet(db: PrismaClient) {
-  return db.crewFleetAircraft.findMany({
+  return db.aircraftTail.findMany({
     where: { status: "active" },
     include: {
       aircraftType: {

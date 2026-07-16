@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    warehouseAircraft: { findUnique: vi.fn() },
+    aircraftType: { findUnique: vi.fn() },
     aircraftInstance: { findUnique: vi.fn() },
     fboHangarOverride: { findUnique: vi.fn() },
   },
@@ -17,13 +17,13 @@ vi.mock("@/lib/fbo-airport-lookup", () => ({
 }));
 
 vi.mock("@/lib/resolve-warehouse-aircraft-id", () => ({
-  resolveValidWarehouseAircraftId: vi.fn(),
+  resolveValidAircraftTypeId: vi.fn(),
 }));
 
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/company-settings";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
-import { resolveValidWarehouseAircraftId } from "@/lib/resolve-warehouse-aircraft-id";
+import { resolveValidAircraftTypeId } from "@/lib/resolve-warehouse-aircraft-id";
 import { resolveAircraftDefaults } from "@/lib/resolve-aircraft-defaults";
 
 const CHALLENGER = {
@@ -87,19 +87,19 @@ describe("resolveAircraftDefaults", () => {
     vi.clearAllMocks();
     vi.mocked(getCompanySettings).mockResolvedValue(SETTINGS as never);
     vi.mocked(findFbosAtAirport).mockResolvedValue([]);
-    vi.mocked(resolveValidWarehouseAircraftId).mockResolvedValue({
+    vi.mocked(resolveValidAircraftTypeId).mockResolvedValue({
       id: CHALLENGER.id,
       source: "instance",
     } as never);
     vi.mocked(prisma.aircraftInstance.findUnique).mockResolvedValue({
       id: "inst-1",
-      warehouseAircraftId: CHALLENGER.id,
+      aircraftTypeId: CHALLENGER.id,
       proposedHomeBaseIcao: null,
       fboName: null,
-      warehouseAircraft: CHALLENGER,
+      aircraftType: CHALLENGER,
       proposal: { prospect: { opportunityType: "aircraft_management" } },
     } as never);
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(CHALLENGER as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(CHALLENGER as never);
   });
 
   it("does not inject aircraft_year for Challenger 300 in general profile mode", async () => {
@@ -121,7 +121,7 @@ describe("resolveAircraftDefaults", () => {
   });
 
   it("omits optional warehouse fields when null", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
       ...CHALLENGER,
       emptyRange: null,
       averageCruiseSpeed: null,

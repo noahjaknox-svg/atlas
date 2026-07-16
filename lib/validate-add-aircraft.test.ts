@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    warehouseAircraft: { findUnique: vi.fn() },
+    aircraftType: { findUnique: vi.fn() },
   },
 }));
 
@@ -26,7 +26,7 @@ describe("validateAddAircraftBody", () => {
   });
 
   it("rejects unknown warehouse aircraft id", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(null);
     const result = await validateAddAircraftBody({
       aircraftMasterId: "missing-id",
       proposedHomeBase: "KSDL",
@@ -37,7 +37,7 @@ describe("validateAddAircraftBody", () => {
   });
 
   it("rejects invalid home base code", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
       id: "wa-1",
       status: "published",
       displayName: "Bombardier Challenger 300",
@@ -55,7 +55,7 @@ describe("validateAddAircraftBody", () => {
   });
 
   it("rejects FBO not at airport", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
       id: "wa-1",
       status: "published",
       displayName: "Bombardier Challenger 300",
@@ -76,7 +76,7 @@ describe("validateAddAircraftBody", () => {
   });
 
   it("accepts valid payload", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
       id: "713b06f8-7342-4eab-a9b8-602c4aa2a5ad",
       status: "published",
       displayName: "Bombardier Challenger 300",

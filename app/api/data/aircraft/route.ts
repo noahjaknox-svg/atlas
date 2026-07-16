@@ -1,13 +1,14 @@
+import type { Prisma } from "@prisma/client";
 import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { fetchDataHubList } from "@/lib/data-hub-list";
 import {
   applyPublishDefaults,
-  buildWarehouseAircraftData,
+  buildAircraftTypeData,
   getMissingPublishFields,
   parseSaveAs,
-  serializeWarehouseAircraft,
+  serializeAircraftType,
 } from "@/lib/warehouse-aircraft-fields";
 import { defaultWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-proforma-visibility";
 
@@ -18,14 +19,14 @@ export async function GET(request: Request) {
       request,
       "aircraft",
       (where, { skip, take }) =>
-        prisma.warehouseAircraft.findMany({
+        prisma.aircraftType.findMany({
           where,
           skip,
           take,
           orderBy: { displayName: "asc" },
         }),
-      () => prisma.warehouseAircraft.count(),
-      (rows) => rows.map(serializeWarehouseAircraft)
+      () => prisma.aircraftType.count(),
+      (rows) => rows.map(serializeAircraftType)
     );
     return jsonOk(result);
   } catch (e) {
@@ -37,7 +38,7 @@ async function uniqueDisplayName(base: string): Promise<string> {
   let candidate = base;
   let n = 2;
   // eslint-disable-next-line no-await-in-loop
-  while (await prisma.warehouseAircraft.findUnique({ where: { displayName: candidate } })) {
+  while (await prisma.aircraftType.findUnique({ where: { displayName: candidate } })) {
     candidate = `${base} (${n})`;
     n += 1;
   }
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     if (body.copyFromId) {
-      const source = await prisma.warehouseAircraft.findUnique({
+      const source = await prisma.aircraftType.findUnique({
         where: { id: String(body.copyFromId) },
       });
       if (!source) return jsonError("Source aircraft not found", 404);
@@ -68,16 +69,17 @@ export async function POST(request: Request) {
       void createdAt;
       void updatedAt;
       void status;
-      const row = await prisma.warehouseAircraft.create({
+      const row = await prisma.aircraftType.create({
         data: {
           ...rest,
           status: "draft",
           displayName: await uniqueDisplayName(`${displayName} (Copy)`),
           proformaFieldVisibility:
             source.proformaFieldVisibility ?? defaultWarehouseFieldVisibility(),
-        },
+          performanceModel: source.performanceModel ?? undefined,
+        } as Prisma.AircraftTypeUncheckedCreateInput,
       });
-      return jsonOk(serializeWarehouseAircraft(row), 201);
+      return jsonOk(serializeAircraftType(row), 201);
     }
 
     const displayName = String(body.displayName ?? "").trim();
@@ -91,15 +93,15 @@ export async function POST(request: Request) {
       }
     }
 
-    let data = buildWarehouseAircraftData(body);
+    let data = buildAircraftTypeData(body);
     data.displayName = displayName;
     data.status = saveAs === "publish" ? "published" : "draft";
     data.proformaFieldVisibility =
       body.proformaFieldVisibility ?? defaultWarehouseFieldVisibility();
     if (saveAs === "publish") data = applyPublishDefaults(data);
 
-    const row = await prisma.warehouseAircraft.create({ data });
-    return jsonOk(serializeWarehouseAircraft(row), 201);
+    const row = await prisma.aircraftType.create({ data });
+    return jsonOk(serializeAircraftType(row), 201);
   } catch (e) {
     return handleApiError(e);
   }

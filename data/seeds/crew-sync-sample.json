@@ -6,6 +6,15 @@
       "code": "B300",
       "manufacturer": "Beechcraft",
       "model": "King Air 350",
+      "performanceModel": {
+        "takeoffSlopePctPerPct": 0.08,
+        "headwindFactorPerKt": 0.008,
+        "tailwindFactorPerKt": 0.024,
+        "landingSlopePctPerPct": 0.05,
+        "landingRefFt": 2940,
+        "climbRefLow": { "altitudeFt": 5000, "minutes": 3, "fuelLb": 54, "nm": 8 },
+        "climbRefHigh": { "altitudeFt": 25000, "minutes": 16, "fuelLb": 237, "nm": 52 }
+      },
       "updatedAt": "2026-06-13T06:10:02.862Z"
     }
   ],
@@ -2597,5 +2606,18 @@
       ],
       "updatedAt": "2026-06-13T06:10:03.222Z"
     }
-  ]
+  ],
+  "policy": {
+    "minRunwayFt": 5000,
+    "highElevationFt": 6000,
+    "highElevationMinRunwayFt": 7000,
+    "shortRunwayFt": 6000,
+    "midElevationFt": 5000,
+    "longRunwayFt": 8000,
+    "freeGreenElevationFt": 3000,
+    "tightMarginFt": 1000,
+    "alternateMinCeilingFt": 2000,
+    "alternateMinVisibilitySm": 3,
+    "forecastLeadMinutes": 120
+  }
 }

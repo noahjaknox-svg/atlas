@@ -26,7 +26,7 @@ export default async function SchedulePage() {
   const initialFleet = timelineData.fleet.map((f) => ({
     tailNumber: f.tailNumber,
     homeBase: f.homeBase,
-    typeCode: f.typeCode,
+    typeCode: f.typeCode ?? "",
   }));
 
   const shell = getInternalShellProps(user);

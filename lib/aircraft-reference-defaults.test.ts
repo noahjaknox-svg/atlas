@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    warehouseAircraft: { findUnique: vi.fn() },
+    aircraftType: { findUnique: vi.fn() },
     fboHangarOverride: { findUnique: vi.fn() },
   },
 }));
@@ -77,9 +77,9 @@ describe("loadAircraftReferenceDefaults", () => {
   });
 
   it("maps hourly rates, finances, crew ladder step, and company defaults", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(AIRCRAFT as never);
 
-    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
+    const map = await loadAircraftReferenceDefaults({ aircraftTypeId: "wa-1" });
 
     expect(map.engine_program_rate).toBe("1150");
     expect(map.home_fuel_pct).toBe("70");
@@ -96,20 +96,20 @@ describe("loadAircraftReferenceDefaults", () => {
   });
 
   it("maps null default minimum crew and lead training to zero in Pulled", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
       ...AIRCRAFT,
       defaultMinimumCrew: null,
       leadPilotTrainingCost: null,
     } as never);
 
-    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "wa-1" });
+    const map = await loadAircraftReferenceDefaults({ aircraftTypeId: "wa-1" });
 
     expect(map.default_minimum_crew).toBe("0");
     expect(map.lead_pilot_training).toBe("0");
   });
 
   it("uses FBO base fuel rate and sqft-derived hangar when an FBO matches", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(AIRCRAFT as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(AIRCRAFT as never);
     vi.mocked(findFbosAtAirport).mockResolvedValue([
       {
         id: "fbo-1",
@@ -122,7 +122,7 @@ describe("loadAircraftReferenceDefaults", () => {
     vi.mocked(prisma.fboHangarOverride.findUnique).mockResolvedValue(null as never);
 
     const map = await loadAircraftReferenceDefaults({
-      warehouseAircraftId: "wa-1",
+      aircraftTypeId: "wa-1",
       airportIcao: "KSDL",
       fboName: "PrismJet",
     });
@@ -133,9 +133,9 @@ describe("loadAircraftReferenceDefaults", () => {
   });
 
   it("returns an empty map when the aircraft is missing", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(null as never);
 
-    const map = await loadAircraftReferenceDefaults({ warehouseAircraftId: "missing" });
+    const map = await loadAircraftReferenceDefaults({ aircraftTypeId: "missing" });
 
     expect(map).toEqual({});
   });

@@ -34,7 +34,7 @@ export async function GET(
     const homeIcao = url.searchParams.get("homeIcao")?.trim();
     const fboName = url.searchParams.get("fboName")?.trim();
     const usageType = url.searchParams.get("usageType")?.trim();
-    const warehouseAircraftId = url.searchParams.get("warehouseAircraftId")?.trim();
+    const aircraftTypeId = url.searchParams.get("aircraftTypeId")?.trim();
 
     if (homeIcao) {
       const code = homeIcao.toUpperCase();
@@ -45,7 +45,7 @@ export async function GET(
     if (usageType === "part_91_135" || usageType === "part_91") {
       assumptions.usage_type = usageType;
     }
-    if (warehouseAircraftId) assumptions.aircraft_master_id = warehouseAircraftId;
+    if (aircraftTypeId) assumptions.aircraft_master_id = aircraftTypeId;
 
     const defaults = await resolveAircraftDefaults({
       aircraftInstanceId: aircraftId,

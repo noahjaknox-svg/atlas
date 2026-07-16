@@ -33,7 +33,7 @@ export async function GET(
             : []),
         ],
       },
-      include: { warehouseAircraft: true },
+      include: { aircraftType: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -63,7 +63,7 @@ export async function GET(
         proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
         estimatedValue: ac.estimatedValue,
         valueSource: ac.valueSource,
-        aircraftMaster: ac.warehouseAircraft,
+        aircraftMaster: ac.aircraftType,
         assumptions: assumptionMap,
       };
     });
@@ -107,9 +107,9 @@ export async function POST(
         proposalId,
         proposedHomeBaseIcao: homeBase,
         fboName: input.fboName,
-        warehouseAircraftId: input.aircraftMasterId,
+        aircraftTypeId: input.aircraftMasterId,
       },
-      include: { warehouseAircraft: true },
+      include: { aircraftType: true },
     });
 
     const acCategory = aircraftAssumptionCategory(aircraft.id);
@@ -148,7 +148,7 @@ export async function POST(
 
     const refreshed = await prisma.aircraftInstance.findUnique({
       where: { id: aircraft.id },
-      include: { warehouseAircraft: true },
+      include: { aircraftType: true },
     });
 
     const { ensureThreeScenarios } = await import("@/lib/scenarios");

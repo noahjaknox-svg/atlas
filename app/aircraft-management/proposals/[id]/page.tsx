@@ -68,7 +68,7 @@ export default async function ProposalWorkspacePage({
               where: { id },
               include: {
                 prospect: true,
-                aircraftInstance: { include: { warehouseAircraft: true } },
+                aircraftInstance: { include: { aircraftType: true } },
                 assumptions: true,
                 sections: { orderBy: { sortOrder: "asc" } },
                 scenarios: true,
@@ -129,15 +129,15 @@ export default async function ProposalWorkspacePage({
       proposedHomeBaseIcao: ac.proposedHomeBaseIcao,
       estimatedValue: ac.estimatedValue?.toString() ?? null,
       valueSource: ac.valueSource,
-      aircraftMaster: ac.warehouseAircraft
+      aircraftMaster: ac.aircraftType
         ? {
-            manufacturer: ac.warehouseAircraft.manufacturer,
-            model: ac.warehouseAircraft.model,
+            manufacturer: ac.aircraftType.manufacturer,
+            model: ac.aircraftType.model,
           }
         : null,
     };
     if (ac.fboName) assumptionMap.fbo_name = ac.fboName;
-    if (ac.warehouseAircraftId) assumptionMap.aircraft_master_id = ac.warehouseAircraftId;
+    if (ac.aircraftTypeId) assumptionMap.aircraft_master_id = ac.aircraftTypeId;
     if (ac.proposedHomeBaseIcao) {
       assumptionMap.home_airport_icao =
         assumptionMap.home_airport_icao ?? ac.proposedHomeBaseIcao;

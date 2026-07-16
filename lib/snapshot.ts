@@ -120,10 +120,10 @@ export async function buildSnapshotPayload(
     where: { id: proposalId },
     include: {
       prospect: true,
-      aircraftInstance: { include: { warehouseAircraft: true } },
+      aircraftInstance: { include: { aircraftType: true } },
       aircraft: {
         where: { includedOnProposal: true },
-        include: { warehouseAircraft: true },
+        include: { aircraftType: true },
         orderBy: { createdAt: "asc" },
       },
       assumptions: true,
@@ -191,7 +191,7 @@ export async function buildSnapshotPayload(
     };
   }
 
-  const master = proposal.aircraftInstance?.warehouseAircraft;
+  const master = proposal.aircraftInstance?.aircraftType;
   const portalBranding = await getPortalContent();
   const fleetShowcase = await getFleetShowcase();
   const primaryAircraft = primaryEntry ?? null;

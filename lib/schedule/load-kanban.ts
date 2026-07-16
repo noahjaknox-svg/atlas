@@ -18,7 +18,7 @@ export async function loadScheduleKanban(db: PrismaClient, opts: LoadKanbanOptio
     ? await db.scheduleSource.findUnique({ where: { id: opts.sourceId } })
     : await db.scheduleSource.findFirst({ where: { enabled: true }, orderBy: { updatedAt: "desc" } });
 
-  const fleet = await db.crewFleetAircraft.findMany({
+  const fleet = await db.aircraftTail.findMany({
     where: {
       status: "active",
       ...(opts.tailNumbers?.length ? { tailNumber: { in: opts.tailNumbers } } : {}),

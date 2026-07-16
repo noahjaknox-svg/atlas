@@ -37,7 +37,7 @@ export async function PATCH(
     // estimatedValue is deprecated — use aircraft_value assumption instead.
     if (body.valueSource !== undefined) instanceData.valueSource = body.valueSource;
     if (body.aircraftMasterId !== undefined) {
-      instanceData.warehouseAircraftId = body.aircraftMasterId || null;
+      instanceData.aircraftTypeId = body.aircraftMasterId || null;
     }
     if (body.fboName !== undefined) instanceData.fboName = body.fboName;
     if (typeof body.includedOnProposal === "boolean") {
@@ -61,7 +61,7 @@ export async function PATCH(
     const updated = await prisma.aircraftInstance.update({
       where: { id: aircraftId },
       data: instanceData,
-      include: { warehouseAircraft: true },
+      include: { aircraftType: true },
     });
 
     return jsonOk(updated);

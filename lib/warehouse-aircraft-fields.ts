@@ -2,18 +2,25 @@
 // Drives the Data Warehouse Aircraft form, API (de)serialization, and the
 // proposal snapshot mapping. Mirrors the "Aircraft" tab in Atlas Database.xlsx.
 
-import type { Prisma, WarehouseAircraft } from "@prisma/client";
+import type { Prisma, AircraftType } from "@prisma/client";
 import { parseWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-proforma-visibility";
 import { parseFormattedNumber } from "@/lib/utils";
 
 export type WarehouseFieldType = "text" | "int" | "decimal" | "bool" | "select";
 export type WarehouseFieldFormat = "text" | "money" | "integer";
 
-export interface WarehouseAircraftField {
+export interface AircraftTypeField {
   /** Prisma model field name. */
-  key: keyof WarehouseAircraft & string;
+  key: keyof AircraftType & string;
   label: string;
-  group: "General" | "Hourly Rates" | "Crew" | "Utilization" | "Finances" | "Operating Costs";
+  group:
+    | "General"
+    | "Hourly Rates"
+    | "Crew"
+    | "Utilization"
+    | "Finances"
+    | "Operating Costs"
+    | "Empty Legs";
   type: WarehouseFieldType;
   /** Required to publish; Show/Hide on pro forma only when `proformaToggleable` is true. */
   required: boolean;
@@ -45,9 +52,10 @@ const YES_NO = [
   { value: "false", label: "No" },
 ];
 
-export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
+export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   // General
   { key: "displayName", label: "Display Name", group: "General", type: "text", required: true },
+  { key: "code", label: "Type code (Crew)", group: "General", type: "text", required: false },
   { key: "manufacturer", label: "Manufacturer", group: "General", type: "text", required: true },
   { key: "model", label: "Model", group: "General", type: "text", required: true },
   { key: "modelCode", label: "Model Code", group: "General", type: "text", required: true },
@@ -356,11 +364,34 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: WarehouseAircraftField[] = [
     proformaToggleable: true,
     format: "money",
   },
+  // Empty-leg type defaults (Tail may override hourly rate)
+  {
+    key: "emptyLegHourlyRate",
+    label: "Empty-leg hourly rate ($)",
+    group: "Empty Legs",
+    type: "decimal",
+    required: false,
+    format: "money",
+  },
+  {
+    key: "emptyLegMinimumHours",
+    label: "Empty-leg minimum hours",
+    group: "Empty Legs",
+    type: "decimal",
+    required: false,
+  },
+  {
+    key: "emptyLegOffRoutingHours",
+    label: "Empty-leg off-routing hours",
+    group: "Empty Legs",
+    type: "decimal",
+    required: false,
+  },
 ];
 
 export function getMissingPublishFields(
   values: Record<string, string | null | undefined>
-): WarehouseAircraftField[] {
+): AircraftTypeField[] {
   return WAREHOUSE_AIRCRAFT_FIELDS.filter((f) => {
     if (!f.required) return false;
     const v = values[f.key];
@@ -389,7 +420,7 @@ function parseWarehouseInt(raw: unknown, label: string): number {
 }
 
 /** Normalize legacy payback basis strings to Prisma enum values. */
-export function normalizePaybackBasis(raw: unknown): Prisma.WarehouseAircraftUncheckedCreateInput["charterPaybackBasis"] {
+export function normalizePaybackBasis(raw: unknown): Prisma.AircraftTypeUncheckedCreateInput["charterPaybackBasis"] {
   const v = String(raw ?? "")
     .trim()
     .toLowerCase();
@@ -399,10 +430,10 @@ export function normalizePaybackBasis(raw: unknown): Prisma.WarehouseAircraftUnc
 }
 
 /** Convert a request body into a Prisma data object for create/update. */
-export function buildWarehouseAircraftData(
+export function buildAircraftTypeData(
   body: Record<string, unknown>,
   opts: { partial?: boolean } = {}
-): Prisma.WarehouseAircraftUncheckedCreateInput {
+): Prisma.AircraftTypeUncheckedCreateInput {
   const data: Record<string, unknown> = {};
 
   if (body.saveAs === "draft" || body.status === "draft") data.status = "draft";
@@ -442,12 +473,12 @@ export function buildWarehouseAircraftData(
   }
 
   void opts;
-  return data as Prisma.WarehouseAircraftUncheckedCreateInput;
+  return data as Prisma.AircraftTypeUncheckedCreateInput;
 }
 
 export function applyPublishDefaults(
-  data: Prisma.WarehouseAircraftUncheckedCreateInput
-): Prisma.WarehouseAircraftUncheckedCreateInput {
+  data: Prisma.AircraftTypeUncheckedCreateInput
+): Prisma.AircraftTypeUncheckedCreateInput {
   return {
     ...data,
     status: "published",
@@ -459,9 +490,9 @@ export function applyPublishDefaults(
   };
 }
 
-/** Flatten a WarehouseAircraft row into string-keyed values for tables/forms. */
-export function serializeWarehouseAircraft(
-  row: WarehouseAircraft
+/** Flatten a AircraftType row into string-keyed values for tables/forms. */
+export function serializeAircraftType(
+  row: AircraftType
 ): Record<string, string | number | boolean | null | Record<string, boolean>> {
   const out: Record<string, string | number | boolean | null | Record<string, boolean>> = {
     id: row.id,
@@ -470,7 +501,14 @@ export function serializeWarehouseAircraft(
   };
   for (const field of WAREHOUSE_AIRCRAFT_FIELDS) {
     const v = row[field.key];
-    out[field.key] = v == null ? null : (v as string | number | boolean);
+    if (v == null) {
+      out[field.key] = null;
+    } else if (typeof v === "object" && v !== null && "toString" in v) {
+      // Prisma Decimal (empty-leg rates, etc.)
+      out[field.key] = Number(v.toString());
+    } else {
+      out[field.key] = v as string | number | boolean;
+    }
   }
   return out;
 }

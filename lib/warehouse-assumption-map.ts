@@ -1,7 +1,7 @@
-import type { WarehouseAircraft } from "@prisma/client";
+import type { AircraftType } from "@prisma/client";
 
 type WarehouseRow = Pick<
-  WarehouseAircraft,
+  AircraftType,
   | "manufacturer"
   | "model"
   | "modelCode"
@@ -78,7 +78,7 @@ function setStr(
 }
 
 /** Map warehouse aircraft row → workspace assumption keys (only non-null values). */
-export function loadWarehouseAircraftDefaults(
+export function loadAircraftTypeDefaults(
   aircraft: WarehouseRow & { id: string }
 ): Record<string, string> {
   const map: Record<string, string> = {};

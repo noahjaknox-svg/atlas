@@ -5,9 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 type FleetConfig = {
   id: string;
   tailNumber: string;
-  aircraftType: string;
+  aircraftTypeId: string;
+  aircraftType: string | null;
   publicDisplayType: string | null;
-  aircraftProfileId: string | null;
   seatCount: number | null;
   luggageNote: string | null;
   wifi: boolean;
@@ -15,22 +15,16 @@ type FleetConfig = {
   description: string | null;
   primaryPhotoUrl: string | null;
   photoUrls: string[];
-  isActive: boolean;
+  isPublicActive: boolean;
+  emptyLegHourlyRateOverride: number | null;
 };
 
-type Suggestion = {
-  tailNumber: string;
-  aircraftType: string;
-  seatCount: number | null;
-};
-
-type AircraftProfileOption = { id: string; name: string };
+type AircraftTypeOption = { id: string; name: string; label: string | null };
 
 const emptyForm = {
   tailNumber: "",
-  aircraftType: "",
+  aircraftTypeId: "",
   publicDisplayType: "",
-  aircraftProfileId: "",
   seatCount: "",
   luggageNote: "",
   wifi: false,
@@ -38,13 +32,13 @@ const emptyForm = {
   description: "",
   primaryPhotoUrl: "",
   photoUrls: "",
-  isActive: true,
+  isPublicActive: true,
+  emptyLegHourlyRateOverride: "",
 };
 
 export function FleetConfigAdmin() {
   const [configs, setConfigs] = useState<FleetConfig[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [profiles, setProfiles] = useState<AircraftProfileOption[]>([]);
+  const [types, setTypes] = useState<AircraftTypeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState(emptyForm);
@@ -53,22 +47,25 @@ export function FleetConfigAdmin() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [fleetRes, profilesRes] = await Promise.all([
+    const [fleetRes, typesRes] = await Promise.all([
       fetch("/api/charter/empty-legs/fleet"),
       fetch("/api/charter/empty-legs/aircraft-profiles"),
     ]);
     const fleetJson = await fleetRes.json();
-    const profilesJson = await profilesRes.json();
+    const typesJson = await typesRes.json();
     setLoading(false);
     if (fleetRes.ok) {
       setConfigs(fleetJson.configs ?? []);
-      setSuggestions(fleetJson.suggestions ?? []);
     } else {
       setMessage(fleetJson.error ?? "Failed to load");
     }
-    if (profilesRes.ok) {
-      setProfiles(
-        profilesJson.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))
+    if (typesRes.ok) {
+      setTypes(
+        typesJson.map((p: { id: string; name: string; label: string | null }) => ({
+          id: p.id,
+          name: p.name,
+          label: p.label,
+        }))
       );
     }
   }, []);
@@ -81,9 +78,8 @@ export function FleetConfigAdmin() {
     setEditingTail(row.tailNumber);
     setForm({
       tailNumber: row.tailNumber,
-      aircraftType: row.aircraftType,
+      aircraftTypeId: row.aircraftTypeId,
       publicDisplayType: row.publicDisplayType ?? "",
-      aircraftProfileId: row.aircraftProfileId ?? "",
       seatCount: row.seatCount != null ? String(row.seatCount) : "",
       luggageNote: row.luggageNote ?? "",
       wifi: row.wifi,
@@ -91,17 +87,11 @@ export function FleetConfigAdmin() {
       description: row.description ?? "",
       primaryPhotoUrl: row.primaryPhotoUrl ?? "",
       photoUrls: row.photoUrls.join("\n"),
-      isActive: row.isActive,
-    });
-  }
-
-  function startFromSuggestion(s: Suggestion) {
-    setEditingTail(null);
-    setForm({
-      ...emptyForm,
-      tailNumber: s.tailNumber,
-      aircraftType: s.aircraftType,
-      seatCount: s.seatCount != null ? String(s.seatCount) : "",
+      isPublicActive: row.isPublicActive,
+      emptyLegHourlyRateOverride:
+        row.emptyLegHourlyRateOverride != null
+          ? String(row.emptyLegHourlyRateOverride)
+          : "",
     });
   }
 
@@ -138,9 +128,8 @@ export function FleetConfigAdmin() {
   async function save() {
     setMessage("");
     const payload = {
-      aircraftType: form.aircraftType.trim(),
+      aircraftTypeId: form.aircraftTypeId || null,
       publicDisplayType: form.publicDisplayType.trim() || null,
-      aircraftProfileId: form.aircraftProfileId || null,
       seatCount: form.seatCount === "" ? null : Number(form.seatCount),
       luggageNote: form.luggageNote || null,
       wifi: form.wifi,
@@ -148,12 +137,20 @@ export function FleetConfigAdmin() {
       description: form.description || null,
       primaryPhotoUrl: form.primaryPhotoUrl || null,
       photoUrls: form.photoUrls,
-      isActive: form.isActive,
+      isPublicActive: form.isPublicActive,
+      emptyLegHourlyRateOverride:
+        form.emptyLegHourlyRateOverride === ""
+          ? null
+          : Number(form.emptyLegHourlyRateOverride),
     };
 
     const tail = form.tailNumber.trim().toUpperCase();
     if (!tail) {
       setMessage("tailNumber is required");
+      return;
+    }
+    if (!form.aircraftTypeId) {
+      setMessage("Aircraft type is required");
       return;
     }
 
@@ -184,35 +181,9 @@ export function FleetConfigAdmin() {
     <div className="space-y-6">
       {message ? <p className="text-sm text-atlas-accent">{message}</p> : null}
 
-      {suggestions.length > 0 ? (
-        <div className="rounded border border-atlas-border bg-atlas-surface p-4">
-          <h2 className="font-serif text-lg">Crew fleet suggestions</h2>
-          <p className="mt-1 text-sm text-atlas-muted">
-            No empty-leg fleet configs yet. Seed from active crew fleet tails:
-          </p>
-          <ul className="mt-3 space-y-1">
-            {suggestions.map((s) => (
-              <li key={s.tailNumber} className="flex items-center justify-between gap-2 text-sm">
-                <span className="font-mono">
-                  {s.tailNumber} · {s.aircraftType}
-                  {s.seatCount != null ? ` · ${s.seatCount} seats` : ""}
-                </span>
-                <button
-                  type="button"
-                  className="text-atlas-accent hover:underline"
-                  onClick={() => startFromSuggestion(s)}
-                >
-                  Configure
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
       <div className="rounded border border-atlas-border bg-atlas-surface p-4">
         <h2 className="font-serif text-lg">
-          {editingTail ? `Edit ${editingTail}` : "New / seed fleet config"}
+          {editingTail ? `Edit ${editingTail}` : "New fleet tail"}
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field
@@ -221,31 +192,32 @@ export function FleetConfigAdmin() {
             onChange={(v) => setForm({ ...form, tailNumber: v })}
             disabled={Boolean(editingTail)}
           />
-          <Field
-            label="Aircraft type"
-            value={form.aircraftType}
-            onChange={(v) => setForm({ ...form, aircraftType: v })}
-          />
+          <div>
+            <label className="mb-1 block text-xs text-atlas-muted">Aircraft type</label>
+            <select
+              value={form.aircraftTypeId}
+              onChange={(e) => setForm({ ...form, aircraftTypeId: e.target.value })}
+              className="w-full rounded border border-atlas-border bg-atlas-bg px-2 py-1.5 text-sm"
+            >
+              <option value="">Select type…</option>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label || t.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <Field
             label="Public display type"
             value={form.publicDisplayType}
             onChange={(v) => setForm({ ...form, publicDisplayType: v })}
           />
-          <div>
-            <label className="mb-1 block text-xs text-atlas-muted">Pricing profile</label>
-            <select
-              value={form.aircraftProfileId}
-              onChange={(e) => setForm({ ...form, aircraftProfileId: e.target.value })}
-              className="w-full rounded border border-atlas-border bg-atlas-bg px-2 py-1.5 text-sm"
-            >
-              <option value="">None</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field
+            label="Empty-leg hourly rate override"
+            value={form.emptyLegHourlyRateOverride}
+            onChange={(v) => setForm({ ...form, emptyLegHourlyRateOverride: v })}
+            type="number"
+          />
           <Field
             label="Seat count"
             value={form.seatCount}
@@ -321,10 +293,10 @@ export function FleetConfigAdmin() {
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              checked={form.isPublicActive}
+              onChange={(e) => setForm({ ...form, isPublicActive: e.target.checked })}
             />
-            Active
+            Public active
           </label>
         </div>
         <div className="mt-3 flex gap-2">
@@ -350,7 +322,7 @@ export function FleetConfigAdmin() {
       {loading ? (
         <p className="text-sm text-atlas-muted">Loading…</p>
       ) : configs.length === 0 ? (
-        <p className="text-sm text-atlas-muted">No fleet configs saved yet.</p>
+        <p className="text-sm text-atlas-muted">No fleet tails saved yet.</p>
       ) : (
         <div className="overflow-hidden rounded border border-atlas-border">
           <table className="w-full text-sm">
@@ -359,7 +331,7 @@ export function FleetConfigAdmin() {
                 <th className="px-3 py-2">Tail</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Seats</th>
-                <th className="px-3 py-2">Profile</th>
+                <th className="px-3 py-2">Rate override</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -368,16 +340,18 @@ export function FleetConfigAdmin() {
                 <tr key={row.id} className="border-t border-atlas-border/50">
                   <td className="px-3 py-2 font-mono">
                     {row.tailNumber}
-                    {!row.isActive ? (
+                    {!row.isPublicActive ? (
                       <span className="ml-1 text-xs text-atlas-muted">(inactive)</span>
                     ) : null}
                   </td>
                   <td className="px-3 py-2">
-                    {row.publicDisplayType || row.aircraftType}
+                    {row.publicDisplayType || row.aircraftType || "—"}
                   </td>
                   <td className="px-3 py-2">{row.seatCount ?? "—"}</td>
                   <td className="px-3 py-2 text-xs text-atlas-muted">
-                    {profiles.find((p) => p.id === row.aircraftProfileId)?.name ?? "—"}
+                    {row.emptyLegHourlyRateOverride != null
+                      ? `$${row.emptyLegHourlyRateOverride.toLocaleString()}/hr`
+                      : "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button

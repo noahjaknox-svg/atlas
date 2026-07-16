@@ -18,7 +18,7 @@ export async function GET(
       include: {
         prospect: true,
         preparedBy: { select: { id: true, name: true, email: true } },
-        aircraftInstance: { include: { warehouseAircraft: true } },
+        aircraftInstance: { include: { aircraftType: true } },
         assumptions: true,
         sections: { orderBy: { sortOrder: "asc" } },
         scenarios: true,

@@ -2,6 +2,7 @@ import { requireDepartmentAccess } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { calculateEmptyLegPrice } from "@/lib/charter/empty-legs/pricing";
+import { resolveEmptyLegHourlyRate } from "@/lib/charter/empty-legs/price-placement";
 
 export async function GET(
   _req: Request,
@@ -21,14 +22,10 @@ export async function GET(
     if (!placement) return jsonError("Placement not found", 404);
 
     const settings = await prisma.emptyLegSettings.findUnique({ where: { id: "default" } });
-    const fleet = await prisma.emptyLegFleetTailConfig.findUnique({
+    const fleet = await prisma.aircraftTail.findUnique({
       where: { tailNumber: placement.emptyLeg.tailNumber },
+      include: { aircraftType: true },
     });
-    const profile = fleet?.aircraftProfileId
-      ? await prisma.emptyLegAircraftProfile.findUnique({
-          where: { id: fleet.aircraftProfileId },
-        })
-      : null;
 
     const [listProfiles, globalProfiles] = await Promise.all([
       prisma.emptyLegRoutingProfile.findMany({
@@ -60,7 +57,7 @@ export async function GET(
         placement.publicList.discountPercent != null
           ? Number(placement.publicList.discountPercent)
           : null,
-      hourlyRate: profile ? Number(profile.defaultHourlyRate) : null,
+      hourlyRate: resolveEmptyLegHourlyRate(fleet),
       listRoutingProfiles: listProfiles,
       globalRoutingProfiles: globalProfiles,
       depIcao: placement.emptyLeg.depIcao,

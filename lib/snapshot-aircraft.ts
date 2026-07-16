@@ -1,4 +1,4 @@
-import type { AircraftInstance, WarehouseAircraft, ProposalAssumption, ProposalScenario } from "@prisma/client";
+import type { AircraftInstance, AircraftType, ProposalAssumption, ProposalScenario } from "@prisma/client";
 import {
   getAircraftDisplayName,
   getAircraftCardSubtitle,
@@ -26,7 +26,7 @@ import {
   type ProposalOwnerProfile,
 } from "./proposal-owners";
 
-type AircraftWithMaster = AircraftInstance & { warehouseAircraft: WarehouseAircraft | null };
+type AircraftWithMaster = AircraftInstance & { aircraftType: AircraftType | null };
 
 const EMPTY_PROFORMA: ProFormaResult = {
   blendedFuelPrice: 0,
@@ -129,10 +129,10 @@ export async function buildAircraftSnapshotEntry(args: {
     proposedHomeBaseIcao: aircraft.proposedHomeBaseIcao,
     estimatedValue: aircraft.estimatedValue?.toString() ?? null,
     valueSource: aircraft.valueSource,
-    aircraftMaster: aircraft.warehouseAircraft
+    aircraftMaster: aircraft.aircraftType
       ? {
-          manufacturer: aircraft.warehouseAircraft.manufacturer,
-          model: aircraft.warehouseAircraft.model,
+          manufacturer: aircraft.aircraftType.manufacturer,
+          model: aircraft.aircraftType.model,
         }
       : null,
   };
@@ -163,7 +163,7 @@ export async function buildAircraftSnapshotEntry(args: {
 
   const workspaceProForma = computeWorkspaceProFormaForClient(fullMap);
   const proForma = workspaceProForma.proForma;
-  const master = aircraft.warehouseAircraft;
+  const master = aircraft.aircraftType;
   const profileMode = normalizeAircraftProfileMode(fullMap);
   const typeLabel =
     getAircraftTypeLabel(fullMap) ??
@@ -225,16 +225,16 @@ export function buildLightweightAircraftSnapshotEntry(args: {
     proposedHomeBaseIcao: aircraft.proposedHomeBaseIcao,
     estimatedValue: aircraft.estimatedValue?.toString() ?? null,
     valueSource: aircraft.valueSource,
-    aircraftMaster: aircraft.warehouseAircraft
+    aircraftMaster: aircraft.aircraftType
       ? {
-          manufacturer: aircraft.warehouseAircraft.manufacturer,
-          model: aircraft.warehouseAircraft.model,
+          manufacturer: aircraft.aircraftType.manufacturer,
+          model: aircraft.aircraftType.model,
         }
       : null,
   };
 
   const fullMap = { ...assumptionsFromInstance(meta), ...map };
-  const master = aircraft.warehouseAircraft;
+  const master = aircraft.aircraftType;
   const profileMode = normalizeAircraftProfileMode(fullMap);
   const typeLabel =
     getAircraftTypeLabel(fullMap) ??

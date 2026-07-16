@@ -28,24 +28,34 @@ Internal reference for the read-only Crew integration. **Wire field names match 
 
 ## Admin UI
 
-Data Hub → **PrismJet Crew Data** (`/data?tab=performance-data`):
+Data Hub → **Aircraft types** (`/data?tab=aircraft`) for commercial + empty-leg type defaults, and **Fleet & performance** (`/data?tab=performance-data`) for Crew grids + tails.
 
 Atlas owns the database — add types, grids, and tails here (not by editing Supabase directly).
+
+### Unified Type + Tail
+
+| Record | Owns |
+|--------|------|
+| **AircraftType** | Identity, base performance (fuel burn), Crew POH grids, AM economics, empty-leg **default** hourly rate |
+| **AircraftTail** | Tail/serial/home base, **actual weights** (BEW/MTOW/MZFW), remaining operating factors, empty-leg marketing + rate **override** |
+
+Empty-leg calculated price uses `Tail.emptyLegHourlyRateOverride ?? Type.emptyLegHourlyRate`.
 
 ### Adding a new aircraft type
 
 Create all three so the type flows through `GET /api/v1/crew/sync`:
 
-1. **Aircraft type** — code (e.g. `C25B`), manufacturer, model
-2. **Performance grids** for that type — `takeoffFieldLength` and `landingDistance`, each a grid over pressure altitude × weight × OAT (same structure as the King Air B300)
-3. **One or more tails** referencing that type, each with its full `operating` block
+1. **Aircraft type** — code (e.g. `C25B`), manufacturer, model (+ AM / empty-leg defaults on Aircraft types tab)
+2. **Performance grids** for that type — `takeoffFieldLength` and `landingDistance`
+3. **One or more tails** of that type, each with actual weights and operating factors
 
 **In the UI today:**
 
-- Step 1 and 3: create/edit in Data Hub (types table + Add tail dialog)
-- Step 2: import from Crew export JSON (bundled seed or **Load bundled seed** / `POST /api/data/crew-import`), or POST grid JSON to `/api/data/crew-performance`
+- Types commercial fields: Data Hub → Aircraft types
+- Step 2–3: Fleet & performance tab (types table + Add tail dialog + performance import)
+- Step 2 grids: import from Crew export JSON (bundled seed or **Load bundled seed** / `POST /api/data/crew-import`), or POST grid JSON to `/api/data/crew-performance`
 
-Per-tail **basic empty weight** and full `operating` block are editable in the Add/Edit tail dialog.
+Per-tail **basic empty weight / MTOW** are first-class columns (also mirrored in the `operating` block for Crew wire compatibility).
 
 ## Local setup
 
@@ -121,9 +131,10 @@ Optional: `?ifModifiedSince=<ISO8601>` for conditional refresh (exact 304 vs `{ 
 Response includes:
 
 - `syncedAt`
-- `aircraftTypes[]` — type catalog with `updatedAt`
+- `aircraftTypes[]` — type catalog with `updatedAt`; optional `performanceModel` (B300 = Crew `kingAir350`; omit/null on types without data)
 - `fleet[]` — tails with `operating` block and `updatedAt`
 - `performance[]` — per-type takeoff + landing grids (`metric`, `unit`, `axes`, `values`, `updatedAt`)
+- `policy` — org runway / alternate thresholds (Crew PolicyStore; Atlas ships defaults)
 
 Granular routes (`/fleet`, `/aircraft-types`, `/performance/{typeId}`) optional; v1 integration targets **`/sync` only**.
 

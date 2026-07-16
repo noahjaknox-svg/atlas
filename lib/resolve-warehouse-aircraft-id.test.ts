@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    warehouseAircraft: {
+    aircraftType: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
     },
@@ -10,17 +10,17 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { prisma } from "@/lib/db";
-import { resolveValidWarehouseAircraftId } from "@/lib/resolve-warehouse-aircraft-id";
+import { resolveValidAircraftTypeId } from "@/lib/resolve-warehouse-aircraft-id";
 
-describe("resolveValidWarehouseAircraftId", () => {
+describe("resolveValidAircraftTypeId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("prefers a valid instance warehouse id", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({ id: "inst-1" } as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({ id: "inst-1" } as never);
 
-    const result = await resolveValidWarehouseAircraftId({
+    const result = await resolveValidAircraftTypeId({
       instanceWarehouseId: "inst-1",
       assumptionMasterId: "stale-1",
     });
@@ -33,9 +33,9 @@ describe("resolveValidWarehouseAircraftId", () => {
   });
 
   it("uses a valid assumption id when instance is missing", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue({ id: "valid-1" } as never);
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({ id: "valid-1" } as never);
 
-    const result = await resolveValidWarehouseAircraftId({
+    const result = await resolveValidAircraftTypeId({
       assumptionMasterId: "valid-1",
     });
 
@@ -47,12 +47,12 @@ describe("resolveValidWarehouseAircraftId", () => {
   });
 
   it("falls back to published manufacturer/model when assumption id is stale", async () => {
-    vi.mocked(prisma.warehouseAircraft.findUnique).mockResolvedValue(null as never);
-    vi.mocked(prisma.warehouseAircraft.findFirst).mockResolvedValue({
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.aircraftType.findFirst).mockResolvedValue({
       id: "713b06f8-7342-4eab-a9b8-602c4aa2a5ad",
     } as never);
 
-    const result = await resolveValidWarehouseAircraftId({
+    const result = await resolveValidAircraftTypeId({
       assumptionMasterId: "ec5d6b1b-29cf-4d1b-ade6-52c2bf1d36da",
       manufacturer: "Bombardier",
       model: "Challenger 300",

@@ -97,7 +97,7 @@ components:
   schemas:
     SyncResponse:
       type: object
-      required: [syncedAt, aircraftTypes, fleet, performance, airports]
+      required: [syncedAt, aircraftTypes, fleet, performance, airports, policy]
       properties:
         syncedAt:
           type: string
@@ -120,6 +120,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CrewAirport"
+        policy:
+          $ref: "#/components/schemas/SyncPolicy"
     AirportsResponse:
       type: object
       required: [syncedAt, count, airports]
@@ -142,7 +144,47 @@ components:
         code: { type: string, example: B300 }
         manufacturer: { type: string }
         model: { type: string }
+        performanceModel:
+          allOf:
+            - $ref: "#/components/schemas/PerformanceModel"
+          description: Optional; omit when type has no model (Crew TypeDTO-safe)
+          nullable: true
         updatedAt: { type: string, format: date-time }
+    PerformanceModel:
+      type: object
+      description: Matches Crew PerformanceModel (e.g. kingAir350 for B300)
+      properties:
+        takeoffSlopePctPerPct: { type: number }
+        headwindFactorPerKt: { type: number }
+        tailwindFactorPerKt: { type: number }
+        landingSlopePctPerPct: { type: number }
+        landingRefFt: { type: number }
+        climbRefLow:
+          $ref: "#/components/schemas/ClimbRef"
+        climbRefHigh:
+          $ref: "#/components/schemas/ClimbRef"
+    ClimbRef:
+      type: object
+      properties:
+        altitudeFt: { type: number }
+        minutes: { type: number }
+        fuelLb: { type: number }
+        nm: { type: number }
+    SyncPolicy:
+      type: object
+      description: Org runway / alternate thresholds (Crew PolicyStore)
+      properties:
+        minRunwayFt: { type: number }
+        highElevationFt: { type: number }
+        highElevationMinRunwayFt: { type: number }
+        shortRunwayFt: { type: number }
+        midElevationFt: { type: number }
+        longRunwayFt: { type: number }
+        freeGreenElevationFt: { type: number }
+        tightMarginFt: { type: number }
+        alternateMinCeilingFt: { type: number }
+        alternateMinVisibilitySm: { type: number }
+        forecastLeadMinutes: { type: number }
     FleetAircraft:
       type: object
       properties:

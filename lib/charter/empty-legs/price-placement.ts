@@ -28,27 +28,62 @@ type LegLike = {
   durationMinutes: number;
 };
 
+type DecimalLike = { toString(): string } | number | null;
+
+/**
+ * Empty-leg calculated hourly rate for a tail: the tail-level override wins,
+ * otherwise fall back to the aircraft type default.
+ */
+export function resolveEmptyLegHourlyRate(
+  tail:
+    | {
+        emptyLegHourlyRateOverride: DecimalLike;
+        aircraftType?: { emptyLegHourlyRate: DecimalLike } | null;
+      }
+    | null
+    | undefined
+): number | null {
+  if (!tail) return null;
+  if (tail.emptyLegHourlyRateOverride != null) {
+    return Number(tail.emptyLegHourlyRateOverride);
+  }
+  const typeRate = tail.aircraftType?.emptyLegHourlyRate;
+  return typeRate != null ? Number(typeRate) : null;
+}
+
+/** Public-facing type label: "Manufacturer Model" when available, else displayName. */
+export function aircraftTypeLabel(
+  type:
+    | { manufacturer: string | null; model: string | null; displayName: string }
+    | null
+    | undefined
+): string | null {
+  if (!type) return null;
+  const combined = [type.manufacturer, type.model].filter(Boolean).join(" ").trim();
+  return combined || type.displayName || null;
+}
+
 /**
  * Load shared pricing context once, then price many placements cheaply.
  */
 export async function loadEmptyLegPricingContext(db: PrismaClient) {
-  const [settings, fleetConfigs, listProfiles, globalProfiles, aircraftProfiles] =
-    await Promise.all([
-      db.emptyLegSettings.findUnique({ where: { id: "default" } }),
-      db.emptyLegFleetTailConfig.findMany({ where: { isActive: true } }),
-      db.emptyLegRoutingProfile.findMany({
-        where: { isActive: true, scope: "public_list" },
-      }),
-      db.emptyLegRoutingProfile.findMany({
-        where: { isActive: true, scope: "global" },
-      }),
-      db.emptyLegAircraftProfile.findMany({ where: { isActive: true } }),
-    ]);
+  const [settings, fleetConfigs, listProfiles, globalProfiles] = await Promise.all([
+    db.emptyLegSettings.findUnique({ where: { id: "default" } }),
+    db.aircraftTail.findMany({
+      where: { isPublicActive: true },
+      include: { aircraftType: true },
+    }),
+    db.emptyLegRoutingProfile.findMany({
+      where: { isActive: true, scope: "public_list" },
+    }),
+    db.emptyLegRoutingProfile.findMany({
+      where: { isActive: true, scope: "global" },
+    }),
+  ]);
 
   const fleetByTail = new Map(
     fleetConfigs.map((f) => [f.tailNumber.toUpperCase(), f])
   );
-  const profileById = new Map(aircraftProfiles.map((p) => [p.id, p]));
   const listProfilesByListId = new Map<string, typeof listProfiles>();
   for (const profile of listProfiles) {
     if (!profile.publicListId) continue;
@@ -60,7 +95,6 @@ export async function loadEmptyLegPricingContext(db: PrismaClient) {
   return {
     settings,
     fleetByTail,
-    profileById,
     listProfilesByListId,
     globalProfiles,
   };
@@ -76,9 +110,7 @@ export function pricePlacementWithContext(
   leg: LegLike
 ): PricingBreakdown {
   const fleet = ctx.fleetByTail.get(leg.tailNumber.toUpperCase());
-  const aircraftProfile = fleet?.aircraftProfileId
-    ? ctx.profileById.get(fleet.aircraftProfileId)
-    : null;
+  const hourlyRate = resolveEmptyLegHourlyRate(fleet);
 
   const minHours =
     placement.publicList.minimumQuotableHours != null
@@ -98,9 +130,7 @@ export function pricePlacementWithContext(
       placement.publicList.discountPercent != null
         ? Number(placement.publicList.discountPercent)
         : null,
-    hourlyRate: aircraftProfile
-      ? Number(aircraftProfile.defaultHourlyRate)
-      : null,
+    hourlyRate,
     listRoutingProfiles: ctx.listProfilesByListId.get(placement.publicListId) ?? [],
     globalRoutingProfiles: ctx.globalProfiles,
     depIcao: leg.depIcao,

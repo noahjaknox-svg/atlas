@@ -21,7 +21,7 @@ export async function POST(
 
     const [events, fleet] = await Promise.all([
       prisma.scheduleEvent.findMany({ where: { deletedAt: null } }),
-      prisma.crewFleetAircraft.findMany({
+      prisma.aircraftTail.findMany({
         where: { status: "active" },
         select: { id: true, tailNumber: true, homeBase: true },
       }),

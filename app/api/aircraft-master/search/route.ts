@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     await requireInternalUser();
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
-    const rows = await prisma.warehouseAircraft.findMany({
+    const rows = await prisma.aircraftType.findMany({
       where: {
         status: "published",
         ...(q

@@ -10,6 +10,10 @@ import {
 } from "@/lib/charter/empty-legs/defaults";
 import { resolveEmptyLegDepartureTimezone } from "@/lib/charter/empty-legs/display-timezone";
 import { isEmptyLegPast } from "@/lib/charter/empty-legs/eligibility";
+import {
+  aircraftTypeLabel,
+  resolveEmptyLegHourlyRate,
+} from "@/lib/charter/empty-legs/price-placement";
 import { calculateEmptyLegPrice } from "@/lib/charter/empty-legs/pricing";
 import { loadEmptyLegTimezoneLayers } from "@/lib/schedule/airport-timezones";
 
@@ -55,7 +59,10 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
 
   const [fleetConfigs, listProfiles, globalProfiles, timezoneLayers] =
     await Promise.all([
-      db.emptyLegFleetTailConfig.findMany({ where: { isActive: true } }),
+      db.aircraftTail.findMany({
+        where: { isPublicActive: true },
+        include: { aircraftType: true },
+      }),
       db.emptyLegRoutingProfile.findMany({
         where: { isActive: true, scope: "public_list", publicListId: list.id },
       }),
@@ -69,8 +76,6 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
     ]);
 
   const fleetByTail = new Map(fleetConfigs.map((f) => [f.tailNumber.toUpperCase(), f]));
-  const profiles = await db.emptyLegAircraftProfile.findMany({ where: { isActive: true } });
-  const profileById = new Map(profiles.map((p) => [p.id, p]));
 
   const minHours =
     list.minimumQuotableHours != null
@@ -83,9 +88,6 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
     .map((placement) => {
       const leg = placement.emptyLeg;
       const fleet = fleetByTail.get(leg.tailNumber.toUpperCase());
-      const profile = fleet?.aircraftProfileId
-        ? profileById.get(fleet.aircraftProfileId)
-        : null;
       const pricing = calculateEmptyLegPrice({
         pricingMode: placement.pricingMode,
         customPrice: placement.customPrice != null ? Number(placement.customPrice) : null,
@@ -94,7 +96,7 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
         listMinimumQuotableHours: minHours,
         listDiscountPercent:
           list.discountPercent != null ? Number(list.discountPercent) : null,
-        hourlyRate: profile ? Number(profile.defaultHourlyRate) : null,
+        hourlyRate: resolveEmptyLegHourlyRate(fleet),
         listRoutingProfiles: listProfiles,
         globalRoutingProfiles: globalProfiles,
         depIcao: leg.depIcao,
@@ -122,7 +124,10 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
         isFeatured: leg.isFeatured,
         tailNumber: visibleFields.tailNumber ? leg.tailNumber : null,
         aircraftType:
-          fleet?.publicDisplayType || fleet?.aircraftType || leg.aircraftType || null,
+          fleet?.publicDisplayType ||
+          aircraftTypeLabel(fleet?.aircraftType) ||
+          leg.aircraftType ||
+          null,
         seatCount: fleet?.seatCount ?? null,
         luggageNote: fleet?.luggageNote ?? null,
         wifi: fleet?.wifi ?? false,
@@ -137,8 +142,8 @@ export async function loadPublicListPayload(db: PrismaClient, token: string) {
           discountApplied: pricing.discountApplied,
           displayDiscountMode: pricing.displayDiscountMode,
         },
-        offRoutingAllowanceHours: profile?.offRoutingTimeAllowanceHours
-          ? Number(profile.offRoutingTimeAllowanceHours)
+        offRoutingAllowanceHours: fleet?.aircraftType?.emptyLegOffRoutingHours
+          ? Number(fleet.aircraftType.emptyLegOffRoutingHours)
           : null,
       };
     })

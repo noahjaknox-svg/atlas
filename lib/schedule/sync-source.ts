@@ -168,7 +168,7 @@ export async function fetchAndSyncScheduleSource(
 }
 
 async function loadFleetMap(db: PrismaClient) {
-  const fleet = await db.crewFleetAircraft.findMany({
+  const fleet = await db.aircraftTail.findMany({
     where: { status: "active" },
     select: { id: true, tailNumber: true },
   });
