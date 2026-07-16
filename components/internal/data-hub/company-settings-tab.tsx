@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CrewOrgPolicySection } from "@/components/internal/data-hub/crew-org-policy-section";
 
 export type CompanySettingsFieldDef = {
   key: string;
@@ -174,7 +175,7 @@ export function CompanySettingsTab() {
   if (loading) return <p className="text-sm text-atlas-muted">Loading…</p>;
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <p className="text-sm text-atlas-muted">
         Data Warehouse defaults — copied into each proposal workspace on aircraft add and manual
         refresh. Changes here do not alter published client portals until staff republish affected
@@ -201,6 +202,9 @@ export function CompanySettingsTab() {
           {saving ? "Saving…" : "Save settings"}
         </Button>
         {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
+      </div>
+      <div className="border-t border-atlas-border pt-6">
+        <CrewOrgPolicySection />
       </div>
     </div>
   );

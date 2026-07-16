@@ -307,6 +307,13 @@ model AircraftType {
   performanceModel          Json?               @map("performance_model") @db.JsonB
   /// Ops notes for AFM completeness (also derived notes may ship on /sync).
   afmNotes                  String?             @map("afm_notes") @db.Text
+  /// Active AFM/POH PDF (human source of truth; grids remain separate JSON).
+  afmPdfUrl                 String?             @map("afm_pdf_url")
+  afmPdfFileName            String?             @map("afm_pdf_file_name")
+  afmPdfCategory            String?             @default("afm_poh") @map("afm_pdf_category")
+  afmPdfRevision            String?             @map("afm_pdf_revision")
+  afmPdfEffectiveDate       DateTime?           @map("afm_pdf_effective_date") @db.Date
+  afmPdfUploadedAt          DateTime?           @map("afm_pdf_uploaded_at")
   /// Empty-leg calculated pricing defaults (type-level).
   emptyLegHourlyRate            Decimal?        @map("empty_leg_hourly_rate") @db.Decimal(12, 2)
   emptyLegMinimumHours          Decimal?        @map("empty_leg_minimum_hours") @db.Decimal(6, 2)

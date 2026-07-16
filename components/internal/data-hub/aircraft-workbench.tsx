@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
+import { AircraftTypeAfmPanel } from "@/components/internal/data-hub/aircraft-type-afm-panel";
 import {
   WAREHOUSE_AIRCRAFT_FIELDS,
   getMissingPublishFields,
@@ -15,8 +17,9 @@ import {
 } from "@/lib/warehouse-aircraft-proforma-visibility";
 import { cn, formatFormattedNumber } from "@/lib/utils";
 import type { DataHubListPayload } from "@/lib/data-hub-prefetch";
+import { ROUTES } from "@/lib/routes";
 
-type Row = Record<string, unknown> & { id?: string; status?: string };
+type Row = Record<string, unknown> & { id?: string; status?: string; code?: string };
 
 /** Shared control styling — matches `components/ui/input.tsx`. */
 const FIELD_CONTROL = cn(
@@ -26,6 +29,19 @@ const FIELD_CONTROL = cn(
 );
 
 const TOGGLE_SLOT_W = "w-[5.75rem] shrink-0";
+
+const TYPE_SECTION_NAMES = [
+  "General",
+  "Hourly Rates",
+  "Crew",
+  "Utilization",
+  "Finances",
+  "Operating Costs",
+  "Empty Legs",
+  "AFM",
+] as const;
+
+type TypeSection = (typeof TYPE_SECTION_NAMES)[number];
 
 /** Crew sub-rows: default ladder step, salaries, and training per role. */
 const CREW_ROLE_ROWS: { label: string; keys: AircraftTypeField["key"][] }[] = [
@@ -269,12 +285,22 @@ function CrewFieldGrid({
   );
 }
 
+function normalizeTypeSection(raw: string | null): TypeSection {
+  if (!raw) return "General";
+  if (raw === "AFM" || raw === "AFM / Performance" || raw.toLowerCase() === "afm") return "AFM";
+  const match = TYPE_SECTION_NAMES.find((s) => s.toLowerCase() === raw.toLowerCase());
+  return match ?? "General";
+}
+
+
 export function AircraftWorkbench({
   initialData,
 }: {
   initialData?: DataHubListPayload | null;
 }) {
   const apiPath = "/api/data/aircraft";
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<Row[]>(initialData?.rows ?? []);
   const skipInitialLoad = useRef(!!initialData);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -291,6 +317,44 @@ export function AircraftWorkbench({
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [typeSection, setTypeSection] = useState<TypeSection>("General");
+  const appliedFocus = useRef(false);
+
+  const syncUrl = useCallback(
+    (opts: {
+      typeId?: string | null;
+      section?: string | null;
+      clearEntity?: boolean;
+    }) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "aircraft");
+      params.delete("tailId");
+      if (opts.clearEntity) {
+        params.delete("typeId");
+        params.delete("section");
+      } else if (opts.typeId) {
+        params.set("typeId", opts.typeId);
+        if (opts.section) params.set("section", opts.section);
+      }
+      if (opts.section && !opts.clearEntity) params.set("section", opts.section);
+      router.replace(`${ROUTES.dataWarehouse.data}?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  function selectRow(row: Row, section?: TypeSection) {
+    setCreating(false);
+    setSelectedId(row.id ?? null);
+    setStatus(row.status === "published" ? "published" : "draft");
+    const next: Record<string, string> = {};
+    for (const f of WAREHOUSE_AIRCRAFT_FIELDS) next[f.key] = toStr(row[f.key]);
+    setValues(next);
+    setVisibility(parseVisibility(row.proformaFieldVisibility));
+    setError(null);
+    const sec = section ?? typeSection;
+    setTypeSection(sec);
+    if (row.id) syncUrl({ typeId: row.id, section: sec });
+  }
 
   const load = useCallback(async (selectAfterId?: string) => {
     const res = await fetch(`${apiPath}?limit=500`);
@@ -302,6 +366,7 @@ export function AircraftWorkbench({
       const found = nextRows.find((r) => r.id === selectAfterId);
       if (found) selectRow(found);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -312,17 +377,6 @@ export function AircraftWorkbench({
     void load();
   }, [load]);
 
-  function selectRow(row: Row) {
-    setCreating(false);
-    setSelectedId(row.id ?? null);
-    setStatus(row.status === "published" ? "published" : "draft");
-    const next: Record<string, string> = {};
-    for (const f of WAREHOUSE_AIRCRAFT_FIELDS) next[f.key] = toStr(row[f.key]);
-    setValues(next);
-    setVisibility(parseVisibility(row.proformaFieldVisibility));
-    setError(null);
-  }
-
   function startCreate() {
     setCreating(true);
     setSelectedId(null);
@@ -332,8 +386,22 @@ export function AircraftWorkbench({
     next.wifi = "true";
     setValues(next);
     setVisibility(defaultWarehouseFieldVisibility());
+    setTypeSection("General");
     setError(null);
+    syncUrl({ clearEntity: true, section: "General" });
   }
+
+  useEffect(() => {
+    if (appliedFocus.current) return;
+    const typeId = searchParams.get("typeId");
+    const section = searchParams.get("section");
+    if (!typeId) return;
+    if (rows.length === 0) return;
+    appliedFocus.current = true;
+    const found = rows.find((r) => r.id === typeId);
+    if (found) selectRow(found, normalizeTypeSection(section));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, searchParams]);
 
   const manufacturers = useMemo(() => {
     const set = new Set<string>();
@@ -350,7 +418,7 @@ export function AircraftWorkbench({
       if (statusFilter && r.status !== statusFilter) return false;
       if (manufacturerFilter && toStr(r.manufacturer) !== manufacturerFilter) return false;
       if (!q) return true;
-      return ["displayName", "manufacturer", "model", "modelCode"].some((k) =>
+      return ["displayName", "manufacturer", "model", "modelCode", "code"].some((k) =>
         toStr(r[k]).toLowerCase().includes(q)
       );
     });
@@ -369,6 +437,7 @@ export function AircraftWorkbench({
     return order.map((name) => ({ name, fields: byGroup.get(name)! }));
   }, []);
 
+  const activeGroup = groups.find((g) => g.name === typeSection);
   const missingPublish = useMemo(() => getMissingPublishFields(values), [values]);
   const canPublish = missingPublish.length === 0;
 
@@ -405,7 +474,9 @@ export function AircraftWorkbench({
         return;
       }
       setStatus(saveAs === "publish" ? "published" : "draft");
-      await load((json as Row).id ?? selectedId ?? undefined);
+      const id = (json as Row).id ?? selectedId ?? undefined;
+      await load(id);
+      if (id) syncUrl({ typeId: id, section: typeSection });
     } finally {
       setSaving(false);
     }
@@ -446,6 +517,7 @@ export function AircraftWorkbench({
       setSelectedId(null);
       setCreating(false);
       setValues({});
+      syncUrl({ clearEntity: true });
       await load();
     } finally {
       setDeleting(false);
@@ -454,15 +526,20 @@ export function AircraftWorkbench({
 
   const editing = creating || selectedId != null;
   const heading = creating
-    ? "New aircraft"
-    : values.displayName?.trim() || "Edit aircraft";
+    ? "New aircraft type"
+    : values.displayName?.trim() || "Edit aircraft type";
+
+  function changeTypeSection(sec: TypeSection) {
+    setTypeSection(sec);
+    if (selectedId) syncUrl({ typeId: selectedId, section: sec });
+  }
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <aside className="data-hub-sidebar flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 xl:w-80">
         <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3">
           <input
-            placeholder="Search aircraft…"
+            placeholder="Search types…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={FIELD_CONTROL}
@@ -484,16 +561,16 @@ export function AircraftWorkbench({
             <option value="draft">Draft</option>
           </WorkbenchSelect>
           <Button className="w-full" onClick={startCreate}>
-            + Add aircraft
+            + Add type
           </Button>
         </div>
         <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {visibleRows.length === 0 ? (
-            <p className="px-1 py-6 text-center text-sm text-atlas-muted">No aircraft found.</p>
+            <p className="px-1 py-6 text-center text-sm text-atlas-muted">No types found.</p>
           ) : (
-            <nav className="space-y-0.5" aria-label="Aircraft">
+            <nav className="space-y-0.5" aria-label="Aircraft types">
               {visibleRows.map((row) => {
-                const active = row.id === selectedId;
+                const active = !creating && row.id === selectedId;
                 const isDraft = row.status !== "published";
                 return (
                   <button
@@ -510,6 +587,11 @@ export function AircraftWorkbench({
                     <span className="min-w-0 flex-1 truncate">
                       {[row.manufacturer, row.model].filter(Boolean).join(" ") || "Untitled"}
                     </span>
+                    {toStr(row.code) ? (
+                      <span className="shrink-0 font-mono text-[10px] text-atlas-muted">
+                        {toStr(row.code)}
+                      </span>
+                    ) : null}
                     {isDraft ? (
                       <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-600">
                         Draft
@@ -526,7 +608,7 @@ export function AircraftWorkbench({
       <div className="flex min-w-0 flex-1 flex-col">
         {!editing ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-atlas-muted">
-            Select an aircraft from the list, or add a new one.
+            Select a type from the list, or add a new one.
           </div>
         ) : (
           <>
@@ -558,31 +640,59 @@ export function AircraftWorkbench({
               ) : null}
             </header>
 
-            <div className="shrink-0 border-b border-atlas-border/60 bg-atlas-surface/15 px-5 py-3 text-xs leading-relaxed text-atlas-muted">
-              Parts/engine/APU programs, inspection reserve, trip expense hourly, and cabin attendant
-              fields include a{" "}
-              <span className={cn(TOGGLE_SLOT_W, "inline-flex h-5 align-middle")}>
-                <span className="flex h-full w-full items-center justify-center rounded border border-atlas-border/60 bg-atlas-bg/80 text-[10px]">
-                  Show / Hide
-                </span>
-              </span>{" "}
-              control — Hide excludes that value from the pro forma (default is Show). All other fields
-              are required to publish.
-            </div>
+            <nav
+              className="atlas-scroll-x flex shrink-0 gap-1 overflow-x-auto border-b border-atlas-border px-4 py-2 sm:px-5"
+              aria-label="Type sections"
+            >
+              {TYPE_SECTION_NAMES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => changeTypeSection(s)}
+                  className={cn(
+                    "shrink-0 rounded px-3 py-1.5 text-sm transition-colors",
+                    typeSection === s
+                      ? "bg-atlas-accent/15 font-medium text-atlas-accent"
+                      : "text-atlas-text/75 hover:bg-atlas-border/30 hover:text-atlas-text"
+                  )}
+                >
+                  {s === "AFM" ? "AFM / Performance" : s}
+                </button>
+              ))}
+            </nav>
+
+            {typeSection !== "AFM" ? (
+              <div className="shrink-0 border-b border-atlas-border/60 bg-atlas-surface/15 px-5 py-3 text-xs leading-relaxed text-atlas-muted">
+                Parts/engine/APU programs, inspection reserve, trip expense hourly, and cabin attendant
+                fields include a{" "}
+                <span className={cn(TOGGLE_SLOT_W, "inline-flex h-5 align-middle")}>
+                  <span className="flex h-full w-full items-center justify-center rounded border border-atlas-border/60 bg-atlas-bg/80 text-[10px]">
+                    Show / Hide
+                  </span>
+                </span>{" "}
+                control — Hide excludes that value from the pro forma (default is Show). All other
+                fields are required to publish.
+              </div>
+            ) : null}
 
             <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-5">
               <div className="mx-auto flex max-w-5xl flex-col gap-5">
-                {groups.map((group) => (
-                  <section
-                    key={group.name}
-                    className="rounded-lg border border-atlas-border/80 bg-atlas-surface/20 p-4 sm:p-5"
-                  >
+                {typeSection === "AFM" ? (
+                  selectedId ? (
+                    <AircraftTypeAfmPanel aircraftTypeId={selectedId} />
+                  ) : (
+                    <p className="text-sm text-atlas-muted">
+                      Save this type first, then upload AFM performance grids.
+                    </p>
+                  )
+                ) : activeGroup ? (
+                  <section className="rounded-lg border border-atlas-border/80 bg-atlas-surface/20 p-4 sm:p-5">
                     <h3 className="mb-4 border-b border-atlas-border/50 pb-2 text-sm font-semibold uppercase tracking-wide text-atlas-muted">
-                      {group.name}
+                      {activeGroup.name}
                     </h3>
-                    {group.name === "Crew" ? (
+                    {activeGroup.name === "Crew" ? (
                       <CrewFieldGrid
-                        fields={group.fields}
+                        fields={activeGroup.fields}
                         values={values}
                         visibility={visibility}
                         onValueChange={(key, v) => setValues((p) => ({ ...p, [key]: v }))}
@@ -592,7 +702,7 @@ export function AircraftWorkbench({
                       />
                     ) : (
                       <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-                        {group.fields.map((f) => (
+                        {activeGroup.fields.map((f) => (
                           <FieldCell
                             key={f.key}
                             field={f}
@@ -607,38 +717,40 @@ export function AircraftWorkbench({
                       </div>
                     )}
                   </section>
-                ))}
+                ) : null}
               </div>
             </div>
 
-            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-atlas-border bg-atlas-surface/10 px-5 py-3">
-              <div>
-                {selectedId ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setDeleteOpen(true)}
-                    className="text-atlas-danger hover:bg-atlas-danger/10"
-                  >
-                    Delete
+            {typeSection !== "AFM" ? (
+              <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-atlas-border bg-atlas-surface/10 px-5 py-3">
+                <div>
+                  {selectedId ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setDeleteOpen(true)}
+                      className="text-atlas-danger hover:bg-atlas-danger/10"
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  {error ? <p className="text-sm text-atlas-danger">{error}</p> : null}
+                  {!canPublish && editing ? (
+                    <p className="hidden text-xs text-atlas-muted sm:block">
+                      {missingPublish.length} required field
+                      {missingPublish.length === 1 ? "" : "s"} remaining to publish
+                    </p>
+                  ) : null}
+                  <Button variant="secondary" onClick={() => void persist("draft")} disabled={saving}>
+                    {saving ? "Saving…" : "Save draft"}
                   </Button>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                {error ? <p className="text-sm text-atlas-danger">{error}</p> : null}
-                {!canPublish && editing ? (
-                  <p className="hidden text-xs text-atlas-muted sm:block">
-                    {missingPublish.length} required field
-                    {missingPublish.length === 1 ? "" : "s"} remaining to publish
-                  </p>
-                ) : null}
-                <Button variant="secondary" onClick={() => void persist("draft")} disabled={saving}>
-                  {saving ? "Saving…" : "Save draft"}
-                </Button>
-                <Button onClick={() => void persist("publish")} disabled={saving || !canPublish}>
-                  {saving ? "Saving…" : "Publish"}
-                </Button>
-              </div>
-            </footer>
+                  <Button onClick={() => void persist("publish")} disabled={saving || !canPublish}>
+                    {saving ? "Saving…" : "Publish"}
+                  </Button>
+                </div>
+              </footer>
+            ) : null}
           </>
         )}
       </div>

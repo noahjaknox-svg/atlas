@@ -30,6 +30,7 @@ export const ROUTES = {
   },
   dataWarehouse: {
     data: "/data-warehouse/data",
-    performanceData: "/data-warehouse/data?tab=performance-data",
+    /** @deprecated Legacy path; redirects to Aircraft tab. Prefer ROUTES.dataWarehouse.data */
+    performanceData: "/data-warehouse/data?tab=aircraft",
   },
 } as const;

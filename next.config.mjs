@@ -25,7 +25,7 @@ const nextConfig = {
       { source: "/data", destination: "/data-warehouse/data", permanent: true },
       {
         source: "/performance-data",
-        destination: "/data-warehouse/data?tab=performance-data",
+        destination: "/data-warehouse/data?tab=aircraft",
         permanent: true,
       },
     ];
