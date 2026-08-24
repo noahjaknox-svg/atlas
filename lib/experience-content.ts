@@ -1,6 +1,19 @@
 import { resolveSectionByPageSlug, sectionNavSlug } from "./experience-page-slug";
 import type { ProposalImageVariant } from "./experience-image-system";
 import type { BlockVisibility } from "./portal-layout-settings";
+import type {
+  BLOCK_ALIGNS,
+  BLOCK_PADDINGS,
+  BLOCK_VERTICAL_ALIGNS,
+  BLOCK_WIDTHS,
+  CONTAINER_CELL_ALIGNS,
+  CTA_VARIANTS,
+  EXPERIENCE_GALLERY_LAYOUTS,
+  IMAGE_DISPLAY_SIZES,
+  ROW_DISPLAYS,
+  ROW_GAPS,
+  ROW_PRESETS,
+} from "./experience-block-enums";
 
 export const EXPERIENCE_SECTION_TYPES = [
   "welcome",
@@ -119,26 +132,21 @@ export type ExperiencePageLink = {
   url: string;
 };
 
-export type ExperienceGalleryLayout =
-  | "single"
-  | "leadership"
-  | "leadershipRow"
-  | "editorialPair"
-  | "welcome"
-  | "compact";
+export type ExperienceGalleryLayout = (typeof EXPERIENCE_GALLERY_LAYOUTS)[number];
 
-export type BlockWidth = "auto" | "narrow" | "medium" | "full";
-export type BlockAlign = "left" | "center" | "right";
-export type BlockVerticalAlign = "top" | "center" | "bottom";
-export type BlockPadding = "none" | "sm" | "md" | "lg";
-export type RowPreset = "equal-2" | "equal-3" | "wide-narrow" | "narrow-wide";
-export type RowGap = "sm" | "md" | "lg";
+export type BlockWidth = (typeof BLOCK_WIDTHS)[number];
+export type BlockAlign = (typeof BLOCK_ALIGNS)[number];
+export type BlockVerticalAlign = (typeof BLOCK_VERTICAL_ALIGNS)[number];
+export type BlockPadding = (typeof BLOCK_PADDINGS)[number];
+export type RowPreset = (typeof ROW_PRESETS)[number];
+export type RowGap = (typeof ROW_GAPS)[number];
 
-export type RowDisplay = "columns" | "rows";
+export type RowDisplay = (typeof ROW_DISPLAYS)[number];
 
 export type GridDimension = 1 | 2 | 3 | 4;
 
-export type ContainerCellAlign = "start" | "stretch";
+export type ContainerCellAlign = (typeof CONTAINER_CELL_ALIGNS)[number];
+export type CtaVariant = (typeof CTA_VARIANTS)[number];
 
 export type BlockLayout = {
   /** @deprecated use widthDesktop / widthMobile preset ids */
@@ -157,7 +165,7 @@ type LeafBlockBase = { id: string; blockLayout?: BlockLayout };
 
 export type ImageFocalPoint = { x: number; y: number };
 export type ImageCropRect = { x: number; y: number; width: number; height: number };
-export type ImageDisplaySize = "icon" | "small" | "fit" | "large";
+export type ImageDisplaySize = (typeof IMAGE_DISPLAY_SIZES)[number];
 
 export type ExperiencePageBlock =
   | (LeafBlockBase & { type: "text"; markdown: string })
@@ -181,13 +189,13 @@ export type ExperiencePageBlock =
       items: ExperienceGalleryItem[];
     })
   | (LeafBlockBase & { type: "html"; html: string })
-  | (LeafBlockBase & { type: "spacer"; size?: "sm" | "md" | "lg" })
+  | (LeafBlockBase & { type: "spacer"; size?: RowGap })
   | (LeafBlockBase & { type: "quote"; text: string; attribution?: string })
   | (LeafBlockBase & {
       type: "cta";
       label: string;
       url: string;
-      variant?: "primary" | "secondary";
+      variant?: CtaVariant;
     })
   | (LeafBlockBase & {
       type: "video";
@@ -205,6 +213,9 @@ export type ExperiencePageBlock =
       /** Relative column widths (e.g. [2, 1, 1] → 2fr 1fr 1fr). Defaults from preset when omitted. */
       columnWeights?: number[];
       blockLayout?: BlockLayout;
+      /** Give each column a subtle card treatment (background, rounded corners, padding)
+       * so a grid of distinct items reads as a grid instead of stacked prose. Off by default. */
+      cellCardStyle?: boolean;
       columns: ExperiencePageBlock[][];
     }
   | {
@@ -221,6 +232,9 @@ export type ExperiencePageBlock =
       align?: BlockAlign;
       blockLayout?: BlockLayout;
       cellAlign?: ContainerCellAlign;
+      /** Give each cell a subtle card treatment (background, rounded corners, padding)
+       * so a grid of distinct items reads as a grid instead of stacked prose. Off by default. */
+      cellCardStyle?: boolean;
       cells: ExperiencePageBlock[][][];
     };
 

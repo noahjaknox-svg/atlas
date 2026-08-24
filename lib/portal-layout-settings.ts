@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CSSProperties } from "react";
 import type { BlockLayout, BlockWidth, ExperiencePageBlock } from "./experience-content";
+import type { BLOCK_VISIBILITIES } from "./experience-block-enums";
 
 export type LayoutWidthPresetId = string;
 
@@ -24,7 +25,7 @@ export type PortalLayoutSettings = {
   breakpoints?: PortalLayoutBreakpoints;
 };
 
-export type BlockVisibility = "both" | "desktop" | "mobile";
+export type BlockVisibility = (typeof BLOCK_VISIBILITIES)[number];
 
 export type LayoutViewport = "desktop" | "mobile";
 
