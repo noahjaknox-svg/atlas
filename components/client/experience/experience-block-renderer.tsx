@@ -37,6 +37,7 @@ import { PortalDesignerEmptyBlockPlaceholder } from "@/components/internal/porta
 import { ProposalImage } from "./proposal-image";
 import { PullQuote } from "./pull-quote";
 import { cn } from "@/lib/utils";
+import { experienceGlassV2 } from "./v2/experience-tokens";
 import {
   PortalDesignerInsertionZone,
   insertionZoneId,
@@ -274,7 +275,6 @@ function DesignBlockShell({
   children,
   className,
   fillCell,
-  designViewport,
 }: {
   block: ExperiencePageBlock;
   path: BlockPath;
@@ -284,21 +284,18 @@ function DesignBlockShell({
   children: React.ReactNode;
   className?: string;
   fillCell?: boolean;
-  designViewport?: PreviewViewport;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: block.id,
     data: { path, blockId: block.id },
   });
   const isSelected = selectedBlockId === block.id;
-  const mobileDesign = designViewport === "mobile";
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "relative w-full min-w-0",
-        !mobileDesign && "pl-7",
+        "relative w-full min-w-0 pl-7",
         fillCell && "flex min-h-0 flex-1 flex-col",
         isDragging && "opacity-40"
       )}
@@ -420,7 +417,8 @@ function renderContainerCells({
           key={`${block.id}-r${r}-c${c}`}
           className={cn(
             "flex min-w-0 flex-col gap-4",
-            stretchCells ? "h-full min-h-0" : "min-h-0"
+            stretchCells ? "h-full min-h-0" : "min-h-0",
+            block.cellCardStyle && [experienceGlassV2, "p-4 sm:p-5"]
           )}
         >
           {showDesign && cellBlocks.length === 0 ? (
@@ -537,7 +535,6 @@ export function ExperienceBlockRenderer({
                   selectedBlockId={selectedBlockId}
                   onSelectBlock={onSelectBlock}
                   onBlockContextMenu={onBlockContextMenu}
-                  designViewport={designViewport}
                   fillCell={inGridCell}
                 >
                   <BlockLayoutFrame
@@ -610,7 +607,8 @@ export function ExperienceBlockRenderer({
           const stretchRowCells = rowLayout !== "stacked";
           const rowColumnClass = cn(
             "flex min-w-0 flex-col gap-4",
-            stretchRowCells ? "h-full min-h-0" : "min-h-0"
+            stretchRowCells ? "h-full min-h-0" : "min-h-0",
+            block.cellCardStyle && [experienceGlassV2, "p-4 sm:p-5"]
           );
           const rowGrid = (
             <div {...gridProps} style={gridProps.style as CSSProperties}>
@@ -644,7 +642,6 @@ export function ExperienceBlockRenderer({
                   selectedBlockId={selectedBlockId}
                   onSelectBlock={onSelectBlock}
                   onBlockContextMenu={onBlockContextMenu}
-                  designViewport={designViewport}
                   fillCell={inGridCell}
                 >
                   <BlockLayoutFrame
@@ -717,7 +714,6 @@ export function ExperienceBlockRenderer({
             selectedBlockId={selectedBlockId}
             onSelectBlock={onSelectBlock}
             onBlockContextMenu={onBlockContextMenu}
-            designViewport={designViewport}
             fillCell={allowVerticalAlign}
           >
             {leafContent}

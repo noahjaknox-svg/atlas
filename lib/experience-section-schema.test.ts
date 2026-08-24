@@ -69,6 +69,35 @@ describe("experience-section-schema recursive pageBlocks", () => {
     const result = pageBlockSchema.safeParse({ id: "1", type: "carousel", items: [] });
     expect(result.success).toBe(false);
   });
+
+  it("rejects a row preset outside the shared enum constant (e.g. a made-up 4-column value)", () => {
+    const result = pageBlockSchema.safeParse({
+      id: "r1",
+      type: "row",
+      preset: "fourUp",
+      columns: [[], []],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      expect(issue?.code).toBe("invalid_enum_value");
+    }
+  });
+
+  it("accepts cellCardStyle on row and container blocks", () => {
+    const result = pageBlockSchema.array().safeParse([
+      { id: "r1", type: "row", preset: "equal-2", cellCardStyle: true, columns: [[], []] },
+      {
+        id: "c1",
+        type: "container",
+        rows: 1,
+        cols: 1,
+        cellCardStyle: true,
+        cells: [[[]]],
+      },
+    ]);
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("Page Code full page record (proposalSectionPatchSchema.omit({ id: true }))", () => {

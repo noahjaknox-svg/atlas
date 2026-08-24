@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Copy, Check } from "lucide-react";
+import type { ZodIssue } from "zod";
 import { Button } from "@/components/ui/button";
 import type { ExperiencePageBlock } from "@/lib/experience-content";
 import {
@@ -20,6 +21,68 @@ function pageRecordJson(section: DesignerSection): string {
   const record: Record<string, unknown> = { ...section };
   delete record.id;
   return JSON.stringify(record, null, 2);
+}
+
+/** Some AI tools fence code regardless of instructions — tolerate a wrapping
+ * ```json / ``` fence even though the instructions no longer ask for one. */
+function stripCodeFence(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  return match ? match[1]!.trim() : trimmed;
+}
+
+const KNOWN_BLOCK_TYPES = new Set([
+  "text",
+  "heading",
+  "image",
+  "gallery",
+  "html",
+  "spacer",
+  "quote",
+  "cta",
+  "video",
+  "row",
+  "container",
+]);
+
+/** Find the nearest ancestor of a failing field that looks like a block (has a
+ * recognized `type`), and describe it in plain terms, e.g. "row block #2". */
+function describeIssueLocation(parsed: unknown, path: (string | number)[]): string | null {
+  for (let i = path.length - 1; i >= 0; i--) {
+    const candidatePath = path.slice(0, i);
+    let node: unknown = parsed;
+    for (const key of candidatePath) {
+      node = node && typeof node === "object" ? (node as Record<string, unknown>)[key] : undefined;
+    }
+    if (
+      node &&
+      typeof node === "object" &&
+      typeof (node as Record<string, unknown>).type === "string" &&
+      KNOWN_BLOCK_TYPES.has((node as Record<string, unknown>).type as string)
+    ) {
+      const indexSegment = candidatePath[candidatePath.length - 1];
+      const label = typeof indexSegment === "number" ? ` #${indexSegment + 1}` : "";
+      return `${(node as Record<string, unknown>).type} block${label}`;
+    }
+  }
+  return null;
+}
+
+/** Translate a Zod issue into something a non-technical user can act on directly,
+ * or hand back to an AI to self-correct — falls back to a labeled raw message for
+ * issue shapes not specifically handled below. */
+function formatZodIssue(issue: ZodIssue, parsed: unknown): string {
+  const location = describeIssueLocation(parsed, issue.path);
+  const field = issue.path[issue.path.length - 1];
+  let detail: string;
+  if (issue.code === "invalid_enum_value") {
+    detail = `'${field}' must be one of ${issue.options.join(", ")}`;
+  } else if (field != null) {
+    detail = `'${field}': ${issue.message}`;
+  } else {
+    detail = issue.message;
+  }
+  return location ? `${location} — ${detail}` : detail;
 }
 
 /** Backfill missing/duplicate block ids in place — safe here since `blocks` is a freshly
@@ -91,7 +154,7 @@ export function PortalDesignerPageCode({
   function applyCode() {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(code);
+      parsed = JSON.parse(stripCodeFence(code));
     } catch (e) {
       setError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
       return;
@@ -100,11 +163,7 @@ export function PortalDesignerPageCode({
     const result = pageRecordSchema.safeParse(parsed);
     if (!result.success) {
       const issue = result.error.issues[0];
-      setError(
-        issue
-          ? `${issue.path.join(".") || "(root)"}: ${issue.message}`
-          : "Invalid page record."
-      );
+      setError(issue ? formatZodIssue(issue, parsed) : "Invalid page record.");
       return;
     }
 

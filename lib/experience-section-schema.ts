@@ -1,5 +1,19 @@
 import { z } from "zod";
 import { sanitizeExperiencePageLinks } from "./experience-content";
+import {
+  BLOCK_ALIGNS,
+  BLOCK_PADDINGS,
+  BLOCK_VERTICAL_ALIGNS,
+  BLOCK_VISIBILITIES,
+  BLOCK_WIDTHS,
+  CONTAINER_CELL_ALIGNS,
+  CTA_VARIANTS,
+  EXPERIENCE_GALLERY_LAYOUTS,
+  IMAGE_DISPLAY_SIZES,
+  ROW_DISPLAYS,
+  ROW_GAPS,
+  ROW_PRESETS,
+} from "./experience-block-enums";
 
 const galleryItemSchema = z.object({
   url: z.string(),
@@ -7,13 +21,13 @@ const galleryItemSchema = z.object({
 });
 
 const blockLayoutSchema = z.object({
-  width: z.enum(["auto", "narrow", "medium", "full"]).optional(),
+  width: z.enum(BLOCK_WIDTHS).optional(),
   widthDesktop: z.string().optional(),
   widthMobile: z.string().optional(),
-  visibility: z.enum(["both", "desktop", "mobile"]).optional(),
-  align: z.enum(["left", "center", "right"]).optional(),
-  verticalAlign: z.enum(["top", "center", "bottom"]).optional(),
-  padding: z.enum(["none", "sm", "md", "lg"]).optional(),
+  visibility: z.enum(BLOCK_VISIBILITIES).optional(),
+  align: z.enum(BLOCK_ALIGNS).optional(),
+  verticalAlign: z.enum(BLOCK_VERTICAL_ALIGNS).optional(),
+  padding: z.enum(BLOCK_PADDINGS).optional(),
 });
 
 const leafBlockFields = {
@@ -56,7 +70,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
           "landscape-wide",
         ])
         .optional(),
-      imageSize: z.enum(["icon", "small", "fit", "large"]).optional(),
+      imageSize: z.enum(IMAGE_DISPLAY_SIZES).optional(),
       cropAspectRatio: z.number().positive().optional(),
       focalPoint: z.object({ x: z.number(), y: z.number() }).optional(),
       crop: z
@@ -71,7 +85,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
     z.object({
       ...leafBlockFields,
       type: z.literal("gallery"),
-      layout: z.string().optional(),
+      layout: z.enum(EXPERIENCE_GALLERY_LAYOUTS).optional(),
       items: z.array(galleryItemSchema),
     }),
     z.object({
@@ -82,7 +96,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
     z.object({
       ...leafBlockFields,
       type: z.literal("spacer"),
-      size: z.enum(["sm", "md", "lg"]).optional(),
+      size: z.enum(ROW_GAPS).optional(),
     }),
     z.object({
       ...leafBlockFields,
@@ -95,7 +109,7 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       type: z.literal("cta"),
       label: z.string(),
       url: z.string(),
-      variant: z.enum(["primary", "secondary"]).optional(),
+      variant: z.enum(CTA_VARIANTS).optional(),
     }),
     z.object({
       ...leafBlockFields,
@@ -107,11 +121,12 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
     z.object({
       id: z.string(),
       type: z.literal("row"),
-      preset: z.enum(["equal-2", "equal-3", "wide-narrow", "narrow-wide"]),
-      gap: z.enum(["sm", "md", "lg"]).optional(),
-      display: z.enum(["columns", "rows"]).optional(),
+      preset: z.enum(ROW_PRESETS),
+      gap: z.enum(ROW_GAPS).optional(),
+      display: z.enum(ROW_DISPLAYS).optional(),
       columnWeights: z.array(z.number().positive()).optional(),
       blockLayout: blockLayoutSchema.optional(),
+      cellCardStyle: z.boolean().optional(),
       columns: z.array(z.array(pageBlockSchema)),
     }),
     z.object({
@@ -119,13 +134,14 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       type: z.literal("container"),
       rows: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
       cols: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-      gap: z.enum(["sm", "md", "lg"]).optional(),
+      gap: z.enum(ROW_GAPS).optional(),
       columnWeights: z.array(z.number().positive()).optional(),
       rowWeights: z.array(z.number().positive()).optional(),
-      width: z.enum(["auto", "narrow", "medium", "full"]).optional(),
-      align: z.enum(["left", "center", "right"]).optional(),
+      width: z.enum(BLOCK_WIDTHS).optional(),
+      align: z.enum(BLOCK_ALIGNS).optional(),
       blockLayout: blockLayoutSchema.optional(),
-      cellAlign: z.enum(["start", "stretch"]).optional(),
+      cellAlign: z.enum(CONTAINER_CELL_ALIGNS).optional(),
+      cellCardStyle: z.boolean().optional(),
       cells: z.array(z.array(z.array(pageBlockSchema))),
     }),
   ])
