@@ -174,6 +174,7 @@ export const proposalSectionPatchSchema = z.object({
   signatoryTitle: z.string().nullable().optional(),
   pageSlug: z.string().nullable().optional(),
   contentBlocks: contentBlocksSchema.optional(),
+  usageTypeIds: z.array(z.string()).optional(),
 });
 
 export type ProposalSectionPatch = z.infer<typeof proposalSectionPatchSchema>;

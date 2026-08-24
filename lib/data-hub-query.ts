@@ -3,7 +3,7 @@ import type { DataHubFilters } from "@/lib/data-hub-filters";
 
 export type ListQueryFilters = DataHubFilters;
 
-export type DataHubEntity = "aircraft" | "fbos" | "airports";
+export type DataHubEntity = "aircraft" | "fbos" | "airports" | "usage-types";
 
 export function parseListQuery(url: URL | string): ListQueryFilters {
   const u = typeof url === "string" ? new URL(url, "http://local") : url;
@@ -69,6 +69,14 @@ export function buildPrismaWhere(
             { municipality: { contains: q, mode: "insensitive" } },
           ],
         });
+      }
+      return and.length ? { AND: and } : {};
+    }
+
+    case "usage-types": {
+      const and: Prisma.UsageTypeWhereInput[] = [];
+      if (q) {
+        and.push({ name: { contains: q, mode: "insensitive" } });
       }
       return and.length ? { AND: and } : {};
     }

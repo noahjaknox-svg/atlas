@@ -93,6 +93,7 @@ export async function POST(request: Request) {
         posterUrl: s.posterUrl,
         calloutMetricLabel: s.calloutMetricLabel,
         calloutMetricValue: s.calloutMetricValue,
+        usageTypeIds: s.usageTypeIds ?? [],
       })),
     });
 

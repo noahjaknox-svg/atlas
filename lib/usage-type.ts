@@ -5,8 +5,14 @@ import type { AircraftTabGroup, AircraftTabSection } from "@/lib/aircraft-tab-fi
 import type { WorkspaceField } from "@/lib/workspace-sections";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
 
-/** Part 91 + 135 charter; Part 91 owner-only. */
+/**
+ * Part 91 + 135 charter; Part 91 owner-only. Prefers the `charter_enabled` flag
+ * (set from the admin-managed UsageType table whenever usage_type is written) and
+ * falls back to the legacy binary check for proposals that predate that flag.
+ */
 export function isCharterUsageEnabled(assumptions: AssumptionMap): boolean {
+  if (assumptions.charter_enabled === "true") return true;
+  if (assumptions.charter_enabled === "false") return false;
   return normalizeUsageType(assumptions) === "part_91_135";
 }
 

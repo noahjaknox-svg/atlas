@@ -8,7 +8,7 @@ export type ValidatedAddAircraftInput = {
   aircraftMasterId: string;
   proposedHomeBase: string;
   fboName: string;
-  usageType: "part_91" | "part_91_135";
+  usageType: string;
   manufacturer: string;
   model: string;
 };
@@ -85,8 +85,7 @@ export async function validateAddAircraftBody(
     };
   }
 
-  const usageType: "part_91" | "part_91_135" =
-    body.usageType === "part_91_135" ? "part_91_135" : "part_91";
+  const usageType = String(body.usageType ?? "").trim() || "part_91";
 
   const aircraftModel =
     String(body.aircraftModel ?? "").trim() ||

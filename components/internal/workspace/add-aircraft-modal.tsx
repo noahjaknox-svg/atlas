@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { USAGE_TYPE_OPTIONS } from "@/lib/aircraft-workspace";
 
 const DEFAULT_BASE = "SDL";
 const DEFAULT_FBO = "PrismJet";
@@ -42,6 +41,7 @@ export function AddAircraftModal({
   const [homeBase, setHomeBase] = useState(DEFAULT_BASE);
   const [fboName, setFboName] = useState(DEFAULT_FBO);
   const [usageType, setUsageType] = useState("part_91");
+  const [usageTypeOptions, setUsageTypeOptions] = useState<{ value: string; label: string }[]>([]);
 
   const searchMasters = useCallback(async (q: string) => {
     setMasterLoading(true);
@@ -51,6 +51,17 @@ export function AddAircraftModal({
     if (res.ok) {
       setMasterOptions(json.map((r: MasterRow) => ({ id: r.id, label: r.label })));
     }
+  }, []);
+
+  const loadUsageTypes = useCallback(async () => {
+    const res = await fetch("/api/data/usage-types");
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return;
+    const rows = (json.rows ?? []) as { name: string; active: boolean }[];
+    const options = rows.filter((r) => r.active).map((r) => ({ value: r.name, label: r.name }));
+    if (options.length === 0) return;
+    setUsageTypeOptions(options);
+    setUsageType((prev) => (options.some((o) => o.value === prev) ? prev : options[0]!.value));
   }, []);
 
   const loadFbos = useCallback(async (icao: string) => {
@@ -78,7 +89,8 @@ export function AddAircraftModal({
     setError("");
     void loadFbos(DEFAULT_BASE);
     void searchMasters("");
-  }, [open, loadFbos, searchMasters]);
+    void loadUsageTypes();
+  }, [open, loadFbos, searchMasters, loadUsageTypes]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -215,7 +227,7 @@ export function AddAircraftModal({
                 onChange={(e) => setUsageType(e.target.value)}
                 className="atlas-input"
               >
-                {USAGE_TYPE_OPTIONS.map((o) => (
+                {usageTypeOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

@@ -54,6 +54,7 @@ export function PortalDesignerInspector({
   layoutSettings,
   designViewport,
   selectedBlockPath,
+  usageTypes,
 }: {
   section: DesignerSection;
   selectedBlock: ExperiencePageBlock | null;
@@ -65,6 +66,7 @@ export function PortalDesignerInspector({
   layoutSettings: PortalLayoutSettings;
   designViewport?: PreviewViewport;
   selectedBlockPath?: BlockPath;
+  usageTypes?: { id: string; name: string }[];
 }) {
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
@@ -109,6 +111,42 @@ export function PortalDesignerInspector({
               className="mt-1 h-9 font-mono text-sm"
               placeholder="my-custom-page"
             />
+          </div>
+        ) : null}
+
+        {usageTypes && usageTypes.length > 0 ? (
+          <div>
+            <Label className="text-sm">Usage types</Label>
+            <p className="mt-0.5 text-xs text-atlas-muted">
+              Which usage types this page applies to. Leave all unchecked to show it for every
+              usage type.
+            </p>
+            <div className="mt-2 space-y-1.5">
+              {usageTypes.map((ut) => {
+                const current = section.usageTypeIds ?? [];
+                const checked = current.includes(ut.id);
+                return (
+                  <label
+                    key={ut.id}
+                    className="flex items-center gap-2 text-sm text-atlas-text"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) =>
+                        onPatchSection({
+                          usageTypeIds: e.target.checked
+                            ? [...current, ut.id]
+                            : current.filter((id) => id !== ut.id),
+                        })
+                      }
+                      className="accent-atlas-accent"
+                    />
+                    {ut.name}
+                  </label>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
@@ -257,7 +295,7 @@ function ImageLayoutControls({
         />
         <LayoutSelect
           label="Horizontal align"
-          value={blockLayout?.align ?? "left"}
+          value={blockLayout?.align ?? "center"}
           options={[
             ["left", "Left"],
             ["center", "Center"],
@@ -316,7 +354,7 @@ function BlockLayoutControls({
         />
         <LayoutSelect
           label="Horizontal align"
-          value={blockLayout?.align ?? "left"}
+          value={blockLayout?.align ?? "center"}
           options={[
             ["left", "Left"],
             ["center", "Center"],

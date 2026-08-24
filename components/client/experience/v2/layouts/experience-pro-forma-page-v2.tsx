@@ -34,7 +34,7 @@ export function ExperienceProFormaPageV2({
       lockViewport
       flushBottom
       className="min-h-0 flex-1"
-      contentClassName="!mx-0 h-full min-h-0 !max-w-[min(100%,100rem)]"
+      contentClassName="!mx-auto h-full min-h-0 !max-w-[min(100%,100rem)] px-4 sm:px-6 lg:px-0"
     >
       <ProFormaClient
         slug={slug}

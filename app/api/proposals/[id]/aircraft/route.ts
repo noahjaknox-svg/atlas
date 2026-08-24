@@ -8,6 +8,7 @@ import {
   serializeProFormaVisibility,
 } from "@/lib/proforma-line-visibility";
 import { validateAddAircraftBody } from "@/lib/validate-add-aircraft";
+import { applyUsageTypeVisibility } from "@/lib/usage-type-page-visibility";
 
 export async function GET(
   _request: Request,
@@ -160,6 +161,8 @@ export async function POST(
         data: { aircraftInstanceId: aircraft.id },
       });
     }
+
+    await applyUsageTypeVisibility(proposalId, usageType);
 
     return jsonOk({ aircraft: refreshed ?? aircraft, assumptions: seededAssumptions }, 201);
   } catch (e) {

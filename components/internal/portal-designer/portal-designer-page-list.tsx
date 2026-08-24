@@ -24,6 +24,7 @@ import {
 import { isCustomPortalPage, sectionNavSlug } from "@/lib/experience-page-slug";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { UsageTypeSelector } from "@/components/internal/usage-type-selector";
 import { DESIGNER_PAGE_TYPES, type DesignerSection } from "./portal-designer-types";
 import { PortalDesignerAddPageModal } from "./portal-designer-add-page-modal";
 
@@ -118,6 +119,9 @@ export function PortalDesignerPageList({
   onAddPage,
   onDeletePage,
   canAddCustomPages,
+  usageTypes,
+  selectedUsageTypeId,
+  onSelectUsageType,
 }: {
   sections: DesignerSection[];
   activeSectionId: string;
@@ -127,6 +131,9 @@ export function PortalDesignerPageList({
   onAddPage?: (input: { title: string; pageSlug: string }) => Promise<void>;
   onDeletePage?: (sectionId: string) => Promise<void>;
   canAddCustomPages?: boolean;
+  usageTypes?: { id: string; name: string }[];
+  selectedUsageTypeId?: string | null;
+  onSelectUsageType?: (id: string | null) => void;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -138,8 +145,12 @@ export function PortalDesignerPageList({
     const custom = sections
       .filter((s) => isCustomPortalPage(s))
       .sort((a, b) => a.sortOrder - b.sortOrder);
-    return [...system, ...custom].sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [sections]);
+    const merged = [...system, ...custom].sort((a, b) => a.sortOrder - b.sortOrder);
+    if (!selectedUsageTypeId) return merged;
+    return merged.filter(
+      (s) => !s.usageTypeIds?.length || s.usageTypeIds.includes(selectedUsageTypeId)
+    );
+  }, [sections, selectedUsageTypeId]);
 
   const sortableIds = ordered.map((s) => s.id ?? s.sectionType);
 
@@ -162,6 +173,15 @@ export function PortalDesignerPageList({
 
   return (
     <div className="flex h-full flex-col">
+      {usageTypes && usageTypes.length > 0 && onSelectUsageType ? (
+        <div className="shrink-0 border-b border-atlas-border px-3 py-2">
+          <UsageTypeSelector
+            usageTypes={usageTypes}
+            selectedId={selectedUsageTypeId ?? null}
+            onChange={onSelectUsageType}
+          />
+        </div>
+      ) : null}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-atlas-border px-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">Pages</p>
         {canAddCustomPages && onAddPage ? (

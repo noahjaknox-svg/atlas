@@ -67,7 +67,14 @@ export default async function ProposalPortalDesignPage({
     signatoryName: s.signatoryName,
     signatoryTitle: s.signatoryTitle,
     contentBlocks: (s.contentBlocks as ExperienceContentBlocks | null) ?? null,
+    usageTypeIds: s.usageTypeIds,
   }));
+
+  const usageTypes = await prisma.usageType.findMany({
+    where: { active: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true },
+  });
 
   const lastSnapshot = proposal.snapshots[0];
   const publishedSnapshot = lastSnapshot
@@ -108,6 +115,7 @@ export default async function ProposalPortalDesignPage({
             publishedSnapshot={publishedSnapshot}
             publishStatus={publishStatus}
             lastPublishedAt={lastSnapshot?.publishedAt?.toISOString() ?? null}
+            usageTypes={usageTypes}
             initialHero={
               primaryAircraft
                 ? {

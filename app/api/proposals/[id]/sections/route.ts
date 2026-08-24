@@ -58,6 +58,7 @@ export async function PATCH(
       if (item.calloutMetricValue !== undefined) {
         data.calloutMetricValue = item.calloutMetricValue;
       }
+      if (item.usageTypeIds !== undefined) data.usageTypeIds = item.usageTypeIds;
 
       if (item.pageSlug !== undefined) {
         if (existing.sectionType !== "custom_page") {

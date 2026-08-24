@@ -41,6 +41,7 @@ export async function ensureExperienceSections(proposalId: string) {  const [exi
       posterUrl: s.posterUrl,
       calloutMetricLabel: s.calloutMetricLabel,
       calloutMetricValue: s.calloutMetricValue,
+      usageTypeIds: s.usageTypeIds ?? [],
     })),
   });
 }

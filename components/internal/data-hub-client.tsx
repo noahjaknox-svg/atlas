@@ -46,11 +46,24 @@ const FBO_WORKBENCH_FIELDS: WorkbenchField[] = [
   },
 ];
 
+const USAGE_TYPE_WORKBENCH_FIELDS: WorkbenchField[] = [
+  { key: "name", label: "Name", type: "text", required: true, group: "Details" },
+  { key: "sortOrder", label: "Sort order", type: "number", group: "Details" },
+  { key: "active", label: "Active", type: "bool", group: "Details" },
+  {
+    key: "charterEnabled",
+    label: "Charter enabled",
+    type: "bool",
+    group: "Details",
+  },
+];
+
 const REFERENCE_TABS = [
   { id: "aircraft", label: "Aircraft types" },
   { id: "tails", label: "Tails" },
   { id: "airports", label: "Airports" },
   { id: "fbos", label: "FBOs" },
+  { id: "usage-types", label: "Usage Types" },
   { id: "general", label: "General and Company" },
   { id: "insurance", label: "Insurance" },
   { id: "registration-taxes", label: "Registration & Taxes" },
@@ -84,9 +97,17 @@ export function DataHubClient({
   );
 
   const scrollContainedTab =
-    tab === "aircraft" || tab === "tails" || tab === "fbos" || tab === "airports";
+    tab === "aircraft" ||
+    tab === "tails" ||
+    tab === "fbos" ||
+    tab === "airports" ||
+    tab === "usage-types";
   const workbenchTab =
-    tab === "aircraft" || tab === "tails" || tab === "fbos" || tab === "airports";
+    tab === "aircraft" ||
+    tab === "tails" ||
+    tab === "fbos" ||
+    tab === "airports" ||
+    tab === "usage-types";
   const activeTab = REFERENCE_TABS.find((t) => t.id === tab) ?? REFERENCE_TABS[0];
 
   const tabButtonClass = (active: boolean) =>
@@ -215,6 +236,19 @@ export function DataHubClient({
                 />
               </div>
             </details>
+          </div>
+        )}
+
+        {tab === "usage-types" && (
+          <div className="flex min-h-0 flex-1">
+            <RecordWorkbench
+              title="Usage Type"
+              apiPath="/api/data/usage-types"
+              initialData={initialTab === "usage-types" ? initialTabData : undefined}
+              fields={USAGE_TYPE_WORKBENCH_FIELDS}
+              primaryKey="name"
+              searchKeys={["name"]}
+            />
           </div>
         )}
 

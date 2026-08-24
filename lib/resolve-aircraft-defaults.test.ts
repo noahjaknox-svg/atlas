@@ -5,6 +5,7 @@ vi.mock("@/lib/db", () => ({
     aircraftType: { findUnique: vi.fn() },
     aircraftInstance: { findUnique: vi.fn() },
     fboHangarOverride: { findUnique: vi.fn() },
+    usageType: { findFirst: vi.fn() },
   },
 }));
 
@@ -100,6 +101,7 @@ describe("resolveAircraftDefaults", () => {
       proposal: { prospect: { opportunityType: "aircraft_management" } },
     } as never);
     vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(CHALLENGER as never);
+    vi.mocked(prisma.usageType.findFirst).mockResolvedValue(null as never);
   });
 
   it("does not inject aircraft_year for Challenger 300 in general profile mode", async () => {

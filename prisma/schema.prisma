@@ -166,29 +166,29 @@ enum SectionType {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String          @id @default(uuid()) @db.Uuid
   name         String
-  email        String   @unique
-  passwordHash String?  @map("password_hash")
-  supabaseId   String?  @unique @map("supabase_id")
+  email        String          @unique
+  passwordHash String?         @map("password_hash")
+  supabaseId   String?         @unique @map("supabase_id")
   role         UserRole        @default(staff)
   departments  AppDepartment[] @default([])
   active       Boolean         @default(true)
   permissions  Json?           @db.JsonB
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
 
-  prospectsCreated       Prospect[]         @relation("ProspectCreatedBy")
-  prospectsAssigned      Prospect[]         @relation("ProspectAssignedTo")
-  invitesSent            UserInvite[]       @relation("UserInviteSentBy")
-  proposalsPrepared      Proposal[]         @relation("ProposalPreparedBy")
-  proposalsReviewed      Proposal[]         @relation("ProposalReviewedBy")
-  proposalsApproved      Proposal[]         @relation("ProposalApprovedBy")
-  snapshotsPublished     ProposalSnapshot[] @relation("SnapshotPublishedBy")
-  proposalComments       ProposalComment[]
-  charterRequestsCreated CharterRequest[]   @relation("CharterRequestCreatedBy")
-  emptyLegsForceApplied  EmptyLeg[]         @relation("EmptyLegForceAppliedBy")
-  charterLeadsAssigned   CharterLead[]      @relation("CharterLeadAssignedTo")
+  prospectsCreated                Prospect[]                @relation("ProspectCreatedBy")
+  prospectsAssigned               Prospect[]                @relation("ProspectAssignedTo")
+  invitesSent                     UserInvite[]              @relation("UserInviteSentBy")
+  proposalsPrepared               Proposal[]                @relation("ProposalPreparedBy")
+  proposalsReviewed               Proposal[]                @relation("ProposalReviewedBy")
+  proposalsApproved               Proposal[]                @relation("ProposalApprovedBy")
+  snapshotsPublished              ProposalSnapshot[]        @relation("SnapshotPublishedBy")
+  proposalComments                ProposalComment[]
+  charterRequestsCreated          CharterRequest[]          @relation("CharterRequestCreatedBy")
+  emptyLegsForceApplied           EmptyLeg[]                @relation("EmptyLegForceAppliedBy")
+  charterLeadsAssigned            CharterLead[]             @relation("CharterLeadAssignedTo")
   airportTimezoneOverridesUpdated AirportTimezoneOverride[] @relation("AirportTimezoneOverrideUpdatedBy")
 
   @@map("users")
@@ -247,84 +247,90 @@ enum AircraftPerformanceMetric {
  * and empty-leg default pricing. Actual airframe weights live on AircraftTail.
  */
 model AircraftType {
-  id                        String              @id @default(uuid()) @db.Uuid
-  status                    AircraftTypeStatus  @default(draft) @map("status")
-  /** Crew / ops type code (e.g. B300). Unique when set. */
-  code                      String?             @unique
-  /** AM display name (unique). */
-  displayName               String              @unique @map("display_name")
-  /** Per optional-field Show/Hide for pro forma (xlsx rule A2). */
-  proformaFieldVisibility   Json?               @map("proforma_field_visibility")
-  manufacturer              String?
-  model                     String?
-  modelCode                 String?             @map("model_code")
-  aircraftCategory          AircraftCategory?   @map("aircraft_category")
-  passengerCapacity         Int?                @map("passenger_capacity")
-  maxPassengers             Int?                @map("max_passengers")
-  emptyRange                Int?                @map("empty_range")
-  rangeAtMaxPassengers      Int?                @map("range_at_max_passengers")
-  crewCount                 Int?                @map("crew_count")
-  squareFootage             Int?                @map("square_footage")
-  averageCruiseSpeed        Int?                @map("average_cruise_speed")
-  wifi                      Boolean?
-  homeFuelPct               Int?                @map("home_fuel_pct")
+  id                         String             @id @default(uuid()) @db.Uuid
+  status                     AircraftTypeStatus @default(draft) @map("status")
+  /**
+   * Crew / ops type code (e.g. B300). Unique when set.
+   */
+  code                       String?            @unique
+  /**
+   * AM display name (unique).
+   */
+  displayName                String             @unique @map("display_name")
+  /**
+   * Per optional-field Show/Hide for pro forma (xlsx rule A2).
+   */
+  proformaFieldVisibility    Json?              @map("proforma_field_visibility")
+  manufacturer               String?
+  model                      String?
+  modelCode                  String?            @map("model_code")
+  aircraftCategory           AircraftCategory?  @map("aircraft_category")
+  passengerCapacity          Int?               @map("passenger_capacity")
+  maxPassengers              Int?               @map("max_passengers")
+  emptyRange                 Int?               @map("empty_range")
+  rangeAtMaxPassengers       Int?               @map("range_at_max_passengers")
+  crewCount                  Int?               @map("crew_count")
+  squareFootage              Int?               @map("square_footage")
+  averageCruiseSpeed         Int?               @map("average_cruise_speed")
+  wifi                       Boolean?
+  homeFuelPct                Int?               @map("home_fuel_pct")
   /// Base performance — type-level fuel burn (gph).
-  fuelGallonsPerHour        Int?                @map("fuel_gallons_per_hour")
-  partsProgram              Int?                @map("parts_program")
-  engineProgram             Int?                @map("engine_program")
-  apuProgram                Int?                @map("apu_program")
-  inspectionReserve         Int?                @map("inspection_reserve")
-  tripExpenseHourly         Int?                @map("trip_expense_hourly")
-  defaultMinimumCrew        Int?                @map("default_minimum_crew")
-  leadPilotSalary           Int?                @map("lead_pilot_salary")
-  leadPilotTrainingCost     Int?                @map("lead_pilot_training_cost")
-  picSalary                 Int?                @map("pic_salary")
-  sicSalary                 Int?                @map("sic_salary")
-  cabinAttendantSalary      Int?                @map("cabin_attendant_salary")
-  picTrainingCost           Int?                @map("pic_training_cost")
-  sicTrainingCost           Int?                @map("sic_training_cost")
-  maxUsage1Pilot            Int?                @map("max_usage_1_pilot")
-  maxUsage2Pilots           Int?                @map("max_usage_2_pilots")
-  maxUsage3Pilots           Int?                @map("max_usage_3_pilots")
-  maxUsage4Pilots           Int?                @map("max_usage_4_pilots")
-  maxUsage5Pilots           Int?                @map("max_usage_5_pilots")
-  maxUsage6Pilots           Int?                @map("max_usage_6_pilots")
-  averageCost               Int?                @map("average_cost")
-  charterHourlyRate         Int?                @map("charter_hourly_rate")
-  charterPaybackBasis       PaybackBasis?       @map("charter_payback_basis")
-  fuelSurchargePaybackBasis PaybackBasis?       @map("fuel_surcharge_payback_basis")
-  fuelSurcharge             Int?                @map("fuel_surcharge")
-  pilotCharterIncentive     Int?                @map("pilot_charter_incentive")
-  airframeProgram           Int?                @map("airframe_program")
-  maintenanceReserve        Int?                @map("maintenance_reserve")
+  fuelGallonsPerHour         Int?               @map("fuel_gallons_per_hour")
+  partsProgram               Int?               @map("parts_program")
+  engineProgram              Int?               @map("engine_program")
+  apuProgram                 Int?               @map("apu_program")
+  inspectionReserve          Int?               @map("inspection_reserve")
+  tripExpenseHourly          Int?               @map("trip_expense_hourly")
+  defaultMinimumCrew         Int?               @map("default_minimum_crew")
+  leadPilotSalary            Int?               @map("lead_pilot_salary")
+  leadPilotTrainingCost      Int?               @map("lead_pilot_training_cost")
+  picSalary                  Int?               @map("pic_salary")
+  sicSalary                  Int?               @map("sic_salary")
+  cabinAttendantSalary       Int?               @map("cabin_attendant_salary")
+  picTrainingCost            Int?               @map("pic_training_cost")
+  sicTrainingCost            Int?               @map("sic_training_cost")
+  maxUsage1Pilot             Int?               @map("max_usage_1_pilot")
+  maxUsage2Pilots            Int?               @map("max_usage_2_pilots")
+  maxUsage3Pilots            Int?               @map("max_usage_3_pilots")
+  maxUsage4Pilots            Int?               @map("max_usage_4_pilots")
+  maxUsage5Pilots            Int?               @map("max_usage_5_pilots")
+  maxUsage6Pilots            Int?               @map("max_usage_6_pilots")
+  averageCost                Int?               @map("average_cost")
+  charterHourlyRate          Int?               @map("charter_hourly_rate")
+  charterPaybackBasis        PaybackBasis?      @map("charter_payback_basis")
+  fuelSurchargePaybackBasis  PaybackBasis?      @map("fuel_surcharge_payback_basis")
+  fuelSurcharge              Int?               @map("fuel_surcharge")
+  pilotCharterIncentive      Int?               @map("pilot_charter_incentive")
+  airframeProgram            Int?               @map("airframe_program")
+  maintenanceReserve         Int?               @map("maintenance_reserve")
   defaultCabinAttendantCount Int?               @map("default_cabin_attendant_count")
-  wifiAnnual                Int?                @map("wifi_annual")
-  subscriptionsAnnual       Int?                @map("subscriptions_annual")
-  cleaningAnnual            Int?                @map("cleaning_annual")
-  suppliesAnnual            Int?                @map("supplies_annual")
-  airportFeesAnnual         Int?                @map("airport_fees_annual")
+  wifiAnnual                 Int?               @map("wifi_annual")
+  subscriptionsAnnual        Int?               @map("subscriptions_annual")
+  cleaningAnnual             Int?               @map("cleaning_annual")
+  suppliesAnnual             Int?               @map("supplies_annual")
+  airportFeesAnnual          Int?               @map("airport_fees_annual")
   /// Optional Crew PerformanceModel (slope/wind/climb refs).
-  performanceModel          Json?               @map("performance_model") @db.JsonB
+  performanceModel           Json?              @map("performance_model") @db.JsonB
   /// Ops notes for AFM completeness (also derived notes may ship on /sync).
-  afmNotes                  String?             @map("afm_notes") @db.Text
+  afmNotes                   String?            @map("afm_notes") @db.Text
   /// Active AFM/POH PDF (human source of truth; grids remain separate JSON).
-  afmPdfUrl                 String?             @map("afm_pdf_url")
-  afmPdfFileName            String?             @map("afm_pdf_file_name")
-  afmPdfCategory            String?             @default("afm_poh") @map("afm_pdf_category")
-  afmPdfRevision            String?             @map("afm_pdf_revision")
-  afmPdfEffectiveDate       DateTime?           @map("afm_pdf_effective_date") @db.Date
-  afmPdfUploadedAt          DateTime?           @map("afm_pdf_uploaded_at")
+  afmPdfUrl                  String?            @map("afm_pdf_url")
+  afmPdfFileName             String?            @map("afm_pdf_file_name")
+  afmPdfCategory             String?            @default("afm_poh") @map("afm_pdf_category")
+  afmPdfRevision             String?            @map("afm_pdf_revision")
+  afmPdfEffectiveDate        DateTime?          @map("afm_pdf_effective_date") @db.Date
+  afmPdfUploadedAt           DateTime?          @map("afm_pdf_uploaded_at")
   /// Empty-leg calculated pricing defaults (type-level).
-  emptyLegHourlyRate            Decimal?        @map("empty_leg_hourly_rate") @db.Decimal(12, 2)
-  emptyLegMinimumHours          Decimal?        @map("empty_leg_minimum_hours") @db.Decimal(6, 2)
-  emptyLegOffRoutingHours       Decimal?        @map("empty_leg_off_routing_hours") @db.Decimal(6, 2)
+  emptyLegHourlyRate         Decimal?           @map("empty_leg_hourly_rate") @db.Decimal(12, 2)
+  emptyLegMinimumHours       Decimal?           @map("empty_leg_minimum_hours") @db.Decimal(6, 2)
+  emptyLegOffRoutingHours    Decimal?           @map("empty_leg_off_routing_hours") @db.Decimal(6, 2)
   /// Future JetNet / Conklin / etc.
-  externalSource            String?             @default("atlas") @map("external_source")
-  externalId                String?             @map("external_id")
-  externalSyncedAt          DateTime?           @map("external_synced_at")
-  legacyWarehouseAircraftId String?             @unique @map("legacy_warehouse_aircraft_id") @db.Uuid
-  createdAt                 DateTime            @default(now()) @map("created_at")
-  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  externalSource             String?            @default("atlas") @map("external_source")
+  externalId                 String?            @map("external_id")
+  externalSyncedAt           DateTime?          @map("external_synced_at")
+  legacyWarehouseAircraftId  String?            @unique @map("legacy_warehouse_aircraft_id") @db.Uuid
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
 
   tails           AircraftTail[]
   performance     AircraftPerformanceGrid[]
@@ -339,35 +345,35 @@ model AircraftType {
  * Owns ops identity, actual weights, empty-leg marketing, and pricing overrides.
  */
 model AircraftTail {
-  id                        String             @id @default(uuid()) @db.Uuid
-  tailNumber                String             @unique @map("tail_number")
-  aircraftTypeId            String             @map("aircraft_type_id") @db.Uuid
-  status                    AircraftTailStatus @default(active)
-  homeBase                  String?            @map("home_base")
-  serialNumber              String?            @map("serial_number")
+  id                         String             @id @default(uuid()) @db.Uuid
+  tailNumber                 String             @unique @map("tail_number")
+  aircraftTypeId             String             @map("aircraft_type_id") @db.Uuid
+  status                     AircraftTailStatus @default(active)
+  homeBase                   String?            @map("home_base")
+  serialNumber               String?            @map("serial_number")
   /// Remaining Crew operating factors (GOM, burn rate, etc.). Key weights also promoted below.
-  operating                 Json               @default("{}") @db.JsonB
-  basicEmptyWeightLb        Int?               @map("basic_empty_weight_lb")
-  mtowLb                    Int?               @map("mtow_lb")
-  mzfwLb                    Int?               @map("mzfw_lb")
-  maxBagWeightLb           Int?               @map("max_bag_weight_lb")
-  publicDisplayType         String?            @map("public_display_type")
-  seatCount                 Int?               @map("seat_count")
-  luggageNote               String?            @map("luggage_note")
-  wifi                      Boolean            @default(false)
-  amenitiesJson             Json               @default("[]") @map("amenities_json") @db.JsonB
-  description               String?            @db.Text
-  primaryPhotoUrl           String?            @map("primary_photo_url")
-  photoUrlsJson             Json               @default("[]") @map("photo_urls_json") @db.JsonB
-  isPublicActive            Boolean            @default(true) @map("is_public_active")
-  emptyLegHourlyRateOverride Decimal?          @map("empty_leg_hourly_rate_override") @db.Decimal(12, 2)
-  externalSource            String?            @default("atlas") @map("external_source")
-  externalId                String?            @map("external_id")
-  externalSyncedAt          DateTime?          @map("external_synced_at")
-  createdAt                 DateTime           @default(now()) @map("created_at")
-  updatedAt                 DateTime           @updatedAt @map("updated_at")
+  operating                  Json               @default("{}") @db.JsonB
+  basicEmptyWeightLb         Int?               @map("basic_empty_weight_lb")
+  mtowLb                     Int?               @map("mtow_lb")
+  mzfwLb                     Int?               @map("mzfw_lb")
+  maxBagWeightLb             Int?               @map("max_bag_weight_lb")
+  publicDisplayType          String?            @map("public_display_type")
+  seatCount                  Int?               @map("seat_count")
+  luggageNote                String?            @map("luggage_note")
+  wifi                       Boolean            @default(false)
+  amenitiesJson              Json               @default("[]") @map("amenities_json") @db.JsonB
+  description                String?            @db.Text
+  primaryPhotoUrl            String?            @map("primary_photo_url")
+  photoUrlsJson              Json               @default("[]") @map("photo_urls_json") @db.JsonB
+  isPublicActive             Boolean            @default(true) @map("is_public_active")
+  emptyLegHourlyRateOverride Decimal?           @map("empty_leg_hourly_rate_override") @db.Decimal(12, 2)
+  externalSource             String?            @default("atlas") @map("external_source")
+  externalId                 String?            @map("external_id")
+  externalSyncedAt           DateTime?          @map("external_synced_at")
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
 
-  aircraftType          AircraftType           @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
+  aircraftType          AircraftType          @relation(fields: [aircraftTypeId], references: [id], onDelete: Restrict)
   scheduleEvents        ScheduleEvent[]
   charterRequestMatches CharterRequestMatch[]
   emptyLegs             EmptyLeg[]
@@ -378,18 +384,18 @@ model AircraftTail {
 }
 
 model AircraftPerformanceGrid {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  aircraftTypeId     String                     @map("aircraft_type_id") @db.Uuid
+  id                 String                    @id @default(uuid()) @db.Uuid
+  aircraftTypeId     String                    @map("aircraft_type_id") @db.Uuid
   metric             AircraftPerformanceMetric
-  unit               String                     @default("ft")
-  pressureAltitudeFt Int[]                      @map("pressure_altitude_ft")
-  weightLb           Int[]                      @map("weight_lb")
-  oatC               Int[]                      @map("oat_c")
-  values             Json                       @db.JsonB
+  unit               String                    @default("ft")
+  pressureAltitudeFt Int[]                     @map("pressure_altitude_ft")
+  weightLb           Int[]                     @map("weight_lb")
+  oatC               Int[]                     @map("oat_c")
+  values             Json                      @db.JsonB
   /// Provenance e.g. "King Air 350 B300 POH Section 5…" or "calibrated stand-in".
-  source             String?                    @db.Text
-  createdAt          DateTime                   @default(now()) @map("created_at")
-  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  source             String?                   @db.Text
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
 
   aircraftType AircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
 
@@ -397,7 +403,9 @@ model AircraftPerformanceGrid {
   @@map("aircraft_performance_grids")
 }
 
-/** Org Crew PolicyStore thresholds (singleton id = default). */
+/**
+ * Org Crew PolicyStore thresholds (singleton id = default).
+ */
 model CrewOrgPolicy {
   id         String   @id @default("default")
   thresholds Json     @db.JsonB
@@ -424,14 +432,32 @@ model Fbo {
   @@map("fbos")
 }
 
+/**
+ * Also drives the per-aircraft regulatory usage type (formerly the hardcoded
+ * USAGE_TYPE_OPTIONS in lib/aircraft-workspace.ts) — charterEnabled gates
+ * charter-related pro forma fields and warehouse defaults.
+ */
+model UsageType {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  sortOrder      Int      @default(0) @map("sort_order")
+  active         Boolean  @default(true)
+  charterEnabled Boolean  @default(false) @map("charter_enabled")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([name])
+  @@map("usage_types")
+}
+
 // Per-aircraft hangar annual override for a given FBO ("Specific Hangar Rate").
 model FboHangarOverride {
-  id            String   @id @default(uuid()) @db.Uuid
-  fboId         String   @map("fbo_id") @db.Uuid
-  aircraftTypeId String  @map("aircraft_type_id") @db.Uuid
-  annualRate    Int      @map("annual_rate")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  fboId          String   @map("fbo_id") @db.Uuid
+  aircraftTypeId String   @map("aircraft_type_id") @db.Uuid
+  annualRate     Int      @map("annual_rate")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   fbo          Fbo          @relation(fields: [fboId], references: [id], onDelete: Cascade)
   aircraftType AircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
@@ -467,7 +493,9 @@ model AircraftInstance {
   id                          String             @id @default(uuid()) @db.Uuid
   aircraftTypeId              String?            @map("aircraft_type_id") @db.Uuid
   aircraftTailId              String?            @map("aircraft_tail_id") @db.Uuid
-  /** @deprecated Use aircraftTypeId. Kept for migration compatibility. */
+  /**
+   * @deprecated Use aircraftTypeId. Kept for migration compatibility.
+   */
   warehouseAircraftId         String?            @map("warehouse_aircraft_id") @db.Uuid
   prospectId                  String             @map("prospect_id") @db.Uuid
   proposalId                  String?            @map("proposal_id") @db.Uuid
@@ -500,12 +528,12 @@ model AircraftInstance {
   createdAt                   DateTime           @default(now()) @map("created_at")
   updatedAt                   DateTime           @updatedAt @map("updated_at")
 
-  aircraftType   AircraftType?  @relation(fields: [aircraftTypeId], references: [id])
-  aircraftTail   AircraftTail?  @relation(fields: [aircraftTailId], references: [id])
-  prospect       Prospect       @relation(fields: [prospectId], references: [id])
-  proposal       Proposal?      @relation("ProposalAircraft", fields: [proposalId], references: [id], onDelete: Cascade)
-  proposals      Proposal[]     @relation("ProposalPrimaryAircraft")
-  scenarios      ProposalScenario[]
+  aircraftType AircraftType?      @relation(fields: [aircraftTypeId], references: [id])
+  aircraftTail AircraftTail?      @relation(fields: [aircraftTailId], references: [id])
+  prospect     Prospect           @relation(fields: [prospectId], references: [id])
+  proposal     Proposal?          @relation("ProposalAircraft", fields: [proposalId], references: [id], onDelete: Cascade)
+  proposals    Proposal[]         @relation("ProposalPrimaryAircraft")
+  scenarios    ProposalScenario[]
 
   @@map("aircraft_instances")
 }
@@ -635,10 +663,10 @@ model UserInvite {
   role        UserRole
   departments AppDepartment[]  @default([])
   invitedBy   String           @map("invited_by") @db.Uuid
-  invitedAt  DateTime         @default(now()) @map("invited_at")
-  acceptedAt DateTime?        @map("accepted_at")
-  status     UserInviteStatus @default(pending)
-  tokenHash  String?          @map("token_hash")
+  invitedAt   DateTime         @default(now()) @map("invited_at")
+  acceptedAt  DateTime?        @map("accepted_at")
+  status      UserInviteStatus @default(pending)
+  tokenHash   String?          @map("token_hash")
 
   inviter User @relation("UserInviteSentBy", fields: [invitedBy], references: [id])
 
@@ -828,6 +856,10 @@ model ProposalSection {
   signatoryName      String?     @map("signatory_name")
   signatoryTitle     String?     @map("signatory_title")
   internalNotes      String?     @map("internal_notes") @db.Text
+  /**
+   * Which usage types this page applies to — empty means all.
+   */
+  usageTypeIds       String[]    @default([]) @map("usage_type_ids")
   createdAt          DateTime    @default(now()) @map("created_at")
   updatedAt          DateTime    @updatedAt @map("updated_at")
 
@@ -1040,8 +1072,8 @@ model ScheduleEvent {
   createdAt         DateTime                  @default(now()) @map("created_at")
   updatedAt         DateTime                  @updatedAt @map("updated_at")
 
-  source        ScheduleSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  fleetAircraft AircraftTail? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+  source        ScheduleSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  fleetAircraft AircraftTail?  @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
 
   @@unique([sourceId, externalUid])
   @@index([tailNumber, startsAt])
@@ -1140,8 +1172,8 @@ model CharterRequestMatch {
   recommended     Boolean  @default(false)
   createdAt       DateTime @default(now()) @map("created_at")
 
-  request       CharterRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  fleetAircraft AircraftTail? @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
+  request       CharterRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fleetAircraft AircraftTail?  @relation(fields: [fleetAircraftId], references: [id], onDelete: SetNull)
 
   @@index([requestId, rank])
   @@map("charter_request_matches")
@@ -1216,39 +1248,39 @@ enum EmptyLegViewEventType {
 }
 
 model EmptyLeg {
-  id                     String                     @id @default(uuid()) @db.Uuid
-  tripNumber             String                     @map("trip_number")
-  routeKey               String                     @map("route_key")
-  depIcao                String                     @map("dep_icao")
-  arrIcao                String                     @map("arr_icao")
-  tailNumber             String                     @map("tail_number")
-  aircraftTailId         String?                    @map("aircraft_tail_id") @db.Uuid
-  aircraftType           String?                    @map("aircraft_type")
-  sourceScheduleEventId  String?                    @map("source_schedule_event_id") @db.Uuid
-  sourceIcalUid          String?                    @map("source_ical_uid")
-  sourceJetInsightUrl    String?                    @map("source_jetinsight_url")
-  scheduledDepartureAt   DateTime                   @map("scheduled_departure_at")
-  scheduledArrivalAt     DateTime                   @map("scheduled_arrival_at")
-  durationMinutes        Int                        @map("duration_minutes")
-  lastSyncedAt           DateTime?                  @map("last_synced_at")
-  availabilityStatus     EmptyLegAvailabilityStatus @default(available) @map("availability_status")
-  forceState             EmptyLegForceState?        @map("force_state")
-  forceAppliedByUserId   String?                    @map("force_applied_by_user_id") @db.Uuid
-  forceAppliedAt         DateTime?                  @map("force_applied_at")
-  isFeatured             Boolean                    @default(false) @map("is_featured")
-  slidingWindowStartAt   DateTime?                  @map("sliding_window_start_at")
-  slidingWindowEndAt     DateTime?                  @map("sliding_window_end_at")
-  internalNotes          String?                    @map("internal_notes") @db.Text
-  lifecycleStatus        EmptyLegLifecycleStatus    @default(active) @map("lifecycle_status")
-  historyReason          EmptyLegHistoryReason?     @map("history_reason")
-  viewCount              Int                        @default(0) @map("view_count")
-  detailOpenCount        Int                        @default(0) @map("detail_open_count")
-  submissionCount        Int                        @default(0) @map("submission_count")
-  createdAt              DateTime                   @default(now()) @map("created_at")
-  updatedAt              DateTime                   @updatedAt @map("updated_at")
+  id                    String                     @id @default(uuid()) @db.Uuid
+  tripNumber            String                     @map("trip_number")
+  routeKey              String                     @map("route_key")
+  depIcao               String                     @map("dep_icao")
+  arrIcao               String                     @map("arr_icao")
+  tailNumber            String                     @map("tail_number")
+  aircraftTailId        String?                    @map("aircraft_tail_id") @db.Uuid
+  aircraftType          String?                    @map("aircraft_type")
+  sourceScheduleEventId String?                    @map("source_schedule_event_id") @db.Uuid
+  sourceIcalUid         String?                    @map("source_ical_uid")
+  sourceJetInsightUrl   String?                    @map("source_jetinsight_url")
+  scheduledDepartureAt  DateTime                   @map("scheduled_departure_at")
+  scheduledArrivalAt    DateTime                   @map("scheduled_arrival_at")
+  durationMinutes       Int                        @map("duration_minutes")
+  lastSyncedAt          DateTime?                  @map("last_synced_at")
+  availabilityStatus    EmptyLegAvailabilityStatus @default(available) @map("availability_status")
+  forceState            EmptyLegForceState?        @map("force_state")
+  forceAppliedByUserId  String?                    @map("force_applied_by_user_id") @db.Uuid
+  forceAppliedAt        DateTime?                  @map("force_applied_at")
+  isFeatured            Boolean                    @default(false) @map("is_featured")
+  slidingWindowStartAt  DateTime?                  @map("sliding_window_start_at")
+  slidingWindowEndAt    DateTime?                  @map("sliding_window_end_at")
+  internalNotes         String?                    @map("internal_notes") @db.Text
+  lifecycleStatus       EmptyLegLifecycleStatus    @default(active) @map("lifecycle_status")
+  historyReason         EmptyLegHistoryReason?     @map("history_reason")
+  viewCount             Int                        @default(0) @map("view_count")
+  detailOpenCount       Int                        @default(0) @map("detail_open_count")
+  submissionCount       Int                        @default(0) @map("submission_count")
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
 
-  aircraftTail   AircraftTail?         @relation(fields: [aircraftTailId], references: [id], onDelete: SetNull)
-  forceAppliedBy User?                 @relation("EmptyLegForceAppliedBy", fields: [forceAppliedByUserId], references: [id], onDelete: SetNull)
+  aircraftTail   AircraftTail?       @relation(fields: [aircraftTailId], references: [id], onDelete: SetNull)
+  forceAppliedBy User?               @relation("EmptyLegForceAppliedBy", fields: [forceAppliedByUserId], references: [id], onDelete: SetNull)
   placements     EmptyLegPlacement[]
   leads          CharterLead[]
   viewEvents     EmptyLegViewEvent[]
@@ -1264,28 +1296,28 @@ model EmptyLeg {
 }
 
 model EmptyLegPublicList {
-  id                                   String                   @id @default(uuid()) @db.Uuid
+  id                                   String                      @id @default(uuid()) @db.Uuid
   name                                 String
-  slug                                 String                   @unique
-  isActive                             Boolean                  @default(true) @map("is_active")
-  token                                String                   @unique
-  tokenRevokedAt                       DateTime?                @map("token_revoked_at")
-  defaultPlacementStatus               EmptyLegPlacementStatus  @default(needs_approval) @map("default_placement_status")
-  layoutStyle                          EmptyLegLayoutStyle      @default(card_grid) @map("layout_style")
-  defaultPricingMode                   EmptyLegPricingMode      @default(calculated) @map("default_pricing_mode")
-  discountPercent                      Decimal?                 @map("discount_percent") @db.Decimal(6, 3)
+  slug                                 String                      @unique
+  isActive                             Boolean                     @default(true) @map("is_active")
+  token                                String                      @unique
+  tokenRevokedAt                       DateTime?                   @map("token_revoked_at")
+  defaultPlacementStatus               EmptyLegPlacementStatus     @default(needs_approval) @map("default_placement_status")
+  layoutStyle                          EmptyLegLayoutStyle         @default(card_grid) @map("layout_style")
+  defaultPricingMode                   EmptyLegPricingMode         @default(calculated) @map("default_pricing_mode")
+  discountPercent                      Decimal?                    @map("discount_percent") @db.Decimal(6, 3)
   discountDisplayMode                  EmptyLegDiscountDisplayMode @default(none) @map("discount_display_mode")
-  minimumQuotableHours                 Decimal?                 @map("minimum_quotable_hours") @db.Decimal(6, 2)
-  settingsJson                         Json                     @default("{}") @map("settings_json") @db.JsonB
-  recipientEmailOverride               String?                  @map("recipient_email_override")
-  confirmationTemplateOverride         String?                  @map("confirmation_template_override") @db.Text
-  internalNotificationTemplateOverride String?                  @map("internal_notification_template_override") @db.Text
-  brandingOverrideJson                 Json                     @default("{}") @map("branding_override_json") @db.JsonB
-  visibleFieldsJson                    Json                     @default("{}") @map("visible_fields_json") @db.JsonB
-  consentTextOverride                  String?                  @map("consent_text_override") @db.Text
-  disclaimerOverride                   String?                  @map("disclaimer_override") @db.Text
-  createdAt                            DateTime                 @default(now()) @map("created_at")
-  updatedAt                            DateTime                 @updatedAt @map("updated_at")
+  minimumQuotableHours                 Decimal?                    @map("minimum_quotable_hours") @db.Decimal(6, 2)
+  settingsJson                         Json                        @default("{}") @map("settings_json") @db.JsonB
+  recipientEmailOverride               String?                     @map("recipient_email_override")
+  confirmationTemplateOverride         String?                     @map("confirmation_template_override") @db.Text
+  internalNotificationTemplateOverride String?                     @map("internal_notification_template_override") @db.Text
+  brandingOverrideJson                 Json                        @default("{}") @map("branding_override_json") @db.JsonB
+  visibleFieldsJson                    Json                        @default("{}") @map("visible_fields_json") @db.JsonB
+  consentTextOverride                  String?                     @map("consent_text_override") @db.Text
+  disclaimerOverride                   String?                     @map("disclaimer_override") @db.Text
+  createdAt                            DateTime                    @default(now()) @map("created_at")
+  updatedAt                            DateTime                    @updatedAt @map("updated_at")
 
   placements      EmptyLegPlacement[]
   routingProfiles EmptyLegRoutingProfile[]
@@ -1296,19 +1328,19 @@ model EmptyLegPublicList {
 }
 
 model EmptyLegPlacement {
-  id                   String                      @id @default(uuid()) @db.Uuid
-  emptyLegId           String                      @map("empty_leg_id") @db.Uuid
-  publicListId         String                      @map("public_list_id") @db.Uuid
-  status               EmptyLegPlacementStatus     @default(needs_approval)
-  pricingMode          EmptyLegPricingMode         @default(calculated) @map("pricing_mode")
-  customPrice          Decimal?                    @map("custom_price") @db.Decimal(12, 2)
-  displayDiscountMode  EmptyLegDiscountDisplayMode @default(none) @map("display_discount_mode")
-  pricingResultJson    Json                        @default("{}") @map("pricing_result_json") @db.JsonB
-  createdAt            DateTime                    @default(now()) @map("created_at")
-  updatedAt            DateTime                    @updatedAt @map("updated_at")
+  id                  String                      @id @default(uuid()) @db.Uuid
+  emptyLegId          String                      @map("empty_leg_id") @db.Uuid
+  publicListId        String                      @map("public_list_id") @db.Uuid
+  status              EmptyLegPlacementStatus     @default(needs_approval)
+  pricingMode         EmptyLegPricingMode         @default(calculated) @map("pricing_mode")
+  customPrice         Decimal?                    @map("custom_price") @db.Decimal(12, 2)
+  displayDiscountMode EmptyLegDiscountDisplayMode @default(none) @map("display_discount_mode")
+  pricingResultJson   Json                        @default("{}") @map("pricing_result_json") @db.JsonB
+  createdAt           DateTime                    @default(now()) @map("created_at")
+  updatedAt           DateTime                    @updatedAt @map("updated_at")
 
-  emptyLeg   EmptyLeg           @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
-  publicList EmptyLegPublicList @relation(fields: [publicListId], references: [id], onDelete: Cascade)
+  emptyLeg   EmptyLeg            @relation(fields: [emptyLegId], references: [id], onDelete: Cascade)
+  publicList EmptyLegPublicList  @relation(fields: [publicListId], references: [id], onDelete: Cascade)
   leads      CharterLead[]
   viewEvents EmptyLegViewEvent[]
 
@@ -1318,17 +1350,17 @@ model EmptyLegPlacement {
 }
 
 model EmptyLegRoutingProfile {
-  id           String                       @id @default(uuid()) @db.Uuid
+  id           String                      @id @default(uuid()) @db.Uuid
   name         String
-  scope        EmptyLegRoutingProfileScope  @default(global)
-  publicListId String?                      @map("public_list_id") @db.Uuid
-  depIcao      String                       @map("dep_icao")
-  arrIcao      String                       @map("arr_icao")
-  fixedPrice   Decimal                      @map("fixed_price") @db.Decimal(12, 2)
-  tailNumbers  String[]                     @default([]) @map("tail_numbers")
-  isActive     Boolean                      @default(true) @map("is_active")
-  createdAt    DateTime                     @default(now()) @map("created_at")
-  updatedAt    DateTime                     @updatedAt @map("updated_at")
+  scope        EmptyLegRoutingProfileScope @default(global)
+  publicListId String?                     @map("public_list_id") @db.Uuid
+  depIcao      String                      @map("dep_icao")
+  arrIcao      String                      @map("arr_icao")
+  fixedPrice   Decimal                     @map("fixed_price") @db.Decimal(12, 2)
+  tailNumbers  String[]                    @default([]) @map("tail_numbers")
+  isActive     Boolean                     @default(true) @map("is_active")
+  createdAt    DateTime                    @default(now()) @map("created_at")
+  updatedAt    DateTime                    @updatedAt @map("updated_at")
 
   publicList EmptyLegPublicList? @relation(fields: [publicListId], references: [id], onDelete: Cascade)
 
@@ -1338,27 +1370,27 @@ model EmptyLegRoutingProfile {
 }
 
 model EmptyLegSettings {
-  id                              String              @id @default("default")
-  defaultLeadRecipientEmail       String?             @map("default_lead_recipient_email")
-  customerConfirmationTemplate    String?             @map("customer_confirmation_template") @db.Text
-  internalNotificationTemplate    String?             @map("internal_notification_template") @db.Text
-  consentText                     String?             @map("consent_text") @db.Text
-  disclaimerText                  String?             @map("disclaimer_text") @db.Text
-  brandingJson                    Json                @default("{}") @map("branding_json") @db.JsonB
-  promotionLabel                  String              @default("Featured Empty Leg") @map("promotion_label")
-  citySearchRadiusNm              Int                 @default(50) @map("city_search_radius_nm")
-  defaultLayoutStyle              EmptyLegLayoutStyle @default(card_grid) @map("default_layout_style")
-  defaultVisibleFieldsJson        Json                @default("{}") @map("default_visible_fields_json") @db.JsonB
-  defaultPricingMode              EmptyLegPricingMode @default(calculated) @map("default_pricing_mode")
-  defaultMinimumQuotableHours     Decimal             @default(1.5) @map("default_minimum_quotable_hours") @db.Decimal(6, 2)
-  defaultDiscountPercent          Decimal?            @map("default_discount_percent") @db.Decimal(6, 3)
-  defaultDiscountDisplayMode      EmptyLegDiscountDisplayMode @default(none) @map("default_discount_display_mode")
-  sendCustomerConfirmation        Boolean             @default(true) @map("send_customer_confirmation")
-  lastCharterSyncAt               DateTime?           @map("last_charter_sync_at")
-  lastCharterSyncStatus           String?             @map("last_charter_sync_status")
-  lastCharterSyncStatsJson        Json                @default("{}") @map("last_charter_sync_stats_json") @db.JsonB
-  createdAt                       DateTime            @default(now()) @map("created_at")
-  updatedAt                       DateTime            @updatedAt @map("updated_at")
+  id                           String                      @id @default("default")
+  defaultLeadRecipientEmail    String?                     @map("default_lead_recipient_email")
+  customerConfirmationTemplate String?                     @map("customer_confirmation_template") @db.Text
+  internalNotificationTemplate String?                     @map("internal_notification_template") @db.Text
+  consentText                  String?                     @map("consent_text") @db.Text
+  disclaimerText               String?                     @map("disclaimer_text") @db.Text
+  brandingJson                 Json                        @default("{}") @map("branding_json") @db.JsonB
+  promotionLabel               String                      @default("Featured Empty Leg") @map("promotion_label")
+  citySearchRadiusNm           Int                         @default(50) @map("city_search_radius_nm")
+  defaultLayoutStyle           EmptyLegLayoutStyle         @default(card_grid) @map("default_layout_style")
+  defaultVisibleFieldsJson     Json                        @default("{}") @map("default_visible_fields_json") @db.JsonB
+  defaultPricingMode           EmptyLegPricingMode         @default(calculated) @map("default_pricing_mode")
+  defaultMinimumQuotableHours  Decimal                     @default(1.5) @map("default_minimum_quotable_hours") @db.Decimal(6, 2)
+  defaultDiscountPercent       Decimal?                    @map("default_discount_percent") @db.Decimal(6, 3)
+  defaultDiscountDisplayMode   EmptyLegDiscountDisplayMode @default(none) @map("default_discount_display_mode")
+  sendCustomerConfirmation     Boolean                     @default(true) @map("send_customer_confirmation")
+  lastCharterSyncAt            DateTime?                   @map("last_charter_sync_at")
+  lastCharterSyncStatus        String?                     @map("last_charter_sync_status")
+  lastCharterSyncStatsJson     Json                        @default("{}") @map("last_charter_sync_stats_json") @db.JsonB
+  createdAt                    DateTime                    @default(now()) @map("created_at")
+  updatedAt                    DateTime                    @updatedAt @map("updated_at")
 
   @@map("empty_leg_settings")
 }
@@ -1386,10 +1418,10 @@ model CharterLead {
   createdAt                    DateTime               @default(now()) @map("created_at")
   updatedAt                    DateTime               @updatedAt @map("updated_at")
 
-  emptyLeg               EmptyLeg?           @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
-  publicList             EmptyLegPublicList  @relation(fields: [sourcePublicListId], references: [id], onDelete: Restrict)
-  placement              EmptyLegPlacement?  @relation(fields: [sourcePlacementId], references: [id], onDelete: SetNull)
-  assignedRepresentative User?               @relation("CharterLeadAssignedTo", fields: [assignedRepresentativeUserId], references: [id], onDelete: SetNull)
+  emptyLeg               EmptyLeg?          @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
+  publicList             EmptyLegPublicList @relation(fields: [sourcePublicListId], references: [id], onDelete: Restrict)
+  placement              EmptyLegPlacement? @relation(fields: [sourcePlacementId], references: [id], onDelete: SetNull)
+  assignedRepresentative User?              @relation("CharterLeadAssignedTo", fields: [assignedRepresentativeUserId], references: [id], onDelete: SetNull)
 
   @@index([submittedAt(sort: Desc)])
   @@index([sourcePublicListId])
@@ -1406,24 +1438,26 @@ model EmptyLegViewEvent {
   eventType    EmptyLegViewEventType @map("event_type")
   createdAt    DateTime              @default(now()) @map("created_at")
 
-  emptyLeg   EmptyLeg?           @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
-  publicList EmptyLegPublicList  @relation(fields: [publicListId], references: [id], onDelete: Cascade)
-  placement  EmptyLegPlacement?  @relation(fields: [placementId], references: [id], onDelete: SetNull)
+  emptyLeg   EmptyLeg?          @relation(fields: [emptyLegId], references: [id], onDelete: SetNull)
+  publicList EmptyLegPublicList @relation(fields: [publicListId], references: [id], onDelete: Cascade)
+  placement  EmptyLegPlacement? @relation(fields: [placementId], references: [id], onDelete: SetNull)
 
   @@index([publicListId, createdAt(sort: Desc)])
   @@index([emptyLegId, eventType])
   @@map("empty_leg_view_events")
 }
 
-/** Staff overrides when automatic airport→IANA resolution is missing or wrong. */
+/**
+ * Staff overrides when automatic airport→IANA resolution is missing or wrong.
+ */
 model AirportTimezoneOverride {
-  id            String   @id @default(uuid()) @db.Uuid
-  icao          String   @unique
-  ianaTimezone  String   @map("iana_timezone")
-  note          String?  @db.Text
-  updatedById   String?  @map("updated_by_id") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  icao         String   @unique
+  ianaTimezone String   @map("iana_timezone")
+  note         String?  @db.Text
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   updatedBy User? @relation("AirportTimezoneOverrideUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
