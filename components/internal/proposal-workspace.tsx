@@ -106,6 +106,7 @@ export type ProposalWorkspaceData = {
   ownersByAircraft: Record<string, ProposalOwnerProfile[]>;
   allocationModeByAircraft: Record<string, OwnerExpenseAllocationMode>;
   deletedAt?: string | null;
+  usageTypes?: { id: string; name: string }[];
 };
 
 function mergeAssumptions(
@@ -1217,6 +1218,7 @@ export function ProposalWorkspace({
           sections={sections as ExperienceSectionRow[]}
           onSectionsChange={setSections}
           onExperienceSaved={() => markNeedsRepublish()}
+          usageTypes={data.usageTypes}
         />
       ) : null}
     </div>

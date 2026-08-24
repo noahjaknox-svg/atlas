@@ -57,7 +57,11 @@ export async function resolveAircraftDefaults(params: {
 
   const ctx = buildDefaultsContext(params.assumptions, instance);
   const map: Record<string, string> = {};
-  const usage = ctx.usage_type === "part_91_135" ? "part_91_135" : "part_91";
+  const usage = ctx.usage_type?.trim() || "part_91";
+  const usageTypeRow = usage
+    ? await prisma.usageType.findFirst({ where: { name: usage }, select: { charterEnabled: true } })
+    : null;
+  const charterEnabled = usageTypeRow?.charterEnabled ?? usage === "part_91_135";
 
   const icao =
     ctx.home_airport_icao ||
@@ -106,6 +110,7 @@ export async function resolveAircraftDefaults(params: {
       airport: null,
       fboId: null,
       usageType: usage,
+      charterEnabled,
     });
     for (const [k, v] of Object.entries(bundle)) {
       if (v?.trim() && !map[k]?.trim()) map[k] = v.trim();

@@ -42,9 +42,7 @@ export async function GET(
       assumptions.proposed_home_base = code;
     }
     if (fboName) assumptions.fbo_name = fboName;
-    if (usageType === "part_91_135" || usageType === "part_91") {
-      assumptions.usage_type = usageType;
-    }
+    if (usageType) assumptions.usage_type = usageType;
     if (aircraftTypeId) assumptions.aircraft_master_id = aircraftTypeId;
 
     const defaults = await resolveAircraftDefaults({

@@ -173,12 +173,19 @@ export default async function ProposalWorkspacePage({
     allocationModeByAircraft[ac.id] = getAllocationMode(map);
   }
 
+  const usageTypes = await prisma.usageType.findMany({
+    where: { active: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true },
+  });
+
   const workspaceData = {
     id: proposal.id,
     proposalName: proposal.proposalName,
     status: proposal.status,
     updatedAt: proposal.updatedAt.toISOString(),
     deletedAt: proposal.deletedAt?.toISOString() ?? null,
+    usageTypes,
     currentManager: proposal.prospect.currentManager ?? "",
     currentUserId: user.id,
     currentUserName: user.name,
@@ -219,6 +226,7 @@ export default async function ProposalWorkspacePage({
       signatoryName: s.signatoryName ?? null,
       signatoryTitle: s.signatoryTitle ?? null,
       contentBlocks: (s.contentBlocks as ExperienceSectionRow["contentBlocks"]) ?? null,
+      usageTypeIds: s.usageTypeIds,
     })),
     scenarios: proposal.scenarios.map((s) => ({
       aircraftInstanceId: s.aircraftInstanceId ?? null,

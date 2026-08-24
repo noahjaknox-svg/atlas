@@ -28,6 +28,7 @@ export type ExperienceSectionRow = {
   signatoryName?: string | null;
   signatoryTitle?: string | null;
   contentBlocks?: ExperienceContentBlocks | null;
+  usageTypeIds?: string[];
 };
 
 export function ExperienceManagerForm({

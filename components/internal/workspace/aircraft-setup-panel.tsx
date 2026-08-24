@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  getAircraftDisplayName,
-  USAGE_TYPE_OPTIONS,
-  usageTypeToOperatingModel,
-} from "@/lib/aircraft-workspace";
+import { getAircraftDisplayName, usageTypeToOperatingModel } from "@/lib/aircraft-workspace";
 import { applyWarehouseDefaults, warehouseDefaultsBaseline } from "@/lib/warehouse-assumption-seed";
 import { buildDefaultsQueryParams } from "@/lib/build-defaults-query";
 import type { AssumptionMap } from "@/lib/assumptions";
@@ -42,9 +38,10 @@ export function AircraftSetupBar({
   const [selectedMaster, setSelectedMaster] = useState<MasterRow | null>(null);
   const [selectedIcao, setSelectedIcao] = useState(assumptions.home_airport_icao ?? "SDL");
   const [fboName, setFboName] = useState(assumptions.fbo_name ?? "PrismJet");
-  const [usageType, setUsageType] = useState(
-    assumptions.usage_type === "part_91_135" ? "part_91_135" : "part_91"
-  );
+  const [usageType, setUsageType] = useState(assumptions.usage_type?.trim() || "part_91");
+  const [usageTypeOptions, setUsageTypeOptions] = useState<
+    { value: string; label: string; charterEnabled: boolean }[]
+  >([]);
 
   const searchMasters = useCallback(async (q: string) => {
     setMasterLoading(true);
@@ -93,6 +90,17 @@ export function AircraftSetupBar({
     else if (fbos.length > 0) setFboName(fbos[0]!.label);
   }, [fboName]);
 
+  const loadUsageTypes = useCallback(async () => {
+    const res = await fetch("/api/data/usage-types");
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return;
+    const rows = (json.rows ?? []) as { name: string; active: boolean; charterEnabled: boolean }[];
+    const options = rows
+      .filter((r) => r.active)
+      .map((r) => ({ value: r.name, label: r.name, charterEnabled: r.charterEnabled }));
+    if (options.length > 0) setUsageTypeOptions(options);
+  }, []);
+
   const applyBundle = useCallback(
     async (master: MasterRow | null, icao: string, fbo: string, usage: string) => {
       setApplying(true);
@@ -125,12 +133,14 @@ export function AircraftSetupBar({
         const defaults = json.defaults as Record<string, string>;
         const baseline = warehouseDefaultsBaseline(defaults);
         const seeded = applyWarehouseDefaults(assumptions, defaults, "seed");
+        const charterEnabled = usageTypeOptions.find((o) => o.value === usage)?.charterEnabled;
 
         onApplyDefaults(
           {
             ...seeded,
             usage_type: usage,
-            operating_model: usageTypeToOperatingModel(usage),
+            charter_enabled: charterEnabled == null ? undefined : charterEnabled ? "true" : "false",
+            operating_model: usageTypeToOperatingModel(usage, charterEnabled),
             fbo_name: fbo,
             home_airport_icao: icao.toUpperCase(),
             proposed_home_base: icao.toUpperCase(),
@@ -151,7 +161,7 @@ export function AircraftSetupBar({
         setApplying(false);
       }
     },
-    [proposalId, aircraftId, assumptions, onApplyDefaults, onWarehouseDefaultsSeeded]
+    [proposalId, aircraftId, assumptions, onApplyDefaults, onWarehouseDefaultsSeeded, usageTypeOptions]
   );
 
   useEffect(() => {
@@ -166,7 +176,8 @@ export function AircraftSetupBar({
       void loadFbos(assumptions.home_airport_icao);
     }
     if (assumptions.fbo_name) setFboName(assumptions.fbo_name);
-    setUsageType(assumptions.usage_type === "part_91_135" ? "part_91_135" : "part_91");
+    setUsageType(assumptions.usage_type?.trim() || "part_91");
+    void loadUsageTypes();
   }, [
     assumptions.aircraft_manufacturer,
     assumptions.aircraft_model,
@@ -176,6 +187,7 @@ export function AircraftSetupBar({
     searchAirports,
     searchMasters,
     loadFbos,
+    loadUsageTypes,
   ]);
 
   const typeDisplay = getAircraftDisplayName(assumptions, {
@@ -283,7 +295,7 @@ export function AircraftSetupBar({
             }}
             className="atlas-input"
           >
-            {USAGE_TYPE_OPTIONS.map((o) => (
+            {usageTypeOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>

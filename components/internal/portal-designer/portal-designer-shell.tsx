@@ -34,8 +34,9 @@ import {
 } from "./portal-designer-block-tree";
 import { PortalDesignerCanvas } from "./portal-designer-canvas";
 import { PortalDesignerPreview } from "./portal-designer-preview";
-import { sectionNavSlug } from "@/lib/experience-page-slug";
+import { isCustomPortalPage, sectionNavSlug } from "@/lib/experience-page-slug";
 import { PortalDesignerInspector } from "./portal-designer-inspector";
+import { PortalDesignerPageCode } from "./portal-designer-page-code";
 import { PortalPublishChecklist } from "./portal-publish-checklist";
 import { PortalDesignerWarningsMenu } from "./portal-designer-warnings-menu";
 import { useDesignerHistory } from "./use-designer-history";
@@ -69,6 +70,7 @@ export function PortalDesignerShell({
   publishStatus,
   lastPublishedAt,
   onPublished,
+  usageTypes,
 }: {
   mode: PortalDesignerMode;
   initialSections: DesignerSection[];
@@ -82,6 +84,7 @@ export function PortalDesignerShell({
   publishStatus?: PortalPublishStatus;
   lastPublishedAt?: string | null;
   onPublished?: () => void;
+  usageTypes?: { id: string; name: string }[];
 }) {
   const initialState: DesignerState = useMemo(
     () => ({
@@ -123,6 +126,8 @@ export function PortalDesignerShell({
   const [publishing, setPublishing] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [pageCodeOpen, setPageCodeOpen] = useState(false);
+  const [selectedUsageTypeId, setSelectedUsageTypeId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -387,7 +392,16 @@ export function PortalDesignerShell({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sections: sections.filter((s) => s.id).map((s) => ({ ...s, id: s.id! })),
+            sections: sections
+              .filter((s) => s.id)
+              .map((s) => {
+                // Only custom pages may set pageSlug — system pages must omit it
+                // entirely (not even as null) or the API rejects the whole batch.
+                const { pageSlug, ...rest } = s;
+                return isCustomPortalPage(s)
+                  ? { ...rest, pageSlug, id: s.id! }
+                  : { ...rest, id: s.id! };
+              }),
           }),
         });
         const json = await res.json();
@@ -742,6 +756,9 @@ export function PortalDesignerShell({
               onAddPage={(input) => handleAddPage(input)}
               onDeletePage={proposalId ? handleDeletePage : undefined}
               canAddCustomPages
+              usageTypes={usageTypes}
+              selectedUsageTypeId={selectedUsageTypeId}
+              onSelectUsageType={setSelectedUsageTypeId}
             />
           </aside>
 
@@ -802,6 +819,7 @@ export function PortalDesignerShell({
               layoutSettings={layoutSettings}
               designViewport={viewport}
               selectedBlockPath={selection?.path}
+              usageTypes={usageTypes}
             />
             <div className="border-t border-atlas-border">
               <button
@@ -823,6 +841,23 @@ export function PortalDesignerShell({
                       setSelection(null);
                     }
                   }}
+                />
+              ) : null}
+            </div>
+            <div className="border-t border-atlas-border">
+              <button
+                type="button"
+                onClick={() => setPageCodeOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-atlas-muted"
+              >
+                Page Code
+                <span>{pageCodeOpen ? "−" : "+"}</span>
+              </button>
+              {pageCodeOpen ? (
+                <PortalDesignerPageCode
+                  section={activeSection}
+                  sectionKey={sectionKey(activeSection)}
+                  onApply={patchActiveSection}
                 />
               ) : null}
             </div>

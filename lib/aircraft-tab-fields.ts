@@ -667,10 +667,15 @@ export const AIRCRAFT_EDITOR_TAB_ORDER = AIRCRAFT_TAB_ORDER.filter((t) => t !== 
 export function editorTabsForAssumptions(assumptions: {
   usage_type?: string;
   operating_model?: string;
+  charter_enabled?: string;
 }): Exclude<AircraftWorkspaceTab, "pro_forma">[] {
   const charter =
-    assumptions.usage_type === "part_91_135" ||
-    assumptions.operating_model === "Part 91 plus Part 135 charter";
+    assumptions.charter_enabled === "true"
+      ? true
+      : assumptions.charter_enabled === "false"
+        ? false
+        : assumptions.usage_type === "part_91_135" ||
+          assumptions.operating_model === "Part 91 plus Part 135 charter";
   return AIRCRAFT_EDITOR_TAB_ORDER.filter((t) => t !== "revenue" || charter);
 }
 

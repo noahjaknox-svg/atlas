@@ -27,13 +27,16 @@ export function buildDefaultsFromReferences(params: {
   airport?: AirportDefaults | null;
   fboId?: string | null;
   usageType: string;
+  /** From the UsageType table; falls back to the legacy binary check if not resolved. */
+  charterEnabled?: boolean;
 }): Partial<AssumptionMap> {
+  const charterEnabled = params.charterEnabled ?? params.usageType === "part_91_135";
   const map: Partial<AssumptionMap> = {
     usage_type: params.usageType,
-    operating_model:
-      params.usageType === "part_91_135"
-        ? "Part 91 plus Part 135 charter"
-        : "Part 91 management only",
+    charter_enabled: charterEnabled ? "true" : "false",
+    operating_model: charterEnabled
+      ? "Part 91 plus Part 135 charter"
+      : "Part 91 management only",
   };
 
   if (params.master) {
@@ -77,7 +80,7 @@ export function buildDefaultsFromReferences(params: {
     }
   }
 
-  if (params.usageType !== "part_91_135") {
+  if (!charterEnabled) {
     CHARTER_ASSUMPTION_KEYS.forEach((key) => {
       map[key] = "0";
     });

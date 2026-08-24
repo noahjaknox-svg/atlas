@@ -53,6 +53,12 @@ const OPERATING_MODELS = [
   { name: "Acquisition plus management", charterEnabled: false },
 ];
 
+const USAGE_TYPES = [
+  { name: "Part 91", sortOrder: 0 },
+  { name: "Part 91/135 Home Base", sortOrder: 1 },
+  { name: "Part 91/135 Floating", sortOrder: 2 },
+];
+
 async function main() {
   console.log("Seeding Atlas reference data...");
 
@@ -74,6 +80,13 @@ async function main() {
           description: m.name,
         },
       });
+    }
+  }
+
+  for (const u of USAGE_TYPES) {
+    const existing = await prisma.usageType.findFirst({ where: { name: u.name } });
+    if (!existing) {
+      await prisma.usageType.create({ data: { name: u.name, sortOrder: u.sortOrder } });
     }
   }
 

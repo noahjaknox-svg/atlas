@@ -19,6 +19,8 @@ export type ExperienceMasterTemplate = {
   calloutMetricLabel: string | null;
   calloutMetricValue: string | null;
   contentBlocks: ExperienceContentBlocks | null;
+  /** Which usage types this page applies to — missing/empty means all. */
+  usageTypeIds?: string[];
 };
 
 export function codeDefaultsAsMasterTemplates(): ExperienceMasterTemplate[] {
@@ -63,6 +65,7 @@ export function parseExperienceMasterTemplates(raw: unknown): ExperienceMasterTe
       calloutMetricLabel: row.calloutMetricLabel ?? null,
       calloutMetricValue: row.calloutMetricValue ?? null,
       contentBlocks: row.contentBlocks ?? null,
+      usageTypeIds: Array.isArray(row.usageTypeIds) ? row.usageTypeIds : [],
     });
   }
   return parsed.length > 0 ? parsed : null;
@@ -115,6 +118,7 @@ export function masterToSectionSnapshot(
       contentBlocks: master.contentBlocks,
       signatoryName: master.signatoryName,
       signatoryTitle: master.signatoryTitle,
+      usageTypeIds: master.usageTypeIds ?? [],
     },
     base
   );

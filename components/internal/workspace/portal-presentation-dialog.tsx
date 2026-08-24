@@ -56,6 +56,7 @@ export function PortalPresentationDialog({
   sections,
   onSectionsChange,
   onExperienceSaved,
+  usageTypes,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -64,6 +65,7 @@ export function PortalPresentationDialog({
   sections: ExperienceSectionRow[];
   onSectionsChange: (next: ExperienceSectionRow[]) => void;
   onExperienceSaved?: () => void;
+  usageTypes?: { id: string; name: string }[];
 }) {
   const [baseline, setBaseline] = useState<ExperienceSectionRow[]>(() => cloneSections(sections));
 
@@ -174,6 +176,7 @@ export function PortalPresentationDialog({
                   proposalId={proposalId}
                   sections={draftSections}
                   onSectionsChange={setDraftSections}
+                  usageTypes={usageTypes}
                 />
               </div>
             </section>

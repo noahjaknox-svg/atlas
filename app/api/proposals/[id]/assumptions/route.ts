@@ -2,6 +2,7 @@ import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import type { AssumptionSourceType, DataConfidence } from "@prisma/client";
+import { applyUsageTypeVisibility } from "@/lib/usage-type-page-visibility";
 
 export async function GET(
   _request: Request,
@@ -87,6 +88,37 @@ export async function POST(
         })
       )
     );
+
+    const usageTypeChanges = (items as AssumptionItem[]).filter(
+      (item) => item.assumptionName === "usage_type" && item.value != null
+    );
+    for (const item of usageTypeChanges) {
+      const usageTypeName = String(item.value);
+      const usageType = await prisma.usageType.findFirst({
+        where: { name: usageTypeName },
+        select: { charterEnabled: true },
+      });
+      if (usageType) {
+        await prisma.proposalAssumption.upsert({
+          where: {
+            proposalId_category_assumptionName: {
+              proposalId,
+              category: item.category,
+              assumptionName: "charter_enabled",
+            },
+          },
+          create: {
+            proposalId,
+            category: item.category,
+            assumptionName: "charter_enabled",
+            value: usageType.charterEnabled ? "true" : "false",
+            sourceType: "manual",
+          },
+          update: { value: usageType.charterEnabled ? "true" : "false" },
+        });
+      }
+      await applyUsageTypeVisibility(proposalId, usageTypeName);
+    }
 
     return jsonOk(results);
   } catch (e) {

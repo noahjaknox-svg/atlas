@@ -38,9 +38,11 @@ export const USAGE_TYPE_OPTIONS = [
   { value: "part_91_135", label: "Part 91 + Part 135" },
 ] as const;
 
-export function usageTypeToOperatingModel(usageType: string): string {
-  if (usageType === "part_91_135") return "Part 91 plus Part 135 charter";
-  return "Part 91 management only";
+/** `charterEnabled` (from the UsageType table) takes precedence when provided;
+ * falls back to the legacy binary check for the two old literal values. */
+export function usageTypeToOperatingModel(usageType: string, charterEnabled?: boolean): string {
+  const charter = charterEnabled ?? usageType === "part_91_135";
+  return charter ? "Part 91 plus Part 135 charter" : "Part 91 management only";
 }
 
 export function normalizeUsageType(assumptions: AssumptionMap): string {
@@ -71,12 +73,15 @@ export const MODEL_COMPARISON_PRESETS: { label: string; operatingModel: string }
   { label: "Charter-Heavy", operatingModel: "Charter-heavy managed aircraft" },
 ];
 
-/** Filter economics field groups based on operating model (V1.1 §3.2). */
+/** Filter economics field groups based on operating model (V1.1 §3.2). `charterEnabled`
+ * (from the UsageType table) takes precedence when provided. */
 export function filterEconomicsGroupsForModel(
   groups: FieldGroup[],
-  usageType: string
+  usageType: string,
+  charterEnabled?: boolean
 ): FieldGroup[] {
-  if (usageType !== "part_91_135") {
+  const charter = charterEnabled ?? usageType === "part_91_135";
+  if (!charter) {
     return groups.filter((g) => g.title.toLowerCase() !== "charter");
   }
   return groups;

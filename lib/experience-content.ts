@@ -271,6 +271,8 @@ export type ExperienceSectionSnapshot = {
   contentBlocks: ExperienceContentBlocks | null;
   signatoryName: string | null;
   signatoryTitle: string | null;
+  /** Which usage types this page applies to — missing/empty means all. */
+  usageTypeIds?: string[];
 };
 
 /** Normalize raw link-button input into clean, renderable entries. */

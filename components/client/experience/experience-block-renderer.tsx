@@ -120,7 +120,7 @@ function BlockLayoutFrame({
   designChrome?: boolean;
   children: React.ReactNode;
 }) {
-  const hAlign = blockLayout?.align ?? "left";
+  const hAlign = blockLayout?.align ?? "center";
   const vAlign = blockLayout?.verticalAlign ?? "top";
   const paddingClass = getBlockPaddingClass(blockLayout?.padding);
 
