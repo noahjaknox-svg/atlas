@@ -16,6 +16,16 @@ This repo has two live environments:
 5. **Never modify environment variables, database connection strings, or Vercel/Supabase project settings for the `atlas` (production) project without explicit user confirmation for that specific action.** The `atlas-staging` project's config can be treated more freely, but still confirm before changing anything DB-connection-related.
 6. **Never run destructive database commands** (`prisma db push --accept-data-loss`, direct `DROP`/`DELETE` without a `WHERE`, migration resets) **against the production database** without explicit confirmation. These are fine on staging.
 
+## Schema changes: Prisma vs. raw SQL
+
+Two systems exist in this repo — `prisma/schema.prisma` + `prisma/migrations`, and `supabase/migrations/*.sql`. The intended split, going forward:
+
+- **Table/column changes**: edit `schema.prisma`, then run `npm run db:migrate` (`prisma migrate dev --name X`) to generate a tracked migration file. Don't use `db push` as the normal workflow — it has no history and is meant for one-off local resyncs only.
+- **`supabase/migrations/*.sql`**: reserved for things Prisma can't express — RLS policies, triggers (e.g. the snapshot-immutability guard), storage buckets. New files here should be created with `supabase migration new <name>` (gives a proper unique timestamped filename) — don't hand-pick the next sequential number; this repo already hit a real duplicate-version collision from doing that historically.
+- **Order when a change needs both**: land the Prisma table/column migration first, then apply the SQL file after (policies/triggers reference tables that must already exist).
+- **How these actually reach each environment**: no CI exists in this repo. On **staging**, once the Supabase GitHub integration is enabled (production branch name set to `staging`, not `main`), new `supabase/migrations` files auto-apply when merged to `staging`. Prisma migrations are NOT covered by that integration — `prisma migrate deploy` is still a manual step, run by whoever's shipping the change, staging first. **Production has no automation for either system** — both are manual, deliberate steps.
+- **Known gap**: this repo's historical `supabase/migrations` (001–034) were applied by hand over time, never through Supabase's own CLI tracking — so when staging was bootstrapped via `prisma db push`, only the Prisma-tracked schema came along. Storage buckets and RLS/trigger side-effects from those files were NOT automatically replayed and needed manual verification/fixing (the `proposal-media` bucket was found missing on staging and created manually on 2026-09-02; RLS policy / snapshot-trigger presence on staging has not yet been separately verified — treat as unconfirmed until checked).
+
 ## Stack
 
 Next.js 14 App Router, TypeScript, Prisma ORM, Supabase Postgres, Zod validation.
