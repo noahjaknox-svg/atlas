@@ -15,13 +15,18 @@ import {
 import type { AircraftSnapshotEntry, AircraftSnapshotMetrics } from "./portal-aircraft-types";
 import { parseSpecHighlights } from "./portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "./snapshot";
-import { resolveEffectiveAssumptionsForInstance } from "./resolve-aircraft-defaults";
+import {
+  loadAircraftDefaultsSharedPreload,
+  resolveEffectiveAssumptionsForInstance,
+  type AircraftDefaultsSharedPreload,
+} from "./resolve-aircraft-defaults";
 import { applyScenarioCrewToAssumptions } from "./scenario-crew";
 import { assumptionsWithFinancingDefault } from "./financing-scenario";
-import { loadOwnerProfilesForAircraft } from "./proposal-owners-db";
+import { loadAllOwnersForProposal, loadOwnerProfilesForAircraft } from "./proposal-owners-db";
 import {
   ownerHoursForUtilization,
   parseProformaOwnerHoursJson,
+  profileFromLegacyAssumptions,
   totalOwnerFlightHours,
   type ProposalOwnerProfile,
 } from "./proposal-owners";
@@ -104,6 +109,16 @@ function clientVisibleAssumptions(
   return clientAssumptions;
 }
 
+/**
+ * Rows already loaded once for the whole proposal so a multi-aircraft build does
+ * not re-query per aircraft (publish path N+1).
+ */
+export type AircraftSnapshotBatchPreload = {
+  defaults: AircraftDefaultsSharedPreload;
+  /** Stored owner profiles keyed by aircraft instance id (missing key = none stored). */
+  ownersByAircraft: Record<string, ProposalOwnerProfile[]>;
+};
+
 export async function buildAircraftSnapshotEntry(args: {
   proposalId?: string;
   aircraft: AircraftWithMaster;
@@ -112,6 +127,7 @@ export async function buildAircraftSnapshotEntry(args: {
   prospectOpportunityType: string;
   isPrimaryLegacy: boolean;
   scenario?: ProposalScenario | null;
+  batch?: AircraftSnapshotBatchPreload;
 }): Promise<AircraftSnapshotEntry> {
   const { aircraft, assumptionRows, allAssumptions, prospectOpportunityType, isPrimaryLegacy } =
     args;
@@ -138,16 +154,21 @@ export async function buildAircraftSnapshotEntry(args: {
   };
 
   let fullMap = { ...assumptionsFromInstance(meta), ...map };
-  fullMap = await resolveEffectiveAssumptionsForInstance(aircraft.id, fullMap);
+  fullMap = await resolveEffectiveAssumptionsForInstance(
+    aircraft.id,
+    fullMap,
+    args.batch ? { ...args.batch.defaults, instance: aircraft } : undefined
+  );
 
-  let profiles: Awaited<ReturnType<typeof loadOwnerProfilesForAircraft>>["profiles"] = [];
+  let profiles: ProposalOwnerProfile[] = [];
   if (args.proposalId) {
-    const loaded = await loadOwnerProfilesForAircraft(
-      args.proposalId,
-      aircraft.id,
-      fullMap
-    );
-    profiles = loaded.profiles;
+    if (args.batch) {
+      const stored = args.batch.ownersByAircraft[aircraft.id];
+      profiles = stored && stored.length > 0 ? stored : profileFromLegacyAssumptions(fullMap);
+    } else {
+      const loaded = await loadOwnerProfilesForAircraft(args.proposalId, aircraft.id, fullMap);
+      profiles = loaded.profiles;
+    }
   }
 
   if (args.scenario) {
@@ -291,6 +312,20 @@ export async function buildAircraftSnapshotList(args: {
   const resolveAll = fullyResolveAircraftIds === undefined;
   const resolveSet = resolveAll ? null : new Set(fullyResolveAircraftIds);
 
+  const fullResolveCount = includedAircraft.filter(
+    (aircraft) => !resolveSet || resolveSet.has(aircraft.id)
+  ).length;
+
+  // Load proposal-wide rows once instead of per aircraft (publish path N+1).
+  let batch: AircraftSnapshotBatchPreload | undefined;
+  if (fullResolveCount > 0) {
+    const [defaults, ownersByAircraft] = await Promise.all([
+      loadAircraftDefaultsSharedPreload(),
+      proposalId ? loadAllOwnersForProposal(proposalId) : Promise.resolve({}),
+    ]);
+    batch = { defaults, ownersByAircraft };
+  }
+
   return Promise.all(
     includedAircraft.map((aircraft) => {
       if (resolveSet && !resolveSet.has(aircraft.id)) {
@@ -310,6 +345,7 @@ export async function buildAircraftSnapshotList(args: {
         prospectOpportunityType,
         isPrimaryLegacy: aircraft.id === primaryAircraftInstanceId,
         scenario: baseScenariosByAircraft[aircraft.id] ?? null,
+        batch,
       });
     })
   );

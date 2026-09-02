@@ -18,7 +18,11 @@ import { getInternalShellProps } from "@/lib/departments";
 import { loadAllOwnersForProposal } from "@/lib/proposal-owners-db";
 import { profileFromLegacyAssumptions, getAllocationMode } from "@/lib/proposal-owners";
 import type { OwnerExpenseAllocationMode } from "@/lib/owner-expense-allocation";
-import { ensureExperienceSections } from "@/lib/ensure-experience-sections";
+import {
+  experienceSectionCreateData,
+  findMissingExperienceSections,
+} from "@/lib/ensure-experience-sections";
+import { getExperienceMasterTemplates } from "@/lib/portal-content";
 import type { ExperienceSectionRow } from "@/components/internal/workspace/experience-manager-panel";
 import { parseSpecHighlights } from "@/lib/portal-aircraft-types";
 import { PROPOSAL_WORKSPACE } from "@/lib/product-terminology";
@@ -55,32 +59,27 @@ export default async function ProposalWorkspacePage({
 }) {
   const { id } = await params;
 
-  const [user, proposal, atlasUsers, comments] = await perfTimed(
+  const [user, proposal, atlasUsers, comments, masterTemplates] = await perfTimed(
     "proposal workspace query",
     () =>
       Promise.all([
         getInternalUser(),
-        ensureExperienceSections(id)
-          .then(() => import("@/lib/draft-portal"))
-          .then(({ ensureDraftPortalForProposal }) => ensureDraftPortalForProposal(id))
-          .then(() =>
-            prisma.proposal.findUnique({
-              where: { id },
-              include: {
-                prospect: true,
-                aircraftInstance: { include: { aircraftType: true } },
-                assumptions: true,
-                sections: { orderBy: { sortOrder: "asc" } },
-                scenarios: true,
-                clientPortal: true,
-                snapshots: {
-                  orderBy: { publishedAt: "desc" },
-                  take: 1,
-                  select: { publishedAt: true },
-                },
-              },
-            })
-          ),
+        prisma.proposal.findUnique({
+          where: { id },
+          include: {
+            prospect: true,
+            aircraftInstance: { include: { aircraftType: true } },
+            assumptions: true,
+            sections: { orderBy: { sortOrder: "asc" } },
+            scenarios: true,
+            clientPortal: true,
+            snapshots: {
+              orderBy: { publishedAt: "desc" },
+              take: 1,
+              select: { publishedAt: true },
+            },
+          },
+        }),
         prisma.user.findMany({
           where: { active: true },
           select: { id: true, name: true },
@@ -91,6 +90,7 @@ export default async function ProposalWorkspacePage({
           include: { user: { select: { id: true, name: true } } },
           orderBy: { createdAt: "asc" },
         }),
+        getExperienceMasterTemplates(),
       ])
   );
 
@@ -98,6 +98,33 @@ export default async function ProposalWorkspacePage({
   requireDepartmentPageAccess(user, "aircraft_management");
   const shell = getInternalShellProps(user);
   if (!proposal) notFound();
+
+  // Creation (POST /api/proposals) seeds sections and the draft portal, so this
+  // read path only heals legacy proposals that predate those rows. The common
+  // case runs zero writes and no extra round trips.
+  let sections = proposal.sections;
+  let clientPortal = proposal.clientPortal;
+  const missingSections = findMissingExperienceSections(sections, masterTemplates);
+  if (missingSections.length > 0 || !clientPortal) {
+    await perfTimed("proposal workspace heal", async () => {
+      if (missingSections.length > 0) {
+        await prisma.proposalSection.createMany({
+          data: experienceSectionCreateData(proposal.id, missingSections),
+        });
+        sections = await prisma.proposalSection.findMany({
+          where: { proposalId: proposal.id },
+          orderBy: { sortOrder: "asc" },
+        });
+      }
+      if (!clientPortal) {
+        const { ensureDraftPortalForProposal } = await import("@/lib/draft-portal");
+        await ensureDraftPortalForProposal(proposal.id);
+        clientPortal = await prisma.clientPortal.findUnique({
+          where: { proposalId: proposal.id },
+        });
+      }
+    });
+  }
 
   const [aircraftList, ownersByAircraftRaw] = await Promise.all([
     loadProposalAircraft(proposal.id, proposal.prospectId, proposal.aircraftInstanceId),
@@ -196,8 +223,8 @@ export default async function ProposalWorkspacePage({
       userId: c.userId,
       userName: c.user.name,
     })),
-    portalPin: proposal.clientPortal?.pinCiphertext
-      ? decryptPinFromStorage(proposal.clientPortal.pinCiphertext)
+    portalPin: clientPortal?.pinCiphertext
+      ? decryptPinFromStorage(clientPortal.pinCiphertext)
       : null,
     prospect: {
       prospectName: proposal.prospect.prospectName,
@@ -213,7 +240,7 @@ export default async function ProposalWorkspacePage({
     atlasUsers,
     selectedAircraftId: proposal.aircraftInstanceId,
     aircraft,
-    sections: proposal.sections.map((s) => ({
+    sections: sections.map((s) => ({
       id: s.id,
       sectionType: s.sectionType,
       title: s.title,
@@ -236,11 +263,11 @@ export default async function ProposalWorkspacePage({
       costPerOwnerHour: s.costPerOwnerHour?.toString() ?? null,
       ownerHours: s.ownerHours?.toString() ?? null,
     })),
-    clientPortal: proposal.clientPortal
+    clientPortal: clientPortal
       ? {
-          slug: proposal.clientPortal.slug,
-          active: proposal.clientPortal.active,
-          portalUrl: getPortalUrl(proposal.clientPortal.slug),
+          slug: clientPortal.slug,
+          active: clientPortal.active,
+          portalUrl: getPortalUrl(clientPortal.slug),
         }
       : null,
     initialClientEditable: Object.fromEntries(
@@ -253,12 +280,12 @@ export default async function ProposalWorkspacePage({
     lastPublishedAt: proposal.snapshots[0]?.publishedAt?.toISOString() ?? null,
     initialNeedsRepublish: (() => {
       const lastPublished = proposal.snapshots[0]?.publishedAt;
-      if (!lastPublished || !proposal.clientPortal) return false;
+      if (!lastPublished || !clientPortal) return false;
       const candidates = [
         proposal.updatedAt,
         proposal.prospect.updatedAt,
         ...proposal.assumptions.map((a) => a.updatedAt),
-        ...proposal.sections.map((s) => s.updatedAt),
+        ...sections.map((s) => s.updatedAt),
         ...aircraftList.map((ac) => ac.updatedAt),
       ];
       const latest = candidates.reduce(
