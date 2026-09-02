@@ -5,6 +5,7 @@ vi.mock("@/lib/resolve-aircraft-defaults", () => ({
   resolveEffectiveAssumptionsForInstance: vi.fn(
     async (_id: string, assumptions: Record<string, string>) => assumptions
   ),
+  loadAircraftDefaultsSharedPreload: vi.fn(async () => ({})),
 }));
 
 vi.mock("@/lib/proposal-owners-db", () => ({
@@ -12,11 +13,16 @@ vi.mock("@/lib/proposal-owners-db", () => ({
     profiles: [],
     allocationMode: "hybrid",
   })),
+  loadAllOwnersForProposal: vi.fn(async () => ({})),
 }));
 
 import type { ProposalScenario } from "@prisma/client";
 import { buildAircraftSnapshotEntry, buildAircraftSnapshotList } from "@/lib/snapshot-aircraft";
-import { loadOwnerProfilesForAircraft } from "@/lib/proposal-owners-db";
+import { loadAllOwnersForProposal, loadOwnerProfilesForAircraft } from "@/lib/proposal-owners-db";
+import {
+  loadAircraftDefaultsSharedPreload,
+  resolveEffectiveAssumptionsForInstance,
+} from "@/lib/resolve-aircraft-defaults";
 import { normalizeAircraftList } from "@/lib/portal-aircraft-types";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { PROFORMA_VISIBILITY_KEY } from "@/lib/proforma-line-visibility";
@@ -410,5 +416,69 @@ describe("normalizeAircraftList", () => {
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe("legacy-primary");
     expect(list[0]?.label).toContain("N99");
+  });
+});
+
+describe("buildAircraftSnapshotList batching", () => {
+  it("loads shared rows once and passes the loaded instance to each resolve", async () => {
+    vi.mocked(loadAircraftDefaultsSharedPreload).mockClear();
+    vi.mocked(loadAllOwnersForProposal).mockClear();
+    vi.mocked(loadOwnerProfilesForAircraft).mockClear();
+    vi.mocked(resolveEffectiveAssumptionsForInstance).mockClear();
+    vi.mocked(loadAllOwnersForProposal).mockResolvedValueOnce({
+      a2: [
+        { sortOrder: 0, displayName: "Owner A", annualFlightHours: 100, ownershipPercent: 60 },
+        { sortOrder: 1, displayName: "Owner B", annualFlightHours: 50, ownershipPercent: 40 },
+      ],
+    });
+
+    const list = await buildAircraftSnapshotList({
+      proposalId: "prop1",
+      includedAircraft: [mockAircraft("a1", "N123AB"), mockAircraft("a2", "N456CD")],
+      primaryAircraftInstanceId: "a1",
+      assumptionRows: baseAssumptionRows,
+      allAssumptions: visibleAssumptions,
+      prospectOpportunityType: "aircraft_management",
+    });
+
+    // One shared-preload call and one owners query for the whole proposal —
+    // never a per-aircraft owner lookup.
+    expect(loadAircraftDefaultsSharedPreload).toHaveBeenCalledTimes(1);
+    expect(loadAllOwnersForProposal).toHaveBeenCalledTimes(1);
+    expect(loadAllOwnersForProposal).toHaveBeenCalledWith("prop1");
+    expect(loadOwnerProfilesForAircraft).not.toHaveBeenCalled();
+
+    // Each resolve receives the already-loaded instance so it can skip re-querying it.
+    expect(resolveEffectiveAssumptionsForInstance).toHaveBeenCalledTimes(2);
+    for (const call of vi.mocked(resolveEffectiveAssumptionsForInstance).mock.calls) {
+      const [id, , preload] = call;
+      expect(preload?.instance?.aircraftTypeId).toBe("m1");
+      expect((preload?.instance as { id?: string } | undefined)?.id).toBe(id);
+    }
+
+    // Stored owners are used when present; legacy single-owner fallback otherwise.
+    expect(list.find((e) => e.id === "a2")?.ownerProfiles?.map((o) => o.displayName)).toEqual([
+      "Owner A",
+      "Owner B",
+    ]);
+    expect(list.find((e) => e.id === "a1")?.ownerProfiles?.length).toBe(1);
+  });
+
+  it("skips the shared preload entirely for a lightweight (draft) list", async () => {
+    vi.mocked(loadAircraftDefaultsSharedPreload).mockClear();
+    vi.mocked(loadAllOwnersForProposal).mockClear();
+
+    await buildAircraftSnapshotList({
+      proposalId: "prop1",
+      includedAircraft: [mockAircraft("a1", "N123AB")],
+      primaryAircraftInstanceId: "a1",
+      assumptionRows: baseAssumptionRows,
+      allAssumptions: visibleAssumptions,
+      prospectOpportunityType: "aircraft_management",
+      fullyResolveAircraftIds: [],
+    });
+
+    expect(loadAircraftDefaultsSharedPreload).not.toHaveBeenCalled();
+    expect(loadAllOwnersForProposal).not.toHaveBeenCalled();
   });
 });

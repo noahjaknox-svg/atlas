@@ -1,5 +1,7 @@
+import type { AircraftInstance, AircraftType, CompanySettings } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { AssumptionMap } from "@/lib/assumptions";
+import { getCompanySettings } from "@/lib/company-settings";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
 import { resolveValidAircraftTypeId } from "@/lib/resolve-warehouse-aircraft-id";
 import { normalizeAircraftProfileMode } from "@/lib/aircraft-profile-mode";
@@ -36,6 +38,51 @@ function buildDefaultsContext(
   return ctx;
 }
 
+type InstanceForDefaults = Pick<
+  AircraftInstance,
+  "aircraftTypeId" | "proposedHomeBaseIcao" | "fboName"
+> & { aircraftType: AircraftType | null };
+
+/**
+ * Data shared across a batch of aircraft (publish / snapshot build) so each
+ * aircraft resolve skips the per-row lookups for rows the caller already holds.
+ */
+export type AircraftDefaultsSharedPreload = {
+  companySettings?: CompanySettings;
+  /** usage type name → charterEnabled, for every usage type row. */
+  usageTypeCharterEnabled?: Map<string, boolean>;
+};
+
+export type AircraftDefaultsPreload = AircraftDefaultsSharedPreload & {
+  /** Aircraft instance (with its warehouse type) already loaded by the caller. */
+  instance?: InstanceForDefaults | null;
+};
+
+/** Load the batch-shared rows once (two queries) for many aircraft resolves. */
+export async function loadAircraftDefaultsSharedPreload(): Promise<AircraftDefaultsSharedPreload> {
+  const [companySettings, usageTypes] = await Promise.all([
+    getCompanySettings(),
+    prisma.usageType.findMany({ select: { name: true, charterEnabled: true } }),
+  ]);
+  return {
+    companySettings,
+    usageTypeCharterEnabled: new Map(usageTypes.map((u) => [u.name, u.charterEnabled])),
+  };
+}
+
+async function resolveUsageCharterEnabled(
+  usage: string,
+  preload: AircraftDefaultsPreload | undefined
+): Promise<boolean | undefined> {
+  if (preload?.usageTypeCharterEnabled) {
+    return preload.usageTypeCharterEnabled.get(usage);
+  }
+  const row = usage
+    ? await prisma.usageType.findFirst({ where: { name: usage }, select: { charterEnabled: true } })
+    : null;
+  return row?.charterEnabled;
+}
+
 function mergeNonEmpty(target: Record<string, string>, patch: Record<string, string>) {
   for (const [k, v] of Object.entries(patch)) {
     if (v?.trim()) target[k] = v.trim();
@@ -46,22 +93,20 @@ function mergeNonEmpty(target: Record<string, string>, patch: Record<string, str
 export async function resolveAircraftDefaults(params: {
   aircraftInstanceId: string;
   assumptions: AssumptionMap;
+  preload?: AircraftDefaultsPreload;
 }): Promise<Record<string, string>> {
-  const instance = await prisma.aircraftInstance.findUnique({
-    where: { id: params.aircraftInstanceId },
-    include: {
-      aircraftType: true,
-      proposal: { select: { prospect: { select: { opportunityType: true } } } },
-    },
-  });
+  const preload = params.preload;
+  const instance: InstanceForDefaults | null =
+    preload?.instance !== undefined
+      ? preload.instance
+      : await prisma.aircraftInstance.findUnique({
+          where: { id: params.aircraftInstanceId },
+          include: { aircraftType: true },
+        });
 
   const ctx = buildDefaultsContext(params.assumptions, instance);
   const map: Record<string, string> = {};
   const usage = ctx.usage_type?.trim() || "part_91";
-  const usageTypeRow = usage
-    ? await prisma.usageType.findFirst({ where: { name: usage }, select: { charterEnabled: true } })
-    : null;
-  const charterEnabled = usageTypeRow?.charterEnabled ?? usage === "part_91_135";
 
   const icao =
     ctx.home_airport_icao ||
@@ -69,12 +114,25 @@ export async function resolveAircraftDefaults(params: {
     instance?.proposedHomeBaseIcao ||
     null;
 
-  const warehouseResolution = await resolveValidAircraftTypeId({
-    instanceWarehouseId: instance?.aircraftTypeId,
-    assumptionMasterId: ctx.aircraft_master_id,
-    manufacturer: ctx.aircraft_manufacturer ?? instance?.aircraftType?.manufacturer,
-    model: ctx.aircraft_model ?? instance?.aircraftType?.model,
-  });
+  // The joined aircraftType row proves the instance's warehouse id is valid, so a
+  // preloaded instance skips the existence round trip.
+  const preloadedTypeId =
+    preload?.instance && instance?.aircraftType && instance.aircraftTypeId === instance.aircraftType.id
+      ? instance.aircraftType.id
+      : null;
+
+  const [charterEnabledRow, warehouseResolution] = await Promise.all([
+    resolveUsageCharterEnabled(usage, preload),
+    preloadedTypeId
+      ? Promise.resolve({ id: preloadedTypeId })
+      : resolveValidAircraftTypeId({
+          instanceWarehouseId: instance?.aircraftTypeId,
+          assumptionMasterId: ctx.aircraft_master_id,
+          manufacturer: ctx.aircraft_manufacturer ?? instance?.aircraftType?.manufacturer,
+          model: ctx.aircraft_model ?? instance?.aircraftType?.model,
+        }),
+  ]);
+  const charterEnabled = charterEnabledRow ?? usage === "part_91_135";
   const aircraftTypeId = warehouseResolution.id;
 
   if (aircraftTypeId) {
@@ -84,6 +142,10 @@ export async function resolveAircraftDefaults(params: {
         aircraftTypeId,
         airportIcao: icao,
         fboName: ctx.fbo_name ?? instance?.fboName,
+        preload: {
+          aircraft: instance?.aircraftType,
+          companySettings: preload?.companySettings,
+        },
       })
     );
   }
@@ -174,7 +236,8 @@ export async function resolveWarehouseLineVisibilityDefaults(params: {
 /** Resolve warehouse-backed defaults and merge with stored proposal assumptions. */
 export async function resolveEffectiveAssumptionsForInstance(
   aircraftInstanceId: string,
-  assumptions: AssumptionMap
+  assumptions: AssumptionMap,
+  preload?: AircraftDefaultsPreload
 ): Promise<AssumptionMap> {
   const { buildEffectiveAssumptions } = await import("@/lib/resolve-effective-assumptions");
   const { stripLegacyEstimatedHangar } = await import("@/lib/hangar-assumptions");
@@ -182,6 +245,7 @@ export async function resolveEffectiveAssumptionsForInstance(
   const defaults = await resolveAircraftDefaults({
     aircraftInstanceId,
     assumptions: cleaned,
+    preload,
   });
   return buildEffectiveAssumptions(cleaned, defaults);
 }

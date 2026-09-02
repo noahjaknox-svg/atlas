@@ -13,7 +13,7 @@ export type DataHubListPayload = {
   hasMore: boolean;
 };
 
-const CRUD_TABS = new Set(["aircraft", "fbos"]);
+const CRUD_TABS = new Set(["aircraft", "fbos", "usage-types"]);
 
 function buildPrefetchRequest(searchParams: URLSearchParams): Request {
   const url = new URL("http://local/prefetch");
@@ -77,6 +77,23 @@ export async function prefetchDataHubTab(
               hangarCostPerSqft: dec(r.hangarCostPerSqft),
               overrides: r._count.hangarOverrides,
             }))
+        )
+      );
+
+    case "usage-types":
+      return asPayload(
+        fetchDataHubList(
+          request,
+          "usage-types",
+          (where, { skip, take }) =>
+            prisma.usageType.findMany({
+              where,
+              skip,
+              take,
+              orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+            }),
+          () => prisma.usageType.count(),
+          (rows) => rows
         )
       );
 

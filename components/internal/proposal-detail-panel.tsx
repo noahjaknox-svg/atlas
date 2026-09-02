@@ -85,7 +85,7 @@ export function ProposalDetailPanel({
 
     setLoading(true);
     setError("");
-    fetch(`/api/proposals/${proposalId}`)
+    fetch(`/api/proposals/${proposalId}/summary`)
       .then(async (res) => {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Failed to load");

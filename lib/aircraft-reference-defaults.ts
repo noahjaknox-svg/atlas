@@ -1,3 +1,4 @@
+import type { AircraftType, CompanySettings } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getCompanySettings } from "@/lib/company-settings";
 import { loadCompanySettingsDefaults } from "@/lib/company-settings-defaults";
@@ -7,6 +8,14 @@ import {
   stripExcludedWarehouseKeys,
 } from "@/lib/warehouse-assumption-map";
 
+/** Rows a batch caller (publish / snapshot build) has already loaded. */
+export type AircraftReferencePreload = {
+  /** Warehouse aircraft row matching `aircraftTypeId` — skips the lookup when present. */
+  aircraft?: AircraftType | null;
+  /** Company settings row — skips the lookup when present. */
+  companySettings?: CompanySettings;
+};
+
 /**
  * Resolve database-backed defaults for a warehouse aircraft plus company settings
  * and (when ICAO is known) FBO fuel/hangar. Only non-null Data Hub values are included.
@@ -15,15 +24,24 @@ export async function loadAircraftReferenceDefaults(params: {
   aircraftTypeId: string;
   airportIcao?: string | null;
   fboName?: string | null;
+  preload?: AircraftReferencePreload;
 }): Promise<Record<string, string>> {
-  const aircraft = await prisma.aircraftType.findUnique({
-    where: { id: params.aircraftTypeId },
-  });
+  const preloadedAircraft =
+    params.preload?.aircraft && params.preload.aircraft.id === params.aircraftTypeId
+      ? params.preload.aircraft
+      : null;
+  const [aircraft, companySettings] = await Promise.all([
+    preloadedAircraft ??
+      prisma.aircraftType.findUnique({
+        where: { id: params.aircraftTypeId },
+      }),
+    params.preload?.companySettings ?? getCompanySettings(),
+  ]);
   if (!aircraft) return {};
 
   const map: Record<string, string> = {
     ...stripExcludedWarehouseKeys(loadAircraftTypeDefaults(aircraft)),
-    ...loadCompanySettingsDefaults(await getCompanySettings()),
+    ...loadCompanySettingsDefaults(companySettings),
   };
 
   const icao = params.airportIcao?.toUpperCase();

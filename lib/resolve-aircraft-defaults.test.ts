@@ -123,12 +123,21 @@ describe("resolveAircraftDefaults", () => {
   });
 
   it("omits optional warehouse fields when null", async () => {
-    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue({
+    const sparse = {
       ...CHALLENGER,
       emptyRange: null,
       averageCruiseSpeed: null,
       wifi: null,
       cabinAttendantSalary: null,
+    };
+    vi.mocked(prisma.aircraftType.findUnique).mockResolvedValue(sparse as never);
+    // The instance's joined aircraftType row is reused instead of re-queried.
+    vi.mocked(prisma.aircraftInstance.findUnique).mockResolvedValue({
+      id: "inst-1",
+      aircraftTypeId: CHALLENGER.id,
+      proposedHomeBaseIcao: null,
+      fboName: null,
+      aircraftType: sparse,
     } as never);
 
     const defaults = await resolveAircraftDefaults({
