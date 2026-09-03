@@ -971,6 +971,20 @@ export function ProposalWorkspace({
     }
     setPublishLoading(true);
     try {
+      // Flush pending debounced workspace edits before the server builds the
+      // snapshot. Autosave persists on a debounce, so publishing/republishing
+      // within that window would otherwise snapshot stale data and the latest
+      // changes would silently fail to reach the portal. Mirrors
+      // handlePreviewPortal(), which already flushes before rendering a draft.
+      if (selectedId) markAircraftDirty(selectedId);
+      const saved = await flushPersist();
+      if (!saved) {
+        alert(
+          "Could not save your latest changes. Fix any save errors and try again before publishing."
+        );
+        return;
+      }
+
       const res = await fetch(`/api/proposals/${data.id}/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
