@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ThemeLogo } from "@/components/theme/theme-logo";
 import { ROUTES } from "@/lib/routes";
 
@@ -25,13 +25,28 @@ function callbackPathForType(type: string | null) {
 }
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  function openForgotPassword() {
+    setError("");
+    setInfo("");
+    setForgotEmail(email);
+    setMode("forgot");
+  }
+
+  function backToSignIn() {
+    setError("");
+    setInfo("");
+    setMode("login");
+  }
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -105,11 +120,12 @@ export default function LoginPage() {
     }
   }
 
-  async function forgotPassword() {
+  async function forgotPassword(e: React.FormEvent) {
+    e.preventDefault();
     setError("");
     setInfo("");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Enter your email above, then click Forgot password.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      setError("Enter a valid email address.");
       return;
     }
     setResetting(true);
@@ -117,7 +133,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: forgotEmail.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -126,7 +142,7 @@ export default function LoginPage() {
       }
       setInfo(
         data.message ??
-          `Check ${email.trim()} for a password reset link. It can take a minute to arrive — check spam too. The link expires after 1 hour.`
+          `Check ${forgotEmail.trim()} for a password reset link. It can take a minute to arrive — check spam too. The link expires after 1 hour.`
       );
     } finally {
       setResetting(false);
@@ -137,82 +153,122 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md border-atlas-border bg-atlas-surface">
         <CardHeader className="text-center">
-          <ThemeLogo className="mx-auto mb-2 h-10 w-auto" priority />
-          <CardTitle className="text-3xl">Atlas</CardTitle>
-          <CardDescription>Internal proposal builder</CardDescription>
+          <ThemeLogo className="mx-auto h-16 w-auto" priority />
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email <span className="text-atlas-danger">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="you@prismjet.com"
-                className="border-atlas-border focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">
-                  Password <span className="text-atlas-danger">*</span>
+          {mode === "login" ? (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    Email <span className="text-atlas-danger">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    placeholder="you@prismjet.com"
+                    className="border-atlas-border focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">
+                      Password <span className="text-atlas-danger">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      className="text-xs text-atlas-accent hover:underline"
+                      onClick={openForgotPassword}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      className="border-atlas-border pr-16 focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-atlas-muted hover:text-atlas-text"
+                      onClick={() => setShowPassword((s) => !s)}
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+                {error ? (
+                  <p className="rounded-md border border-atlas-danger/30 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">
+                    {error}
+                  </p>
+                ) : null}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Signing in…" : "Sign in"}
+                </Button>
+              </form>
+              <p className="mt-4 text-center text-xs text-atlas-muted">
+                Need access?{" "}
+                <Link href="/settings/users" className="text-atlas-accent hover:underline">
+                  Ask an admin for an invite
+                </Link>
+                .
+              </p>
+            </>
+          ) : (
+            <form onSubmit={forgotPassword} className="space-y-4">
+              <div>
+                <p className="text-sm text-atlas-text">Reset your password</p>
+                <p className="mt-1 text-xs text-atlas-muted">
+                  Enter your email and we&apos;ll send you a reset link.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">
+                  Email <span className="text-atlas-danger">*</span>
                 </Label>
-                <button
-                  type="button"
-                  className="text-xs text-atlas-accent hover:underline"
-                  onClick={() => void forgotPassword()}
-                  disabled={resetting}
-                >
-                  {resetting ? "Sending…" : "Forgot password?"}
-                </button>
-              </div>
-              <div className="relative">
                 <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
                   required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="border-atlas-border pr-16 focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
+                  autoComplete="email"
+                  placeholder="you@prismjet.com"
+                  className="border-atlas-border focus-visible:ring-2 focus-visible:ring-atlas-accent/40"
                 />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-atlas-muted hover:text-atlas-text"
-                  onClick={() => setShowPassword((s) => !s)}
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
               </div>
-            </div>
-            {error ? (
-              <p className="rounded-md border border-atlas-danger/30 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">
-                {error}
-              </p>
-            ) : null}
-            {info ? (
-              <p className="rounded-md border border-atlas-accent/30 bg-atlas-accent/10 px-3 py-2 text-sm text-atlas-text">
-                {info}
-              </p>
-            ) : null}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-xs text-atlas-muted">
-            Need access?{" "}
-            <Link href="/settings/users" className="text-atlas-accent hover:underline">
-              Ask an admin for an invite
-            </Link>
-            .
-          </p>
+              {error ? (
+                <p className="rounded-md border border-atlas-danger/30 bg-atlas-danger/10 px-3 py-2 text-sm text-atlas-danger">
+                  {error}
+                </p>
+              ) : null}
+              {info ? (
+                <p className="rounded-md border border-atlas-accent/30 bg-atlas-accent/10 px-3 py-2 text-sm text-atlas-text">
+                  {info}
+                </p>
+              ) : null}
+              <Button type="submit" className="w-full" disabled={resetting}>
+                {resetting ? "Sending…" : "Send reset link"}
+              </Button>
+              <button
+                type="button"
+                className="w-full text-center text-xs text-atlas-accent hover:underline"
+                onClick={backToSignIn}
+              >
+                Back to sign in
+              </button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
