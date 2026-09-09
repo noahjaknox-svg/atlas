@@ -18,6 +18,6 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    message: "If an account exists for that email, a password reset link has been sent.",
+    message: `If an account exists for ${email.trim()}, a reset link is on its way. It can take a minute to arrive — check spam too. The link expires after 1 hour.`,
   });
 }

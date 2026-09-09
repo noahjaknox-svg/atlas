@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeLogo } from "@/components/theme/theme-logo";
 import { ROUTES } from "@/lib/routes";
 
 const AUTH_CALLBACK_ERRORS: Record<string, string> = {
@@ -123,7 +124,10 @@ export default function LoginPage() {
         setError(data.error ?? "Could not send reset email.");
         return;
       }
-      setInfo(data.message ?? "If an account exists, a reset link has been sent.");
+      setInfo(
+        data.message ??
+          `Check ${email.trim()} for a password reset link. It can take a minute to arrive — check spam too. The link expires after 1 hour.`
+      );
     } finally {
       setResetting(false);
     }
@@ -133,7 +137,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md border-atlas-border bg-atlas-surface">
         <CardHeader className="text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-atlas-accent">PrismJet</p>
+          <ThemeLogo className="mx-auto mb-2 h-10 w-auto" priority />
           <CardTitle className="text-3xl">Atlas</CardTitle>
           <CardDescription>Internal proposal builder</CardDescription>
         </CardHeader>
