@@ -68,33 +68,43 @@ export async function sendPasswordResetEmail(email: string) {
   }
 
   const redirectTo = getPasswordResetRedirectUrl();
-  const admin = requireSupabaseAdmin();
 
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: normalizedEmail,
-    options: { redirectTo },
-  });
-
-  if (linkError) {
-    throw new Error(linkError.message);
-  }
-
-  const actionLink = linkData.properties?.action_link;
-  if (!actionLink) {
-    throw new Error("Supabase did not return a password reset link.");
-  }
-
-  assertRecoveryRedirectAccepted(actionLink, redirectTo);
-
+  // The actual, email-sending call. This must run first and alone: any prior
+  // admin.generateLink() call (previously used to pre-validate the redirect
+  // URL) stamps the same recovery_sent_at timestamp GoTrue uses for its own
+  // per-user cooldown, which made every real send immediately fail with
+  // "you can only request this after 59 seconds" — self-inflicted, every time.
   const supabase = await createSupabaseAnonServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(await diagnoseRecoveryError(error.message, normalizedEmail, redirectTo));
   }
 
   return { email: normalizedEmail };
+}
+
+// Only called on failure, to turn a generic Supabase error into actionable
+// guidance when the cause is a misconfigured redirect allowlist. Never runs
+// on the success path, so it can't poison the next attempt's cooldown timer.
+async function diagnoseRecoveryError(
+  message: string,
+  email: string,
+  redirectTo: string
+): Promise<string> {
+  try {
+    const admin = requireSupabaseAdmin();
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
+    if (linkError || !linkData.properties?.action_link) return message;
+    assertRecoveryRedirectAccepted(linkData.properties.action_link, redirectTo);
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("Redirect URLs")) return e.message;
+  }
+  return message;
 }
