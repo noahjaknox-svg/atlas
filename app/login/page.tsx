@@ -19,7 +19,7 @@ const AUTH_CALLBACK_ERRORS: Record<string, string> = {
 };
 
 function callbackPathForType(type: string | null) {
-  if (type === "invite") return "/auth/callback/invite";
+  if (type === "invite" || type === "signup") return "/auth/callback/invite";
   if (type === "recovery") return "/auth/callback/recovery";
   return "/auth/callback";
 }
@@ -52,7 +52,7 @@ export default function LoginPage() {
     const hash = window.location.hash;
     const params = new URLSearchParams(window.location.search);
 
-    if (params.get("code")) {
+    if (params.get("code") || params.get("token_hash")) {
       const callbackPath = callbackPathForType(params.get("type"));
       window.location.replace(`${callbackPath}${window.location.search}${hash}`);
       return;

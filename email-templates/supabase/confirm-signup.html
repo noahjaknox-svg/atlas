@@ -19,7 +19,7 @@
             <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
               <tr>
                 <td style="border-radius:6px;background-color:#c9a84c;">
-                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#111827;text-decoration:none;">Confirm email</a>
+                  <a href="{{ .SiteURL }}/auth/callback/invite?token_hash={{ .TokenHash }}&type=signup" target="_blank" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#111827;text-decoration:none;">Confirm email</a>
                 </td>
               </tr>
             </table>

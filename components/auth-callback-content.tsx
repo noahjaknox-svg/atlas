@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,9 +30,26 @@ function needsPasswordSetup(
     flow === "recovery" ||
     hashType === "invite" ||
     hashType === "recovery" ||
-    queryType === "recovery"
+    queryType === "recovery" ||
+    queryType === "invite" ||
+    queryType === "signup"
   );
 }
+
+const TOKEN_HASH_TYPES = ["recovery", "invite", "signup", "email", "magiclink"] as const;
+type TokenHashType = (typeof TOKEN_HASH_TYPES)[number];
+
+function tokenHashParams(
+  searchParams: URLSearchParams
+): { tokenHash: string; type: TokenHashType } | null {
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
+  if (!tokenHash || !type) return null;
+  if (!(TOKEN_HASH_TYPES as readonly string[]).includes(type)) return null;
+  return { tokenHash, type: type as TokenHashType };
+}
+
+class LinkExpiredError extends Error {}
 
 function resolvePasswordFlow(
   forcedFlow: AuthCallbackFlow | undefined,
@@ -62,15 +80,16 @@ export function AuthCallbackContent({
   const [message, setMessage] = useState("Signing you in…");
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [linkDead, setLinkDead] = useState(false);
 
-  // Recovery/invite links carry a single-use code. Corporate and provider
-  // email security scanners (Microsoft Safe Links, Proofpoint, etc.) load
-  // links like this one in a headless browser to check them for safety
-  // *before* a human ever clicks — which silently consumes the one-time
-  // code, so the real user always lands on "expired". Requiring an explicit
-  // click before exchanging the code means only an actual click can consume
-  // it; a scanner loading the page in the background never triggers it.
-  const requiresManualConfirm = forcedFlow === "invite" || forcedFlow === "recovery";
+  // Recovery/invite emails link straight here with a single-use token_hash
+  // (see email-templates/supabase/). Email security scanners (Microsoft Safe
+  // Links, Proofpoint, etc.) load links in a headless browser before a human
+  // clicks; verifying on page load would let them spend the token. Only an
+  // explicit click calls verifyOtp.
+  const tokenHash = tokenHashParams(searchParams);
+  const requiresManualConfirm =
+    forcedFlow === "invite" || forcedFlow === "recovery" || tokenHash !== null;
 
   async function finishSignIn() {
     const supabase = createClient();
@@ -86,7 +105,15 @@ export function AuthCallbackContent({
     }
 
     const code = searchParams.get("code");
-    if (code) {
+    if (tokenHash) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash.tokenHash,
+        type: tokenHash.type,
+      });
+      if (error || !data.user?.email) {
+        throw new LinkExpiredError(error?.message ?? "Link could not be verified");
+      }
+    } else if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error || !data.user?.email) {
         router.replace("/login?error=auth_callback_failed");
@@ -148,11 +175,37 @@ export function AuthCallbackContent({
     setConfirmError("");
     try {
       await finishSignIn();
-    } catch {
-      started.current = false;
+    } catch (e) {
       setConfirming(false);
-      setConfirmError("That link expired or was already used. Request a new one.");
+      if (e instanceof LinkExpiredError) {
+        // The token is spent or expired; retrying the same link can't work.
+        setLinkDead(true);
+        return;
+      }
+      started.current = false;
+      setConfirmError("Something went wrong. Check your connection and try again.");
     }
+  }
+
+  const isInvite =
+    forcedFlow === "invite" || tokenHash?.type === "invite" || tokenHash?.type === "signup";
+
+  if (linkDead) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <p className="text-sm text-atlas-text">This link has expired or was already used</p>
+          <p className="mt-1 text-xs text-atlas-muted">
+            {isInvite
+              ? "Ask your admin to resend the invite."
+              : "Request a new reset link from the sign-in page."}
+          </p>
+          <Button asChild className="mt-4 w-full">
+            <Link href="/login">Back to sign in</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (requiresManualConfirm && !confirming && !started.current) {
@@ -160,7 +213,7 @@ export function AuthCallbackContent({
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <p className="text-sm text-atlas-text">
-            {forcedFlow === "invite" ? "Accept your invite" : "Continue resetting your password"}
+            {isInvite ? "Accept your invite" : "Continue resetting your password"}
           </p>
           <p className="mt-1 text-xs text-atlas-muted">
             For security, this link is only used when you click below.

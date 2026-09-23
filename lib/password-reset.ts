@@ -1,10 +1,12 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { getPasswordResetRedirectUrl } from "@/lib/app-url";
 
-async function createSupabaseAnonServerClient() {
+// Plain, cookie-less anon client. The reset email links to our app with a
+// token_hash that verifyOtp redeems, so no PKCE code_verifier is needed — and
+// a cookie-writing @supabase/ssr client would plant that verifier in whoever
+// *requested* the reset (e.g. an admin), not the person who opens the email.
+function createSupabaseAnonClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -12,19 +14,8 @@ async function createSupabaseAnonServerClient() {
     throw new Error("Supabase is not configured");
   }
 
-  const cookieStore = await cookies();
-
-  return createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
-        });
-      },
-    },
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }
 
@@ -74,7 +65,7 @@ export async function sendPasswordResetEmail(email: string) {
   // URL) stamps the same recovery_sent_at timestamp GoTrue uses for its own
   // per-user cooldown, which made every real send immediately fail with
   // "you can only request this after 59 seconds" — self-inflicted, every time.
-  const supabase = await createSupabaseAnonServerClient();
+  const supabase = createSupabaseAnonClient();
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });

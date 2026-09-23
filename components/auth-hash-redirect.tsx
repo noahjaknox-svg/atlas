@@ -4,14 +4,15 @@ import { useEffect } from "react";
 import { ROUTES } from "@/lib/routes";
 
 function callbackPathForType(type: string | null) {
-  if (type === "invite") return "/auth/callback/invite";
+  if (type === "invite" || type === "signup") return "/auth/callback/invite";
   if (type === "recovery") return "/auth/callback/recovery";
   return "/auth/callback";
 }
 
 /**
  * Supabase auth emails may land on the Site URL root (or any page) with tokens or
- * errors in the hash, or with a PKCE ?code= query param — forward to /auth/callback/*.
+ * errors in the hash, or with a ?code= / ?token_hash= query param — forward to
+ * /auth/callback/*.
  */
 export function AuthHashRedirect() {
   useEffect(() => {
@@ -22,7 +23,7 @@ export function AuthHashRedirect() {
     const hash = rawHash.replace(/^#/, "");
     const hashParams = new URLSearchParams(hash);
 
-    if (params.get("code")) {
+    if (params.get("code") || params.get("token_hash")) {
       const type = params.get("type");
       const callbackPath = callbackPathForType(type);
       window.location.replace(`${callbackPath}${search}${rawHash}`);
