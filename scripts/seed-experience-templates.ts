@@ -1,10 +1,12 @@
 import "../prisma/seed-env";
+import { guardAgainstProductionDb } from "../lib/db-target-guard";
 import { PrismaClient } from "@prisma/client";
 import { codeDefaultsAsMasterTemplates } from "../lib/experience-master";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  guardAgainstProductionDb("seed-experience-templates");
   const templates = codeDefaultsAsMasterTemplates();
   await prisma.portalContent.upsert({
     where: { id: "default" },

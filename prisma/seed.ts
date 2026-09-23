@@ -1,4 +1,5 @@
 import "./seed-env";
+import { guardAgainstProductionDb } from "../lib/db-target-guard";
 import { PrismaClient, AircraftCategory, FeatureCostType } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -60,6 +61,7 @@ const USAGE_TYPES = [
 ];
 
 async function main() {
+  guardAgainstProductionDb("db:seed");
   console.log("Seeding Atlas reference data...");
 
   await prisma.companySettings.upsert({

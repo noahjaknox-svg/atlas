@@ -16,6 +16,7 @@ This repo has two live environments:
 4. **Never merge `staging` → `main` (or open that PR) without the user explicitly asking for it in that conversation.** Getting a feature working on staging is not implicit permission to promote it to production.
 5. **Never modify environment variables, database connection strings, or Vercel/Supabase project settings for the `atlas` (production) project without explicit user confirmation for that specific action.** The `atlas-staging` project's config can be treated more freely, but still confirm before changing anything DB-connection-related.
 6. **Never run destructive database commands** (`prisma db push --accept-data-loss`, direct `DROP`/`DELETE` without a `WHERE`, migration resets) **against the production database** without explicit confirmation. These are fine on staging.
+   - Local scripts load `.env.local` (usually production) and then **replace `DATABASE_URL` with `DIRECT_URL`** (`lib/load-env.ts`). To target staging, pass **both** `DATABASE_URL` and `DIRECT_URL` inline. Seed/import scripts call `guardAgainstProductionDb()` (`lib/db-target-guard.ts`) and refuse production unless `ALLOW_PRODUCTION_DB=yes`. Add that call to any new script that bulk-writes or deletes.
 
 ## Auth email templates
 

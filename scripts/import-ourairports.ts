@@ -1,10 +1,12 @@
 import "../lib/load-env";
+import { guardAgainstProductionDb } from "../lib/db-target-guard";
 import { PrismaClient } from "@prisma/client";
 import { importOurAirportsData } from "../lib/ourairports/import-data";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  guardAgainstProductionDb("import-ourairports");
   const dataPath = process.argv[2];
   console.log("Importing OurAirports reference data…");
   const started = Date.now();

@@ -1,4 +1,5 @@
 import "../prisma/seed-env";
+import { guardAgainstProductionDb } from "../lib/db-target-guard";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { PrismaClient } from "@prisma/client";
@@ -8,6 +9,7 @@ import { normalizeCrewInitialData } from "../lib/crew/normalize-initial-data";
 const prisma = new PrismaClient();
 
 async function main() {
+  guardAgainstProductionDb("import-crew-initial-data");
   const file =
     process.argv[2] ?? join(process.cwd(), "data", "seeds", "atlas_initial_data.json");
   const raw = JSON.parse(readFileSync(file, "utf8"));
