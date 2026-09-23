@@ -4,6 +4,8 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { serializeClientSnapshot } from "@/lib/client-serializer";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Recalculate pro forma from the published snapshot plus in-memory client overrides.
  * Does not read workspace assumptions from the database — baseline is frozen at publish.
@@ -99,17 +101,25 @@ export async function POST(
                 0
               )
             : null;
-      await prisma.clientScenario.create({
-        data: {
-          proposalId: portal.proposalId,
-          portalId: portal.id,
-          aircraftValue: aircraftValue != null ? Number(aircraftValue) : null,
-          ownerHours: persistedOwnerHours,
-          calculatedNetAnnualCost: clientView.proForma.netAnnualCost,
-          calculatedMonthlyCost: clientView.proForma.netMonthlyCost,
-          calculatedCostPerOwnerHour: clientView.proForma.costPerOwnerHour,
-        },
-      });
+      // Analytics only — a failed write must never break the client's pro forma.
+      await prisma.clientScenario
+        .create({
+          data: {
+            proposalId: portal.proposalId,
+            portalId: portal.id,
+            // The aircraft the numbers were actually computed for (old single-aircraft
+            // snapshots resolve to a synthetic "legacy-primary" id, which isn't a uuid).
+            aircraftInstanceId: UUID_RE.test(clientView.aircraft.id) ? clientView.aircraft.id : null,
+            aircraftValue: aircraftValue != null ? Number(aircraftValue) : null,
+            ownerHours: persistedOwnerHours,
+            calculatedNetAnnualCost: clientView.proForma.netAnnualCost,
+            calculatedMonthlyCost: clientView.proForma.netMonthlyCost,
+            calculatedCostPerOwnerHour: clientView.proForma.costPerOwnerHour,
+          },
+        })
+        .catch((err) => {
+          console.error("[portal scenario] analytics write failed", err);
+        });
     }
 
     return jsonOk(clientView);

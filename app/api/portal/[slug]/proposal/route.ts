@@ -5,7 +5,7 @@ import { serializeClientSnapshot } from "@/lib/client-serializer";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -33,7 +33,10 @@ export async function GET(
     if (!snapshot) return jsonError("Proposal not published", 404);
 
     const payload = snapshot.snapshotJson as unknown as ProposalSnapshotPayload;
-    return jsonOk(await serializeClientSnapshot(payload));
+    // The portal bootstrap falls back to this route with ?aircraft= — honor it, or the
+    // client always gets the primary aircraft back regardless of which one it asked for.
+    const aircraftInstanceId = new URL(request.url).searchParams.get("aircraft");
+    return jsonOk(await serializeClientSnapshot(payload, { aircraftInstanceId }));
   } catch (e) {
     return handleApiError(e);
   }

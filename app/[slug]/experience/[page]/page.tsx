@@ -44,6 +44,7 @@ async function loadDraftPreview(
     | { mode: "none" }
     | { mode: "primary" }
     | { mode: "aircraft"; aircraftId: string }
+    | { mode: "all" }
 ): Promise<{
   payload: ProposalSnapshotPayload;
   branding: PortalBranding;
@@ -74,7 +75,10 @@ async function loadDraftPreview(
   if (!portal) return null;
 
   let fullyResolveAircraftIds: string[] | undefined;
-  if (resolveScope.mode === "none") {
+  if (resolveScope.mode === "all") {
+    // undefined = resolve every aircraft, exactly as publish does.
+    fullyResolveAircraftIds = undefined;
+  } else if (resolveScope.mode === "none") {
     fullyResolveAircraftIds = [];
   } else if (resolveScope.mode === "aircraft") {
     fullyResolveAircraftIds = [resolveScope.aircraftId];
@@ -146,12 +150,10 @@ export default async function ExperiencePageRoute({
     sections = previewFromToken.payload.sections as ExperienceSectionSnapshot[];
     disclaimer = sections.find((s) => s.sectionType === "disclaimer")?.bodyCopy ?? null;
   } else if (isDraft) {
+    // Pro forma resolves every aircraft (like a published snapshot) so staff can preview
+    // the aircraft selector's live figures and side-by-side compare before publishing.
     const resolveScope =
-      page === "pro-forma"
-        ? aircraftParam
-          ? { mode: "aircraft" as const, aircraftId: aircraftParam }
-          : { mode: "primary" as const }
-        : { mode: "none" as const };
+      page === "pro-forma" ? { mode: "all" as const } : { mode: "none" as const };
     const preview = await loadDraftPreview(slug, resolveScope);
     if (!preview) redirect(`/${slug}`);
     payload = preview.payload;

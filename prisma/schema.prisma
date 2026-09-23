@@ -953,6 +953,8 @@ model ClientScenario {
   id                         String   @id @default(uuid()) @db.Uuid
   proposalId                 String   @map("proposal_id") @db.Uuid
   portalId                   String   @map("portal_id") @db.Uuid
+  /// Aircraft the client was modeling. Plain id, no FK — analytics rows outlive removed aircraft.
+  aircraftInstanceId         String?  @map("aircraft_instance_id") @db.Uuid
   aircraftValue              Decimal? @map("aircraft_value") @db.Decimal(14, 2)
   ownerHours                 Decimal? @map("owner_hours") @db.Decimal(10, 2)
   calculatedNetAnnualCost    Decimal? @map("calculated_net_annual_cost") @db.Decimal(14, 2)
@@ -963,6 +965,7 @@ model ClientScenario {
   proposal Proposal     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   portal   ClientPortal @relation(fields: [portalId], references: [id], onDelete: Cascade)
 
+  @@index([proposalId, aircraftInstanceId])
   @@map("client_scenarios")
 }
 
