@@ -23,7 +23,7 @@ export type FormField = {
   placeholder?: string;
 };
 
-function EntitySearchField({
+export function EntitySearchField({
   field,
   value,
   displayValue,

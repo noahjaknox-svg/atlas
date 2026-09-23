@@ -24,11 +24,12 @@ import type { DataHubListPayload } from "@/lib/data-hub-prefetch";
 const FBO_WORKBENCH_FIELDS: WorkbenchField[] = [
   {
     key: "airportIcao",
-    label: "Airport ICAO",
-    type: "text",
+    label: "Airport",
+    type: "searchable",
+    searchKind: "airport",
     required: true,
     group: "Details",
-    placeholder: "e.g. KSDL",
+    placeholder: "Search ICAO, airport name or city…",
   },
   { key: "fboName", label: "FBO Name", type: "text", required: true, group: "Details" },
   {

@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
+import { EntitySearchField, type SearchKind } from "@/components/internal/data-hub/entity-dialog";
 
 export type WorkbenchField = {
   key: string;
   label: string;
-  type?: "text" | "number" | "select" | "bool";
+  /** "searchable" = type-ahead lookup against `searchKind`; stores the picked option's id. */
+  type?: "text" | "number" | "select" | "bool" | "searchable";
+  searchKind?: SearchKind;
   required?: boolean;
   group?: string;
   options?: { value: string; label: string }[];
@@ -72,6 +75,8 @@ export function RecordWorkbench({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  // Display labels for searchable fields, keyed by stored value (e.g. "KSDL" → "KSDL — Scottsdale…").
+  const [searchLabels, setSearchLabels] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [filterValue, setFilterValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -331,6 +336,21 @@ export function RecordWorkbench({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {group.fields.map((f) => (
                         <div key={f.key} className="min-w-0">
+                          {f.type === "searchable" && f.searchKind ? (
+                            // Renders its own label.
+                            <EntitySearchField
+                              field={{ ...f, type: "searchable", searchKind: f.searchKind }}
+                              value={values[f.key] ?? ""}
+                              displayValue={
+                                searchLabels[values[f.key] ?? ""] ?? values[f.key] ?? ""
+                              }
+                              onChange={(id, label) => {
+                                setValues((p) => ({ ...p, [f.key]: id }));
+                                if (id) setSearchLabels((p) => ({ ...p, [id]: label }));
+                              }}
+                            />
+                          ) : (
+                          <>
                           <label htmlFor={f.key} className="mb-1 block text-xs text-atlas-muted">
                             {f.label}
                             {f.required ? " *" : ""}
@@ -361,6 +381,8 @@ export function RecordWorkbench({
                                 setValues((p) => ({ ...p, [f.key]: e.target.value }))
                               }
                             />
+                          )}
+                          </>
                           )}
                         </div>
                       ))}
