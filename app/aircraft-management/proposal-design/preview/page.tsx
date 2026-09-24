@@ -84,7 +84,23 @@ export default async function MasterDesignerPreviewPage({
 
   const verified = await verifyDesignerPreviewToken(previewToken);
   if (!verified || verified.proposalId !== "master") {
-    redirect("/aircraft-management/proposal-design");
+    // Say why instead of silently bouncing back to the designer.
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-atlas-bg px-4 text-center">
+        <div className="max-w-sm">
+          <p className="text-sm text-atlas-text">This preview link has expired</p>
+          <p className="mt-1 text-xs text-atlas-muted">
+            Previews last 15 minutes. Go back to the designer and click Preview again.
+          </p>
+          <a
+            href="/aircraft-management/proposal-design"
+            className="mt-4 inline-block text-sm text-atlas-accent hover:underline"
+          >
+            Back to the Prospect Portal Designer
+          </a>
+        </div>
+      </div>
+    );
   }
 
   const content = await getPortalContent();

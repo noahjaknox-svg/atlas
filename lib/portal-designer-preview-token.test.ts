@@ -1,13 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createDesignerPreviewToken,
   verifyDesignerPreviewToken,
 } from "./portal-designer-preview-token";
-import { clearDesignerPreviewStore } from "./portal-designer-preview-store";
+import {
+  createMemoryPreviewBackend,
+  setDesignerPreviewBackend,
+} from "./portal-designer-preview-store";
+
+const memory = createMemoryPreviewBackend();
 
 describe("portal-designer-preview-token", () => {
+  beforeEach(() => {
+    memory.clear();
+    setDesignerPreviewBackend(memory);
+  });
+  afterEach(() => {
+    setDesignerPreviewBackend();
+    vi.useRealTimers();
+  });
+
   it("uses a short preview id that fits in a URL", async () => {
-    clearDesignerPreviewStore();
     const sections = Array.from({ length: 9 }, (_, i) => ({
       sectionType: "custom_page",
       pageSlug: `page-${i}`,
@@ -28,5 +41,21 @@ describe("portal-designer-preview-token", () => {
     const verified = await verifyDesignerPreviewToken(token);
     expect(verified?.proposalId).toBe("master");
     expect(verified?.payload.sections).toHaveLength(9);
+  });
+
+  it("rejects a preview after it expires", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-24T12:00:00Z"));
+    const { token } = await createDesignerPreviewToken("prop-1", {
+      sections: [],
+      activePageSlug: "about",
+    });
+    expect(await verifyDesignerPreviewToken(token)).not.toBeNull();
+    vi.setSystemTime(new Date("2026-09-24T12:16:00Z")); // TTL is 15 minutes
+    expect(await verifyDesignerPreviewToken(token)).toBeNull();
+  });
+
+  it("rejects unknown tokens", async () => {
+    expect(await verifyDesignerPreviewToken("not-a-real-token")).toBeNull();
   });
 });

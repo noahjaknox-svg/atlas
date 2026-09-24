@@ -1453,6 +1453,22 @@ model EmptyLegViewEvent {
 /**
  * Staff overrides when automatic airport→IANA resolution is missing or wrong.
  */
+/// Unsaved Portal Designer state behind a Preview link (lib/portal-designer-preview-store.ts).
+/// Stored in the DB, not process memory: on Vercel the request that creates a preview and
+/// the one that opens it usually run on different instances. Short-lived; expired rows are
+/// purged lazily.
+model DesignerPreview {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Proposal id, or "master" for the global-defaults designer.
+  scope     String
+  payload   Json     @db.JsonB
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("designer_previews")
+}
+
 model AirportTimezoneOverride {
   id           String   @id @default(uuid()) @db.Uuid
   icao         String   @unique

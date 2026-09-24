@@ -16,54 +16,108 @@ type StoredPreview = {
 
 const PREVIEW_TTL_MS = 15 * 60 * 1000;
 
-const GLOBAL_STORE_KEY = Symbol.for("atlas.designerPreviewStore");
+/**
+ * Where unsaved designer previews live between "Preview" (POST) and the preview page (GET).
+ *
+ * Must be shared storage: on Vercel those two requests usually hit different serverless
+ * instances, so an in-process map loses the preview and the page bounces back to the
+ * designer. Default is the database; tests swap in memory.
+ */
+export type DesignerPreviewBackend = {
+  put(id: string, entry: StoredPreview): Promise<void>;
+  get(id: string): Promise<StoredPreview | null>;
+  delete(id: string): Promise<void>;
+  purgeExpired(nowMs: number): Promise<void>;
+};
 
-function previewStore(): Map<string, StoredPreview> {
-  const g = globalThis as typeof globalThis & {
-    [GLOBAL_STORE_KEY]?: Map<string, StoredPreview>;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const databaseBackend: DesignerPreviewBackend = {
+  async put(id, entry) {
+    const { prisma } = await import("./db");
+    await prisma.designerPreview.create({
+      data: {
+        id,
+        scope: entry.proposalId,
+        payload: entry.payload as unknown as object,
+        expiresAt: new Date(entry.expiresAt),
+      },
+    });
+  },
+  async get(id) {
+    if (!UUID_RE.test(id)) return null; // not ours; avoids a DB type error on junk ids
+    const { prisma } = await import("./db");
+    const row = await prisma.designerPreview.findUnique({ where: { id } });
+    if (!row) return null;
+    return {
+      proposalId: row.scope,
+      payload: row.payload as unknown as DesignerPreviewPayload,
+      expiresAt: row.expiresAt.getTime(),
+    };
+  },
+  async delete(id) {
+    if (!UUID_RE.test(id)) return;
+    const { prisma } = await import("./db");
+    await prisma.designerPreview.deleteMany({ where: { id } });
+  },
+  async purgeExpired(nowMs) {
+    const { prisma } = await import("./db");
+    await prisma.designerPreview.deleteMany({ where: { expiresAt: { lte: new Date(nowMs) } } });
+  },
+};
+
+export function createMemoryPreviewBackend(): DesignerPreviewBackend & { clear(): void } {
+  const map = new Map<string, StoredPreview>();
+  return {
+    async put(id, entry) {
+      map.set(id, entry);
+    },
+    async get(id) {
+      return map.get(id) ?? null;
+    },
+    async delete(id) {
+      map.delete(id);
+    },
+    async purgeExpired(nowMs) {
+      map.forEach((entry, id) => {
+        if (entry.expiresAt <= nowMs) map.delete(id);
+      });
+    },
+    clear() {
+      map.clear();
+    },
   };
-  if (!g[GLOBAL_STORE_KEY]) {
-    g[GLOBAL_STORE_KEY] = new Map();
-  }
-  return g[GLOBAL_STORE_KEY];
 }
 
-function purgeExpired() {
-  const now = Date.now();
-  const previews = previewStore();
-  previews.forEach((entry, id) => {
-    if (entry.expiresAt <= now) previews.delete(id);
-  });
+let backend: DesignerPreviewBackend = databaseBackend;
+
+/** @internal Tests only. Pass nothing to restore the database backend. */
+export function setDesignerPreviewBackend(next?: DesignerPreviewBackend) {
+  backend = next ?? databaseBackend;
 }
 
-export function storeDesignerPreview(
+export async function storeDesignerPreview(
   proposalId: string,
   payload: DesignerPreviewPayload,
   expiresAtMs: number
-): string {
-  purgeExpired();
+): Promise<string> {
+  // Lazy cleanup; a failure here must never block opening a preview.
+  await backend.purgeExpired(Date.now()).catch(() => {});
   const id = crypto.randomUUID();
-  const previews = previewStore();
-  previews.set(id, { proposalId, payload, expiresAt: expiresAtMs });
+  await backend.put(id, { proposalId, payload, expiresAt: expiresAtMs });
   return id;
 }
 
-export function loadDesignerPreview(
+export async function loadDesignerPreview(
   id: string
-): { proposalId: string; payload: DesignerPreviewPayload } | null {
-  purgeExpired();
-  const previews = previewStore();
-  const entry = previews.get(id);
-  if (!entry || entry.expiresAt <= Date.now()) {
-    previews.delete(id);
+): Promise<{ proposalId: string; payload: DesignerPreviewPayload } | null> {
+  const entry = await backend.get(id);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    await backend.delete(id).catch(() => {});
     return null;
   }
   return { proposalId: entry.proposalId, payload: entry.payload };
-}
-
-/** @internal Test helper */
-export function clearDesignerPreviewStore() {
-  previewStore().clear();
 }
 
 export { PREVIEW_TTL_MS };

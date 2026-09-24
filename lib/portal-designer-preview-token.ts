@@ -13,7 +13,7 @@ export async function createDesignerPreviewToken(
   payload: DesignerPreviewPayload
 ): Promise<{ token: string; expiresAt: string }> {
   const expiresAt = new Date(Date.now() + PREVIEW_TTL_MS);
-  const token = storeDesignerPreview(proposalId, payload, expiresAt.getTime());
+  const token = await storeDesignerPreview(proposalId, payload, expiresAt.getTime());
   return { token, expiresAt: expiresAt.toISOString() };
 }
 
