@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ROUTES } from "@/lib/routes";
 
-const DEFAULT_BASE = "SDL";
+// Store the ICAO, not the FAA LID: a bare "SDL" also matches foreign airports' local
+// codes (e.g. Saladillo, AR) in the timezone lookup. FBO matching treats SDL/KSDL alike.
+const DEFAULT_BASE = "KSDL";
 const DEFAULT_FBO = "PrismJet";
+
+function airportLabel(a: { icao?: string | null; id?: string; airportName?: string; city?: string | null }) {
+  const code = a.icao ?? a.id ?? "";
+  return `${code} — ${a.airportName ?? ""}${a.city ? `, ${a.city}` : ""}`;
+}
 
 type MasterRow = {
   id: string;
@@ -39,6 +48,11 @@ export function AddAircraftModal({
   const [masterLoading, setMasterLoading] = useState(false);
   const [selectedMaster, setSelectedMaster] = useState<MasterRow | null>(null);
   const [homeBase, setHomeBase] = useState(DEFAULT_BASE);
+  const [homeBaseLabel, setHomeBaseLabel] = useState(DEFAULT_BASE);
+  const [airportOptions, setAirportOptions] = useState<{ id: string; label: string }[]>([]);
+  const [airportLoading, setAirportLoading] = useState(false);
+  const [fbosLoading, setFbosLoading] = useState(false);
+  const fboRequestRef = useRef("");
   const [fboName, setFboName] = useState(DEFAULT_FBO);
   const [usageType, setUsageType] = useState("part_91");
   const [usageTypeOptions, setUsageTypeOptions] = useState<{ value: string; label: string }[]>([]);
@@ -64,30 +78,58 @@ export function AddAircraftModal({
     setUsageType((prev) => (options.some((o) => o.value === prev) ? prev : options[0]!.value));
   }, []);
 
-  const loadFbos = useCallback(async (icao: string) => {
-    const res = await fetch(`/api/airports/${icao}`);
-    const json = await res.json();
-    if (!res.ok) return;
-    const fbos = (json.fbos ?? []).map((f: { id: string; fboName: string }) => ({
-      id: f.id,
-      label: f.fboName,
-    }));
-    setFboOptions(fbos);
-    const prism = fbos.find(
-      (f: { label: string }) => f.label.toLowerCase() === DEFAULT_FBO.toLowerCase()
-    );
-    if (prism) setFboName(prism.label);
-    else if (fbos.length > 0) setFboName(fbos[0].label);
+  const searchAirports = useCallback(async (q: string) => {
+    setAirportLoading(true);
+    try {
+      const res = await fetch(`/api/airports/search?q=${encodeURIComponent(q)}`);
+      const json = await res.json().catch(() => []);
+      if (!res.ok) return;
+      setAirportOptions(
+        (json as Array<{ id: string; icao?: string | null; label?: string; airportName?: string; city?: string | null }>).map(
+          (a) => ({ id: a.icao ?? a.id, label: a.label ?? airportLabel(a) })
+        )
+      );
+    } finally {
+      setAirportLoading(false);
+    }
+  }, []);
+
+  /** FBOs on file at the airport; also resolves the airport's display label. */
+  const loadFbos = useCallback(async (icao: string, opts?: { labelFromResponse?: boolean }) => {
+    fboRequestRef.current = icao;
+    setFboOptions([]);
+    setFboName("");
+    if (!icao) return;
+    setFbosLoading(true);
+    try {
+      const res = await fetch(`/api/airports/${encodeURIComponent(icao)}`);
+      const json = await res.json().catch(() => ({}));
+      if (fboRequestRef.current !== icao) return; // a newer airport was picked meanwhile
+      if (!res.ok) return;
+      if (opts?.labelFromResponse) setHomeBaseLabel(airportLabel(json));
+      const fbos = (json.fbos ?? []).map((f: { id: string; fboName: string }) => ({
+        id: f.id,
+        label: f.fboName,
+      }));
+      setFboOptions(fbos);
+      const prism = fbos.find(
+        (f: { label: string }) => f.label.toLowerCase() === DEFAULT_FBO.toLowerCase()
+      );
+      if (prism) setFboName(prism.label);
+      else if (fbos.length > 0) setFboName(fbos[0].label);
+    } finally {
+      if (fboRequestRef.current === icao) setFbosLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     if (!open) return;
     setHomeBase(DEFAULT_BASE);
-    setFboName(DEFAULT_FBO);
+    setHomeBaseLabel(DEFAULT_BASE);
     setUsageType("part_91");
     setSelectedMaster(null);
     setError("");
-    void loadFbos(DEFAULT_BASE);
+    void loadFbos(DEFAULT_BASE, { labelFromResponse: true });
     void searchMasters("");
     void loadUsageTypes();
   }, [open, loadFbos, searchMasters, loadUsageTypes]);
@@ -100,18 +142,13 @@ export function AddAircraftModal({
     }
 
     const base = homeBase.trim().toUpperCase();
-    if (!/^[A-Z0-9]{3,4}$/.test(base)) {
-      setError("Enter a valid home base code (3–4 characters, e.g. SDL or KSDL).");
+    if (!base) {
+      setError("Search for and select a home base airport.");
       return;
     }
 
-    if (!fboName.trim()) {
+    if (!fboName.trim() || !fboOptions.some((f) => f.label === fboName)) {
       setError("Select an FBO at the home base.");
-      return;
-    }
-
-    if (fboOptions.length > 0 && !fboOptions.some((f) => f.label === fboName)) {
-      setError("Choose an FBO from the list for this airport.");
       return;
     }
 
@@ -171,23 +208,21 @@ export function AddAircraftModal({
               }}
             />
 
-            <div className="atlas-form-field">
-              <label className="atlas-field-label" htmlFor="add-aircraft-base">
-                Home base
-              </label>
-              <input
-                id="add-aircraft-base"
-                type="text"
-                value={homeBase}
-                onChange={(e) => {
-                  const v = e.target.value.toUpperCase();
-                  setHomeBase(v);
-                  if (v.length >= 3) void loadFbos(v);
-                }}
-                className="atlas-input atlas-input-mono uppercase"
-                placeholder="SDL"
-              />
-            </div>
+            <SearchableSelect
+              label="Home base"
+              placeholder="Search ICAO, airport name or city…"
+              value={homeBase}
+              displayValue={homeBaseLabel}
+              options={airportOptions}
+              loading={airportLoading}
+              onSearch={searchAirports}
+              onSelect={(opt) => {
+                const code = opt?.id ?? "";
+                setHomeBase(code);
+                setHomeBaseLabel(opt?.label ?? "");
+                void loadFbos(code);
+              }}
+            />
 
             <div className="atlas-form-field">
               <label className="atlas-field-label" htmlFor="add-aircraft-fbo">
@@ -207,13 +242,25 @@ export function AddAircraftModal({
                   ))}
                 </select>
               ) : (
-                <input
-                  id="add-aircraft-fbo"
-                  type="text"
-                  value={fboName}
-                  onChange={(e) => setFboName(e.target.value)}
-                  className="atlas-input"
-                />
+                <p className="rounded-md border border-atlas-border px-3 py-2 text-sm text-atlas-muted">
+                  {!homeBase
+                    ? "Select a home base first."
+                    : fbosLoading
+                      ? "Loading FBOs…"
+                      : (
+                        <>
+                          No FBOs on file at {homeBase}.{" "}
+                          <Link
+                            href={`${ROUTES.dataWarehouse.data}?tab=fbos`}
+                            target="_blank"
+                            className="text-atlas-accent hover:underline"
+                          >
+                            Add one in Data Hub
+                          </Link>
+                          , then pick the airport again.
+                        </>
+                      )}
+                </p>
               )}
             </div>
 
@@ -246,7 +293,7 @@ export function AddAircraftModal({
                   Cancel
                 </Button>
               </Dialog.Close>
-              <Button type="submit" disabled={loading || !selectedMaster}>
+              <Button type="submit" disabled={loading || !selectedMaster || !fboName}>
                 {loading ? "Adding…" : "Add aircraft"}
               </Button>
             </div>
