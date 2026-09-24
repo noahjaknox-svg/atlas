@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CrudTab } from "@/components/internal/data-hub/crud-tab";
-import { clearDataHubFilters } from "@/lib/data-hub-filters";
+import { clearDataHubFilters, replaceDataHubUrl } from "@/lib/data-hub-filters";
 import { ROUTES } from "@/lib/routes";
 import {
   CompanySettingsSectionTab,
@@ -72,6 +72,8 @@ const REFERENCE_TABS = [
 
 const LEGACY_CREW_TAB = "performance-data";
 
+const WORKBENCH_TABS = ["aircraft", "tails", "airports", "fbos", "usage-types"] as const;
+
 export function DataHubClient({
   initialTab,
   initialTabData = null,
@@ -90,25 +92,23 @@ export function DataHubClient({
 
   const tab = rawTab === LEGACY_CREW_TAB ? "aircraft" : rawTab;
 
-  const setTab = useCallback(
-    (id: string) => {
-      router.replace(`${ROUTES.dataWarehouse.data}?${clearDataHubFilters(id).toString()}`);
-    },
-    [router]
-  );
+  // Client-side only: no server re-render or loading skeleton on each tab click.
+  const setTab = useCallback((id: string) => {
+    replaceDataHubUrl(clearDataHubFilters(id));
+  }, []);
 
-  const scrollContainedTab =
-    tab === "aircraft" ||
-    tab === "tails" ||
-    tab === "fbos" ||
-    tab === "airports" ||
-    tab === "usage-types";
-  const workbenchTab =
-    tab === "aircraft" ||
-    tab === "tails" ||
-    tab === "fbos" ||
-    tab === "airports" ||
-    tab === "usage-types";
+  const workbenchTab = (WORKBENCH_TABS as readonly string[]).includes(tab);
+  const scrollContainedTab = workbenchTab;
+
+  // Workbench tabs stay mounted once visited, so switching back is instant (no refetch,
+  // search/selection kept). Settings tabs remount so they always show saved values.
+  const [visited, setVisited] = useState<ReadonlySet<string>>(() => new Set([tab]));
+  useEffect(() => {
+    setVisited((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
+  }, [tab]);
+  const mounted = (id: string) => tab === id || visited.has(id);
+  const pane = (id: string, extra = "") =>
+    `${tab === id ? "flex" : "hidden"} min-h-0 flex-1 ${extra}`;
   const activeTab = REFERENCE_TABS.find((t) => t.id === tab) ?? REFERENCE_TABS[0];
 
   const tabButtonClass = (active: boolean) =>
@@ -156,28 +156,28 @@ export function DataHubClient({
           </header>
         ) : null}
 
-        {tab === "aircraft" && (
-          <div className="flex min-h-0 flex-1">
+        {mounted("aircraft") && (
+          <div className={pane("aircraft")}>
             <AircraftWorkbench
               initialData={initialTab === "aircraft" ? initialTabData : undefined}
             />
           </div>
         )}
 
-        {tab === "tails" && (
-          <div className="flex min-h-0 flex-1">
-            <FleetTailsWorkbench />
+        {mounted("tails") && (
+          <div className={pane("tails")}>
+            <FleetTailsWorkbench active={tab === "tails"} />
           </div>
         )}
 
-        {tab === "airports" && (
-          <div className="flex min-h-0 flex-1">
+        {mounted("airports") && (
+          <div className={pane("airports")}>
             <AirportAuditWorkbench />
           </div>
         )}
 
-        {tab === "fbos" && (
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        {mounted("fbos") && (
+          <div className={pane("fbos", "flex-col gap-3 overflow-hidden")}>
             <div className="flex min-h-0 flex-1">
               <RecordWorkbench
                 title="FBO"
@@ -240,8 +240,8 @@ export function DataHubClient({
           </div>
         )}
 
-        {tab === "usage-types" && (
-          <div className="flex min-h-0 flex-1">
+        {mounted("usage-types") && (
+          <div className={pane("usage-types")}>
             <RecordWorkbench
               title="Usage Type"
               apiPath="/api/data/usage-types"
