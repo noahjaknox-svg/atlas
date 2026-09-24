@@ -392,8 +392,28 @@ export function AirportAuditWorkbench() {
                   </dl>
                 </AuditSection>
 
-                <AuditSection title="Operations">
+                <AuditSection
+                  title="Operations"
+                  description={
+                    reference.nav
+                      ? `Runways, frequencies, elevation, mag var and tower from aviationweather.gov (${reference.nav.dataSource ?? "AWC"}), fetched ${new Date(reference.nav.fetchedAt).toLocaleDateString()}${reference.nav.stale ? " — AWC unreachable, showing the last cached copy" : ""}. Other fields from OurAirports.`
+                      : "aviationweather.gov has no record for this airport — all fields from OurAirports."
+                  }
+                >
                   <dl className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {reference.nav ? (
+                      <>
+                        <AuditField label="Control tower" value={reference.nav.hasTower} />
+                        <AuditField
+                          label="Magnetic variation"
+                          value={
+                            reference.nav.magneticVariationDeg == null
+                              ? null
+                              : `${Math.abs(reference.nav.magneticVariationDeg)}° ${reference.nav.magneticVariationDeg < 0 ? "W" : "E"}`
+                          }
+                        />
+                      </>
+                    ) : null}
                     <AuditField label="Scheduled service" value={reference.scheduledService} />
                     <AuditField label="Longest runway (ft)" value={reference.longestRunwayFt} />
                     <AuditField label="Open runways" value={reference.runways.filter((r) => !r.closed).length} />
@@ -435,6 +455,7 @@ export function AirportAuditWorkbench() {
                             <th className="px-3 py-2 font-medium">Closed</th>
                             <th className="px-3 py-2 font-medium">Grad verified</th>
                             <th className="px-3 py-2 font-medium">Grad est.</th>
+                            <th className="px-3 py-2 font-medium">Source</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -453,6 +474,9 @@ export function AirportAuditWorkbench() {
                               </td>
                               <td className="px-3 py-2 text-atlas-text">
                                 {runway.gradientPctEstimated != null ? `${runway.gradientPctEstimated}%` : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-atlas-muted">
+                                {runway.source === "aviationweather.gov" ? "AWC" : "OurAirports"}
                               </td>
                             </tr>
                           ))}

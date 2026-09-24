@@ -8,6 +8,8 @@ import {
   findAirportReferenceByCode,
 } from "@/lib/ourairports/lookup";
 import { serializeCrewAirport } from "@/lib/ourairports/crew-wire";
+import { getAirportNavData } from "@/lib/awc/nav-data";
+import { applyAwcNavData } from "@/lib/awc/overlay";
 import {
   loadEmptyLegTimezoneLayers,
   timezoneAbbr,
@@ -58,7 +60,13 @@ export async function GET(
       }
     }
 
-    const referenceWire = await enrichAirportReference(prisma, reference);
+    // OurAirports record with aviationweather.gov nav data (runways, frequencies, elevation,
+    // mag var, tower) merged over it; falls back to OurAirports alone if AWC is unavailable.
+    const ourAirportsWire = await enrichAirportReference(prisma, reference);
+    const referenceWire = applyAwcNavData(
+      ourAirportsWire,
+      await getAirportNavData(prisma, ourAirportsWire.icao)
+    );
     const crew = serializeCrewAirport(reference);
 
     const timezoneCodes = Array.from(
