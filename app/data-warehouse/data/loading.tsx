@@ -4,7 +4,7 @@ export default function DataHubLoading() {
   return (
     <InternalShell workspace>
       <div className="flex h-full animate-pulse">
-        <div className="w-56 border-r border-atlas-border bg-atlas-surface/50 p-4">
+        <div className="w-72 shrink-0 border-r border-atlas-border bg-atlas-surface/50 p-4 xl:w-80">
           <div className="space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-8 rounded bg-atlas-surface" />

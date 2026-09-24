@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceDataHubUrl } from "@/lib/data-hub-filters";
 import { Button } from "@/components/ui/button";
 import {
   AircraftTailEditor,
   type TailSection,
 } from "@/components/internal/data-hub/aircraft-tail-editor";
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/lib/routes";
+import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
 
 type FleetListRow = {
   id: string;
@@ -35,8 +36,7 @@ function normalizeTailSection(raw: string | null): TailSection {
   return "Identity";
 }
 
-export function FleetTailsWorkbench() {
-  const router = useRouter();
+export function FleetTailsWorkbench({ active = true }: { active?: boolean } = {}) {
   const searchParams = useSearchParams();
   const [fleet, setFleet] = useState<FleetListRow[]>([]);
   const [types, setTypes] = useState<TypeOption[]>([]);
@@ -59,9 +59,9 @@ export function FleetTailsWorkbench() {
         if (opts.section) params.set("section", opts.section);
       }
       if (opts.section && !opts.clearEntity) params.set("section", opts.section);
-      router.replace(`${ROUTES.dataWarehouse.data}?${params.toString()}`);
+      replaceDataHubUrl(params);
     },
-    [router, searchParams]
+    [searchParams]
   );
 
   const loadFleet = useCallback(async () => {
@@ -86,10 +86,13 @@ export function FleetTailsWorkbench() {
     );
   }, []);
 
+  // Reload whenever the tab is shown again (it stays mounted while hidden), so types
+  // added on the Aircraft types tab show up here.
   useEffect(() => {
+    if (!active) return;
     void loadFleet();
     void loadTypes();
-  }, [loadFleet, loadTypes]);
+  }, [active, loadFleet, loadTypes]);
 
   function selectTailRow(id: string, section?: TailSection) {
     setCreatingTail(false);
@@ -135,7 +138,7 @@ export function FleetTailsWorkbench() {
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="data-hub-sidebar flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 xl:w-80">
+      <aside className={DATA_HUB_SIDEBAR_CLASS}>
         <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3">
           <input
             placeholder="Search tails…"

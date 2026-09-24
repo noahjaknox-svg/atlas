@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { replaceDataHubUrl } from "@/lib/data-hub-filters";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
@@ -17,7 +18,7 @@ import {
 } from "@/lib/warehouse-aircraft-proforma-visibility";
 import { cn, formatFormattedNumber } from "@/lib/utils";
 import type { DataHubListPayload } from "@/lib/data-hub-prefetch";
-import { ROUTES } from "@/lib/routes";
+import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
 
 type Row = Record<string, unknown> & { id?: string; status?: string; code?: string };
 
@@ -299,7 +300,6 @@ export function AircraftWorkbench({
   initialData?: DataHubListPayload | null;
 }) {
   const apiPath = "/api/data/aircraft";
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<Row[]>(initialData?.rows ?? []);
   const skipInitialLoad = useRef(!!initialData);
@@ -337,9 +337,9 @@ export function AircraftWorkbench({
         if (opts.section) params.set("section", opts.section);
       }
       if (opts.section && !opts.clearEntity) params.set("section", opts.section);
-      router.replace(`${ROUTES.dataWarehouse.data}?${params.toString()}`);
+      replaceDataHubUrl(params);
     },
-    [router, searchParams]
+    [searchParams]
   );
 
   function selectRow(row: Row, section?: TypeSection) {
@@ -536,7 +536,7 @@ export function AircraftWorkbench({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="data-hub-sidebar flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 xl:w-80">
+      <aside className={DATA_HUB_SIDEBAR_CLASS}>
         <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3">
           <input
             placeholder="Search types…"

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
 import { EntitySearchField, type SearchKind } from "@/components/internal/data-hub/entity-dialog";
+import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
 
 export type WorkbenchField = {
   key: string;
@@ -247,7 +248,7 @@ export function RecordWorkbench({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="flex min-h-0 w-56 shrink-0 flex-col border-r border-atlas-border bg-atlas-surface/20 xl:w-60">
+      <aside className={DATA_HUB_SIDEBAR_CLASS}>
         <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3">
           <Input
             placeholder={`Search ${title.toLowerCase()}…`}

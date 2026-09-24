@@ -1,3 +1,5 @@
+import { ROUTES } from "@/lib/routes";
+
 export const DATA_HUB_FILTER_KEYS = [
   "q",
   "airportIcao",
@@ -47,3 +49,13 @@ export type FilterField = {
   options?: { value: string; label: string }[];
   searchKind?: "aircraft" | "airport" | "fbo";
 };
+
+/**
+ * Update the Data Hub URL without a server round-trip. `router.replace` re-renders the
+ * whole page on the server (auth + DB prefetch) on every tab/row click; Next 14.1+ keeps
+ * `useSearchParams` in sync with `history.replaceState`, so this is all we need.
+ */
+export function replaceDataHubUrl(params: URLSearchParams): void {
+  if (typeof window === "undefined") return;
+  window.history.replaceState(window.history.state, "", `${ROUTES.dataWarehouse.data}?${params.toString()}`);
+}

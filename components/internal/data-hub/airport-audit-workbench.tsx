@@ -5,6 +5,7 @@ import type { AirportReferenceWire, AirportRunwayWire } from "@/lib/ourairports/
 import type { CrewAirportRunwayWire } from "@/lib/ourairports/crew-wire";
 import { cn, formatFormattedNumber } from "@/lib/utils";
 import { CrewRunwaySlopesPanel } from "@/components/internal/data-hub/crew-runway-slopes-panel";
+import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
 
 type SearchHit = { id: string; icao: string; label: string };
 
@@ -220,7 +221,7 @@ export function AirportAuditWorkbench() {
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="data-hub-sidebar flex min-h-0 w-72 shrink-0 flex-col border-r border-atlas-border bg-atlas-chrome/95 xl:w-80">
+      <aside className={DATA_HUB_SIDEBAR_CLASS}>
         <form className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-3" onSubmit={handleSubmitSearch}>
           <input
             placeholder="ICAO, name, or city…"
