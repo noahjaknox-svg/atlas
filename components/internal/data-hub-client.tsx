@@ -97,7 +97,8 @@ export function DataHubClient({
     replaceDataHubUrl(clearDataHubFilters(id));
   }, []);
 
-  const workbenchTab = (WORKBENCH_TABS as readonly string[]).includes(tab);
+  // Full-height sidebar layouts (no page padding/header). "general" remounts on each visit.
+  const workbenchTab = (WORKBENCH_TABS as readonly string[]).includes(tab) || tab === "general";
   const scrollContainedTab = workbenchTab;
 
   // Workbench tabs stay mounted once visited, so switching back is instant (no refetch,
@@ -253,7 +254,11 @@ export function DataHubClient({
           </div>
         )}
 
-        {tab === "general" && <CompanySettingsTab />}
+        {tab === "general" && (
+          <div className="flex min-h-0 flex-1">
+            <CompanySettingsTab />
+          </div>
+        )}
 
         {tab === "insurance" && (
           <CompanySettingsSectionTab

@@ -7,7 +7,7 @@ const TABS: Array<{ label: string; tab: string; marker: (p: import("@playwright/
   { label: "Airports", tab: "airports", marker: (p) => p.getByPlaceholder(/icao, name, or city/i) },
   { label: "FBOs", tab: "fbos", marker: (p) => p.getByPlaceholder(/search fbo/i) },
   { label: "Usage Types", tab: "usage-types", marker: (p) => p.getByPlaceholder(/search usage type/i) },
-  { label: "General and Company", tab: "general", marker: (p) => p.getByRole("heading", { name: "General and Company" }) },
+  { label: "General and Company", tab: "general", marker: (p) => p.getByRole("navigation", { name: "General and Company sections" }) },
   { label: "Insurance", tab: "insurance", marker: (p) => p.getByRole("heading", { name: "Insurance" }) },
   { label: "Registration & Taxes", tab: "registration-taxes", marker: (p) => p.getByRole("heading", { name: "Registration & Taxes" }) },
 ];
@@ -42,11 +42,31 @@ test("the list sidebar is the same width on every workbench tab", async ({ page 
   await page.goto("/data-warehouse/data?tab=aircraft");
   const nav = page.getByRole("navigation", { name: "Data warehouse sections" });
   const widths: Record<string, number> = {};
-  for (const t of TABS.slice(0, 5)) {
+  // The five workbenches + General and Company all use the list-sidebar layout.
+  for (const t of TABS.slice(0, 6)) {
     await nav.getByRole("button", { name: t.label, exact: true }).click();
     await expect(t.marker(page)).toBeVisible();
     const box = await page.locator("aside.data-hub-sidebar:visible").first().boundingBox();
     widths[t.label] = Math.round(box!.width);
   }
   expect(new Set(Object.values(widths)).size, JSON.stringify(widths)).toBe(1);
+});
+
+test("General and Company has a section sidebar that switches the form", async ({ page }) => {
+  await page.goto("/data-warehouse/data?tab=general");
+  const sections = page.getByRole("navigation", { name: "General and Company sections" });
+  const cases: Array<[string, RegExp]> = [
+    ["Financing template", /default down payment/i],
+    ["Crew org policy", /crew \/sync|ops-tunable/i],
+    ["Core fees & fuel", /us average fuel cost/i],
+  ];
+  for (const [label, content] of cases) {
+    await sections.getByRole("button", { name: label }).click();
+    await expect(page.getByRole("heading", { level: 2, name: label })).toBeVisible();
+    await expect(page.getByText(content).first()).toBeVisible();
+    await expect(sections.getByRole("button", { name: label })).toHaveAttribute("aria-current", "page");
+  }
+  // Deep link restores the section.
+  await page.goto("/data-warehouse/data?tab=general&section=financing");
+  await expect(page.getByRole("heading", { level: 2, name: "Financing template" })).toBeVisible();
 });
