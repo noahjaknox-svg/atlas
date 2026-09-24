@@ -59,7 +59,9 @@ export async function POST(request: Request) {
       data: {
         prospectId: prospect.id,
         aircraftInstanceId: null as string | null,
-        proposalName: proposalName ?? `${resolvedClientName} — Atlas Proposal`,
+        // Just the client's name unless one was given — no "— Atlas Proposal" suffix.
+        proposalName:
+          (typeof proposalName === "string" && proposalName.trim()) || resolvedClientName,
         preparedById: user.id,
         preparedDate: new Date(),
       },
