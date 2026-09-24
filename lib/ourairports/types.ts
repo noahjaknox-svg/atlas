@@ -46,6 +46,21 @@ export type AirportReferenceWire = {
   runways: AirportRunwayWire[];
   frequencies: AirportFrequencyWire[];
   updatedAt: string;
+  /** Present when aviationweather.gov nav data was merged in (lib/awc/overlay.ts). */
+  nav?: AirportNavMeta | null;
+};
+
+export type AirportNavMeta = {
+  provider: "aviationweather.gov";
+  /** AWC's source tag: "FAA" (US) or "Intl". */
+  dataSource: string | null;
+  fetchedAt: string;
+  /** Served from an out-of-date cache because AWC was unreachable. */
+  stale: boolean;
+  faaId: string | null;
+  magneticVariationDeg: number | null;
+  hasTower: boolean;
+  hasBeacon: boolean;
 };
 
 export type AirportRunwayWire = {
@@ -61,6 +76,8 @@ export type AirportRunwayWire = {
   gradientPctVerified: number | null;
   gradientHighEndVerified: string | null;
   gradientPctEstimated: number | null;
+  /** Where the runway's dimensions/surface/heading came from. */
+  source?: "aviationweather.gov" | "ourairports";
 };
 
 export type AirportFrequencyWire = {

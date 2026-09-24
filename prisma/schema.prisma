@@ -635,6 +635,35 @@ model AirportRunwayReference {
   @@map("airport_runway_reference")
 }
 
+/// Airport nav data from aviationweather.gov (AWC), cached per ICAO. Authoritative over
+/// OurAirports for runways, frequencies, elevation, magnetic variation and tower status
+/// where present; OurAirports stays the searchable index (lib/awc/nav-data.ts).
+model AirportNavData {
+  icao                 String   @id
+  /// false when AWC had no record for this ICAO (negative cache, refreshed sooner).
+  found                Boolean  @default(true)
+  faaId                String?  @map("faa_id")
+  iataId               String?  @map("iata_id")
+  name                 String?
+  dataSource           String?  @map("data_source")
+  latitudeDeg          Float?   @map("latitude_deg")
+  longitudeDeg         Float?   @map("longitude_deg")
+  elevationFt          Int?     @map("elevation_ft")
+  magneticVariationDeg Float?   @map("magnetic_variation_deg")
+  hasTower             Boolean  @default(false) @map("has_tower")
+  hasBeacon            Boolean  @default(false) @map("has_beacon")
+  /// AwcRunway[] (lib/awc/airport.ts)
+  runways              Json     @default("[]") @db.JsonB
+  /// AwcFrequency[]
+  frequencies          Json     @default("[]") @db.JsonB
+  fetchedAt            DateTime @map("fetched_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([fetchedAt])
+  @@map("airport_nav_data")
+}
+
 model AirportFrequencyReference {
   id            String   @id @default(uuid()) @db.Uuid
   ourairportsId Int      @unique @map("ourairports_id")
