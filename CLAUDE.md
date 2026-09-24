@@ -24,8 +24,9 @@ Nothing user-facing is "done" until it has been exercised in a real browser. Wor
 
 1. `npm run verify` on the feature branch (types + unit tests).
 2. For any UI/route change, add or update a Playwright spec in `e2e/` that asserts what the user sees (see `e2e/README.md`).
-3. Merge to `staging`, wait for the atlas-staging deploy to be Ready, then run `npm run test:e2e` against staging.
-4. Only report the work as done once those pass. If something couldn't be verified (e.g. no test covers it yet and no browser was available), say so explicitly — never imply it was tested.
+3. **Before merging**: `npm run test:e2e:local` — starts `npm run dev:staging` (local server on the STAGING DB via the `atlas_local_dev` role; refuses to start if anything points at production) and runs the browser tests against it.
+4. Merge to `staging`, wait for the atlas-staging deploy to be Ready, then `npm run test:e2e` against the deployed site.
+5. Only report the work as done once those pass. If something couldn't be verified, say so explicitly — never imply it was tested.
 
 ## Auth email templates
 

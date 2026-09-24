@@ -18,5 +18,9 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
+  // Local runs start the dev server against staging (npm run dev:staging) unless one is already up.
+  webServer: /localhost/.test(process.env.E2E_BASE_URL ?? "")
+    ? { command: "npm run dev:staging", url: "http://localhost:3005/login", reuseExistingServer: true, timeout: 180_000 }
+    : undefined,
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
 });

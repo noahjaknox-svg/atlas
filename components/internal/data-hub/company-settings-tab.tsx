@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CrewOrgPolicySection } from "@/components/internal/data-hub/crew-org-policy-section";
+import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
+import { replaceDataHubUrl } from "@/lib/data-hub-filters";
+import { cn } from "@/lib/utils";
 
 export type CompanySettingsFieldDef = {
   key: string;
@@ -168,43 +172,101 @@ export function CompanySettingsSectionTab({
   );
 }
 
+const GENERAL_SECTIONS = [
+  {
+    id: "core",
+    label: "Core fees & fuel",
+    description: "Fuel, management fees, and charter payback used by every pro forma.",
+    fields: CORE_COMPANY_FIELDS,
+  },
+  {
+    id: "financing",
+    label: "Financing template",
+    description: "Starting financing terms for new proposal workspaces.",
+    fields: FINANCING_TEMPLATE_FIELDS,
+  },
+  { id: "crew-policy", label: "Crew org policy", description: null, fields: null },
+] as const;
+
+type GeneralSectionId = (typeof GENERAL_SECTIONS)[number]["id"];
+
 export function CompanySettingsTab() {
+  const searchParams = useSearchParams();
+  const fromUrl = searchParams.get("section");
+  const [sectionId, setSectionId] = useState<GeneralSectionId>(
+    GENERAL_SECTIONS.find((s) => s.id === fromUrl)?.id ?? "core"
+  );
+  const section = GENERAL_SECTIONS.find((s) => s.id === sectionId) ?? GENERAL_SECTIONS[0];
   const { values, setValues, loading, saving, message, save } =
     useCompanySettingsFields(ALL_GENERAL_FIELD_KEYS);
 
-  if (loading) return <p className="text-sm text-atlas-muted">Loading…</p>;
+  function selectSection(id: GeneralSectionId) {
+    setSectionId(id);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "general");
+    params.set("section", id);
+    replaceDataHubUrl(params);
+  }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <p className="text-sm text-atlas-muted">
-        Data Warehouse defaults — copied into each proposal workspace on aircraft add and manual
-        refresh. Changes here do not alter published client portals until staff republish affected
-        proposals.
-      </p>
-      <section>
-        <h3 className="mb-2 text-sm font-medium text-atlas-text">Core fees & fuel</h3>
-        <CompanySettingsFieldGrid
-          fields={CORE_COMPANY_FIELDS}
-          values={values}
-          onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
-        />
-      </section>
-      <section>
-        <h3 className="mb-2 text-sm font-medium text-atlas-text">Financing template</h3>
-        <CompanySettingsFieldGrid
-          fields={FINANCING_TEMPLATE_FIELDS}
-          values={values}
-          onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
-        />
-      </section>
-      <div className="flex items-center gap-3">
-        <Button onClick={() => void save(values)} disabled={saving}>
-          {saving ? "Saving…" : "Save settings"}
-        </Button>
-        {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
-      </div>
-      <div className="border-t border-atlas-border pt-6">
-        <CrewOrgPolicySection />
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <aside className={DATA_HUB_SIDEBAR_CLASS}>
+        <div className="shrink-0 border-b border-atlas-border px-4 py-3">
+          <p className="text-xs leading-relaxed text-atlas-muted">
+            Defaults copied into each proposal workspace on aircraft add and manual refresh.
+            Published portals change only when staff republish.
+          </p>
+        </div>
+        <nav className="atlas-scroll min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-3" aria-label="General and Company sections">
+          {GENERAL_SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => selectSection(s.id)}
+              aria-current={s.id === sectionId ? "page" : undefined}
+              className={cn(
+                "flex w-full items-center rounded px-3 py-2 text-left text-sm transition-colors",
+                s.id === sectionId
+                  ? "bg-atlas-accent/15 font-medium text-atlas-accent"
+                  : "text-atlas-text/75 hover:bg-atlas-border/30 hover:text-atlas-text"
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-atlas-border px-4 py-3">
+          <h2 className="truncate font-serif text-lg font-medium sm:text-xl">{section.label}</h2>
+          {section.description ? (
+            <p className="mt-0.5 text-sm text-atlas-muted">{section.description}</p>
+          ) : null}
+        </header>
+        <div className="atlas-scroll min-h-0 flex-1 overflow-y-auto p-4">
+          {section.fields === null ? (
+            <div className="max-w-3xl">
+              <CrewOrgPolicySection />
+            </div>
+          ) : loading ? (
+            <p className="text-sm text-atlas-muted">Loading…</p>
+          ) : (
+            <div className="max-w-xl space-y-6">
+              <CompanySettingsFieldGrid
+                fields={section.fields}
+                values={values}
+                onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
+              />
+              <div className="flex items-center gap-3">
+                <Button onClick={() => void save(values)} disabled={saving}>
+                  {saving ? "Saving…" : "Save settings"}
+                </Button>
+                {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
