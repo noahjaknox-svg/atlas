@@ -18,6 +18,15 @@ This repo has two live environments:
 6. **Never run destructive database commands** (`prisma db push --accept-data-loss`, direct `DROP`/`DELETE` without a `WHERE`, migration resets) **against the production database** without explicit confirmation. These are fine on staging.
    - Local scripts load `.env.local` (usually production) and then **replace `DATABASE_URL` with `DIRECT_URL`** (`lib/load-env.ts`). To target staging, pass **both** `DATABASE_URL` and `DIRECT_URL` inline. Seed/import scripts call `guardAgainstProductionDb()` (`lib/db-target-guard.ts`) and refuse production unless `ALLOW_PRODUCTION_DB=yes`. Add that call to any new script that bulk-writes or deletes.
 
+## Testing before handing work back
+
+Nothing user-facing is "done" until it has been exercised in a real browser. Workflow for every change:
+
+1. `npm run verify` on the feature branch (types + unit tests).
+2. For any UI/route change, add or update a Playwright spec in `e2e/` that asserts what the user sees (see `e2e/README.md`).
+3. Merge to `staging`, wait for the atlas-staging deploy to be Ready, then run `npm run test:e2e` against staging.
+4. Only report the work as done once those pass. If something couldn't be verified (e.g. no test covers it yet and no browser was available), say so explicitly — never imply it was tested.
+
 ## Auth email templates
 
 Supabase auth emails come from `email-templates/supabase/` but must be pasted into each Supabase project's dashboard by hand — see that folder's README. Reset/invite/confirm links use `token_hash` + `verifyOtp` on click, not `{{ .ConfirmationURL }}`; don't revert that (scanners spend `/verify` GET links before the user clicks).
