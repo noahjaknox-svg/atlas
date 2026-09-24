@@ -19,6 +19,8 @@ export const PALETTE_ITEMS: { id: string; label: string; item: PaletteItem }[] =
   { id: `${PALETTE_PREFIX}quote`, label: "Quote", item: { kind: "block", blockType: "quote" } },
   { id: `${PALETTE_PREFIX}cta`, label: "Button", item: { kind: "block", blockType: "cta" } },
   { id: `${PALETTE_PREFIX}video`, label: "Video", item: { kind: "block", blockType: "video" } },
+  { id: `${PALETTE_PREFIX}stat`, label: "Stat", item: { kind: "block", blockType: "stat" } },
+  { id: `${PALETTE_PREFIX}blockVsFlight`, label: "Block vs flight", item: { kind: "block", blockType: "blockVsFlight" } },
   { id: `${PALETTE_PREFIX}gallery`, label: "Gallery", item: { kind: "block", blockType: "gallery" } },
   { id: `${PALETTE_PREFIX}html`, label: "HTML", item: { kind: "block", blockType: "html" } },
   { id: `${PALETTE_PREFIX}spacer`, label: "Spacer", item: { kind: "block", blockType: "spacer" } },

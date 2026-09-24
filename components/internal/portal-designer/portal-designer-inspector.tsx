@@ -27,7 +27,7 @@ import {
   type BlockPath,
   type RowColumnCount,
 } from "@/lib/portal-block-layout";
-import { updateContainerGrid, updateRowColumns } from "@/lib/page-blocks-utils";
+import { htmlHasAnimation, updateContainerGrid, updateRowColumns } from "@/lib/page-blocks-utils";
 import type { GridDimension } from "@/lib/experience-content";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,30 @@ import { PortalDesignerImageCropModal } from "./portal-designer-image-crop-modal
 import type { DesignerSection, PreviewViewport } from "./portal-designer-types";
 import { PORTAL_HTML_AI_INSTRUCTIONS } from "@/lib/portal-html-ai-instructions";
 import { cn } from "@/lib/utils";
+
+/** Flags that motion isn't guaranteed for every viewer, and what they'll see instead. */
+function AnimationNotice({ kind }: { kind: "block" | "html" }) {
+  return (
+    <p
+      role="note"
+      className="mt-2 rounded border border-amber-300/30 bg-amber-300/10 px-2 py-1.5 text-xs leading-relaxed text-amber-100/90"
+    >
+      {kind === "block" ? (
+        <>
+          <strong>Animated.</strong> Viewers with reduced motion turned on, older browsers, and
+          PDF/print see the finished state (final numbers and bars) with no animation — check it
+          reads well that way.
+        </>
+      ) : (
+        <>
+          <strong>Contains CSS animation.</strong> It won&apos;t play for viewers with reduced
+          motion, in some browsers, or in PDF/print. Make sure the un-animated state still makes
+          sense, or use an Image block with a static picture instead.
+        </>
+      )}
+    </p>
+  );
+}
 
 export function PortalDesignerInspector({
   section,
@@ -856,16 +880,91 @@ function BlockEditor({
           />
         </div>
       );
+    case "stat":
+      return (
+        <div className="space-y-3">
+          <AnimationNotice kind="block" />
+          <div>
+            <Label className="text-sm">Value</Label>
+            <Input
+              value={block.value}
+              onChange={(e) => onPatch({ value: e.target.value } as Partial<ExperiencePageBlock>)}
+              placeholder="100+"
+              className="mt-1 h-8 text-sm"
+            />
+            <p className="mt-1 text-xs text-atlas-muted">
+              The first number counts up (e.g. 100+, $2.4M, 15%).
+            </p>
+          </div>
+          <div>
+            <Label className="text-sm">Label</Label>
+            <Input
+              value={block.label}
+              onChange={(e) => onPatch({ label: e.target.value } as Partial<ExperiencePageBlock>)}
+              className="mt-1 h-8 text-sm"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={block.countUp !== false}
+              onChange={(e) => onPatch({ countUp: e.target.checked } as Partial<ExperiencePageBlock>)}
+            />
+            Count up when scrolled into view
+          </label>
+          <BlockLayoutControls
+            blockLayout={block.blockLayout}
+            layoutSettings={layoutSettings}
+            designViewport={designViewport}
+            onPatch={layoutPatch}
+          />
+        </div>
+      );
+    case "blockVsFlight":
+      return (
+        <div className="space-y-3">
+          <AnimationNotice kind="block" />
+          <p className="text-xs leading-relaxed text-atlas-muted">
+            Charter payback bars: taxi-to-taxi (block) vs wheels-up (flight) time. Leave hours
+            blank to use each proposal&apos;s own aircraft numbers.
+          </p>
+          {(["blockHours", "flightHours"] as const).map((key) => (
+            <div key={key}>
+              <Label className="text-sm">
+                {key === "blockHours" ? "Block hours (optional)" : "Flight hours (optional)"}
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={block[key] ?? ""}
+                placeholder="From the proposal"
+                onChange={(e) => {
+                  const n = parseFloat(e.target.value);
+                  onPatch({ [key]: Number.isFinite(n) && n > 0 ? n : null } as Partial<ExperiencePageBlock>);
+                }}
+                className="mt-1 h-8 text-sm"
+              />
+            </div>
+          ))}
+          <BlockLayoutControls
+            blockLayout={block.blockLayout}
+            layoutSettings={layoutSettings}
+            designViewport={designViewport}
+            onPatch={layoutPatch}
+          />
+        </div>
+      );
     case "html":
       return (
         <div className="space-y-3">
           <div>
             <Label className="text-sm">Custom HTML</Label>
             <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
-              Use for custom layout, CSS, animations, or iframe embeds (YouTube, maps, forms).
-              HTML can affect mobile layout and performance — test on both desktop and mobile
-              viewports.
+              Use for custom layout, CSS, or iframe embeds (YouTube, maps, forms). Scripts are
+              removed. HTML can affect mobile layout and performance — test on both desktop and
+              mobile viewports.
             </p>
+            {htmlHasAnimation(block.html) ? <AnimationNotice kind="html" /> : null}
             <textarea
               value={block.html}
               onChange={(e) => onPatch({ html: e.target.value } as Partial<ExperiencePageBlock>)}

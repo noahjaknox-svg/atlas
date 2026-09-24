@@ -101,7 +101,13 @@ export function PortalDesignerShell({
 
   const [sections, setSections] = useState(initialState.sections);
   const [hero, setHero] = useState(initialState.hero);
-  const [baseline, setBaseline] = useState(() => JSON.stringify(initialState));
+  // Baseline = what's actually stored, NOT the converted view. Built-in pages are converted
+  // to blocks on load; until that conversion is saved, clients still see the built-in
+  // layout, so the designer must show it as an unsaved change rather than as "saved".
+  const [baseline, setBaseline] = useState(() =>
+    JSON.stringify({ sections: cloneDesignerSections(initialSections), hero: initialState.hero })
+  );
+  const loadedStateJson = useMemo(() => JSON.stringify(initialState), [initialState]);
   const history = useDesignerHistory<DesignerState>(initialState);
   const skipHistoryPush = useRef(false);
 
@@ -131,7 +137,21 @@ export function PortalDesignerShell({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = JSON.stringify({ sections, hero }) !== baseline;
+  const currentStateJson = JSON.stringify({ sections, hero });
+  const dirty = currentStateJson !== baseline;
+  // Autosave waits for a real edit — merely opening the designer (which converts built-in
+  // pages in memory) must not silently rewrite every page.
+  const editedSinceLoad = currentStateJson !== loadedStateJson;
+
+  /** Pages whose stored version has no blocks yet: clients see the built-in layout. */
+  const unsavedConversionKeys = useMemo(() => {
+    const stored = (JSON.parse(baseline) as { sections: DesignerSection[] }).sections;
+    return new Set(
+      stored
+        .filter((s) => s.contentBlocks?.pageBlocks == null)
+        .map((s) => s.id ?? s.sectionType)
+    );
+  }, [baseline]);
 
   useEffect(() => {
     if (skipHistoryPush.current) {
@@ -324,12 +344,12 @@ export function PortalDesignerShell({
   }, [history]);
 
   useEffect(() => {
-    if (!dirty || mode !== "proposal" || !proposalId) return;
+    if (!dirty || !editedSinceLoad || mode !== "proposal" || !proposalId) return;
     const timer = window.setTimeout(() => {
       void saveDraft();
     }, 30_000);
     return () => window.clearTimeout(timer);
-  }, [dirty, mode, proposalId, sections, hero]);
+  }, [dirty, editedSinceLoad, mode, proposalId, sections, hero]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -763,6 +783,18 @@ export function PortalDesignerShell({
           </aside>
 
           <main className="flex min-h-0 flex-col border-r border-atlas-border">
+            {unsavedConversionKeys.has(sectionKey(activeSection)) &&
+            activeSection.contentBlocks?.pageBlocks != null ? (
+              <div
+                role="status"
+                className="shrink-0 border-b border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs leading-relaxed text-amber-100/90"
+              >
+                <strong>Not live yet.</strong>{" "}
+                {mode === "master"
+                  ? "New proposals still get the built-in layout for this page. It's shown here converted to blocks — save to make these blocks the default."
+                  : "Clients still see the built-in layout for this page. It's shown here converted to blocks — save (or publish) so the portal shows exactly this."}
+              </div>
+            ) : null}
             <div className="min-h-0 flex-1">
               {previewSource === "draft" ? (
                 <PortalDesignerCanvas

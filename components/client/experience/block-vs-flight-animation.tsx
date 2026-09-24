@@ -73,7 +73,7 @@ export function BlockVsFlightAnimation({
           <p className="mt-0.5 text-xs text-white/40">Wheels up → wheels down (flight time)</p>
           <div className="mt-2 h-6 overflow-hidden rounded-lg bg-white/[0.06] sm:mt-3 sm:h-9">
             <div
-              className="h-full rounded-lg bg-white/20 transition-[width] duration-1000 ease-out"
+              className="h-full rounded-lg bg-white/20 transition-[width] duration-1000 ease-out motion-reduce:transition-none"
               style={{ width: shown ? `${flightPct}%` : "0%" }}
             />
           </div>
@@ -90,7 +90,7 @@ export function BlockVsFlightAnimation({
           <p className="mt-0.5 text-xs text-white/40">Taxi to taxi (block time)</p>
           <div className="mt-2 h-6 overflow-hidden rounded-lg bg-atlas-accent/15 sm:mt-3 sm:h-9">
             <div
-              className="h-full rounded-lg bg-gradient-to-r from-atlas-accent/80 to-atlas-accent transition-[width] duration-1000 ease-out"
+              className="h-full rounded-lg bg-gradient-to-r from-atlas-accent/80 to-atlas-accent transition-[width] duration-1000 ease-out motion-reduce:transition-none"
               style={{ width: shown ? "100%" : "0%", transitionDelay: "250ms" }}
             />
           </div>

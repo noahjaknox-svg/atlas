@@ -41,6 +41,8 @@ const KNOWN_BLOCK_TYPES = new Set([
   "quote",
   "cta",
   "video",
+  "stat",
+  "blockVsFlight",
   "row",
   "container",
 ]);

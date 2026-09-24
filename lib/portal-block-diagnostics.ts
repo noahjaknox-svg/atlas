@@ -71,6 +71,15 @@ export function collectBlockDiagnostics(
           });
         }
         break;
+      case "stat":
+        if (!block.value.trim()) {
+          diagnostics.push({
+            blockId: block.id,
+            kind: "empty_text",
+            message: "Stat value is empty",
+          });
+        }
+        break;
       case "video":
         if (isBlank(block.url)) {
           diagnostics.push({

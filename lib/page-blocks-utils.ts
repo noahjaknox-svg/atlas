@@ -16,6 +16,7 @@ import {
   type RowColumnCount,
 } from "./portal-block-layout";
 import type { GridDimension } from "./experience-content";
+import { convertLegacySectionToBlocks } from "./legacy-page-to-blocks";
 
 export { duplicateBlockById, findBlockById, insertBlockAt, removeBlockById, replaceBlockById, updateBlockById };
 export type { BlockPath };
@@ -146,6 +147,10 @@ export function createEmptyBlock(type: ExperiencePageBlock["type"]): ExperienceP
       return { id: createBlockId(), type: "cta", label: "Learn more", url: "", variant: "primary" };
     case "video":
       return { id: createBlockId(), type: "video", url: "", posterUrl: "", caption: "" };
+    case "stat":
+      return { id: createBlockId(), type: "stat", value: "100+", label: "Years combined experience", countUp: true };
+    case "blockVsFlight":
+      return { id: createBlockId(), type: "blockVsFlight" };
     case "row":
       return createEmptyRow(2);
     case "container":
@@ -155,13 +160,31 @@ export function createEmptyBlock(type: ExperiencePageBlock["type"]): ExperienceP
   }
 }
 
-/** Synthesize pageBlocks from legacy section fields when none exist. */
-export function synthesizePageBlocksFromLegacy(
-  section: Pick<
-    ExperienceSectionSnapshot,
-    "bodyCopy" | "imageUrl" | "contentBlocks"
-  >
-): ExperiencePageBlock[] {
+type LegacyFields = Pick<ExperienceSectionSnapshot, "bodyCopy" | "imageUrl" | "contentBlocks"> &
+  Partial<Pick<ExperienceSectionSnapshot, "sectionType" | "title" | "signatoryName" | "signatoryTitle">>;
+
+/**
+ * Synthesize pageBlocks from legacy section fields when none exist.
+ *
+ * Built-in page types are rebuilt element-for-element from their live layout (see
+ * lib/legacy-page-to-blocks.ts), so what the designer shows is what the portal will show
+ * once saved. Sections without a known type fall back to body text, image and gallery.
+ */
+export function synthesizePageBlocksFromLegacy(section: LegacyFields): ExperiencePageBlock[] {
+  if (section.sectionType) {
+    return convertLegacySectionToBlocks(
+      {
+        sectionType: section.sectionType,
+        title: section.title ?? "",
+        bodyCopy: section.bodyCopy,
+        imageUrl: section.imageUrl,
+        contentBlocks: section.contentBlocks,
+        signatoryName: section.signatoryName ?? null,
+        signatoryTitle: section.signatoryTitle ?? null,
+      },
+      { newId: createBlockId }
+    );
+  }
   const blocks: ExperiencePageBlock[] = [];
   if (section.bodyCopy?.trim()) {
     blocks.push({ id: createBlockId(), type: "text", markdown: section.bodyCopy });
@@ -186,12 +209,7 @@ export function synthesizePageBlocksFromLegacy(
   return blocks;
 }
 
-export function getSectionPageBlocks(
-  section: Pick<
-    ExperienceSectionSnapshot,
-    "bodyCopy" | "imageUrl" | "contentBlocks"
-  >
-): ExperiencePageBlock[] {
+export function getSectionPageBlocks(section: LegacyFields): ExperiencePageBlock[] {
   const existing = section.contentBlocks?.pageBlocks;
   if (existing != null) return normalizePageBlocks(existing);
   return synthesizePageBlocksFromLegacy(section);
@@ -332,4 +350,12 @@ export function updateContainerGrid(
     rowWeights: rowWeights.slice(0, newRows),
     cells: newCells,
   });
+}
+
+/** True when custom HTML relies on CSS motion (keyframes, animation or transition). Such
+ * motion doesn't play for reduced-motion viewers, some browsers, or PDF/print, so the
+ * designer flags it. */
+export function htmlHasAnimation(html: string | null | undefined): boolean {
+  if (!html) return false;
+  return /@keyframes|\banimation(-name)?\s*:|\btransition\s*:/i.test(html);
 }

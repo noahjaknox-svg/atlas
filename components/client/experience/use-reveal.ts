@@ -13,8 +13,10 @@ export function useReveal<T extends HTMLElement = HTMLDivElement>(options?: {
     const el = ref.current;
     if (!el) return;
 
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    // No motion wanted, or a browser without IntersectionObserver: show immediately so
+    // content (and animated figures' final values) is never stuck hidden.
+    if (mq?.matches || typeof IntersectionObserver === "undefined") {
       setShown(true);
       return;
     }

@@ -30,6 +30,8 @@ export const DESIGNER_BLOCK_TYPES = [
   { type: "quote" as const, label: "Quote" },
   { type: "cta" as const, label: "Button" },
   { type: "video" as const, label: "Video" },
+  { type: "stat" as const, label: "Stat" },
+  { type: "blockVsFlight" as const, label: "Block vs flight" },
   { type: "html" as const, label: "Custom HTML" },
   { type: "spacer" as const, label: "Spacer" },
 ];

@@ -11,6 +11,7 @@ import {
   ROW_PRESETS,
 } from "./experience-block-enums";
 import { DEFAULT_LAYOUT_SETTINGS } from "./portal-layout-settings";
+import { PORTAL_VARIABLES } from "./portal-variables";
 
 const WIDTH_PRESETS = DEFAULT_LAYOUT_SETTINGS.widthPresets.map((p) => `"${p.id}"`).join("|");
 
@@ -60,16 +61,26 @@ An ordered array of blocks. Every block requires an \`id\` (placeholders are fin
 - \`{ "id": "...", "type": "quote", "text": "...", "attribution"?: "..." }\`
 - \`{ "id": "...", "type": "cta", "label": "...", "url": "...", "variant"?: ${CTA_VARIANTS.map((v) => `"${v}"`).join("|")} }\`
 - \`{ "id": "...", "type": "video", "url": "...", "posterUrl"?: "...", "caption"?: "..." }\`
+- \`{ "id": "...", "type": "stat", "value": "100+", "label": "Years combined experience", "countUp"?: true|false }\` — one big highlighted figure with a small caption. **Animated:** when \`countUp\` is on (default) the first number in \`value\` counts up once scrolled into view (e.g. "100+", "$2.4M", "15%")
+- \`{ "id": "...", "type": "blockVsFlight", "blockHours"?: number, "flightHours"?: number }\` — **animated** charter-payback bars comparing taxi-to-taxi (block) time with wheels-up (flight) time. Omit the hours to use each proposal's own aircraft numbers (almost always what you want)
 - \`{ "id": "...", "type": "row", "preset": ${ROW_PRESETS.map((v) => `"${v}"`).join("|")}, "gap"?: ${ROW_GAPS.map((v) => `"${v}"`).join("|")}, "display"?: ${ROW_DISPLAYS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1,1], "cellCardStyle"?: true|false, "columns": [ [ /* blocks */ ], [ /* blocks */ ] ] }\` — side-by-side (or stacked) columns, each column is itself an array of blocks. **\`preset\` caps at 3 columns** (\`equal-3\`) — \`equal-2\`/\`wide-narrow\`/\`narrow-wide\` are all 2 columns. For 4+ columns (or a true grid), use \`container\` instead.
 - \`{ "id": "...", "type": "container", "rows": 1-4, "cols": 1-4, "gap"?: ${ROW_GAPS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1], "rowWeights"?: [1], "cellAlign"?: ${CONTAINER_CELL_ALIGNS.map((v) => `"${v}"`).join("|")}, "cellCardStyle"?: true|false, "cells": [ [ [ /* blocks */ ] ] ] }\` — a grid up to 4×4; \`cells\` is rows → columns → array of blocks in that cell
 
 **\`cellCardStyle\`** (on \`row\`/\`container\`, default \`false\`): set \`true\` to give every column/cell a subtle card treatment (translucent background, rounded corners, padding) — use this for a grid of distinct items (feature cards, service tiles, a 3-up comparison). Leave it \`false\`/omitted for a plain editorial split (e.g. text on one side, an image on the other) that shouldn't look boxed.
 
-## CRITICAL: centering — blocks do NOT center by default
+## Animation — only the two animated blocks, otherwise use a static image
+The ONLY supported animation is the built-in \`stat\` count-up and \`blockVsFlight\` bars. Both degrade safely: viewers with reduced motion turned on, older browsers, and PDF/print see their finished state (final numbers, full bars) — so write them so the finished state reads well on its own.
+
+Do NOT try to build animation any other way: no \`<script>\` (it is stripped), and avoid CSS \`@keyframes\`/\`animation\`/\`transition\` in \`html\` blocks — it doesn't play for reduced-motion viewers, in some browsers, or in PDF/print, and the designer flags it. **If the request calls for motion you can't express with \`stat\` or \`blockVsFlight\`, use an \`image\` block with a static picture instead** (set \`"url": ""\` if no image URL was provided so the user can upload one, and write a descriptive \`alt\`), and tell the user in the \`alt\` text what the static image should show.
+
+## Personalization variables
+Text, heading, quote, button-label and stat text can include \`{{variable}}\` placeholders that fill in per proposal: ${PORTAL_VARIABLES.map((v) => `\`{{${v.key}}}\``).join(", ")}. They are NOT filled in inside \`html\` blocks, image/gallery captions, or URLs.
+
+## Centering and width — blocks are centered by default
 Every block above (and \`row\`/\`container\`) accepts an optional \`"blockLayout"\` object:
 \`{ "widthDesktop"?: ${WIDTH_PRESETS}, "widthMobile"?: same options, "align"?: ${BLOCK_ALIGNS.map((v) => `"${v}"`).join("|")}, "verticalAlign"?: ${BLOCK_VERTICAL_ALIGNS.map((v) => `"${v}"`).join("|")}, "padding"?: ${BLOCK_PADDINGS.map((v) => `"${v}"`).join("|")} }\`
 
-If you omit \`blockLayout\`, a block defaults to \`widthDesktop: "normal"\` (80% of the page width) and \`align: "left"\` — meaning it sits flush against the left edge with empty space on the right, NOT centered. For a normal centered page (the common case), put \`"blockLayout": { "align": "center" }\` on every top-level block (headings, text, quote, cta, spacer, row, container — top-level \`html\` blocks too). Only leave a block full-width/left-aligned if that's specifically what was asked for. Blocks nested inside \`row\`/\`container\` columns/cells don't need their own \`align\` — the parent row/container already centers them.
+If you omit \`blockLayout\`, a top-level block defaults to \`widthDesktop: "normal"\` (80% of the page width) and \`align: "center"\` — a centered column. Text *inside* a text block still reads left-to-right as normal; \`align\` positions the block, not the lines of text. Set \`"align": "left"\` on a block (typically with \`"widthDesktop": "full"\`) for a left-aligned editorial layout, and keep one alignment consistent down the page. Blocks nested inside \`row\`/\`container\` cells fill their cell by default.
 
 **Always set \`widthMobile\` and \`padding\` explicitly too** — don't rely on desktop-only defaults. A \`"wide"\` or \`"full"\` width block with no \`padding\` set will run edge-to-edge with text touching the screen on phones. A safe default for most top-level blocks: \`{ "align": "center", "widthDesktop": "normal", "widthMobile": "full", "padding": "sm" }\`, adjusting \`widthDesktop\` up to \`"wide"\`/\`"full"\` only for things meant to be visually prominent (a hero image, a full-bleed banner).
 

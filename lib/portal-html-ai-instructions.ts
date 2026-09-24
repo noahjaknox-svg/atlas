@@ -26,7 +26,12 @@ DO NOT:
 ## Allowed content
 - Semantic HTML: div, p, span, h1, h2, h3, ul, ol, li, a, img, strong, em, br, hr, table, thead, tbody, tr, th, td
 - Inline CSS via style attributes (preferred for layout)
-- A single <style> tag for animations or complex selectors if needed
+- A single <style> tag for complex selectors if needed
+
+## Animation — prefer none; static image as the fallback
+- Avoid CSS @keyframes / animation / transition. They don't play for viewers with reduced motion turned on, in some browsers, or in PDF/print, and the designer flags any HTML that uses them.
+- If you do add a small animation, the un-animated (initial or final) state must still show every word and number — never hide content until an animation runs (no opacity:0 start states).
+- If the request needs motion you can't do safely this way, don't fake it: tell me to use an Image block with a static picture instead (and describe what that image should show), or the built-in animated "Stat" / "Block vs flight" blocks for a count-up number or the charter payback bars.
 - iframe embeds (YouTube, Google Maps, Typeform, etc.) with these attributes:
   src, width, height, frameborder, allow, allowfullscreen, loading, title, referrerpolicy, class, style, id
 

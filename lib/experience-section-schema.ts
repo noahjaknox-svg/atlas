@@ -119,6 +119,19 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       caption: z.string().optional(),
     }),
     z.object({
+      ...leafBlockFields,
+      type: z.literal("stat"),
+      value: z.string(),
+      label: z.string(),
+      countUp: z.boolean().optional(),
+    }),
+    z.object({
+      ...leafBlockFields,
+      type: z.literal("blockVsFlight"),
+      blockHours: z.number().nonnegative().nullable().optional(),
+      flightHours: z.number().nonnegative().nullable().optional(),
+    }),
+    z.object({
       id: z.string(),
       type: z.literal("row"),
       preset: z.enum(ROW_PRESETS),

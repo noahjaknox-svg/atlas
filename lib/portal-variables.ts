@@ -1,4 +1,5 @@
 import type { ProposalSnapshotPayload } from "./snapshot";
+import { normalizeAircraftList } from "./portal-aircraft-types";
 
 export type PortalVariableContext = {
   contactName?: string;
@@ -13,6 +14,10 @@ export type PortalVariableContext = {
   charterHours?: string | null;
   aircraftValue?: string | null;
   aircraftName?: string | null;
+  /** Charter block (taxi-to-taxi) and flight hours for the primary aircraft; feed the
+   * "Block vs flight time" block. Not offered as text placeholders. */
+  charterBlockHours?: string | null;
+  charterFlightHours?: string | null;
 };
 
 export const PORTAL_VARIABLES: Array<{ key: keyof PortalVariableContext; label: string }> = [
@@ -37,8 +42,12 @@ export function buildPortalVariableContext(
   const aircraftLabel =
     [payload.aircraft.manufacturer, payload.aircraft.model].filter(Boolean).join(" ") ||
     payload.aircraft.model;
+  // Same source the built-in Charter page used (primary aircraft's frozen assumptions).
+  const calc = normalizeAircraftList(payload)[0]?.calculationAssumptions ?? {};
 
   return {
+    charterBlockHours: calc.charter_block_hours ?? null,
+    charterFlightHours: calc.charter_flight_hours ?? null,
     contactName: contactName ?? payload.prospect.contactName,
     companyName: payload.prospect.companyName,
     aircraftType: aircraftLabel || null,

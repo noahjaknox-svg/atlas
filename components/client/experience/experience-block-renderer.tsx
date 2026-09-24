@@ -36,6 +36,8 @@ import { resolveImageDisplaySize } from "@/lib/experience-image-system";
 import { PortalDesignerEmptyBlockPlaceholder } from "@/components/internal/portal-designer/portal-designer-empty-block-placeholder";
 import { ProposalImage } from "./proposal-image";
 import { PullQuote } from "./pull-quote";
+import { StatBlock } from "./stat-block";
+import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
 import { cn } from "@/lib/utils";
 import { experienceGlassV2 } from "./v2/experience-tokens";
 import {
@@ -72,6 +74,25 @@ function resolveBlock(
   }
   if (block.type === "cta") {
     return { ...block, label: resolvePortalVariables(block.label, variableContext) };
+  }
+  if (block.type === "stat") {
+    return {
+      ...block,
+      value: resolvePortalVariables(block.value, variableContext),
+      label: resolvePortalVariables(block.label, variableContext),
+    };
+  }
+  if (block.type === "blockVsFlight") {
+    // Pinned hours on the block win; otherwise use this proposal's aircraft.
+    const num = (raw: string | null | undefined) => {
+      const n = parseFloat(raw ?? "");
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    return {
+      ...block,
+      blockHours: block.blockHours ?? num(variableContext.charterBlockHours),
+      flightHours: block.flightHours ?? num(variableContext.charterFlightHours),
+    };
   }
   if (isContainerBlock(block)) {
     return {
@@ -260,6 +281,16 @@ function renderLeafContent(block: ExperiencePageBlock, designMode = false): Reac
             </figcaption>
           ) : null}
         </figure>
+      );
+    case "stat":
+      return <StatBlock value={block.value} label={block.label} countUp={block.countUp !== false} />;
+    case "blockVsFlight":
+      return (
+        <BlockVsFlightAnimation
+          blockHours={block.blockHours ?? null}
+          flightHours={block.flightHours ?? null}
+          slide
+        />
       );
     default:
       return null;

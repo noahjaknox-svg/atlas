@@ -203,6 +203,18 @@ export type ExperiencePageBlock =
       posterUrl?: string;
       caption?: string;
     })
+  /** Big highlighted figure (e.g. "100+" / "Years combined experience"). When `countUp`
+   * is on, the leading number animates up once in view; the final value is always what
+   * renders without motion. */
+  | (LeafBlockBase & { type: "stat"; value: string; label: string; countUp?: boolean })
+  /** Animated "block time vs flight time" charter payback bars. Hours default to the
+   * proposal's primary aircraft; set them to pin fixed numbers. Animated — reduced-motion
+   * viewers see the final bars. */
+  | (LeafBlockBase & {
+      type: "blockVsFlight";
+      blockHours?: number | null;
+      flightHours?: number | null;
+    })
   | {
       id: string;
       type: "row";

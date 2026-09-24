@@ -584,6 +584,10 @@ export function blockLabel(block: ExperiencePageBlock): string {
       return "Button";
     case "video":
       return "Video";
+    case "stat":
+      return "Stat";
+    case "blockVsFlight":
+      return "Block vs flight time";
     case "row":
       return `Row (${resolveRowLayout(block).count} col)`;
     case "container":
