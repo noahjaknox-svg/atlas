@@ -57,5 +57,7 @@ export type FilterField = {
  */
 export function replaceDataHubUrl(params: URLSearchParams): void {
   if (typeof window === "undefined") return;
-  window.history.replaceState(window.history.state, "", `${ROUTES.dataWarehouse.data}?${params.toString()}`);
+  // Pass null, NOT window.history.state: Next's patched replaceState ignores calls whose
+  // state carries its internal `__NA` marker, so useSearchParams would never update.
+  window.history.replaceState(null, "", `${ROUTES.dataWarehouse.data}?${params.toString()}`);
 }
