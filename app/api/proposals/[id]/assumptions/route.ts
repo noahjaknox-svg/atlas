@@ -1,6 +1,7 @@
 import { requireInternalUser } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { resolveUsageTypeAssumptions } from "@/lib/resolve-aircraft-defaults";
 import type { AssumptionSourceType, DataConfidence } from "@prisma/client";
 import { applyUsageTypeVisibility } from "@/lib/usage-type-page-visibility";
 
@@ -94,27 +95,27 @@ export async function POST(
     );
     for (const item of usageTypeChanges) {
       const usageTypeName = String(item.value);
-      const usageType = await prisma.usageType.findFirst({
-        where: { name: usageTypeName },
-        select: { charterEnabled: true },
-      });
-      if (usageType) {
+      // Aircraft categories are `ac_<aircraftInstanceId>`; switching usage type resets that
+      // aircraft's charter flag and line settings to the usage type's configuration.
+      const aircraftInstanceId = item.category.startsWith("ac_") ? item.category.slice(3) : null;
+      const patch = aircraftInstanceId
+        ? await resolveUsageTypeAssumptions({
+            aircraftInstanceId,
+            assumptions: { usage_type: usageTypeName },
+            usageTypeName,
+          })
+        : undefined;
+      for (const [assumptionName, value] of Object.entries(patch ?? {})) {
         await prisma.proposalAssumption.upsert({
           where: {
             proposalId_category_assumptionName: {
               proposalId,
               category: item.category,
-              assumptionName: "charter_enabled",
+              assumptionName,
             },
           },
-          create: {
-            proposalId,
-            category: item.category,
-            assumptionName: "charter_enabled",
-            value: usageType.charterEnabled ? "true" : "false",
-            sourceType: "manual",
-          },
-          update: { value: usageType.charterEnabled ? "true" : "false" },
+          create: { proposalId, category: item.category, assumptionName, value, sourceType: "manual" },
+          update: { value },
         });
       }
       await applyUsageTypeVisibility(proposalId, usageTypeName);

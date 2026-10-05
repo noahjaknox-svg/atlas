@@ -55,11 +55,16 @@ export function parseProFormaVisibility(assumptions: AssumptionMap): Record<stri
   }
 }
 
+/** Visibility entry covering every custom fixed cost line (`custom_fixed_<id>`). */
+export const CUSTOM_FIXED_WILDCARD = "custom_fixed_*";
+
 export function isProFormaLineVisible(
   key: string,
   visibility: Record<string, boolean>
 ): boolean {
   if (visibility[key] === false) return false;
+  if (visibility[key] === true) return true;
+  if (key.startsWith("custom_fixed_") && visibility[CUSTOM_FIXED_WILDCARD] === false) return false;
   return true;
 }
 

@@ -15,6 +15,7 @@ import { CrewStatusPanel } from "@/components/internal/data-hub/crew-status-pane
 import { AircraftWorkbench } from "@/components/internal/data-hub/aircraft-workbench";
 import { FleetTailsWorkbench } from "@/components/internal/data-hub/fleet-tails-workbench";
 import { AirportAuditWorkbench } from "@/components/internal/data-hub/airport-audit-workbench";
+import { UsageTypeWorkbench } from "@/components/internal/data-hub/usage-type-workbench";
 import {
   RecordWorkbench,
   type WorkbenchField,
@@ -43,18 +44,6 @@ const FBO_WORKBENCH_FIELDS: WorkbenchField[] = [
     key: "hangarCostPerSqft",
     label: "Hangar Cost Per Sqft ($/yr)",
     type: "number",
-    group: "Details",
-  },
-];
-
-const USAGE_TYPE_WORKBENCH_FIELDS: WorkbenchField[] = [
-  { key: "name", label: "Name", type: "text", required: true, group: "Details" },
-  { key: "sortOrder", label: "Sort order", type: "number", group: "Details" },
-  { key: "active", label: "Active", type: "bool", group: "Details" },
-  {
-    key: "charterEnabled",
-    label: "Charter enabled",
-    type: "bool",
     group: "Details",
   },
 ];
@@ -243,14 +232,7 @@ export function DataHubClient({
 
         {mounted("usage-types") && (
           <div className={pane("usage-types")}>
-            <RecordWorkbench
-              title="Usage Type"
-              apiPath="/api/data/usage-types"
-              initialData={initialTab === "usage-types" ? initialTabData : undefined}
-              fields={USAGE_TYPE_WORKBENCH_FIELDS}
-              primaryKey="name"
-              searchKeys={["name"]}
-            />
+            <UsageTypeWorkbench />
           </div>
         )}
 

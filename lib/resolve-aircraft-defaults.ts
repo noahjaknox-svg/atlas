@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { parseUsageTypeConfig, usageTypeAssumptionPatch } from "@/lib/usage-type-config";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
 import { resolveValidAircraftTypeId } from "@/lib/resolve-warehouse-aircraft-id";
@@ -134,40 +135,71 @@ export async function resolveAircraftDefaults(params: {
   return out;
 }
 
-/** Warehouse pro forma line visibility — applied at seed only, not on baseline resolve. */
-export async function resolveWarehouseLineVisibilityDefaults(params: {
+/** The aircraft type's warehouse Show/Hide settings as pro forma line visibility. */
+async function loadWarehouseLineVisibility(params: {
   aircraftInstanceId: string;
   assumptions: AssumptionMap;
-}): Promise<string | undefined> {
+}): Promise<{ lineVisibility: Record<string, boolean>; ctx: AssumptionMap } | undefined> {
   const instance = await prisma.aircraftInstance.findUnique({
     where: { id: params.aircraftInstanceId },
     include: { aircraftType: true },
   });
 
   const ctx = buildDefaultsContext(params.assumptions, instance);
-  const warehouseResolution = await resolveValidAircraftTypeId({
-    instanceWarehouseId: instance?.aircraftTypeId,
-    assumptionMasterId: ctx.aircraft_master_id,
-    manufacturer: ctx.aircraft_manufacturer ?? instance?.aircraftType?.manufacturer,
-    model: ctx.aircraft_model ?? instance?.aircraftType?.model,
-  });
-
   let aircraft = instance?.aircraftType ?? null;
-  if (!aircraft && warehouseResolution.id) {
-    aircraft = await prisma.aircraftType.findUnique({
-      where: { id: warehouseResolution.id },
+  if (!aircraft) {
+    const warehouseResolution = await resolveValidAircraftTypeId({
+      instanceWarehouseId: instance?.aircraftTypeId,
+      assumptionMasterId: ctx.aircraft_master_id,
+      manufacturer: ctx.aircraft_manufacturer,
+      model: ctx.aircraft_model,
     });
+    if (warehouseResolution.id) {
+      aircraft = await prisma.aircraftType.findUnique({ where: { id: warehouseResolution.id } });
+    }
   }
   if (!aircraft) return undefined;
-
   const fieldVisibility = parseWarehouseFieldVisibility(aircraft.proformaFieldVisibility);
-  const lineVisibility = buildProFormaLineVisibilityFromWarehouse(fieldVisibility);
-  const existingVisibility = parseProFormaVisibility(ctx);
+  return { lineVisibility: buildProFormaLineVisibilityFromWarehouse(fieldVisibility), ctx };
+}
+
+/** Warehouse pro forma line visibility — applied at seed only, not on baseline resolve. */
+export async function resolveWarehouseLineVisibilityDefaults(params: {
+  aircraftInstanceId: string;
+  assumptions: AssumptionMap;
+}): Promise<string | undefined> {
+  const loaded = await loadWarehouseLineVisibility(params);
+  if (!loaded) return undefined;
+  const existingVisibility = parseProFormaVisibility(loaded.ctx);
   return serializeProFormaVisibility({
-    ...lineVisibility,
+    ...loaded.lineVisibility,
     ...existingVisibility,
     insurance_pl: existingVisibility.insurance_pl ?? false,
     registration_pl: existingVisibility.registration_pl ?? false,
+  });
+}
+
+/**
+ * Assumptions an aircraft gets from its usage type (Data Warehouse → Usage Types):
+ * charter flag, line include/show-client settings (ANDed with the aircraft type's
+ * warehouse visibility), and the revenue-section switch. Resets any per-proposal
+ * line toggles. Undefined when the usage type isn't in the table (legacy values).
+ */
+export async function resolveUsageTypeAssumptions(params: {
+  aircraftInstanceId: string;
+  assumptions: AssumptionMap;
+  usageTypeName: string;
+}): Promise<Record<string, string> | undefined> {
+  const usageType = await prisma.usageType.findFirst({
+    where: { name: params.usageTypeName },
+    select: { charterEnabled: true, config: true },
+  });
+  if (!usageType) return undefined;
+  const loaded = await loadWarehouseLineVisibility(params);
+  return usageTypeAssumptionPatch({
+    config: parseUsageTypeConfig(usageType.config),
+    charterEnabled: usageType.charterEnabled,
+    warehouseVisibility: loaded?.lineVisibility,
   });
 }
 

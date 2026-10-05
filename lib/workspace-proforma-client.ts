@@ -1,4 +1,5 @@
 import type { AssumptionMap } from "@/lib/assumptions";
+import { isClientHiddenLine, parseClientHidden, SHOW_REVENUE_SECTION_KEY } from "@/lib/usage-type-config";
 import { computeMonthlyDebtService } from "@/lib/aircraft-calculated-fields";
 import { applyFinancingDerivations } from "@/lib/financing-assumptions";
 import type { ProFormaResult } from "@/lib/proforma";
@@ -67,11 +68,16 @@ export function filterClientStatementRows(
   assumptions: AssumptionMap
 ): ProFormaStatementRow[] {
   const charterEnabled = isCharterUsageEnabled(assumptions);
+  // Usage-type display settings: lines still count in totals, they just aren't itemized.
+  const clientHidden = parseClientHidden(assumptions);
+  const showRevenueSection = assumptions[SHOW_REVENUE_SECTION_KEY] !== "false";
   return rows
     .filter((r) => r.kind !== "info")
     .filter((r) => !CLIENT_HIDDEN_METRIC_KEYS.has(r.key))
     .filter((r) => charterEnabled || !isCharterProFormaRow(r))
-    .filter((r) => r.kind === "section" || !r.hidden);
+    .filter((r) => r.kind === "section" || !r.hidden)
+    .filter((r) => !(r.kind === "line" && isClientHiddenLine(r.key, clientHidden)))
+    .filter((r) => showRevenueSection || r.layout !== "revenue");
 }
 
 function num(v: string | undefined, fallback = 0): number {

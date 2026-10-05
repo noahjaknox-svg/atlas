@@ -443,6 +443,8 @@ model UsageType {
   sortOrder      Int      @default(0) @map("sort_order")
   active         Boolean  @default(true)
   charterEnabled Boolean  @default(false) @map("charter_enabled")
+  /// Versioned pro forma line settings (include / show client) — see lib/usage-type-config.ts.
+  config         Json?
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

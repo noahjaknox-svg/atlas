@@ -36,6 +36,21 @@ function isListPayload(data: unknown): data is ListPayload {
   );
 }
 
+/** Request body for save: numbers as numbers, bool fields as real booleans. */
+export function buildWorkbenchPayload(
+  fields: readonly WorkbenchField[],
+  values: Record<string, string>
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  for (const f of fields) {
+    const v = values[f.key] ?? "";
+    if (f.type === "number") body[f.key] = v === "" ? null : parseFloat(v);
+    else if (f.type === "bool") body[f.key] = v === "true";
+    else body[f.key] = v;
+  }
+  return body;
+}
+
 function toStr(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "boolean") return v ? "true" : "false";
@@ -168,7 +183,7 @@ export function RecordWorkbench({
 
   async function save() {
     for (const f of fields) {
-      if (f.required && !values[f.key]?.trim()) {
+      if (f.required && f.type !== "bool" && !values[f.key]?.trim()) {
         setError(`${f.label} is required.`);
         return;
       }
@@ -176,12 +191,7 @@ export function RecordWorkbench({
     setSaving(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = {};
-      for (const f of fields) {
-        const v = values[f.key] ?? "";
-        if (f.type === "number") body[f.key] = v === "" ? null : parseFloat(v);
-        else body[f.key] = v;
-      }
+      const body = buildWorkbenchPayload(fields, values);
       const url = selectedId ? `${apiPath}/${selectedId}` : apiPath;
       const res = await fetch(url, {
         method: selectedId ? "PATCH" : "POST",
@@ -356,7 +366,20 @@ export function RecordWorkbench({
                             {f.label}
                             {f.required ? " *" : ""}
                           </label>
-                          {f.type === "select" || f.type === "bool" ? (
+                          {f.type === "bool" ? (
+                            <label className="flex h-10 items-center gap-2 text-sm text-atlas-text">
+                              <input
+                                id={f.key}
+                                type="checkbox"
+                                checked={values[f.key] === "true"}
+                                onChange={(e) =>
+                                  setValues((p) => ({ ...p, [f.key]: e.target.checked ? "true" : "false" }))
+                                }
+                                className="h-4 w-4 accent-atlas-accent"
+                              />
+                              {f.placeholder ?? "Yes"}
+                            </label>
+                          ) : f.type === "select" ? (
                             <select
                               id={f.key}
                               value={values[f.key] ?? ""}
