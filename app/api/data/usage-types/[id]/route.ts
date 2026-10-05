@@ -1,7 +1,8 @@
 import { requireDepartmentAccess } from "@/lib/auth";
-import { jsonOk, handleApiError } from "@/lib/api";
+import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
-import { parseOptionalInt, parseOptionalString } from "@/lib/data-hub-parse";
+import { parseUsageTypeConfig } from "@/lib/usage-type-config";
+import { toUsageTypeWire, usageTypeBodySchema } from "@/lib/usage-type-api";
 
 export async function PATCH(
   request: Request,
@@ -10,17 +11,20 @@ export async function PATCH(
   try {
     await requireDepartmentAccess("data_warehouse");
     const { id } = await params;
-    const body = await request.json();
+    const parsed = usageTypeBodySchema.safeParse(await request.json());
+    if (!parsed.success) return jsonError(parsed.error.issues[0]?.message ?? "Invalid usage type");
+    const body = parsed.data;
     const row = await prisma.usageType.update({
       where: { id },
       data: {
-        name: parseOptionalString(body.name),
-        sortOrder: parseOptionalInt(body.sortOrder),
-        active: typeof body.active === "boolean" ? body.active : undefined,
-        charterEnabled: typeof body.charterEnabled === "boolean" ? body.charterEnabled : undefined,
+        name: body.name,
+        sortOrder: body.sortOrder,
+        active: body.active,
+        charterEnabled: body.charterEnabled,
+        config: body.config ? parseUsageTypeConfig(body.config) : undefined,
       },
     });
-    return jsonOk(row);
+    return jsonOk(toUsageTypeWire(row));
   } catch (e) {
     return handleApiError(e);
   }

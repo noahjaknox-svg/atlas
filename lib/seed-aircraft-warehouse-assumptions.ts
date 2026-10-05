@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { perfTimed } from "@/lib/perf-log";
 import {
   resolveAircraftDefaults,
+  resolveUsageTypeAssumptions,
   resolveWarehouseLineVisibilityDefaults,
 } from "@/lib/resolve-aircraft-defaults";
 import { PROFORMA_VISIBILITY_KEY } from "@/lib/proforma-line-visibility";
@@ -31,6 +32,17 @@ export async function seedAircraftWarehouseAssumptions(params: {
       assumptions: seeded,
     });
     if (visibility) seeded[PROFORMA_VISIBILITY_KEY] = visibility;
+
+    // The usage type's line settings (combined with the warehouse ones) win when it's configured.
+    const usageTypeName = seeded.usage_type?.trim();
+    if (usageTypeName) {
+      const usagePatch = await resolveUsageTypeAssumptions({
+        aircraftInstanceId: params.aircraftInstanceId,
+        assumptions: seeded,
+        usageTypeName,
+      });
+      if (usagePatch) Object.assign(seeded, usagePatch);
+    }
   }
 
   const resolvedMasterId = defaults.aircraft_master_id?.trim();
