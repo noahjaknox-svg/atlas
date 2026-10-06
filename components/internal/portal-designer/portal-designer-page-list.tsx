@@ -36,6 +36,7 @@ function SortablePageRow({
   onSelect,
   onToggleVisible,
   onDelete,
+  dragDisabled = false,
 }: {
   section: DesignerSection;
   active: boolean;
@@ -44,10 +45,13 @@ function SortablePageRow({
   onSelect: () => void;
   onToggleVisible: (visible: boolean) => void;
   onDelete?: () => void;
+  /** Reordering a filtered list would only send a subset of pages, so it's off then. */
+  dragDisabled?: boolean;
 }) {
   const id = section.id ?? section.sectionType;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
+    disabled: dragDisabled,
   });
 
   return (
@@ -63,8 +67,12 @@ function SortablePageRow({
       <div className="flex items-start gap-1 px-1">
         <button
           type="button"
-          className="mt-0.5 cursor-grab px-1 text-[10px] text-atlas-muted active:cursor-grabbing"
-          aria-label="Drag to reorder"
+          className={cn(
+            "mt-0.5 px-1 text-[10px] text-atlas-muted",
+            dragDisabled ? "cursor-not-allowed opacity-30" : "cursor-grab active:cursor-grabbing"
+          )}
+          aria-label={dragDisabled ? "Clear filters to reorder" : "Drag to reorder"}
+          title={dragDisabled ? "Clear filters to reorder" : undefined}
           {...listeners}
           {...attributes}
         >
@@ -110,6 +118,13 @@ function SortablePageRow({
   );
 }
 
+type VisibilityFilter = "all" | "visible" | "hidden";
+const VISIBILITY_FILTERS: { id: VisibilityFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "visible", label: "Visible" },
+  { id: "hidden", label: "Hidden" },
+];
+
 export function PortalDesignerPageList({
   sections,
   activeSectionId,
@@ -137,6 +152,8 @@ export function PortalDesignerPageList({
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all");
+  const filtered = !!selectedUsageTypeId || visibilityFilter !== "all";
 
   const ordered = useMemo(() => {
     const system = DESIGNER_PAGE_TYPES.map((type) =>
@@ -146,11 +163,19 @@ export function PortalDesignerPageList({
       .filter((s) => isCustomPortalPage(s))
       .sort((a, b) => a.sortOrder - b.sortOrder);
     const merged = [...system, ...custom].sort((a, b) => a.sortOrder - b.sortOrder);
-    if (!selectedUsageTypeId) return merged;
-    return merged.filter(
-      (s) => !s.usageTypeIds?.length || s.usageTypeIds.includes(selectedUsageTypeId)
-    );
-  }, [sections, selectedUsageTypeId]);
+    return merged
+      .filter(
+        (s) =>
+          !selectedUsageTypeId ||
+          !s.usageTypeIds?.length ||
+          s.usageTypeIds.includes(selectedUsageTypeId)
+      )
+      .filter(
+        (s) =>
+          visibilityFilter === "all" ||
+          (visibilityFilter === "visible" ? s.visible !== false : s.visible === false)
+      );
+  }, [sections, selectedUsageTypeId, visibilityFilter]);
 
   const sortableIds = ordered.map((s) => s.id ?? s.sectionType);
 
@@ -160,6 +185,7 @@ export function PortalDesignerPageList({
   );
 
   function handleDragEnd(event: DragEndEvent) {
+    if (filtered) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = sortableIds.indexOf(String(active.id));
@@ -173,15 +199,34 @@ export function PortalDesignerPageList({
 
   return (
     <div className="flex h-full flex-col">
-      {usageTypes && usageTypes.length > 0 && onSelectUsageType ? (
-        <div className="shrink-0 border-b border-atlas-border px-3 py-2">
+      <div className="shrink-0 space-y-2 border-b border-atlas-border px-3 py-2" aria-label="Page filters" role="group">
+        {usageTypes && usageTypes.length > 0 && onSelectUsageType ? (
           <UsageTypeSelector
             usageTypes={usageTypes}
             selectedId={selectedUsageTypeId ?? null}
             onChange={onSelectUsageType}
           />
+        ) : null}
+        <div className="flex gap-1" role="radiogroup" aria-label="Show pages">
+          {VISIBILITY_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              role="radio"
+              aria-checked={visibilityFilter === f.id}
+              onClick={() => setVisibilityFilter(f.id)}
+              className={cn(
+                "flex-1 rounded px-2 py-1 text-xs transition-colors",
+                visibilityFilter === f.id
+                  ? "bg-atlas-accent/15 font-medium text-atlas-accent"
+                  : "text-atlas-muted hover:bg-atlas-border/30 hover:text-atlas-text"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-      ) : null}
+      </div>
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-atlas-border px-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-atlas-muted">Pages</p>
         {canAddCustomPages && onAddPage ? (
@@ -193,7 +238,7 @@ export function PortalDesignerPageList({
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+          <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Designer pages">
             {ordered.map((section) => {
               const sectionId = section.id ?? section.sectionType;
               const label =
@@ -209,6 +254,7 @@ export function PortalDesignerPageList({
                   slugPreview={isCustomPortalPage(section) ? sectionNavSlug(section) : undefined}
                   onSelect={() => onSelect(sectionId)}
                   onToggleVisible={(visible) => onToggleVisible(sectionId, visible)}
+                  dragDisabled={filtered}
                   onDelete={
                     isCustomPortalPage(section) && section.id && onDeletePage
                       ? () => {

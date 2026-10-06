@@ -141,3 +141,14 @@ describe("buildWorkbenchPayload", () => {
     expect(buildWorkbenchPayload([{ key: "active", label: "Active", type: "bool" }], {})).toEqual({ active: false });
   });
 });
+
+describe("resolveSectionUsageTypeIds", () => {
+  it("takes a proposal page's usage types from the master page with the same slug", async () => {
+    const { resolveSectionUsageTypeIds } = await import("@/lib/usage-type-pages");
+    const bySlug = new Map([["welcome", ["a"]], ["my-custom", ["b"]]]);
+    expect(resolveSectionUsageTypeIds({ sectionType: "welcome" }, bySlug)).toEqual(["a"]);
+    expect(resolveSectionUsageTypeIds({ sectionType: "custom", pageSlug: "my-custom" }, bySlug)).toEqual(["b"]);
+    // Pages with no master (per-proposal custom pages) apply to every usage type.
+    expect(resolveSectionUsageTypeIds({ sectionType: "custom", pageSlug: "only-here" }, bySlug)).toEqual([]);
+  });
+});

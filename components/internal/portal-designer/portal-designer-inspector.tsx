@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ROUTES } from "@/lib/routes";
 import { Copy, Check } from "lucide-react";
 import type {
   BlockAlign,
@@ -141,36 +142,24 @@ export function PortalDesignerInspector({
         {usageTypes && usageTypes.length > 0 ? (
           <div>
             <Label className="text-sm">Usage types</Label>
-            <p className="mt-0.5 text-xs text-atlas-muted">
-              Which usage types this page applies to. Leave all unchecked to show it for every
-              usage type.
+            <p className="mt-0.5 text-sm text-atlas-text">
+              {(section.usageTypeIds ?? []).length === 0
+                ? "All usage types"
+                : usageTypes
+                    .filter((ut) => section.usageTypeIds?.includes(ut.id))
+                    .map((ut) => ut.name)
+                    .join(", ") || "All usage types"}
             </p>
-            <div className="mt-2 space-y-1.5">
-              {usageTypes.map((ut) => {
-                const current = section.usageTypeIds ?? [];
-                const checked = current.includes(ut.id);
-                return (
-                  <label
-                    key={ut.id}
-                    className="flex items-center gap-2 text-sm text-atlas-text"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(e) =>
-                        onPatchSection({
-                          usageTypeIds: e.target.checked
-                            ? [...current, ut.id]
-                            : current.filter((id) => id !== ut.id),
-                        })
-                      }
-                      className="accent-atlas-accent"
-                    />
-                    {ut.name}
-                  </label>
-                );
-              })}
-            </div>
+            <p className="mt-0.5 text-xs text-atlas-muted">
+              Set in{" "}
+              <a
+                href={`${ROUTES.dataWarehouse.data}?tab=usage-types`}
+                className="text-atlas-accent hover:underline"
+              >
+                Data Warehouse → Usage Types → Portal pages
+              </a>
+              .
+            </p>
           </div>
         ) : null}
 

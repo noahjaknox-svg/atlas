@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getExperienceMasterTemplates, upsertPortalContent } from "@/lib/portal-content";
 import { sectionNavSlug } from "@/lib/experience-page-slug";
 import { pageAppliesToUsageType, setPageUsageType } from "@/lib/usage-type-pages";
+import { reapplyPageUsageTypeVisibility } from "@/lib/usage-type-page-visibility";
 
 /** Master portal pages and whether each applies to this usage type. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -54,7 +55,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
     const updated = templates.map((t, i) => (i === index ? { ...t, usageTypeIds: next } : t));
     await upsertPortalContent({ experienceTemplates: updated });
-    return jsonOk({ slug: parsed.data.slug, usageTypeIds: next });
+    // Live proposals follow the warehouse: re-apply this page's visibility on them.
+    const proposalsUpdated = await reapplyPageUsageTypeVisibility(parsed.data.slug);
+    return jsonOk({ slug: parsed.data.slug, usageTypeIds: next, proposalsUpdated });
   } catch (e) {
     return handleApiError(e);
   }

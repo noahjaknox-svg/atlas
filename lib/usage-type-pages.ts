@@ -1,3 +1,5 @@
+import { sectionNavSlug } from "@/lib/experience-page-slug";
+
 /**
  * Portal pages ↔ usage types, edited from the usage type's side (Data Warehouse).
  * The master pages' `usageTypeIds` stay the single source of truth, with the
@@ -25,4 +27,12 @@ export function setPageUsageType(
   const next = allUsageTypeIds.filter((id) => current.has(id));
   if (next.length === 0) return null;
   return next.length === allUsageTypeIds.length ? [] : next;
+}
+
+/** A proposal page's usage types, from the master page with the same nav slug ([] = all). */
+export function resolveSectionUsageTypeIds(
+  section: { sectionType: string; pageSlug?: string | null },
+  bySlug: Map<string, string[]>
+): string[] {
+  return bySlug.get(sectionNavSlug(section)) ?? [];
 }

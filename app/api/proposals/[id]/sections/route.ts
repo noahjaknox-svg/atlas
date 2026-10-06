@@ -58,7 +58,7 @@ export async function PATCH(
       if (item.calloutMetricValue !== undefined) {
         data.calloutMetricValue = item.calloutMetricValue;
       }
-      if (item.usageTypeIds !== undefined) data.usageTypeIds = item.usageTypeIds;
+      // usageTypeIds are set in Data Warehouse → Usage Types (master pages), not per proposal.
 
       if (item.pageSlug !== undefined) {
         if (existing.sectionType !== "custom_page") {
