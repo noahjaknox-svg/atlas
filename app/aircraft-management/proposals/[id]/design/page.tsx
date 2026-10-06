@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { masterUsageTypeIdsBySlug, resolveSectionUsageTypeIds } from "@/lib/usage-type-page-visibility";
 import { redirect, notFound } from "next/navigation";
 import { getInternalUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -50,6 +51,8 @@ export default async function ProposalPortalDesignPage({
     proposal.aircraft[0] ??
     proposal.aircraftInstance;
 
+  // Usage types come from the master pages (set in the warehouse), not the proposal's copy.
+  const usageTypeIdsBySlug = await masterUsageTypeIdsBySlug();
   const initialSections: DesignerSection[] = proposal.sections.map((s) => ({
     id: s.id,
     sectionType: s.sectionType,
@@ -67,7 +70,7 @@ export default async function ProposalPortalDesignPage({
     signatoryName: s.signatoryName,
     signatoryTitle: s.signatoryTitle,
     contentBlocks: (s.contentBlocks as ExperienceContentBlocks | null) ?? null,
-    usageTypeIds: s.usageTypeIds,
+    usageTypeIds: resolveSectionUsageTypeIds(s, usageTypeIdsBySlug),
   }));
 
   const usageTypes = await prisma.usageType.findMany({

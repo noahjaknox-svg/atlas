@@ -1,7 +1,6 @@
 "use client";
 
-/** Shared usage-type filter, reused by the Portal Designer page list and the
- * proposal workspace's portal-pages panel. */
+/** Usage-type filter for the Portal Designer page list. */
 export function UsageTypeSelector({
   usageTypes,
   selectedId,
@@ -15,6 +14,7 @@ export function UsageTypeSelector({
 }) {
   return (
     <select
+      aria-label="Filter by usage type"
       value={selectedId ?? ""}
       onChange={(e) => onChange(e.target.value || null)}
       className={className ?? "atlas-input h-8 w-full text-sm"}
