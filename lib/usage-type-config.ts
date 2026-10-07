@@ -1,5 +1,5 @@
 import type { AssumptionMap } from "@/lib/assumptions";
-import { FET_FUEL_TAX_REFUND_LABEL } from "@/lib/fet-refund";
+import { DEFAULT_LINE_CATALOG, lineRowKey, type CatalogLineItem } from "@/lib/line-item-catalog";
 import {
   CUSTOM_FIXED_WILDCARD,
   PROFORMA_VISIBILITY_KEY,
@@ -40,74 +40,56 @@ export type UsageTypeLineGroup = {
   lines: Array<{ key: string; label: string; charterOnly?: boolean }>;
 };
 
-/** Every configurable line, grouped like the pro forma statement (lib/proforma-statement.ts). */
-export const USAGE_TYPE_LINE_GROUPS: UsageTypeLineGroup[] = [
-  {
-    id: "revenue",
-    label: "Revenue",
-    charterOnly: true,
-    lines: [
-      { key: "charter_revenue_block", label: "Charter Revenue" },
-      { key: "fuel_surcharge", label: "Fuel Surcharge" },
-      { key: "fet_refund", label: FET_FUEL_TAX_REFUND_LABEL },
-    ],
-  },
-  {
-    id: "fixed",
-    label: "Fixed Ownership Costs",
-    charterOnly: false,
-    lines: [
-      { key: "crew_salaries", label: "Crew Salaries & Benefits" },
-      { key: "crew_training_pl", label: "Crew Training" },
-      { key: "pilot_charter_incentive_pl", label: "Pilot Charter Incentive", charterOnly: true },
-      { key: "management_fee_pl", label: "Management Fee" },
-      { key: "maint_mgmt_fee_pl", label: "Maintenance Management Fee" },
-      { key: "hangar_pl", label: "Hangar" },
-      { key: "registration_pl", label: "Registration / Taxes" },
-      { key: "insurance_pl", label: "Insurance (Hull & Liability)" },
-      { key: "wifi_pl", label: "In-Flight Wi-Fi" },
-      { key: "subscriptions_pl", label: "Subscriptions" },
-      { key: "cleaning_pl", label: "Cleaning" },
-      { key: "supplies_pl", label: "Supplies" },
-      { key: "airport_fees_pl", label: "Airport Fees" },
-      { key: "financing_debt_pl", label: "Debt service" },
-      { key: CUSTOM_FIXED_WILDCARD, label: "Custom fixed costs (all)" },
-    ],
-  },
-  {
-    id: "charter_variable",
-    label: "Charter Variable Costs",
-    charterOnly: true,
-    lines: [
-      { key: "charter_fuel", label: "Fuel" },
-      { key: "charter_parts", label: "Parts Programs" },
-      { key: "charter_engine", label: "Engine Programs" },
-      { key: "charter_apu", label: "APU Programs" },
-      { key: "charter_airframe", label: "Airframe Programs" },
-      { key: "charter_inspection", label: "Inspection Reserve" },
-      { key: "charter_maintenance", label: "Maintenance Reserve" },
-    ],
-  },
-  {
-    id: "owner_variable",
-    label: "Owner Variable Costs",
-    charterOnly: false,
-    lines: [
-      { key: "owner_fuel", label: "Fuel" },
-      { key: "owner_parts", label: "Parts Programs" },
-      { key: "owner_engine", label: "Engine Programs" },
-      { key: "owner_apu", label: "APU Programs" },
-      { key: "owner_airframe", label: "Airframe Programs" },
-      { key: "owner_inspection", label: "Inspection Reserve" },
-      { key: "owner_maintenance", label: "Maintenance Reserve" },
-      { key: "owner_trip", label: "Owner Trip Expense" },
-    ],
-  },
-];
+/**
+ * Every configurable line, grouped like the pro forma statement, built from the Line
+ * Items catalog so custom items get Include / Show client settings automatically.
+ */
+export function usageTypeLineGroups(
+  catalog: readonly CatalogLineItem[] = DEFAULT_LINE_CATALOG
+): UsageTypeLineGroup[] {
+  const active = catalog.filter((i) => i.active);
+  const line = (key: string, item: CatalogLineItem) => ({
+    key,
+    label: item.label,
+    ...(item.charterOnly ? { charterOnly: true } : {}),
+  });
+  const variable = (bucket: "charter" | "owner") =>
+    active
+      .filter((i) => i.section === "variable")
+      .filter((i) => (i.appliesTo ?? "both") === "both" || i.appliesTo === bucket)
+      .map((i) => line(`${bucket}_${i.key}`, i));
+  return [
+    {
+      id: "revenue",
+      label: "Revenue",
+      charterOnly: true,
+      lines: active.filter((i) => i.section === "revenue").map((i) => line(lineRowKey(i), i)),
+    },
+    {
+      id: "fixed",
+      label: "Fixed Ownership Costs",
+      charterOnly: false,
+      lines: [
+        ...active.filter((i) => i.section === "fixed").map((i) => line(lineRowKey(i), i)),
+        { key: CUSTOM_FIXED_WILDCARD, label: "Per-proposal custom costs (all)" },
+      ],
+    },
+    { id: "charter_variable", label: "Charter Variable Costs", charterOnly: true, lines: variable("charter") },
+    { id: "owner_variable", label: "Owner Variable Costs", charterOnly: false, lines: variable("owner") },
+  ];
+}
 
-export const USAGE_TYPE_LINE_KEYS: string[] = USAGE_TYPE_LINE_GROUPS.flatMap((g) =>
-  g.lines.map((l) => l.key)
-);
+/** Built-in groups (no custom catalog items). */
+export const USAGE_TYPE_LINE_GROUPS: UsageTypeLineGroup[] = usageTypeLineGroups();
+
+export function usageTypeLineKeys(catalog: readonly CatalogLineItem[] = DEFAULT_LINE_CATALOG): string[] {
+  return usageTypeLineGroups(catalog).flatMap((g) => g.lines.map((l) => l.key));
+}
+
+export const USAGE_TYPE_LINE_KEYS: string[] = usageTypeLineKeys();
+
+/** Row keys custom catalog items produce: `li_x`, `charter_li_x`, `owner_li_x`. */
+const CUSTOM_LINE_ROW_KEY = /^(charter_|owner_)?li_[a-z0-9_]+$/;
 
 /**
  * Defaults for lines without an explicit entry. Insurance and registration start
@@ -136,7 +118,7 @@ export function parseUsageTypeConfig(raw: unknown): UsageTypeConfig {
   const lines = obj.lines;
   if (lines && typeof lines === "object" && !Array.isArray(lines)) {
     for (const [key, value] of Object.entries(lines as Record<string, unknown>)) {
-      if (!USAGE_TYPE_LINE_KEYS.includes(key)) continue; // unknown/retired line
+      if (!USAGE_TYPE_LINE_KEYS.includes(key) && !CUSTOM_LINE_ROW_KEY.test(key)) continue; // unknown/retired
       if (!value || typeof value !== "object") continue;
       const v = value as Record<string, unknown>;
       const base = defaultLineSetting(key);
@@ -164,10 +146,11 @@ export function lineSetting(config: UsageTypeConfig, key: string): UsageTypeLine
  */
 export function toLineVisibility(
   config: UsageTypeConfig,
-  warehouseVisibility: Record<string, boolean> = {}
+  warehouseVisibility: Record<string, boolean> = {},
+  catalog: readonly CatalogLineItem[] = DEFAULT_LINE_CATALOG
 ): Record<string, boolean> {
   const out: Record<string, boolean> = {};
-  for (const key of USAGE_TYPE_LINE_KEYS) {
+  for (const key of usageTypeLineKeys(catalog)) {
     // The wildcard is stored as-is; isProFormaLineVisible applies it to custom lines.
     out[key] = lineSetting(config, key).include && warehouseVisibility[key] !== false;
   }
@@ -178,8 +161,11 @@ export function toLineVisibility(
 }
 
 /** Keys (including the custom wildcard) that count in totals but aren't itemized for clients. */
-export function toClientHidden(config: UsageTypeConfig): string[] {
-  return USAGE_TYPE_LINE_KEYS.filter((key) => {
+export function toClientHidden(
+  config: UsageTypeConfig,
+  catalog: readonly CatalogLineItem[] = DEFAULT_LINE_CATALOG
+): string[] {
+  return usageTypeLineKeys(catalog).filter((key) => {
     const s = lineSetting(config, key);
     return s.include && !s.showClient;
   });
@@ -209,13 +195,14 @@ export function usageTypeAssumptionPatch(params: {
   config: UsageTypeConfig;
   charterEnabled: boolean;
   warehouseVisibility?: Record<string, boolean>;
+  catalog?: readonly CatalogLineItem[];
 }): Record<string, string> {
   return {
     charter_enabled: params.charterEnabled ? "true" : "false",
     [PROFORMA_VISIBILITY_KEY]: serializeProFormaVisibility(
-      toLineVisibility(params.config, params.warehouseVisibility)
+      toLineVisibility(params.config, params.warehouseVisibility, params.catalog)
     ),
-    [PROFORMA_CLIENT_HIDDEN_KEY]: JSON.stringify(toClientHidden(params.config)),
+    [PROFORMA_CLIENT_HIDDEN_KEY]: JSON.stringify(toClientHidden(params.config, params.catalog)),
     [SHOW_REVENUE_SECTION_KEY]: params.config.showRevenueSection ? "true" : "false",
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { LineItemsPanel } from "./line-items-panel";
 import { cn } from "@/lib/utils";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { AircraftSetupBar } from "@/components/internal/workspace/aircraft-setup-panel";
@@ -231,6 +232,9 @@ export function AircraftTabsPanel({
             onOverride={handleOverride}
           />
         ))}
+        {tab === "financing_fees" ? (
+          <LineItemsPanel assumptions={assumptions} onAssumptionsChange={onAssumptionsChange} />
+        ) : null}
         {tab === "financing_fees" ? (
           <CustomFixedCostsPanel
             assumptions={assumptions}

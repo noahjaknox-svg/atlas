@@ -1,5 +1,13 @@
 import type { AssumptionMap } from "@/lib/assumptions";
 import {
+  DEFAULT_LINE_CATALOG,
+  lineItemValue,
+  lineRowKey,
+  resolveLineCatalog,
+  type CatalogLineItem,
+  type SystemCalcId,
+} from "@/lib/line-item-catalog";
+import {
   assumptionsToProFormaInputs,
   blendedFuelPrice,
   calculateProForma,
@@ -116,6 +124,20 @@ export function sortFixedOwnershipStatementRows(
     i--;
   }
   return out;
+}
+
+/** Built-in labels can be renamed in the catalog; default to the statement's own label. */
+function labelFor(item: CatalogLineItem): string {
+  return item.label?.trim() || defaultLabel(item);
+}
+
+function defaultLabel(item: CatalogLineItem): string {
+  return DEFAULT_LINE_CATALOG.find((d) => d.key === item.key)?.label ?? item.label;
+}
+
+function withLabel(row: ProFormaStatementRow, item: CatalogLineItem, fallback: string): ProFormaStatementRow {
+  const label = item.label?.trim() || fallback;
+  return label === row.label ? row : { ...row, label };
 }
 
 function expenseAnnual(amount: number): number {
@@ -252,114 +274,77 @@ function resolveInsuranceAnnual(a: AssumptionMap): number {
   return flat;
 }
 
-function sumFixedOwnership(a: AssumptionMap, availableCharterFlightHours: number) {
-  const crew = num(a.crew_total) || computeCrewTotal(a);
-  const training = resolveCrewTrainingTotal(a);
-  const management = num(a.management_fee);
-  const maintMgmt =
-    num(a.maintenance_management_fee) || num(a.maintenance_mgmt_fee as string);
-  const hangar = resolveHangarAnnual(a);
-  const registration = computeRegistrationAnnual(a);
-  const insurance = resolveInsuranceAnnual(a);
-  const wifi = num(a.wifi_annual) || num(a.wifi_subscription as string);
-  const subscriptions = num(a.subscriptions_annual);
-  const cleaning = num(a.cleaning_annual);
-  const supplies = num(a.supplies_annual);
-  const airport = num(a.airport_fees_annual);
-  const pilotCharterIncentive = computePilotCharterIncentiveAnnual(
-    a,
-    availableCharterFlightHours
-  );
-  const monthlyDebt =
-    a.financing_enabled === "yes" ? computeMonthlyDebtService(a) ?? 0 : 0;
-  const debtService = monthlyDebt > 0 ? monthlyDebt * 12 : 0;
-  const customItems = parseProformaCustomFixedCosts(a);
-  const customTotal = sumProformaCustomFixedCosts(customItems);
-  const total =
-    crew +
-    training.total +
-    management +
-    maintMgmt +
-    hangar +
-    registration +
-    insurance +
-    wifi +
-    subscriptions +
-    cleaning +
-    supplies +
-    airport +
-    pilotCharterIncentive +
-    debtService +
-    customTotal;
-  return {
-    crew,
-    training,
-    management,
-    maintMgmt,
-    hangar,
-    registration,
-    insurance,
-    wifi,
-    subscriptions,
-    cleaning,
-    supplies,
-    airport,
-    pilotCharterIncentive,
-    debtService,
-    customItems,
-    customTotal,
-    total,
-  };
+type FixedLineAmount = { item: CatalogLineItem; amount: number };
+
+/** Annual amount of a catalog fixed line (system calculators or the aircraft's value). */
+function fixedLineAmount(
+  item: CatalogLineItem,
+  a: AssumptionMap,
+  availableCharterFlightHours: number
+): number {
+  if (item.source === "aircraft_type") return lineItemValue(item, a);
+  switch (item.systemCalc) {
+    case "crew":
+      return num(a.crew_total) || computeCrewTotal(a);
+    case "crew_training":
+      return resolveCrewTrainingTotal(a).total;
+    case "pilot_charter_incentive":
+      return computePilotCharterIncentiveAnnual(a, availableCharterFlightHours);
+    case "management_fee":
+      return num(a.management_fee);
+    case "maintenance_management_fee":
+      return num(a.maintenance_management_fee) || num(a.maintenance_mgmt_fee as string);
+    case "hangar":
+      return resolveHangarAnnual(a);
+    case "registration":
+      return computeRegistrationAnnual(a);
+    case "insurance":
+      return resolveInsuranceAnnual(a);
+    case "debt_service": {
+      const monthlyDebt = a.financing_enabled === "yes" ? computeMonthlyDebtService(a) ?? 0 : 0;
+      return monthlyDebt > 0 ? monthlyDebt * 12 : 0;
+    }
+    default:
+      return 0;
+  }
 }
 
-type VariableBreakdown = {
-  fuel: number;
-  parts: number;
-  engine: number;
-  apu: number;
-  airframe: number;
-  inspection: number;
-  maintenance: number;
-  trip: number;
-  total: number;
-  rates: {
-    fuel: number;
-    parts: number;
-    engine: number;
-    apu: number;
-    airframe: number;
-    inspection: number;
-    maintenance: number;
-    trip: number;
-  };
-};
+function sumFixedOwnership(
+  a: AssumptionMap,
+  availableCharterFlightHours: number,
+  catalog: readonly CatalogLineItem[]
+) {
+  const lines: FixedLineAmount[] = catalog
+    .filter((item) => item.active && item.section === "fixed")
+    .map((item) => ({ item, amount: fixedLineAmount(item, a, availableCharterFlightHours) }));
+  const customItems = parseProformaCustomFixedCosts(a);
+  const customTotal = sumProformaCustomFixedCosts(customItems);
+  const total = lines.reduce((sum, l) => sum + l.amount, 0) + customTotal;
+  return { lines, customItems, customTotal, total };
+}
 
+type VariableLine = { item: CatalogLineItem; rate: number; annual: number };
+type VariableBreakdown = { lines: VariableLine[]; total: number };
+
+/** Hourly variable lines for one bucket of flight hours (charter or owner). */
 function variableBreakdown(
   hours: number,
   fuelPerHour: number,
   a: AssumptionMap,
-  includeTrip = true
+  bucket: "charter" | "owner",
+  catalog: readonly CatalogLineItem[]
 ): VariableBreakdown {
-  const rates = {
-    fuel: fuelPerHour,
-    parts: num(a.parts_program_rate),
-    engine: num(a.engine_program_rate),
-    apu: num(a.apu_program_rate),
-    airframe: num(a.airframe_program_rate),
-    inspection: num(a.inspection_reserve_rate),
-    maintenance: num(a.maintenance_reserve_rate),
-    trip: includeTrip ? num(a.trip_expense_per_hour) : 0,
-  };
-  const fuel = rates.fuel * hours;
-  const parts = rates.parts * hours;
-  const engine = rates.engine * hours;
-  const apu = rates.apu * hours;
-  const airframe = rates.airframe * hours;
-  const inspection = rates.inspection * hours;
-  const maintenance = rates.maintenance * hours;
-  const trip = rates.trip * hours;
-  const total = fuel + parts + engine + apu + airframe + inspection + maintenance + trip;
-  return { fuel, parts, engine, apu, airframe, inspection, maintenance, trip, total, rates };
+  const lines = catalog
+    .filter((item) => item.active && item.section === "variable")
+    .filter((item) => {
+      const applies = item.appliesTo ?? "both";
+      return applies === "both" || applies === bucket;
+    })
+    .map((item) => {
+      const rate = item.systemCalc === "fuel" ? fuelPerHour : lineItemValue(item, a);
+      return { item, rate, annual: rate * hours };
+    });
+  return { lines, total: lines.reduce((sum, l) => sum + l.annual, 0) };
 }
 
 function buildAssumptionsUsedPanel(
@@ -469,7 +454,8 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
     aircraftValue: num(assumptions.aircraft_value),
   };
 
-  const fixed = sumFixedOwnership(synced, u.availableCharterFlightHours);
+  const catalog = resolveLineCatalog(synced);
+  const fixed = sumFixedOwnership(synced, u.availableCharterFlightHours, catalog);
   inputs.totalFixedCosts = fixed.total;
 
   const result = calculateProForma(inputs);
@@ -491,13 +477,8 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
       tripExpensePerHour: inputs.tripExpensePerHour,
     }) + num(synced.airframe_program_rate);
 
-  const charterVar = variableBreakdown(
-    u.availableCharterFlightHours,
-    fuelHr,
-    synced,
-    false
-  );
-  const ownerVar = variableBreakdown(u.ownerFlightHours, fuelHr, synced, true);
+  const charterVar = variableBreakdown(u.availableCharterFlightHours, fuelHr, synced, "charter", catalog);
+  const ownerVar = variableBreakdown(u.ownerFlightHours, fuelHr, synced, "owner", catalog);
 
   const charterRevenue = revenueCalc.charterRevenue;
   const fuelSurchargeRevenue = revenueCalc.fuelSurchargeRevenue;
@@ -510,8 +491,21 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
   const jetFuelTaxCredit = charterEnabled
     ? computeJetFuelTaxDifferentialCredit(synced, jetFuelTaxCreditInputs)
     : 0;
+  // Custom revenue items: hourly rate × charter revenue hours, or a flat annual amount.
+  const customRevenue = catalog
+    .filter((item) => item.active && item.section === "revenue" && item.source === "aircraft_type")
+    .map((item) => {
+      const rate = lineItemValue(item, synced);
+      const hours = item.kind === "hourly" ? revenueHours : null;
+      return { item, rate, hours, annual: hours === null ? rate : rate * hours };
+    });
+  const revenueActive = (calc: SystemCalcId) =>
+    catalog.some((i) => i.systemCalc === calc && i.active);
   const totalRevenue = charterEnabled
-    ? charterRevenue + fuelSurchargeRevenue + jetFuelTaxCredit
+    ? (revenueActive("charter_revenue") ? charterRevenue : 0) +
+      (revenueActive("fuel_surcharge") ? fuelSurchargeRevenue : 0) +
+      (revenueActive("fet_refund") ? jetFuelTaxCredit : 0) +
+      customRevenue.reduce((sum, r) => sum + r.annual, 0)
     : 0;
 
   const netBeforeOwner = charterEnabled
@@ -523,29 +517,43 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
   const rows: ProFormaStatementRow[] = [];
 
   if (charterEnabled) {
-    rows.push(
-      section("Revenue", "revenue"),
-      revenueLine(
+    const systemRevenue: Partial<Record<SystemCalcId, ProFormaStatementRow>> = {
+      charter_revenue: revenueLine(
         "charter_revenue_block",
         "Charter Revenue",
         revenueCalc.effectiveRate,
         revenueHours,
         charterRevenue
       ),
-      revenueLine(
+      fuel_surcharge: revenueLine(
         "fuel_surcharge",
         "Fuel Surcharge",
         num(synced.fuel_surcharge),
         charterFlightHours,
         fuelSurchargeRevenue
       ),
-      revenueLine(
+      fet_refund: revenueLine(
         "fet_refund",
         FET_FUEL_TAX_REFUND_LABEL,
         jetFuelTaxCreditRatePerCharterFlightHour(synced, jetFuelTaxCreditInputs),
         charterFlightHours,
         jetFuelTaxCredit
       ),
+    };
+    const revenueRows = catalog
+      .filter((item) => item.active && item.section === "revenue")
+      .map((item): ProFormaStatementRow | null => {
+        if (item.source === "system") {
+          const row = item.systemCalc ? systemRevenue[item.systemCalc] : undefined;
+          return row ? withLabel(row, item, defaultLabel(item)) : null;
+        }
+        const r = customRevenue.find((c) => c.item.key === item.key)!;
+        return revenueLine(lineRowKey(item), item.label, r.rate, r.hours ?? 0, r.annual);
+      })
+      .filter((r): r is ProFormaStatementRow => r !== null);
+    rows.push(
+      section("Revenue", "revenue"),
+      ...revenueRows,
       subtotalRow("total_revenue", "Total Revenue", "revenue", totalRevenue, {
         hours: revenueHours,
       })
@@ -554,30 +562,9 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
 
   rows.push(
     section("Fixed Ownership Costs", "fixed"),
-    fixedLine("crew_salaries", "Crew Salaries & Benefits", fixed.crew),
-    fixedLine("crew_training_pl", "Crew Training", fixed.training.total),
-    ...(charterEnabled && fixed.pilotCharterIncentive > 0
-      ? [
-          fixedLine(
-            "pilot_charter_incentive_pl",
-            "Pilot Charter Incentive",
-            fixed.pilotCharterIncentive
-          ),
-        ]
-      : []),
-    fixedLine("management_fee_pl", "Management Fee", fixed.management),
-    fixedLine("maint_mgmt_fee_pl", "Maintenance Management Fee", fixed.maintMgmt),
-    fixedLine("hangar_pl", "Hangar", fixed.hangar),
-    fixedLine("registration_pl", "Registration / Taxes", fixed.registration),
-    fixedLine("insurance_pl", "Insurance (Hull & Liability)", fixed.insurance),
-    fixedLine("wifi_pl", "In-Flight Wi-Fi", fixed.wifi),
-    fixedLine("subscriptions_pl", "Subscriptions", fixed.subscriptions),
-    fixedLine("cleaning_pl", "Cleaning", fixed.cleaning),
-    fixedLine("supplies_pl", "Supplies", fixed.supplies),
-    fixedLine("airport_fees_pl", "Airport Fees", fixed.airport),
-    ...(fixed.debtService > 0
-      ? [fixedLine("financing_debt_pl", "Debt service", fixed.debtService)]
-      : []),
+    ...fixed.lines
+      .filter(({ item, amount }) => (!item.charterOnly || charterEnabled) && (!item.hideWhenZero || amount > 0))
+      .map(({ item, amount }) => fixedLine(lineRowKey(item), labelFor(item), amount)),
     ...fixed.customItems.map((item) =>
       fixedLine(customFixedCostLineKey(item.id), item.name, item.amount)
     ),
@@ -593,36 +580,8 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
     const ch = u.availableCharterFlightHours;
     rows.push(
       section("Charter Variable Costs", "hourly_variable"),
-      hourlyVarLine("charter_fuel", "Fuel", charterVar.rates.fuel, ch, "hourly_variable"),
-      hourlyVarLine("charter_parts", "Parts Programs", charterVar.rates.parts, ch, "hourly_variable"),
-      hourlyVarLine(
-        "charter_engine",
-        "Engine Programs",
-        charterVar.rates.engine,
-        ch,
-        "hourly_variable"
-      ),
-      hourlyVarLine("charter_apu", "APU Programs", charterVar.rates.apu, ch, "hourly_variable"),
-      hourlyVarLine(
-        "charter_airframe",
-        "Airframe Programs",
-        charterVar.rates.airframe,
-        ch,
-        "hourly_variable"
-      ),
-      hourlyVarLine(
-        "charter_inspection",
-        "Inspection Reserve",
-        charterVar.rates.inspection,
-        ch,
-        "hourly_variable"
-      ),
-      hourlyVarLine(
-        "charter_maintenance",
-        "Maintenance Reserve",
-        charterVar.rates.maintenance,
-        ch,
-        "hourly_variable"
+      ...charterVar.lines.map((l) =>
+        hourlyVarLine(`charter_${l.item.key}`, labelFor(l.item), l.rate, ch, "hourly_variable")
       ),
       subtotalRow(
         "total_charter_variable",
@@ -653,37 +612,8 @@ export function buildProFormaStatement(assumptions: AssumptionMap): ProFormaStat
   const oh = u.ownerFlightHours;
   rows.push(
     section("Owner Variable Costs", "hourly_variable"),
-    hourlyVarLine("owner_fuel", "Fuel", ownerVar.rates.fuel, oh, "hourly_variable"),
-    hourlyVarLine("owner_parts", "Parts Programs", ownerVar.rates.parts, oh, "hourly_variable"),
-    hourlyVarLine("owner_engine", "Engine Programs", ownerVar.rates.engine, oh, "hourly_variable"),
-    hourlyVarLine("owner_apu", "APU Programs", ownerVar.rates.apu, oh, "hourly_variable"),
-    hourlyVarLine(
-      "owner_airframe",
-      "Airframe Programs",
-      ownerVar.rates.airframe,
-      oh,
-      "hourly_variable"
-    ),
-    hourlyVarLine(
-      "owner_inspection",
-      "Inspection Reserve",
-      ownerVar.rates.inspection,
-      oh,
-      "hourly_variable"
-    ),
-    hourlyVarLine(
-      "owner_maintenance",
-      "Maintenance Reserve",
-      ownerVar.rates.maintenance,
-      oh,
-      "hourly_variable"
-    ),
-    hourlyVarLine(
-      "owner_trip",
-      "Owner Trip Expense",
-      ownerVar.rates.trip,
-      oh,
-      "hourly_variable"
+    ...ownerVar.lines.map((l) =>
+      hourlyVarLine(`owner_${l.item.key}`, labelFor(l.item), l.rate, oh, "hourly_variable")
     ),
     subtotalRow(
       "total_owner_variable",

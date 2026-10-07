@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 // Tab label → something only that tab renders.
 const TABS: Array<{ label: string; tab: string; marker: (p: import("@playwright/test").Page) => import("@playwright/test").Locator }> = [
   { label: "Aircraft types", tab: "aircraft", marker: (p) => p.getByPlaceholder(/search types/i) },
+  { label: "Line Items", tab: "line-items", marker: (p) => p.getByPlaceholder(/search line items/i) },
   { label: "Tails", tab: "tails", marker: (p) => p.getByPlaceholder(/search tails/i) },
   { label: "Airports", tab: "airports", marker: (p) => p.getByPlaceholder(/icao, name, or city/i) },
   { label: "FBOs", tab: "fbos", marker: (p) => p.getByPlaceholder(/search fbo/i) },
@@ -42,8 +43,8 @@ test("the list sidebar is the same width on every workbench tab", async ({ page 
   await page.goto("/data-warehouse/data?tab=aircraft");
   const nav = page.getByRole("navigation", { name: "Data warehouse sections" });
   const widths: Record<string, number> = {};
-  // The five workbenches + General and Company all use the list-sidebar layout.
-  for (const t of TABS.slice(0, 6)) {
+  // The workbenches + General and Company all use the list-sidebar layout.
+  for (const t of TABS.slice(0, 7)) {
     await nav.getByRole("button", { name: t.label, exact: true }).click();
     await expect(t.marker(page)).toBeVisible();
     const box = await page.locator("aside.data-hub-sidebar:visible").first().boundingBox();

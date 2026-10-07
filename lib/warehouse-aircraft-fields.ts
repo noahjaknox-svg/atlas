@@ -15,11 +15,11 @@ export interface AircraftTypeField {
   label: string;
   group:
     | "General"
-    | "Hourly Rates"
+    | "Fuel"
+    | "Line items"
     | "Crew"
     | "Utilization"
     | "Finances"
-    | "Operating Costs"
     | "Empty Legs";
   type: WarehouseFieldType;
   /** Required to publish; Show/Hide on pro forma only when `proformaToggleable` is true. */
@@ -107,7 +107,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "fuelGallonsPerHour",
     label: "Fuel Gallons Per Hour",
-    group: "Hourly Rates",
+    group: "Fuel",
     type: "int",
     required: true,
     format: "integer",
@@ -115,7 +115,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "partsProgram",
     label: "Parts Program ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -124,7 +124,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "engineProgram",
     label: "Engine Program ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -133,7 +133,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "apuProgram",
     label: "APU Program ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -142,7 +142,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "inspectionReserve",
     label: "Inspection Reserve ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -151,7 +151,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "tripExpenseHourly",
     label: "Trip Expense Hourly ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -160,7 +160,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "airframeProgram",
     label: "Airframe Program ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -169,7 +169,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "maintenanceReserve",
     label: "Maintenance Reserve ($/hr)",
-    group: "Hourly Rates",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -322,7 +322,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "wifiAnnual",
     label: "In-flight Wi-Fi (annual)",
-    group: "Operating Costs",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -331,7 +331,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "subscriptionsAnnual",
     label: "Subscriptions (annual)",
-    group: "Operating Costs",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -340,7 +340,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "cleaningAnnual",
     label: "Cleaning (annual)",
-    group: "Operating Costs",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -349,7 +349,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "suppliesAnnual",
     label: "Supplies (annual)",
-    group: "Operating Costs",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,
@@ -358,7 +358,7 @@ export const WAREHOUSE_AIRCRAFT_FIELDS: AircraftTypeField[] = [
   {
     key: "airportFeesAnnual",
     label: "Airport fees (annual)",
-    group: "Operating Costs",
+    group: "Line items",
     type: "int",
     required: false,
     proformaToggleable: true,

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { loadLineItemDefaults } from "@/lib/line-items";
 import { getCompanySettings } from "@/lib/company-settings";
 import { loadCompanySettingsDefaults } from "@/lib/company-settings-defaults";
 import { findFbosAtAirport } from "@/lib/fbo-airport-lookup";
@@ -24,6 +25,8 @@ export async function loadAircraftReferenceDefaults(params: {
   const map: Record<string, string> = {
     ...stripExcludedWarehouseKeys(loadAircraftTypeDefaults(aircraft)),
     ...loadCompanySettingsDefaults(await getCompanySettings()),
+    // Line Items catalog copy + custom line item values (Data Warehouse → Line Items).
+    ...(await loadLineItemDefaults(aircraft.id)),
   };
 
   const icao = params.airportIcao?.toUpperCase();

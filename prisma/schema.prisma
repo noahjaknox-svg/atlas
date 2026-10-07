@@ -336,8 +336,49 @@ model AircraftType {
   performance     AircraftPerformanceGrid[]
   instances       AircraftInstance[]
   hangarOverrides FboHangarOverride[]
+  lineItemValues  AircraftTypeLineItemValue[]
 
   @@map("aircraft_types")
+}
+
+/**
+ * Pro forma line items catalog (Data Warehouse → Line Items). Built-in lines live in
+ * code (lib/line-item-catalog.ts DEFAULT_LINE_CATALOG); a row here only stores edits
+ * to a built-in (label / order / active) or defines a custom `li_*` line.
+ */
+model LineItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  label     String
+  /// revenue | fixed | variable
+  section   String
+  /// annual | hourly
+  kind      String
+  /// owner | charter | both (variable lines)
+  appliesTo String?  @map("applies_to")
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  values AircraftTypeLineItemValue[]
+
+  @@map("line_items")
+}
+
+/// Value of a custom line item for one aircraft type (built-ins use AircraftType columns).
+model AircraftTypeLineItemValue {
+  id             String       @id @default(uuid()) @db.Uuid
+  aircraftTypeId String       @map("aircraft_type_id") @db.Uuid
+  lineItemId     String       @map("line_item_id") @db.Uuid
+  value          Decimal      @db.Decimal(14, 2)
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  aircraftType   AircraftType @relation(fields: [aircraftTypeId], references: [id], onDelete: Cascade)
+  lineItem       LineItem     @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+
+  @@unique([aircraftTypeId, lineItemId])
+  @@index([lineItemId])
+  @@map("aircraft_type_line_item_values")
 }
 
 /**
