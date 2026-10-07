@@ -77,6 +77,7 @@ export async function POST(request: Request) {
           proformaFieldVisibility:
             source.proformaFieldVisibility ?? defaultWarehouseFieldVisibility(),
           performanceModel: source.performanceModel ?? undefined,
+          costOverrides: source.costOverrides ?? undefined,
         } as Prisma.AircraftTypeUncheckedCreateInput,
       });
       return jsonOk(serializeAircraftType(row), 201);

@@ -52,14 +52,17 @@ test.describe.serial("line items catalog", () => {
     state.navKey = nav.key;
   });
 
-  test("aircraft type: set custom values in the Line items section; they persist", async ({ page }) => {
+  test("aircraft type: set custom values on the expense tabs; they persist", async ({ page }) => {
     const types: Array<{ id: string; status: string; displayName: string }> = (await (await page.request.get("/api/data/aircraft?limit=500")).json()).rows;
     const type = types.find((t) => t.status === "published")!;
     state.typeId = type.id;
     state.typeStatus = type.status;
-    await page.goto(`/data-warehouse/data?tab=aircraft&typeId=${type.id}&section=Line%20items`);
-    await expect(page.getByRole("heading", { name: "Custom line items" })).toBeVisible();
+    const tabs = page.getByRole("navigation", { name: "Type sections" });
+
+    // Hourly item → Variable Expenses; annual item → Annual Expenses. Edits persist across tabs until saved.
+    await page.goto(`/data-warehouse/data?tab=aircraft&typeId=${type.id}&section=Variable%20Expenses`);
     await page.getByLabel(new RegExp(`^${SATCOM} \\(\\$/hr`)).fill("45");
+    await tabs.getByRole("button", { name: "Annual Expenses", exact: true }).click();
     await page.getByLabel(new RegExp(`^${NAV} \\(\\$/yr`)).fill("8000");
     const saved = page.waitForResponse((r) => r.url().endsWith("/line-items") && r.request().method() === "PUT");
     // Publish (not "Save draft", which would flip a published type back to draft).

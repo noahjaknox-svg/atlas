@@ -8,7 +8,7 @@ import { FET_FUEL_TAX_REFUND_LABEL } from "@/lib/fet-refund";
  * - source "system": amount comes from an existing calculator (crew, hangar via FBO,
  *   insurance, fuel, charter revenue, …). Only label / order / active are editable.
  * - source "aircraft_type": a value entered per aircraft type (Data Warehouse →
- *   Aircraft types → Line items), seeded into the proposal under `assumptionKey`
+ *   Aircraft types → Annual / Variable Expenses / Revenue tab), seeded into the proposal under `assumptionKey`
  *   and editable per proposal.
  *
  * The active catalog is copied onto each aircraft's assumptions

@@ -327,6 +327,8 @@ model AircraftType {
   /// Future JetNet / Conklin / etc.
   externalSource             String?            @default("atlas") @map("external_source")
   externalId                 String?            @map("external_id")
+  /// Optional per-type overrides of company-wide costs (management fee, insurance, registration) — lib/cost-overrides.ts.
+  costOverrides              Json?              @map("cost_overrides")
   externalSyncedAt           DateTime?          @map("external_synced_at")
   legacyWarehouseAircraftId  String?            @unique @map("legacy_warehouse_aircraft_id") @db.Uuid
   createdAt                  DateTime           @default(now()) @map("created_at")

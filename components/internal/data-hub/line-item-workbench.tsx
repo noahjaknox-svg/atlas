@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SECTION_TAB } from "@/lib/aircraft-type-line-sources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
@@ -124,7 +125,7 @@ export function LineItemWorkbench() {
       await load(json.key ?? draft.key ?? undefined);
       setMessage(
         creating
-          ? "Created. Set its value per aircraft type in Aircraft types → Line items."
+          ? `Created. Set its value per aircraft type in Aircraft types → ${SECTION_TAB[draft.section]}.`
           : "Saved. Proposals pick this up when their aircraft is added or refreshed."
       );
     } finally {
@@ -216,7 +217,7 @@ export function LineItemWorkbench() {
                 {selected?.calculatedFrom
                   ? `Calculated: ${selected.calculatedFrom}`
                   : builtIn
-                    ? "Value set per aircraft type (Aircraft types → Line items)."
+                    ? `Value set per aircraft type (Aircraft types → ${SECTION_TAB[draft.section]}).`
                     : draft.key
                       ? `Custom · value set on ${selected?.valueCount ?? 0} aircraft type${selected?.valueCount === 1 ? "" : "s"}`
                       : "Custom line item"}
@@ -331,8 +332,8 @@ export function LineItemWorkbench() {
                 {draft.key && !builtIn ? (
                   <p className="text-xs text-atlas-muted">
                     Set values in{" "}
-                    <a href={`${ROUTES.dataWarehouse.data}?tab=aircraft&section=Line%20items`} className="text-atlas-accent hover:underline">
-                      Aircraft types → Line items
+                    <a href={`${ROUTES.dataWarehouse.data}?tab=aircraft&section=${encodeURIComponent(SECTION_TAB[draft.section])}`} className="text-atlas-accent hover:underline">
+                      Aircraft types → {SECTION_TAB[draft.section]}
                     </a>
                     . Staff can adjust the value per proposal.
                   </p>
