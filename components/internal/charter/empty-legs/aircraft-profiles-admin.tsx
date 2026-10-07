@@ -14,19 +14,14 @@ type AircraftProfile = {
   isActive: boolean;
 };
 
-const emptyForm = {
-  defaultHourlyRate: "",
-  minimumQuotableTimeFallback: "",
-  offRoutingTimeAllowanceHours: "",
-};
-
+/**
+ * Read-only view of the empty-leg pricing defaults. The Data Warehouse (Aircraft types →
+ * Marketplace) is the single place they're edited.
+ */
 export function AircraftProfilesAdmin() {
   const [rows, setRows] = useState<AircraftProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,119 +36,27 @@ export function AircraftProfilesAdmin() {
     void load();
   }, [load]);
 
-  function startEdit(row: AircraftProfile) {
-    setEditingId(row.id);
-    setEditingName(row.label || row.name);
-    setForm({
-      defaultHourlyRate:
-        row.defaultHourlyRate != null ? String(row.defaultHourlyRate) : "",
-      minimumQuotableTimeFallback:
-        row.minimumQuotableTimeFallback != null ? String(row.minimumQuotableTimeFallback) : "",
-      offRoutingTimeAllowanceHours:
-        row.offRoutingTimeAllowanceHours != null
-          ? String(row.offRoutingTimeAllowanceHours)
-          : "",
-    });
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setEditingName("");
-    setForm(emptyForm);
-  }
-
-  async function save() {
-    if (!editingId) return;
-    setMessage("");
-    if (form.defaultHourlyRate === "" || Number.isNaN(Number(form.defaultHourlyRate))) {
-      setMessage("Default hourly rate is required");
-      return;
-    }
-    const payload = {
-      defaultHourlyRate: Number(form.defaultHourlyRate),
-      minimumQuotableTimeFallback:
-        form.minimumQuotableTimeFallback === ""
-          ? null
-          : Number(form.minimumQuotableTimeFallback),
-      offRoutingTimeAllowanceHours:
-        form.offRoutingTimeAllowanceHours === ""
-          ? null
-          : Number(form.offRoutingTimeAllowanceHours),
-    };
-    const res = await fetch(`/api/charter/empty-legs/aircraft-profiles/${editingId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? "Save failed");
-      return;
-    }
-    resetForm();
-    await load();
-  }
+  const marketplaceHref = (id?: string) =>
+    `${ROUTES.dataWarehouse.data}?tab=aircraft${id ? `&typeId=${id}` : ""}&section=Marketplace`;
 
   return (
     <div className="space-y-6">
       {message ? <p className="text-sm text-atlas-accent">{message}</p> : null}
 
       <p className="text-sm text-atlas-muted">
-        Aircraft types are created and named in{" "}
-        <Link href={ROUTES.dataWarehouse.data} className="text-atlas-accent hover:underline">
-          Data Hub
-        </Link>
-        . Here you only set empty-leg pricing defaults for those types.
+        Empty-leg pricing defaults are managed in the{" "}
+        <Link href={marketplaceHref()} className="text-atlas-accent hover:underline">
+          Data Warehouse → Aircraft types → Marketplace
+        </Link>{" "}
+        tab. This page is a read-only summary.
       </p>
-
-      {editingId ? (
-        <div className="rounded border border-atlas-border bg-atlas-surface p-4">
-          <h2 className="font-serif text-lg">Edit pricing — {editingName}</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Field
-              label="Default hourly rate"
-              value={form.defaultHourlyRate}
-              onChange={(v) => setForm({ ...form, defaultHourlyRate: v })}
-              type="number"
-            />
-            <Field
-              label="Min quotable time fallback (hrs)"
-              value={form.minimumQuotableTimeFallback}
-              onChange={(v) => setForm({ ...form, minimumQuotableTimeFallback: v })}
-              type="number"
-            />
-            <Field
-              label="Off-routing time allowance (hrs)"
-              value={form.offRoutingTimeAllowanceHours}
-              onChange={(v) => setForm({ ...form, offRoutingTimeAllowanceHours: v })}
-              type="number"
-            />
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => void save()}
-              className="rounded bg-atlas-accent px-3 py-1.5 text-sm text-white"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded border border-atlas-border px-3 py-1.5 text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
 
       {loading ? (
         <p className="text-sm text-atlas-muted">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-sm text-atlas-muted">
-          No aircraft types yet. Create one in Data Hub first, then come back to set empty-leg
-          pricing.
+          No aircraft types yet. Create one in the Data Warehouse first, then set its empty-leg pricing
+          on the Marketplace tab.
         </p>
       ) : (
         <div className="overflow-hidden rounded border border-atlas-border">
@@ -184,13 +87,9 @@ export function AircraftProfilesAdmin() {
                   <td className="px-3 py-2">{row.minimumQuotableTimeFallback ?? "—"}</td>
                   <td className="px-3 py-2">{row.offRoutingTimeAllowanceHours ?? "—"}</td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      className="text-atlas-accent hover:underline"
-                      onClick={() => startEdit(row)}
-                    >
-                      Edit pricing
-                    </button>
+                    <Link href={marketplaceHref(row.id)} className="text-atlas-accent hover:underline">
+                      Edit in Marketplace
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -198,30 +97,6 @@ export function AircraftProfilesAdmin() {
           </table>
         </div>
       )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs text-atlas-muted">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded border border-atlas-border bg-atlas-bg px-2 py-1.5 text-sm"
-      />
     </div>
   );
 }

@@ -1,6 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AircraftTypeExpenseLines } from "@/components/internal/data-hub/aircraft-type-expense-lines";
+import { parseCostOverrides, type CostOverrides } from "@/lib/cost-overrides";
+import {
+  normalizeTypeSection,
+  SECTION_TAB,
+  TYPE_SECTION_NAMES,
+  type TypeSection,
+} from "@/lib/aircraft-type-line-sources";
 import { ROUTES } from "@/lib/routes";
 import type { LineItemWire } from "@/lib/line-item-api";
 import { parseWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-proforma-visibility";
@@ -34,19 +42,6 @@ const FIELD_CONTROL = cn(
 
 const TOGGLE_SLOT_W = "w-[5.75rem] shrink-0";
 
-const TYPE_SECTION_NAMES = [
-  "General",
-  "Fuel",
-  "Line items",
-  "Crew",
-  "Utilization",
-  "Finances",
-  "Empty Legs",
-  "AFM",
-] as const;
-
-type TypeSection = (typeof TYPE_SECTION_NAMES)[number];
-
 /** Crew sub-rows: default ladder step, salaries, and training per role. */
 const CREW_ROLE_ROWS: { label: string; keys: AircraftTypeField["key"][] }[] = [
   { label: "Minimum crew", keys: ["defaultMinimumCrew"] },
@@ -54,6 +49,10 @@ const CREW_ROLE_ROWS: { label: string; keys: AircraftTypeField["key"][] }[] = [
   { label: "PIC", keys: ["picSalary", "picTrainingCost"] },
   { label: "SIC", keys: ["sicSalary", "sicTrainingCost"] },
   { label: "Cabin Attendant", keys: ["cabinAttendantSalary"] },
+  {
+    label: "Max annual flight hours by pilot count",
+    keys: ["maxUsage1Pilot", "maxUsage2Pilots", "maxUsage3Pilots", "maxUsage4Pilots", "maxUsage5Pilots", "maxUsage6Pilots"],
+  },
 ];
 
 function toStr(v: unknown): string {
@@ -70,7 +69,7 @@ function customItemField(item: LineItemWire): AircraftTypeField {
   return {
     key: item.key as AircraftTypeField["key"],
     label: `${item.label} (${unit}, ${where})`,
-    group: "Line items",
+    group: SECTION_TAB[item.section],
     type: "decimal",
     required: false,
     format: "money",
@@ -300,14 +299,6 @@ function CrewFieldGrid({
   );
 }
 
-function normalizeTypeSection(raw: string | null): TypeSection {
-  if (!raw) return "General";
-  if (raw === "AFM" || raw === "AFM / Performance" || raw.toLowerCase() === "afm") return "AFM";
-  const match = TYPE_SECTION_NAMES.find((s) => s.toLowerCase() === raw.toLowerCase());
-  return match ?? "General";
-}
-
-
 export function AircraftWorkbench({
   initialData,
 }: {
@@ -333,8 +324,15 @@ export function AircraftWorkbench({
   const [deleting, setDeleting] = useState(false);
   const [typeSection, setTypeSection] = useState<TypeSection>("General");
   // Custom line items (Data Warehouse → Line Items) and this type's values for them.
-  const [customItems, setCustomItems] = useState<LineItemWire[]>([]);
+  const [catalog, setCatalog] = useState<LineItemWire[]>([]);
+  const customItems = useMemo(
+    () => catalog.filter((i) => !i.builtIn && i.active && i.source === "aircraft_type"),
+    [catalog]
+  );
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  // Optional per-type overrides of company-wide costs, and the company values they override.
+  const [costOverrides, setCostOverrides] = useState<CostOverrides>({});
+  const [companyDefaults, setCompanyDefaults] = useState<Record<string, string>>({});
   const appliedFocus = useRef(false);
 
   const syncUrl = useCallback(
@@ -369,6 +367,7 @@ export function AircraftWorkbench({
     setVisibility(parseVisibility(row.proformaFieldVisibility));
     setError(null);
     setCustomValues({});
+    setCostOverrides(parseCostOverrides(row.costOverrides));
     if (row.id) void loadCustomValues(row.id);
     const sec = section ?? typeSection;
     setTypeSection(sec);
@@ -387,8 +386,12 @@ export function AircraftWorkbench({
     void fetch("/api/data/line-items")
       .then((r) => (r.ok ? r.json() : { rows: [] }))
       .then((data: { rows?: LineItemWire[] }) =>
-        setCustomItems((data.rows ?? []).filter((i) => !i.builtIn && i.active && i.source === "aircraft_type"))
+        setCatalog(data.rows ?? [])
       )
+      .catch(() => {});
+    void fetch("/api/data/aircraft/defaults-preview")
+      .then((r) => (r.ok ? r.json() : { defaults: {} }))
+      .then((data: { defaults?: Record<string, string> }) => setCompanyDefaults(data.defaults ?? {}))
       .catch(() => {});
   }, []);
 
@@ -423,6 +426,7 @@ export function AircraftWorkbench({
     setValues(next);
     setVisibility(defaultWarehouseFieldVisibility());
     setCustomValues({});
+    setCostOverrides({});
     setTypeSection("General");
     setError(null);
     syncUrl({ clearEntity: true, section: "General" });
@@ -475,6 +479,21 @@ export function AircraftWorkbench({
   }, []);
 
   const activeGroup = groups.find((g) => g.name === typeSection);
+  const expenseSection: LineItemWire["section"] | null =
+    typeSection === "Annual Expenses" ? "fixed"
+    : typeSection === "Variable Expenses" ? "variable"
+    : typeSection === "Revenue" ? "revenue"
+    : null;
+  const renderField = (f: AircraftTypeField) => (
+    <FieldCell
+      key={f.key}
+      field={f}
+      value={values[f.key] ?? ""}
+      visibility={visibility}
+      onValueChange={(v) => setValues((p) => ({ ...p, [f.key]: v }))}
+      onVisibilityChange={(show) => setVisibility((prev) => ({ ...prev, [f.key]: show }))}
+    />
+  );
   const missingPublish = useMemo(() => getMissingPublishFields(values), [values]);
   const canPublish = missingPublish.length === 0;
 
@@ -494,6 +513,7 @@ export function AircraftWorkbench({
       const body: Record<string, unknown> = {
         saveAs,
         proformaFieldVisibility: visibility,
+        costOverrides,
       };
       for (const f of WAREHOUSE_AIRCRAFT_FIELDS) {
         body[f.key] = values[f.key] ?? "";
@@ -711,15 +731,14 @@ export function AircraftWorkbench({
                       : "text-atlas-text/75 hover:bg-atlas-border/30 hover:text-atlas-text"
                   )}
                 >
-                  {s === "AFM" ? "AFM / Performance" : s}
+                  {s}
                 </button>
               ))}
             </nav>
 
             {typeSection !== "AFM" ? (
               <div className="shrink-0 border-b border-atlas-border/60 bg-atlas-surface/15 px-5 py-3 text-xs leading-relaxed text-atlas-muted">
-                Parts/engine/APU programs, inspection reserve, trip expense hourly, and cabin attendant
-                fields include a{" "}
+                Expense lines and the cabin attendant salary include a{" "}
                 <span className={cn(TOGGLE_SLOT_W, "inline-flex h-5 align-middle")}>
                   <span className="flex h-full w-full items-center justify-center rounded border border-atlas-border/60 bg-atlas-bg/80 text-[10px]">
                     Show / Hide
@@ -756,55 +775,63 @@ export function AircraftWorkbench({
                         }
                       />
                     ) : (
-                      <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-                        {activeGroup.fields.map((f) => (
-                          <FieldCell
-                            key={f.key}
-                            field={f}
-                            value={values[f.key] ?? ""}
-                            visibility={visibility}
-                            onValueChange={(v) => setValues((p) => ({ ...p, [f.key]: v }))}
-                            onVisibilityChange={(show) =>
-                              setVisibility((prev) => ({ ...prev, [f.key]: show }))
-                            }
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {activeGroup.name === "Line items" ? (
-                      <div className="mt-6 border-t border-atlas-border/50 pt-4">
-                        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-atlas-muted">
-                          Custom line items
-                        </h4>
-                        {customItems.length === 0 ? (
-                          <p className="text-sm text-atlas-muted">
-                            None yet. Add them in{" "}
-                            <a
-                              href={`${ROUTES.dataWarehouse.data}?tab=line-items`}
-                              className="text-atlas-accent hover:underline"
-                            >
-                              Data Warehouse → Line Items
-                            </a>
-                            .
-                          </p>
-                        ) : (
+                      <>
+                        {/* Expense tabs list every line (set here / inherited / calculated); Revenue
+                            also shows the charter terms as plain fields first. */}
+                        {expenseSection && catalog.length > 0 ? null : (
                           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
-                            {customItems.map((item) => (
-                              <FieldCell
-                                key={item.key}
-                                field={customItemField(item)}
-                                value={customValues[item.key] ?? ""}
-                                visibility={visibility}
-                                onValueChange={(v) => setCustomValues((p) => ({ ...p, [item.key]: v }))}
-                                onVisibilityChange={(show) =>
-                                  setVisibility((prev) => ({ ...prev, [item.key]: show }))
-                                }
-                              />
-                            ))}
+                            {activeGroup.fields.map((f) => renderField(f))}
                           </div>
                         )}
-                      </div>
-                    ) : null}
+                        {typeSection === "Revenue" && catalog.length > 0 ? (
+                          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+                            {activeGroup.fields.map((f) => renderField(f))}
+                          </div>
+                        ) : null}
+                        {expenseSection && catalog.length > 0 ? (
+                          <div className={typeSection === "Revenue" ? "mt-6 border-t border-atlas-border/50 pt-4" : ""}>
+                            <AircraftTypeExpenseLines
+                              section={expenseSection}
+                              catalog={catalog}
+                              defaults={companyDefaults}
+                              costOverrides={costOverrides}
+                              onCostOverridesChange={setCostOverrides}
+                              onSelectSection={changeTypeSection}
+                              renderSetHere={(item, fieldKey) => {
+                                const field = fieldKey
+                                  ? WAREHOUSE_AIRCRAFT_FIELDS.find((f) => f.key === fieldKey)
+                                  : undefined;
+                                return field ? (
+                                  renderField(field)
+                                ) : (
+                                  <FieldCell
+                                    field={customItemField(item)}
+                                    value={customValues[item.key] ?? ""}
+                                    visibility={visibility}
+                                    onValueChange={(v) => setCustomValues((p) => ({ ...p, [item.key]: v }))}
+                                    onVisibilityChange={(show) =>
+                                      setVisibility((prev) => ({ ...prev, [item.key]: show }))
+                                    }
+                                  />
+                                );
+                              }}
+                            />
+                            {customItems.length === 0 ? (
+                              <p className="mt-3 text-xs text-atlas-muted">
+                                Need another line? Add custom items in{" "}
+                                <a
+                                  href={`${ROUTES.dataWarehouse.data}?tab=line-items`}
+                                  className="text-atlas-accent hover:underline"
+                                >
+                                  Data Warehouse → Line Items
+                                </a>
+                                .
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    )}
                   </section>
                 ) : null}
               </div>
