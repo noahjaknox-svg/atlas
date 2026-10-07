@@ -16,6 +16,7 @@ import { AircraftWorkbench } from "@/components/internal/data-hub/aircraft-workb
 import { FleetTailsWorkbench } from "@/components/internal/data-hub/fleet-tails-workbench";
 import { AirportAuditWorkbench } from "@/components/internal/data-hub/airport-audit-workbench";
 import { UsageTypeWorkbench } from "@/components/internal/data-hub/usage-type-workbench";
+import { LineItemWorkbench } from "@/components/internal/data-hub/line-item-workbench";
 import {
   RecordWorkbench,
   type WorkbenchField,
@@ -50,6 +51,7 @@ const FBO_WORKBENCH_FIELDS: WorkbenchField[] = [
 
 const REFERENCE_TABS = [
   { id: "aircraft", label: "Aircraft types" },
+  { id: "line-items", label: "Line Items" },
   { id: "tails", label: "Tails" },
   { id: "airports", label: "Airports" },
   { id: "fbos", label: "FBOs" },
@@ -61,7 +63,7 @@ const REFERENCE_TABS = [
 
 const LEGACY_CREW_TAB = "performance-data";
 
-const WORKBENCH_TABS = ["aircraft", "tails", "airports", "fbos", "usage-types"] as const;
+const WORKBENCH_TABS = ["aircraft", "line-items", "tails", "airports", "fbos", "usage-types"] as const;
 
 export function DataHubClient({
   initialTab,
@@ -151,6 +153,12 @@ export function DataHubClient({
             <AircraftWorkbench
               initialData={initialTab === "aircraft" ? initialTabData : undefined}
             />
+          </div>
+        )}
+
+        {mounted("line-items") && (
+          <div className={pane("line-items")}>
+            <LineItemWorkbench />
           </div>
         )}
 

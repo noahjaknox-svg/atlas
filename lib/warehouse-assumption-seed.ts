@@ -1,4 +1,5 @@
 import type { AssumptionMap } from "@/lib/assumptions";
+import { isCustomLineItemKey } from "@/lib/line-item-catalog";
 import { PROFORMA_SCENARIO_ASSUMPTION_KEYS } from "@/lib/proforma-scenario-assumptions";
 export const WAREHOUSE_SNAPSHOT_KEYS = new Set([
   "square_footage",
@@ -84,7 +85,7 @@ export function applyWarehouseDefaults(
     if (!value || WAREHOUSE_SKIP_KEYS.has(key)) continue;
     if (
       mode === "refresh" &&
-      WAREHOUSE_REFRESH_PRESERVE_KEYS.has(key) &&
+      (WAREHOUSE_REFRESH_PRESERVE_KEYS.has(key) || isCustomLineItemKey(key)) &&
       assumptions[key]?.trim()
     ) {
       continue;

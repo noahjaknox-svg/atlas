@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
 import { DATA_HUB_SIDEBAR_CLASS } from "@/components/internal/data-hub/sidebar-class";
 import { cn } from "@/lib/utils";
+import type { LineItemWire } from "@/lib/line-item-api";
 import {
   defaultUsageTypeConfig,
   lineSetting,
   parseUsageTypeConfig,
-  USAGE_TYPE_LINE_GROUPS,
+  usageTypeLineGroups,
   type UsageTypeConfig,
   type UsageTypeLineSetting,
 } from "@/lib/usage-type-config";
@@ -97,6 +98,16 @@ export function UsageTypeWorkbench() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pages, setPages] = useState<PortalPage[] | null>(null);
+  // Lines come from the Line Items catalog, so custom items get settings too.
+  const [catalog, setCatalog] = useState<LineItemWire[] | null>(null);
+  const lineGroups = useMemo(() => usageTypeLineGroups(catalog ?? undefined), [catalog]);
+
+  useEffect(() => {
+    void fetch("/api/data/line-items")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { rows?: LineItemWire[] } | null) => setCatalog(data?.rows ?? null))
+      .catch(() => {});
+  }, []);
   const [pageError, setPageError] = useState<string | null>(null);
 
   const load = useCallback(async (selectId?: string) => {
@@ -361,7 +372,7 @@ export function UsageTypeWorkbench() {
                     unchecked lines still count in the totals. Applied when an aircraft is given this usage
                     type; staff can still adjust lines per proposal afterward.
                   </p>
-                  {USAGE_TYPE_LINE_GROUPS.map((group) => {
+                  {lineGroups.map((group) => {
                     const groupDisabled = group.charterOnly && charterOff;
                     const keys = group.lines.filter((l) => !(l.charterOnly && charterOff)).map((l) => l.key);
                     const allIncluded = keys.every((k) => lineSetting(draft.config, k).include);

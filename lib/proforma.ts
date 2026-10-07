@@ -3,6 +3,7 @@
  */
 
 import type { AssumptionMap } from "@/lib/assumptions";
+import { isCustomLineItemKey, lineItemValue, resolveLineCatalog } from "@/lib/line-item-catalog";
 import { computeCrewTrainingTotalAmount } from "@/lib/aircraft-calculated-fields";
 import { computePilotCharterIncentiveAnnual } from "@/lib/pilot-charter-incentive";
 import { sumProformaCustomFixedCosts, parseProformaCustomFixedCosts } from "@/lib/proforma-custom-fixed-costs";
@@ -334,21 +335,31 @@ export function computeTotalFixedFromAssumptions(
     parseProformaCustomFixedCosts(assumptions as AssumptionMap)
   );
 
+  // Same formula as before the Line Items catalog, gated by each line's active flag,
+  // plus any custom catalog fixed lines (`li_*`).
+  const catalog = resolveLineCatalog(assumptions as AssumptionMap);
+  const on = (key: string) => catalog.some((i) => i.key === key && i.active);
+  const term = (key: string, amount: number) => (on(key) ? amount : 0);
+  const customCatalogTotal = catalog
+    .filter((i) => i.active && i.section === "fixed" && isCustomLineItemKey(i.key))
+    .reduce((sum, i) => sum + lineItemValue(i, assumptions as AssumptionMap), 0);
+
   return (
-    get("crew_total") +
-    picTraining.total +
-    pilotIncentive +
-    get("management_fee") +
-    (get("maintenance_management_fee") || get("maintenance_mgmt_fee")) +
-    (get("hangar_annual") || get("hangar_monthly") * 12) +
-    get("registration_annual") +
-    insurance +
-    (get("wifi_annual") || get("wifi_subscription")) +
-    get("subscriptions_annual") +
-    get("cleaning_annual") +
-    get("supplies_annual") +
-    get("airport_fees_annual") +
-    customTotal
+    term("crew", get("crew_total")) +
+    term("crew_training", picTraining.total) +
+    term("pilot_charter_incentive", pilotIncentive) +
+    term("management_fee", get("management_fee")) +
+    term("maintenance_management_fee", get("maintenance_management_fee") || get("maintenance_mgmt_fee")) +
+    term("hangar", get("hangar_annual") || get("hangar_monthly") * 12) +
+    term("registration", get("registration_annual")) +
+    term("insurance", insurance) +
+    term("wifi", get("wifi_annual") || get("wifi_subscription")) +
+    term("subscriptions", get("subscriptions_annual")) +
+    term("cleaning", get("cleaning_annual")) +
+    term("supplies", get("supplies_annual")) +
+    term("airport_fees", get("airport_fees_annual")) +
+    customTotal +
+    customCatalogTotal
   );
 }
 

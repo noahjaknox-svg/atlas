@@ -4,6 +4,8 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     aircraftType: { findUnique: vi.fn() },
     fboHangarOverride: { findUnique: vi.fn() },
+    lineItem: { findMany: vi.fn().mockResolvedValue([]) },
+    aircraftTypeLineItemValue: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 

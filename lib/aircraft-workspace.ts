@@ -1,4 +1,5 @@
 import type { AssumptionMap } from "./assumptions";
+import { isCustomLineItemKey } from "@/lib/line-item-catalog";
 import {
   normalizeProformaCustomFixedCostsAssumption,
   PROFORMA_CUSTOM_FIXED_COSTS_KEY,
@@ -453,7 +454,9 @@ export function buildMetaAssumptionPayload(
   category: string,
   assumptions: AssumptionMap
 ): Array<{ category: string; assumptionName: string; value: string; sourceType: string }> {
-  return META_ASSUMPTION_KEYS.filter((k) => {
+  // Custom Line Items values (`li_*`) are saved with the meta keys.
+  const customLineItemKeys = Object.keys(assumptions).filter(isCustomLineItemKey);
+  return [...META_ASSUMPTION_KEYS, ...customLineItemKeys].filter((k) => {
     if (assumptions[k] == null) return false;
     if (k === PROFORMA_CUSTOM_FIXED_COSTS_KEY) return true;
     return assumptions[k] !== "";

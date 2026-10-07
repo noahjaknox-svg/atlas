@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { loadLineCatalog } from "@/lib/line-items";
 import { parseUsageTypeConfig, usageTypeAssumptionPatch } from "@/lib/usage-type-config";
 import type { AssumptionMap } from "@/lib/assumptions";
 import { loadAircraftReferenceDefaults } from "@/lib/aircraft-reference-defaults";
@@ -195,11 +196,12 @@ export async function resolveUsageTypeAssumptions(params: {
     select: { charterEnabled: true, config: true },
   });
   if (!usageType) return undefined;
-  const loaded = await loadWarehouseLineVisibility(params);
+  const [loaded, catalog] = await Promise.all([loadWarehouseLineVisibility(params), loadLineCatalog()]);
   return usageTypeAssumptionPatch({
     config: parseUsageTypeConfig(usageType.config),
     charterEnabled: usageType.charterEnabled,
     warehouseVisibility: loaded?.lineVisibility,
+    catalog,
   });
 }
 

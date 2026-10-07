@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ROUTES } from "@/lib/routes";
+import type { LineItemWire } from "@/lib/line-item-api";
+import { parseWarehouseFieldVisibility } from "@/lib/warehouse-aircraft-proforma-visibility";
 import { useSearchParams } from "next/navigation";
 import { replaceDataHubUrl } from "@/lib/data-hub-filters";
 import { Button } from "@/components/ui/button";
@@ -33,11 +36,11 @@ const TOGGLE_SLOT_W = "w-[5.75rem] shrink-0";
 
 const TYPE_SECTION_NAMES = [
   "General",
-  "Hourly Rates",
+  "Fuel",
+  "Line items",
   "Crew",
   "Utilization",
   "Finances",
-  "Operating Costs",
   "Empty Legs",
   "AFM",
 ] as const;
@@ -59,14 +62,25 @@ function toStr(v: unknown): string {
   return String(v);
 }
 
+/** A custom line item rendered with the same input + Show/Hide toggle as built-in fields. */
+function customItemField(item: LineItemWire): AircraftTypeField {
+  const unit = item.kind === "hourly" ? "$/hr" : "$/yr";
+  const where =
+    item.section === "revenue" ? "revenue" : item.section === "variable" ? `${item.appliesTo ?? "both"} hours` : "fixed";
+  return {
+    key: item.key as AircraftTypeField["key"],
+    label: `${item.label} (${unit}, ${where})`,
+    group: "Line items",
+    type: "decimal",
+    required: false,
+    format: "money",
+    proformaToggleable: true,
+  };
+}
+
 function parseVisibility(raw: unknown): Record<string, boolean> {
-  const defaults = defaultWarehouseFieldVisibility();
-  if (!raw || typeof raw !== "object") return defaults;
-  for (const key of optionalWarehouseFieldKeys()) {
-    const v = (raw as Record<string, unknown>)[key];
-    if (typeof v === "boolean") defaults[key] = v;
-  }
-  return defaults;
+  // Shared parser: built-in toggles plus custom line items (`li_*`).
+  return parseWarehouseFieldVisibility(raw);
 }
 
 function WorkbenchSelect({
@@ -318,6 +332,9 @@ export function AircraftWorkbench({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [typeSection, setTypeSection] = useState<TypeSection>("General");
+  // Custom line items (Data Warehouse → Line Items) and this type's values for them.
+  const [customItems, setCustomItems] = useState<LineItemWire[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
   const appliedFocus = useRef(false);
 
   const syncUrl = useCallback(
@@ -351,10 +368,29 @@ export function AircraftWorkbench({
     setValues(next);
     setVisibility(parseVisibility(row.proformaFieldVisibility));
     setError(null);
+    setCustomValues({});
+    if (row.id) void loadCustomValues(row.id);
     const sec = section ?? typeSection;
     setTypeSection(sec);
     if (row.id) syncUrl({ typeId: row.id, section: sec });
   }
+
+  async function loadCustomValues(id: string) {
+    const res = await fetch(`${apiPath}/${id}/line-items`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const values: Record<string, number> = data?.values ?? {};
+    setCustomValues(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v)])));
+  }
+
+  useEffect(() => {
+    void fetch("/api/data/line-items")
+      .then((r) => (r.ok ? r.json() : { rows: [] }))
+      .then((data: { rows?: LineItemWire[] }) =>
+        setCustomItems((data.rows ?? []).filter((i) => !i.builtIn && i.active && i.source === "aircraft_type"))
+      )
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async (selectAfterId?: string) => {
     const res = await fetch(`${apiPath}?limit=500`);
@@ -386,6 +422,7 @@ export function AircraftWorkbench({
     next.wifi = "true";
     setValues(next);
     setVisibility(defaultWarehouseFieldVisibility());
+    setCustomValues({});
     setTypeSection("General");
     setError(null);
     syncUrl({ clearEntity: true, section: "General" });
@@ -473,8 +510,26 @@ export function AircraftWorkbench({
         setError(typeof json.error === "string" ? json.error : "Save failed");
         return;
       }
-      setStatus(saveAs === "publish" ? "published" : "draft");
       const id = (json as Row).id ?? selectedId ?? undefined;
+      if (id && customItems.length > 0) {
+        const valuesBody: Record<string, number | null> = {};
+        for (const item of customItems) {
+          const raw = customValues[item.key]?.trim() ?? "";
+          const n = raw === "" ? null : Number(raw);
+          valuesBody[item.key] = n === null || Number.isFinite(n) ? n : null;
+        }
+        const valuesRes = await fetch(`${apiPath}/${id}/line-items`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values: valuesBody }),
+        });
+        if (!valuesRes.ok) {
+          const vj = await valuesRes.json().catch(() => ({}));
+          setError(typeof vj.error === "string" ? vj.error : "Saved, but custom line item values failed to save");
+          return;
+        }
+      }
+      setStatus(saveAs === "publish" ? "published" : "draft");
       await load(id);
       if (id) syncUrl({ typeId: id, section: typeSection });
     } finally {
@@ -716,6 +771,40 @@ export function AircraftWorkbench({
                         ))}
                       </div>
                     )}
+                    {activeGroup.name === "Line items" ? (
+                      <div className="mt-6 border-t border-atlas-border/50 pt-4">
+                        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-atlas-muted">
+                          Custom line items
+                        </h4>
+                        {customItems.length === 0 ? (
+                          <p className="text-sm text-atlas-muted">
+                            None yet. Add them in{" "}
+                            <a
+                              href={`${ROUTES.dataWarehouse.data}?tab=line-items`}
+                              className="text-atlas-accent hover:underline"
+                            >
+                              Data Warehouse → Line Items
+                            </a>
+                            .
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+                            {customItems.map((item) => (
+                              <FieldCell
+                                key={item.key}
+                                field={customItemField(item)}
+                                value={customValues[item.key] ?? ""}
+                                visibility={visibility}
+                                onValueChange={(v) => setCustomValues((p) => ({ ...p, [item.key]: v }))}
+                                onVisibilityChange={(show) =>
+                                  setVisibility((prev) => ({ ...prev, [item.key]: show }))
+                                }
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </section>
                 ) : null}
               </div>

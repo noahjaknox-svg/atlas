@@ -1,5 +1,6 @@
 import type { AircraftTypeField } from "@/lib/warehouse-aircraft-fields";
 import { WAREHOUSE_AIRCRAFT_FIELDS } from "@/lib/warehouse-aircraft-fields";
+import { isCustomLineItemKey } from "@/lib/line-item-catalog";
 
 /** Optional warehouse field → pro forma line-item keys hidden when field is set to Hide. */
 export const WAREHOUSE_FIELD_PROFORMA_LINES: Partial<
@@ -9,7 +10,14 @@ export const WAREHOUSE_FIELD_PROFORMA_LINES: Partial<
   engineProgram: ["charter_engine", "owner_engine"],
   apuProgram: ["charter_apu", "owner_apu"],
   inspectionReserve: ["charter_inspection", "owner_inspection"],
+  airframeProgram: ["charter_airframe", "owner_airframe"],
+  maintenanceReserve: ["charter_maintenance", "owner_maintenance"],
   tripExpenseHourly: ["owner_trip"],
+  wifiAnnual: ["wifi_pl"],
+  subscriptionsAnnual: ["subscriptions_pl"],
+  cleaningAnnual: ["cleaning_pl"],
+  suppliesAnnual: ["supplies_pl"],
+  airportFeesAnnual: ["airport_fees_pl"],
   cabinAttendantSalary: ["crew_salaries"],
 };
 
@@ -38,6 +46,10 @@ export function parseWarehouseFieldVisibility(raw: unknown): Record<string, bool
   for (const key of proformaToggleableFieldKeys()) {
     if (typeof parsed[key] === "boolean") defaults[key] = parsed[key];
   }
+  // Custom line items (Data Warehouse → Line Items) are toggled by their `li_*` key.
+  for (const [key, value] of Object.entries(parsed)) {
+    if (isCustomLineItemKey(key) && typeof value === "boolean") defaults[key] = value;
+  }
   return defaults;
 }
 
@@ -51,6 +63,11 @@ export function buildProFormaLineVisibilityFromWarehouse(
     for (const lineKey of lineKeys ?? []) {
       lines[lineKey] = show;
     }
+  }
+  // A custom item's rows: `li_x` (fixed/revenue) or `charter_li_x` / `owner_li_x` (hourly).
+  for (const [key, show] of Object.entries(fieldVisibility)) {
+    if (!isCustomLineItemKey(key)) continue;
+    for (const lineKey of [key, `charter_${key}`, `owner_${key}`]) lines[lineKey] = show;
   }
   return lines;
 }

@@ -1,48 +1,13 @@
 import type { AssumptionMap } from "@/lib/assumptions";
 import type { ProFormaStatementRow } from "@/lib/proforma-statement";
-import { customFixedCostLineKeys } from "@/lib/proforma-custom-fixed-costs";
+import { DEFAULT_LINE_CATALOG, lineRowKeys } from "@/lib/line-item-catalog";
 import { isCharterUsageEnabled } from "@/lib/usage-type";
 
 /** Persisted on proposal assumptions (per aircraft category). */
 export const PROFORMA_VISIBILITY_KEY = "proforma_line_visibility";
 
-/** Line-item keys that support show/hide (toggleable statement lines). */
-export const PROFORMA_TOGGLEABLE_KEYS = [
-  "charter_revenue_block",
-  "fuel_surcharge",
-  "fet_refund",
-  "crew_salaries",
-  "crew_training_pl",
-  "pilot_charter_incentive_pl",
-  "management_fee_pl",
-  "maint_mgmt_fee_pl",
-  "hangar_pl",
-  "registration_pl",
-  "insurance_pl",
-  "wifi_pl",
-  "subscriptions_pl",
-  "cleaning_pl",
-  "supplies_pl",
-  "airport_fees_pl",
-  "financing_debt_pl",
-  "charter_fuel",
-  "charter_parts",
-  "charter_engine",
-  "charter_apu",
-  "charter_airframe",
-  "charter_inspection",
-  "charter_maintenance",
-  "owner_fuel",
-  "owner_parts",
-  "owner_engine",
-  "owner_apu",
-  "owner_airframe",
-  "owner_inspection",
-  "owner_maintenance",
-  "owner_trip",
-] as const;
-
-export type ProFormaToggleableKey = (typeof PROFORMA_TOGGLEABLE_KEYS)[number];
+/** Built-in line-item row keys that support show/hide (custom catalog lines add their own). */
+export const PROFORMA_TOGGLEABLE_KEYS: string[] = DEFAULT_LINE_CATALOG.flatMap(lineRowKeys);
 
 export function parseProFormaVisibility(assumptions: AssumptionMap): Record<string, boolean> {
   const raw = assumptions[PROFORMA_VISIBILITY_KEY];
@@ -83,6 +48,16 @@ export function setProFormaLineVisible(
   return serializeProFormaVisibility(next);
 }
 
+type StatementGroup = "revenue" | "fixed" | "charter" | "owner";
+
+/** Statement section headings (lib/proforma-statement.ts) → roll-up group. */
+const SECTION_GROUPS: Record<string, StatementGroup> = {
+  Revenue: "revenue",
+  "Fixed Ownership Costs": "fixed",
+  "Charter Variable Costs": "charter",
+  "Owner Variable Costs": "owner",
+};
+
 function lineAmount(row: ProFormaStatementRow): number {
   return row.annual ?? 0;
 }
@@ -97,56 +72,32 @@ export function applyProFormaVisibility(
   const charterEnabled = assumptions ? isCharterUsageEnabled(assumptions) : true;
   const visible = (key: string) => isProFormaLineVisible(key, visibility);
 
+  // Each toggleable line's group comes from the statement section it sits under, so
+  // catalog lines (including custom ones) roll up without hardcoded key lists.
   const lineAmounts = new Map<string, number>();
+  const groupKeys: Record<StatementGroup, string[]> = { revenue: [], fixed: [], charter: [], owner: [] };
+  let group: StatementGroup | null = null;
   for (const row of rows) {
+    if (row.kind === "section") {
+      group = SECTION_GROUPS[row.label] ?? null;
+      continue;
+    }
     if (row.kind === "line" && row.toggleable) {
       const raw = lineAmount(row);
       const amt =
         row.sign === "revenue" && row.key !== "fet_refund" ? Math.abs(raw) : raw;
       lineAmounts.set(row.key, amt);
+      if (group) groupKeys[group].push(row.key);
     }
   }
 
   const sumKeys = (keys: string[]) =>
     keys.filter(visible).reduce((s, k) => s + (lineAmounts.get(k) ?? 0), 0);
 
-  const revenueKeys = ["charter_revenue_block", "fuel_surcharge", "fet_refund"];
-  const fixedKeys = [
-    "crew_salaries",
-    "crew_training_pl",
-    "pilot_charter_incentive_pl",
-    "management_fee_pl",
-    "maint_mgmt_fee_pl",
-    "hangar_pl",
-    "registration_pl",
-    "insurance_pl",
-    "wifi_pl",
-    "subscriptions_pl",
-    "cleaning_pl",
-    "supplies_pl",
-    "airport_fees_pl",
-    "financing_debt_pl",
-    ...(assumptions ? customFixedCostLineKeys(assumptions) : []),
-  ];
-  const charterKeys = [
-    "charter_fuel",
-    "charter_parts",
-    "charter_engine",
-    "charter_apu",
-    "charter_airframe",
-    "charter_inspection",
-    "charter_maintenance",
-  ];
-  const ownerKeys = [
-    "owner_fuel",
-    "owner_parts",
-    "owner_engine",
-    "owner_apu",
-    "owner_airframe",
-    "owner_inspection",
-    "owner_maintenance",
-    "owner_trip",
-  ];
+  const revenueKeys = groupKeys.revenue;
+  const fixedKeys = groupKeys.fixed;
+  const charterKeys = groupKeys.charter;
+  const ownerKeys = groupKeys.owner;
 
   const totalRevenue = charterEnabled ? sumKeys(revenueKeys) : 0;
   const totalFixed = sumKeys(fixedKeys);

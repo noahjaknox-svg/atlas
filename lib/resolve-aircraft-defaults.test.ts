@@ -5,6 +5,8 @@ vi.mock("@/lib/db", () => ({
     aircraftType: { findUnique: vi.fn() },
     aircraftInstance: { findUnique: vi.fn() },
     fboHangarOverride: { findUnique: vi.fn() },
+    lineItem: { findMany: vi.fn().mockResolvedValue([]) },
+    aircraftTypeLineItemValue: { findMany: vi.fn().mockResolvedValue([]) },
     usageType: { findFirst: vi.fn() },
   },
 }));

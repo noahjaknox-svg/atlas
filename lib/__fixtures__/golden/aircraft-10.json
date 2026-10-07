@@ -1,0 +1,1758 @@
+{
+ "statementRows": [
+  {
+   "key": "section_revenue_Revenue",
+   "label": "Revenue",
+   "kind": "section",
+   "layout": "revenue",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "charter_revenue_block",
+   "label": "Charter Revenue",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 3600,
+   "hours": 502.85,
+   "annual": 1810260,
+   "monthly": 150855,
+   "toggleable": true
+  },
+  {
+   "key": "fuel_surcharge",
+   "label": "Fuel Surcharge",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 400,
+   "hours": 445,
+   "annual": 178000,
+   "monthly": 14833.3333,
+   "toggleable": true
+  },
+  {
+   "key": "fet_refund",
+   "label": "FET fuel tax refund",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 39.375,
+   "hours": 445,
+   "annual": 17521.875,
+   "monthly": 1460.1563,
+   "toggleable": true
+  },
+  {
+   "key": "total_revenue",
+   "label": "Total Revenue",
+   "kind": "subtotal",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": null,
+   "hours": 502.85,
+   "annual": 2005781.875,
+   "monthly": 167148.4896
+  },
+  {
+   "key": "section_fixed_Fixed Ownership Costs",
+   "label": "Fixed Ownership Costs",
+   "kind": "section",
+   "layout": "fixed",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "crew_salaries",
+   "label": "Crew Salaries & Benefits",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -742400,
+   "monthly": -61866.6667,
+   "toggleable": true
+  },
+  {
+   "key": "financing_debt_pl",
+   "label": "Debt service",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -426324,
+   "monthly": -35527,
+   "toggleable": true
+  },
+  {
+   "key": "hangar_pl",
+   "label": "Hangar",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -74088,
+   "monthly": -6174,
+   "toggleable": true
+  },
+  {
+   "key": "management_fee_pl",
+   "label": "Management Fee",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -50000,
+   "monthly": -4166.6667,
+   "toggleable": true
+  },
+  {
+   "key": "wifi_pl",
+   "label": "In-Flight Wi-Fi",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -47000,
+   "monthly": -3916.6667,
+   "toggleable": true
+  },
+  {
+   "key": "pilot_charter_incentive_pl",
+   "label": "Pilot Charter Incentive",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -44500,
+   "monthly": -3708.3333,
+   "toggleable": true
+  },
+  {
+   "key": "crew_training_pl",
+   "label": "Crew Training",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -40000,
+   "monthly": -3333.3333,
+   "toggleable": true
+  },
+  {
+   "key": "insurance_pl",
+   "label": "Insurance (Hull & Liability)",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -40000,
+   "monthly": -3333.3333,
+   "toggleable": true
+  },
+  {
+   "key": "maint_mgmt_fee_pl",
+   "label": "Maintenance Management Fee",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -30000,
+   "monthly": -2500,
+   "toggleable": true
+  },
+  {
+   "key": "registration_pl",
+   "label": "Registration / Taxes",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -20000,
+   "monthly": -1666.6667,
+   "toggleable": true
+  },
+  {
+   "key": "subscriptions_pl",
+   "label": "Subscriptions",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -20000,
+   "monthly": -1666.6667,
+   "toggleable": true
+  },
+  {
+   "key": "cleaning_pl",
+   "label": "Cleaning",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -5000,
+   "monthly": -416.6667,
+   "toggleable": true
+  },
+  {
+   "key": "supplies_pl",
+   "label": "Supplies",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -4500,
+   "monthly": -375,
+   "toggleable": true
+  },
+  {
+   "key": "airport_fees_pl",
+   "label": "Airport Fees",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -4000,
+   "monthly": -333.3333,
+   "toggleable": true
+  },
+  {
+   "key": "total_fixed_ownership",
+   "label": "Total Fixed Ownership Costs",
+   "kind": "subtotal",
+   "layout": "fixed",
+   "sign": "expense",
+   "rate": null,
+   "hours": null,
+   "annual": -1547812,
+   "monthly": -128984.3333
+  },
+  {
+   "key": "section_hourly_variable_Charter Variable Costs",
+   "label": "Charter Variable Costs",
+   "kind": "section",
+   "layout": "hourly_variable",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "charter_fuel",
+   "label": "Fuel",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 1209.375,
+   "hours": 445,
+   "annual": -538171.875,
+   "monthly": -44847.6562,
+   "toggleable": true
+  },
+  {
+   "key": "charter_parts",
+   "label": "Parts Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 175,
+   "hours": 445,
+   "annual": -77875,
+   "monthly": -6489.5833,
+   "toggleable": true
+  },
+  {
+   "key": "charter_engine",
+   "label": "Engine Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 821,
+   "hours": 445,
+   "annual": -365345,
+   "monthly": -30445.4167,
+   "toggleable": true
+  },
+  {
+   "key": "charter_apu",
+   "label": "APU Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 80,
+   "hours": 445,
+   "annual": -35600,
+   "monthly": -2966.6667,
+   "toggleable": true
+  },
+  {
+   "key": "charter_airframe",
+   "label": "Airframe Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 445,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true
+  },
+  {
+   "key": "charter_inspection",
+   "label": "Inspection Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 75,
+   "hours": 445,
+   "annual": -33375,
+   "monthly": -2781.25,
+   "toggleable": true
+  },
+  {
+   "key": "charter_maintenance",
+   "label": "Maintenance Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 445,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true
+  },
+  {
+   "key": "total_charter_variable",
+   "label": "Total Charter Variable Costs",
+   "kind": "subtotal",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": null,
+   "hours": 445,
+   "annual": -1050366.875,
+   "monthly": -87530.5729
+  },
+  {
+   "key": "section_bridge_Net Before Owner Use",
+   "label": "Net Before Owner Use",
+   "kind": "section",
+   "layout": "bridge",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "bridge_total_revenue",
+   "label": "Total Revenue",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "revenue",
+   "annual": 2005781.875,
+   "monthly": 167148.4896
+  },
+  {
+   "key": "bridge_fixed",
+   "label": "Less Fixed Ownership Costs",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -1547812,
+   "monthly": -128984.3333
+  },
+  {
+   "key": "bridge_charter_var",
+   "label": "Less Charter Variable Costs",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -1050366.875,
+   "monthly": -87530.5729
+  },
+  {
+   "key": "net_operating_pl",
+   "label": "Net Aircraft Operating Profit / (Loss) Before Owner Use",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -592397,
+   "monthly": -49366.4167
+  },
+  {
+   "key": "section_hourly_variable_Owner Variable Costs",
+   "label": "Owner Variable Costs",
+   "kind": "section",
+   "layout": "hourly_variable",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "owner_fuel",
+   "label": "Fuel",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 1209.375,
+   "hours": 5,
+   "annual": -6046.875,
+   "monthly": -503.9062,
+   "toggleable": true
+  },
+  {
+   "key": "owner_parts",
+   "label": "Parts Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 175,
+   "hours": 5,
+   "annual": -875,
+   "monthly": -72.9167,
+   "toggleable": true
+  },
+  {
+   "key": "owner_engine",
+   "label": "Engine Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 821,
+   "hours": 5,
+   "annual": -4105,
+   "monthly": -342.0833,
+   "toggleable": true
+  },
+  {
+   "key": "owner_apu",
+   "label": "APU Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 80,
+   "hours": 5,
+   "annual": -400,
+   "monthly": -33.3333,
+   "toggleable": true
+  },
+  {
+   "key": "owner_airframe",
+   "label": "Airframe Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 5,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true
+  },
+  {
+   "key": "owner_inspection",
+   "label": "Inspection Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 75,
+   "hours": 5,
+   "annual": -375,
+   "monthly": -31.25,
+   "toggleable": true
+  },
+  {
+   "key": "owner_maintenance",
+   "label": "Maintenance Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 5,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true
+  },
+  {
+   "key": "owner_trip",
+   "label": "Owner Trip Expense",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 250,
+   "hours": 5,
+   "annual": -1250,
+   "monthly": -104.1667,
+   "toggleable": true
+  },
+  {
+   "key": "total_owner_variable",
+   "label": "Total Owner Variable Costs",
+   "kind": "subtotal",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": null,
+   "hours": 5,
+   "annual": -13051.875,
+   "monthly": -1087.6562
+  },
+  {
+   "key": "section_owner_summary_Owner Cost Summary",
+   "label": "Owner Cost Summary",
+   "kind": "section",
+   "layout": "owner_summary",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "bridge_net_before_owner",
+   "label": "Net Before Owner Use",
+   "kind": "subtotal",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -592397,
+   "monthly": -49366.4167
+  },
+  {
+   "key": "bridge_owner_var",
+   "label": "Less Owner Variable Costs",
+   "kind": "subtotal",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -13051.875,
+   "monthly": -1087.6562
+  },
+  {
+   "key": "net_annual_owner",
+   "label": "Net Annual Owner Cost",
+   "kind": "total",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -605448.875,
+   "monthly": -50454.0729
+  },
+  {
+   "key": "net_monthly_owner",
+   "label": "Net Monthly Owner Cost",
+   "kind": "total",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -50454.0729,
+   "monthly": -4204.5061
+  },
+  {
+   "key": "cost_per_owner_hour",
+   "label": "Owner Flight Cost per Flight Hour",
+   "kind": "metric",
+   "layout": "owner_summary",
+   "sign": "neutral",
+   "annual": 146844.15,
+   "monthly": 146844.15,
+   "hours": 5
+  }
+ ],
+ "visibleRows": [
+  {
+   "key": "section_revenue_Revenue",
+   "label": "Revenue",
+   "kind": "section",
+   "layout": "revenue",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "charter_revenue_block",
+   "label": "Charter Revenue",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 3600,
+   "hours": 502.85,
+   "annual": 1810260,
+   "monthly": 150855,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "fuel_surcharge",
+   "label": "Fuel Surcharge",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 400,
+   "hours": 445,
+   "annual": 178000,
+   "monthly": 14833.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "fet_refund",
+   "label": "FET fuel tax refund",
+   "kind": "line",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": 39.375,
+   "hours": 445,
+   "annual": 17521.875,
+   "monthly": 1460.1563,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "total_revenue",
+   "label": "Total Revenue",
+   "kind": "subtotal",
+   "layout": "revenue",
+   "sign": "revenue",
+   "rate": null,
+   "hours": 502.85,
+   "annual": 2005781.875,
+   "monthly": 167148.4896
+  },
+  {
+   "key": "section_fixed_Fixed Ownership Costs",
+   "label": "Fixed Ownership Costs",
+   "kind": "section",
+   "layout": "fixed",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "crew_salaries",
+   "label": "Crew Salaries & Benefits",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -742400,
+   "monthly": -61866.6667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "financing_debt_pl",
+   "label": "Debt service",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -426324,
+   "monthly": -35527,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "hangar_pl",
+   "label": "Hangar",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -74088,
+   "monthly": -6174,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "management_fee_pl",
+   "label": "Management Fee",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": true
+  },
+  {
+   "key": "wifi_pl",
+   "label": "In-Flight Wi-Fi",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -47000,
+   "monthly": -3916.6667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "pilot_charter_incentive_pl",
+   "label": "Pilot Charter Incentive",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -44500,
+   "monthly": -3708.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "crew_training_pl",
+   "label": "Crew Training",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -40000,
+   "monthly": -3333.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "insurance_pl",
+   "label": "Insurance (Hull & Liability)",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -40000,
+   "monthly": -3333.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "maint_mgmt_fee_pl",
+   "label": "Maintenance Management Fee",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -30000,
+   "monthly": -2500,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "registration_pl",
+   "label": "Registration / Taxes",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -20000,
+   "monthly": -1666.6667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "subscriptions_pl",
+   "label": "Subscriptions",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": true
+  },
+  {
+   "key": "cleaning_pl",
+   "label": "Cleaning",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -5000,
+   "monthly": -416.6667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "supplies_pl",
+   "label": "Supplies",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -4500,
+   "monthly": -375,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "airport_fees_pl",
+   "label": "Airport Fees",
+   "kind": "line",
+   "layout": "fixed",
+   "sign": "expense",
+   "annual": -4000,
+   "monthly": -333.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "total_fixed_ownership",
+   "label": "Total Fixed Ownership Costs",
+   "kind": "subtotal",
+   "layout": "fixed",
+   "sign": "expense",
+   "rate": null,
+   "hours": null,
+   "annual": -1477812,
+   "monthly": -123151
+  },
+  {
+   "key": "section_hourly_variable_Charter Variable Costs",
+   "label": "Charter Variable Costs",
+   "kind": "section",
+   "layout": "hourly_variable",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "charter_fuel",
+   "label": "Fuel",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 1209.375,
+   "hours": 445,
+   "annual": -538171.875,
+   "monthly": -44847.6562,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_parts",
+   "label": "Parts Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 175,
+   "hours": 445,
+   "annual": -77875,
+   "monthly": -6489.5833,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_engine",
+   "label": "Engine Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 821,
+   "hours": 445,
+   "annual": -365345,
+   "monthly": -30445.4167,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_apu",
+   "label": "APU Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 80,
+   "hours": 445,
+   "annual": -35600,
+   "monthly": -2966.6667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_airframe",
+   "label": "Airframe Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 445,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_inspection",
+   "label": "Inspection Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 75,
+   "hours": 445,
+   "annual": -33375,
+   "monthly": -2781.25,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "charter_maintenance",
+   "label": "Maintenance Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 445,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "total_charter_variable",
+   "label": "Total Charter Variable Costs",
+   "kind": "subtotal",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": null,
+   "hours": 445,
+   "annual": -1050366.875,
+   "monthly": -87530.5729
+  },
+  {
+   "key": "section_bridge_Net Before Owner Use",
+   "label": "Net Before Owner Use",
+   "kind": "section",
+   "layout": "bridge",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "bridge_total_revenue",
+   "label": "Total Revenue",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "revenue",
+   "annual": 2005781.875,
+   "monthly": 167148.4896
+  },
+  {
+   "key": "bridge_fixed",
+   "label": "Less Fixed Ownership Costs",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -1477812,
+   "monthly": -123151
+  },
+  {
+   "key": "bridge_charter_var",
+   "label": "Less Charter Variable Costs",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -1050366.875,
+   "monthly": -87530.5729
+  },
+  {
+   "key": "net_operating_pl",
+   "label": "Net Aircraft Operating Profit / (Loss) Before Owner Use",
+   "kind": "subtotal",
+   "layout": "bridge",
+   "sign": "expense",
+   "annual": -522397,
+   "monthly": -43533.0833
+  },
+  {
+   "key": "section_hourly_variable_Owner Variable Costs",
+   "label": "Owner Variable Costs",
+   "kind": "section",
+   "layout": "hourly_variable",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "owner_fuel",
+   "label": "Fuel",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 1209.375,
+   "hours": 5,
+   "annual": -6046.875,
+   "monthly": -503.9062,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_parts",
+   "label": "Parts Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 175,
+   "hours": 5,
+   "annual": -875,
+   "monthly": -72.9167,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_engine",
+   "label": "Engine Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 821,
+   "hours": 5,
+   "annual": -4105,
+   "monthly": -342.0833,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_apu",
+   "label": "APU Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 80,
+   "hours": 5,
+   "annual": -400,
+   "monthly": -33.3333,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_airframe",
+   "label": "Airframe Programs",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 5,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_inspection",
+   "label": "Inspection Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 75,
+   "hours": 5,
+   "annual": -375,
+   "monthly": -31.25,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_maintenance",
+   "label": "Maintenance Reserve",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 0,
+   "hours": 5,
+   "annual": 0,
+   "monthly": 0,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "owner_trip",
+   "label": "Owner Trip Expense",
+   "kind": "line",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": 250,
+   "hours": 5,
+   "annual": -1250,
+   "monthly": -104.1667,
+   "toggleable": true,
+   "hidden": false
+  },
+  {
+   "key": "total_owner_variable",
+   "label": "Total Owner Variable Costs",
+   "kind": "subtotal",
+   "layout": "hourly_variable",
+   "sign": "expense",
+   "rate": null,
+   "hours": 5,
+   "annual": -13051.875,
+   "monthly": -1087.6562
+  },
+  {
+   "key": "section_owner_summary_Owner Cost Summary",
+   "label": "Owner Cost Summary",
+   "kind": "section",
+   "layout": "owner_summary",
+   "annual": null,
+   "monthly": null
+  },
+  {
+   "key": "bridge_net_before_owner",
+   "label": "Net Before Owner Use",
+   "kind": "subtotal",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -522397,
+   "monthly": -43533.0833
+  },
+  {
+   "key": "bridge_owner_var",
+   "label": "Less Owner Variable Costs",
+   "kind": "subtotal",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -13051.875,
+   "monthly": -1087.6562
+  },
+  {
+   "key": "net_annual_owner",
+   "label": "Net Annual Owner Cost",
+   "kind": "total",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -535448.875,
+   "monthly": -44620.7396
+  },
+  {
+   "key": "net_monthly_owner",
+   "label": "Net Monthly Owner Cost",
+   "kind": "total",
+   "layout": "owner_summary",
+   "sign": "expense",
+   "annual": -44620.7396,
+   "monthly": -3718.395
+  },
+  {
+   "key": "cost_per_owner_hour",
+   "label": "Owner Flight Cost per Flight Hour",
+   "kind": "metric",
+   "layout": "owner_summary",
+   "sign": "neutral",
+   "annual": 107089.775,
+   "monthly": 146844.15,
+   "hours": 5
+  }
+ ],
+ "totalFixed": 1047400,
+ "client": {
+  "metrics": {
+   "netAnnualCost": -535448.875,
+   "netMonthlyCost": -44620.7396,
+   "ownerHours": 5,
+   "charterRevenueOffset": 2005781.875,
+   "costPerOwnerHour": 107089.775,
+   "aircraftValue": 4000000
+  },
+  "proForma": {
+   "blendedFuelPrice": 0,
+   "fuelCostPerHour": 0,
+   "variableCostPerHour": 0,
+   "charterRevenue": 2005781.875,
+   "fuelSurchargeRevenue": 0,
+   "totalRevenue": 2005781.875,
+   "charterVariableCost": 1050366.875,
+   "ownerVariableCost": 13051.875,
+   "netBeforeOwner": -522397,
+   "netAnnualCost": -535448.875,
+   "netMonthlyCost": -44620.7396,
+   "costPerOwnerHour": 107089.775,
+   "insuranceEstimate": 0,
+   "lineItems": [
+    {
+     "key": "owner_variable",
+     "label": "Owner Variable Costs",
+     "category": "variable",
+     "annual": 13051.875,
+     "monthly": 1087.6563
+    },
+    {
+     "key": "total_revenue",
+     "label": "Total Revenue",
+     "category": "total",
+     "annual": 2005781.875,
+     "monthly": 167148.4896
+    },
+    {
+     "key": "total_fixed",
+     "label": "Total Fixed Costs",
+     "category": "fixed",
+     "annual": 1477812,
+     "monthly": 123151
+    }
+   ]
+  },
+  "fixedCostBreakdown": [
+   {
+    "label": "Crew Salaries & Benefits",
+    "annual": 742400,
+    "monthly": 61866.6667
+   },
+   {
+    "label": "Debt service",
+    "annual": 426324,
+    "monthly": 35527
+   },
+   {
+    "label": "Hangar",
+    "annual": 74088,
+    "monthly": 6174
+   },
+   {
+    "label": "In-Flight Wi-Fi",
+    "annual": 47000,
+    "monthly": 3916.6667
+   },
+   {
+    "label": "Pilot Charter Incentive",
+    "annual": 44500,
+    "monthly": 3708.3333
+   },
+   {
+    "label": "Crew Training",
+    "annual": 40000,
+    "monthly": 3333.3333
+   },
+   {
+    "label": "Insurance (Hull & Liability)",
+    "annual": 40000,
+    "monthly": 3333.3333
+   },
+   {
+    "label": "Maintenance Management Fee",
+    "annual": 30000,
+    "monthly": 2500
+   },
+   {
+    "label": "Registration / Taxes",
+    "annual": 20000,
+    "monthly": 1666.6667
+   },
+   {
+    "label": "Cleaning",
+    "annual": 5000,
+    "monthly": 416.6667
+   },
+   {
+    "label": "Supplies",
+    "annual": 4500,
+    "monthly": 375
+   },
+   {
+    "label": "Airport Fees",
+    "annual": 4000,
+    "monthly": 333.3333
+   }
+  ],
+  "summaryRows": [
+   {
+    "key": "fixed",
+    "label": "Fixed Ownership Costs",
+    "annual": 1477812
+   },
+   {
+    "key": "owner",
+    "label": "Owner Flight Costs",
+    "annual": 13051.875
+   },
+   {
+    "key": "charter_rev",
+    "label": "Charter Revenue Offset",
+    "annual": -2005781.875
+   }
+  ],
+  "statementRows": [
+   {
+    "key": "section_revenue_Revenue",
+    "label": "Revenue",
+    "kind": "section",
+    "layout": "revenue",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "charter_revenue_block",
+    "label": "Charter Revenue",
+    "kind": "line",
+    "layout": "revenue",
+    "sign": "revenue",
+    "rate": 3600,
+    "hours": 502.85,
+    "annual": 1810260,
+    "monthly": 150855,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "fuel_surcharge",
+    "label": "Fuel Surcharge",
+    "kind": "line",
+    "layout": "revenue",
+    "sign": "revenue",
+    "rate": 400,
+    "hours": 445,
+    "annual": 178000,
+    "monthly": 14833.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "fet_refund",
+    "label": "FET fuel tax refund",
+    "kind": "line",
+    "layout": "revenue",
+    "sign": "revenue",
+    "rate": 39.375,
+    "hours": 445,
+    "annual": 17521.875,
+    "monthly": 1460.1563,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "total_revenue",
+    "label": "Total Revenue",
+    "kind": "subtotal",
+    "layout": "revenue",
+    "sign": "revenue",
+    "rate": null,
+    "hours": 502.85,
+    "annual": 2005781.875,
+    "monthly": 167148.4896
+   },
+   {
+    "key": "section_fixed_Fixed Ownership Costs",
+    "label": "Fixed Ownership Costs",
+    "kind": "section",
+    "layout": "fixed",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "crew_salaries",
+    "label": "Crew Salaries & Benefits",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -742400,
+    "monthly": -61866.6667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "financing_debt_pl",
+    "label": "Debt service",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -426324,
+    "monthly": -35527,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "hangar_pl",
+    "label": "Hangar",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -74088,
+    "monthly": -6174,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "wifi_pl",
+    "label": "In-Flight Wi-Fi",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -47000,
+    "monthly": -3916.6667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "pilot_charter_incentive_pl",
+    "label": "Pilot Charter Incentive",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -44500,
+    "monthly": -3708.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "crew_training_pl",
+    "label": "Crew Training",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -40000,
+    "monthly": -3333.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "insurance_pl",
+    "label": "Insurance (Hull & Liability)",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -40000,
+    "monthly": -3333.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "maint_mgmt_fee_pl",
+    "label": "Maintenance Management Fee",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -30000,
+    "monthly": -2500,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "registration_pl",
+    "label": "Registration / Taxes",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -20000,
+    "monthly": -1666.6667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "cleaning_pl",
+    "label": "Cleaning",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -5000,
+    "monthly": -416.6667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "supplies_pl",
+    "label": "Supplies",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -4500,
+    "monthly": -375,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "airport_fees_pl",
+    "label": "Airport Fees",
+    "kind": "line",
+    "layout": "fixed",
+    "sign": "expense",
+    "annual": -4000,
+    "monthly": -333.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "total_fixed_ownership",
+    "label": "Total Fixed Ownership Costs",
+    "kind": "subtotal",
+    "layout": "fixed",
+    "sign": "expense",
+    "rate": null,
+    "hours": null,
+    "annual": -1477812,
+    "monthly": -123151
+   },
+   {
+    "key": "section_hourly_variable_Charter Variable Costs",
+    "label": "Charter Variable Costs",
+    "kind": "section",
+    "layout": "hourly_variable",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "charter_fuel",
+    "label": "Fuel",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 1209.375,
+    "hours": 445,
+    "annual": -538171.875,
+    "monthly": -44847.6562,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_parts",
+    "label": "Parts Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 175,
+    "hours": 445,
+    "annual": -77875,
+    "monthly": -6489.5833,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_engine",
+    "label": "Engine Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 821,
+    "hours": 445,
+    "annual": -365345,
+    "monthly": -30445.4167,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_apu",
+    "label": "APU Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 80,
+    "hours": 445,
+    "annual": -35600,
+    "monthly": -2966.6667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_airframe",
+    "label": "Airframe Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 0,
+    "hours": 445,
+    "annual": 0,
+    "monthly": 0,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_inspection",
+    "label": "Inspection Reserve",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 75,
+    "hours": 445,
+    "annual": -33375,
+    "monthly": -2781.25,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "charter_maintenance",
+    "label": "Maintenance Reserve",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 0,
+    "hours": 445,
+    "annual": 0,
+    "monthly": 0,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "total_charter_variable",
+    "label": "Total Charter Variable Costs",
+    "kind": "subtotal",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": null,
+    "hours": 445,
+    "annual": -1050366.875,
+    "monthly": -87530.5729
+   },
+   {
+    "key": "section_bridge_Net Before Owner Use",
+    "label": "Net Before Owner Use",
+    "kind": "section",
+    "layout": "bridge",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "bridge_total_revenue",
+    "label": "Total Revenue",
+    "kind": "subtotal",
+    "layout": "bridge",
+    "sign": "revenue",
+    "annual": 2005781.875,
+    "monthly": 167148.4896
+   },
+   {
+    "key": "bridge_fixed",
+    "label": "Less Fixed Ownership Costs",
+    "kind": "subtotal",
+    "layout": "bridge",
+    "sign": "expense",
+    "annual": -1477812,
+    "monthly": -123151
+   },
+   {
+    "key": "bridge_charter_var",
+    "label": "Less Charter Variable Costs",
+    "kind": "subtotal",
+    "layout": "bridge",
+    "sign": "expense",
+    "annual": -1050366.875,
+    "monthly": -87530.5729
+   },
+   {
+    "key": "net_operating_pl",
+    "label": "Net Aircraft Operating Profit / (Loss) Before Owner Use",
+    "kind": "subtotal",
+    "layout": "bridge",
+    "sign": "expense",
+    "annual": -522397,
+    "monthly": -43533.0833
+   },
+   {
+    "key": "section_hourly_variable_Owner Variable Costs",
+    "label": "Owner Variable Costs",
+    "kind": "section",
+    "layout": "hourly_variable",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "owner_fuel",
+    "label": "Fuel",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 1209.375,
+    "hours": 5,
+    "annual": -6046.875,
+    "monthly": -503.9062,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_parts",
+    "label": "Parts Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 175,
+    "hours": 5,
+    "annual": -875,
+    "monthly": -72.9167,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_engine",
+    "label": "Engine Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 821,
+    "hours": 5,
+    "annual": -4105,
+    "monthly": -342.0833,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_apu",
+    "label": "APU Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 80,
+    "hours": 5,
+    "annual": -400,
+    "monthly": -33.3333,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_airframe",
+    "label": "Airframe Programs",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 0,
+    "hours": 5,
+    "annual": 0,
+    "monthly": 0,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_inspection",
+    "label": "Inspection Reserve",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 75,
+    "hours": 5,
+    "annual": -375,
+    "monthly": -31.25,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_maintenance",
+    "label": "Maintenance Reserve",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 0,
+    "hours": 5,
+    "annual": 0,
+    "monthly": 0,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "owner_trip",
+    "label": "Owner Trip Expense",
+    "kind": "line",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": 250,
+    "hours": 5,
+    "annual": -1250,
+    "monthly": -104.1667,
+    "toggleable": true,
+    "hidden": false
+   },
+   {
+    "key": "total_owner_variable",
+    "label": "Total Owner Variable Costs",
+    "kind": "subtotal",
+    "layout": "hourly_variable",
+    "sign": "expense",
+    "rate": null,
+    "hours": 5,
+    "annual": -13051.875,
+    "monthly": -1087.6562
+   },
+   {
+    "key": "section_owner_summary_Owner Cost Summary",
+    "label": "Owner Cost Summary",
+    "kind": "section",
+    "layout": "owner_summary",
+    "annual": null,
+    "monthly": null
+   },
+   {
+    "key": "bridge_net_before_owner",
+    "label": "Net Before Owner Use",
+    "kind": "subtotal",
+    "layout": "owner_summary",
+    "sign": "expense",
+    "annual": -522397,
+    "monthly": -43533.0833
+   },
+   {
+    "key": "bridge_owner_var",
+    "label": "Less Owner Variable Costs",
+    "kind": "subtotal",
+    "layout": "owner_summary",
+    "sign": "expense",
+    "annual": -13051.875,
+    "monthly": -1087.6562
+   },
+   {
+    "key": "net_annual_owner",
+    "label": "Net Annual Owner Cost",
+    "kind": "total",
+    "layout": "owner_summary",
+    "sign": "expense",
+    "annual": -535448.875,
+    "monthly": -44620.7396
+   },
+   {
+    "key": "net_monthly_owner",
+    "label": "Net Monthly Owner Cost",
+    "kind": "total",
+    "layout": "owner_summary",
+    "sign": "expense",
+    "annual": -44620.7396,
+    "monthly": -3718.395
+   }
+  ]
+ }
+}
