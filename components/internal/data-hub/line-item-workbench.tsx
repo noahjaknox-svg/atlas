@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SECTION_TAB } from "@/lib/aircraft-type-line-sources";
+import { lineSource, SECTION_TAB } from "@/lib/aircraft-type-line-sources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/internal/data-hub/delete-confirm-dialog";
@@ -84,7 +84,13 @@ export function LineItemWorkbench() {
 
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const visible = q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+    // Calculated and FBO-derived lines (crew, hangar, fuel, debt service, …) are built into the
+    // pro forma, not values anyone enters per aircraft type, so they aren't listed here.
+    const listed = items.filter((i) => {
+      const src = lineSource(i);
+      return src.kind === "set_here" || (src.kind === "company" && !!src.overrideLine);
+    });
+    const visible = q ? listed.filter((i) => i.label.toLowerCase().includes(q)) : listed;
     return SECTIONS.map((s) => ({ ...s, items: visible.filter((i) => i.section === s.id) }));
   }, [items, search]);
 
@@ -199,6 +205,10 @@ export function LineItemWorkbench() {
             </div>
           ))}
         </nav>
+        <p className="shrink-0 border-t border-atlas-border px-4 py-3 text-xs leading-relaxed text-atlas-muted">
+          Calculated lines (crew, hangar, fuel, debt service, charter revenue) are built into the pro
+          forma and aren&rsquo;t listed here. Their sources are shown on each aircraft type.
+        </p>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -215,7 +225,7 @@ export function LineItemWorkbench() {
               </h2>
               <p className="mt-0.5 text-sm text-atlas-muted">
                 {selected?.calculatedFrom
-                  ? `Calculated: ${selected.calculatedFrom}`
+                  ? `Company default: ${selected.calculatedFrom}. Aircraft types can optionally override it.`
                   : builtIn
                     ? `Value set per aircraft type (Aircraft types → ${SECTION_TAB[draft.section]}).`
                     : draft.key

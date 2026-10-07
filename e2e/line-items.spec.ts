@@ -21,14 +21,20 @@ test.describe.serial("line items catalog", () => {
     await page.close();
   });
 
-  test("Line Items tab: built-ins are listed and calculated lines are described", async ({ page }) => {
+  test("Line Items tab: lists values entered per type and company defaults, not calculated lines", async ({ page }) => {
     await page.goto("/data-warehouse/data?tab=line-items");
     const list = page.getByRole("navigation", { name: "Line items" });
-    await expect(list.getByRole("button", { name: /^Hangar/ })).toBeVisible();
-    await list.getByRole("button", { name: /^Hangar/ }).click();
-    await expect(page.getByText(/Calculated: FBO hangar rate/)).toBeVisible();
-    await list.getByRole("button", { name: /^Wi-Fi|^In-Flight Wi-Fi/ }).click();
+    // Calculated / FBO-derived lines (and the FET refund) are not on the page.
+    for (const name of [/^Hangar/, /^Crew Salaries/, /^Crew Training/, /^Fuel\s*\$\/hr/, /^Debt service/, /^FET fuel tax/, /^Charter Revenue/, /^Fuel Surcharge/, /^Pilot Charter Incentive/]) {
+      await expect(list.getByRole("button", { name })).toHaveCount(0);
+    }
+    // Lines with a value on the aircraft type, and company defaults a type can override, are.
+    await list.getByRole("button", { name: /^In-Flight Wi-Fi/ }).click();
     await expect(page.getByText(/Value set per aircraft type/)).toBeVisible();
+    await list.getByRole("button", { name: /^Management Fee/ }).click();
+    await expect(page.getByText(/Company default: .*override it/)).toBeVisible();
+    // Positive control for the name pattern used above (a listed hourly line shows its unit).
+    await expect(list.getByRole("button", { name: /^Parts Programs\s*\$\/hr/ })).toBeVisible();
     // Built-ins can't be deleted.
     await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
   });
