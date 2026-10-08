@@ -242,4 +242,23 @@ describe("portal-block-layout", () => {
     const normalized = normalizePageBlocks([row]);
     expect(normalized[0]?.type).toBe("container");
   });
+
+  it("migrating a row keeps its own layout and card styling (they used to be dropped)", () => {
+    const layout = { widthDesktop: "normal", widthMobile: "full", align: "center", verticalAlign: "center", padding: "md" } as const;
+    const cols: ExperiencePageBlock[][] = [[{ id: "t1", type: "text", markdown: "A" }], [{ id: "t2", type: "text", markdown: "B" }]];
+    const sideBySide = migrateRowToContainer({ id: "r", type: "row", preset: "equal-2", gap: "md", columns: cols, blockLayout: layout, cellCardStyle: true });
+    expect(sideBySide.blockLayout).toEqual(layout);
+    expect(sideBySide.cellCardStyle).toBe(true);
+    const stacked = migrateRowToContainer({ id: "r2", type: "row", preset: "equal-2", gap: "md", display: "rows", columns: cols, blockLayout: layout });
+    expect(stacked.blockLayout).toEqual(layout);
+    // A row with no layout stays without one (falls back to defaults as before).
+    const plain = migrateRowToContainer({ id: "r3", type: "row", preset: "equal-2", gap: "md", columns: cols });
+    expect(plain.blockLayout).toBeUndefined();
+    expect(plain.cellCardStyle).toBeUndefined();
+    // Nested rows are migrated with their layout too.
+    const nested = normalizePageBlocks([{ id: "c", type: "container", rows: 1, cols: 1, gap: "md", columnWeights: [1], rowWeights: [1], cells: [[[{ id: "r4", type: "row", preset: "equal-2", gap: "md", columns: cols, blockLayout: layout }]]] } as ExperiencePageBlock]);
+    const inner = (nested[0] as Extract<ExperiencePageBlock, { type: "container" }>).cells[0]![0]![0]!;
+    expect(inner.type).toBe("container");
+    expect((inner as { blockLayout?: unknown }).blockLayout).toEqual(layout);
+  });
 });

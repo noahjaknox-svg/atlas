@@ -59,6 +59,11 @@ export function migrateRowToContainer(
   row: Extract<ExperiencePageBlock, { type: "row" }>
 ): Extract<ExperiencePageBlock, { type: "container" }> {
   const count = Math.max(1, row.columns.length);
+  // Carry the row's own layout (width/align/padding/visibility) and card styling across.
+  const carried = {
+    ...(row.blockLayout ? { blockLayout: row.blockLayout } : {}),
+    ...(row.cellCardStyle != null ? { cellCardStyle: row.cellCardStyle } : {}),
+  };
   if (row.display === "rows") {
     const rows = Math.min(4, count) as GridDimension;
     return {
@@ -71,6 +76,7 @@ export function migrateRowToContainer(
       rowWeights: equalWeights(rows),
       width: "full",
       cellAlign: "start",
+      ...carried,
       cells: row.columns.slice(0, rows).map((col) => [col]),
     };
   }
@@ -85,6 +91,7 @@ export function migrateRowToContainer(
     rowWeights: [1],
     width: "full",
     cellAlign: "start",
+    ...carried,
     cells: [row.columns.slice(0, cols).map((col) => col)],
   };
 }
