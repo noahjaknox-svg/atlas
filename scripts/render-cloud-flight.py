@@ -17,14 +17,14 @@ import cv2
 import imageio_ffmpeg
 import numpy as np
 
-LAYERS = 8
-ZOOM = 3.0            # each layer grows 1x -> ZOOM x over one loop
+LAYERS = 12
+ZOOM = 4.0            # each layer grows 1x -> ZOOM x over one loop
 TEX_BASE = 0.8      # fraction of the texture visible at scale 1 (smaller = bigger clouds)
-SKY_TOP = np.array([6, 14, 38], np.float32)
-SKY_HORIZON = np.array([60, 112, 176], np.float32)
+SKY_TOP = np.array([4, 8, 20], np.float32)
+SKY_HORIZON = np.array([36, 58, 92], np.float32)
 SUN_GLOW = np.array([255, 190, 130], np.float32)
-CLOUD_LIT = np.array([255, 250, 244], np.float32)
-CLOUD_SHADOW = np.array([62, 86, 128], np.float32)
+CLOUD_LIT = np.array([232, 238, 248], np.float32)
+CLOUD_SHADOW = np.array([14, 22, 40], np.float32)
 LIGHT = np.array([-0.55, -0.83], np.float32)   # toward the sun (x, y), screen space
 
 args = None
@@ -56,8 +56,8 @@ def build_texture(n, seed):
     rng = np.random.default_rng(seed)
     base = spectral_noise(n, rng, 1.45)
     detail = spectral_noise(n, rng, 1.0)
-    d = smoothstep(0.85, 1.35, base + 0.22 * detail)          # sparse billows, ~25% coverage
-    d = cv2.GaussianBlur(d, (0, 0), n / 1100)                   # soften edges
+    d = smoothstep(0.2, 1.2, base + 0.3 * detail)           # dense deck with gaps, ~55% coverage
+    d = cv2.GaussianBlur(d, (0, 0), n / 700)                   # soften edges
     small = cv2.GaussianBlur(d, (0, 0), n / 160)
     large = cv2.GaussianBlur(d, (0, 0), n / 22)
     step = int(n / 70)
@@ -82,7 +82,7 @@ def build_background(w, h):
     yv = (np.linspace(0, 1, h, dtype=np.float32)[:, None] - 0.5) * 2 * (h / w)
     r2 = (xs * 0.7) ** 2 + (yv * 1.4) ** 2
     glow = np.exp(-r2 * 3.2)[..., None] * 0.55
-    return sky + SUN_GLOW * glow * 0.45
+    return sky + SUN_GLOW * glow * 0.22
 
 
 def build_vignette(w, h):
@@ -91,10 +91,21 @@ def build_vignette(w, h):
     return (1.0 - 0.38 * np.clip((xs ** 2 + ys ** 2) / 2, 0, 1) ** 1.2)[..., None]
 
 
+def vp0(w, h, t):
+    return (w * 0.5 + w * 0.02 * math.sin(2 * math.pi * t), h * 0.46 + h * 0.015 * math.sin(4 * math.pi * t + 1.0))
+
+
+def radius_map(w, h, vp):
+    ys = (np.arange(h, dtype=np.float32) - vp[1])[:, None]
+    xs = (np.arange(w, dtype=np.float32) - vp[0])[None, :]
+    return np.sqrt(xs * xs + ys * ys) / (0.5 * math.hypot(w, h))
+
+
 def render_frame(f):
     w, h, frames = args.width, args.height, args.frames
     t = f / frames
     out = background.copy()
+    rr = radius_map(w, h, vp0(w, h, t))
     n = textures[0].shape[0]
     vp = np.array([w * 0.5 + w * 0.02 * math.sin(2 * math.pi * t),
                    h * 0.46 + h * 0.015 * math.sin(4 * math.pi * t + 1.0)], np.float32)
@@ -115,12 +126,14 @@ def render_frame(f):
                       [sn, c, tex_c - (sn * vp[0] + c * vp[1])]], np.float32)
         layer = cv2.warpAffine(textures[k], M, (w, h), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
                                borderMode=cv2.BORDER_REFLECT).astype(np.float32)
-        a = layer[..., 3:4] * (weight * 0.85 / 255.0)
+        mask = (0.18 + 0.82 * smoothstep(0.0, 1.0, rr * s ** 0.8 / 0.9))[..., None]
+        a = layer[..., 3:4] * (weight * 0.9 / 255.0) * mask
         haze = 1.0 - min(1.0, p * 1.6)             # far layers sink into the sky colour
-        rgb = layer[..., :3] * weight * 0.85
+        rgb = layer[..., :3] * (weight * 0.9) * mask
         rgb = rgb * (1 - 0.35 * haze) + SKY_HORIZON * a * 0.35 * haze
         out = out * (1 - a) + rgb
-    out *= vignette * 0.88
+    out += np.array([190, 208, 236], np.float32) * np.exp(-(rr * 2.6) ** 2)[..., None] * 0.14
+    out *= vignette * 0.9
     out += np.random.default_rng(f).normal(0, 0.9, out.shape[:2])[..., None].astype(np.float32)
     return np.clip(out, 0, 255).astype(np.uint8)
 
