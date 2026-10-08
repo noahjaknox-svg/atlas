@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ExperiencePageBlock } from "@/lib/experience-content";
+import { blockLabel } from "@/lib/portal-block-layout";
 import { cn } from "@/lib/utils";
 import { DESIGNER_BLOCK_TYPES } from "./portal-designer-types";
 
@@ -35,7 +36,7 @@ function SortableBlockRow({
     id: block.id,
   });
 
-  const label = DESIGNER_BLOCK_TYPES.find((t) => t.type === block.type)?.label ?? block.type;
+  const label = DESIGNER_BLOCK_TYPES.find((t) => t.type === block.type)?.label ?? blockLabel(block);
 
   return (
     <div

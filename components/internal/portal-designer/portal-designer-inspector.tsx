@@ -420,6 +420,7 @@ function LayoutSelect({
     <div className={cn(highlighted && "rounded-md ring-1 ring-atlas-accent/40")}>
       <Label className="text-sm">{label}</Label>
       <select
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="atlas-input mt-0.5 h-7 w-full text-sm"

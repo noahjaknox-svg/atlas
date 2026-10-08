@@ -28,10 +28,9 @@ DO NOT:
 - Inline CSS via style attributes (preferred for layout)
 - A single <style> tag for complex selectors if needed
 
-## Animation — prefer none; static image as the fallback
-- Avoid CSS @keyframes / animation / transition. They don't play for viewers with reduced motion turned on, in some browsers, or in PDF/print, and the designer flags any HTML that uses them.
-- If you do add a small animation, the un-animated (initial or final) state must still show every word and number — never hide content until an animation runs (no opacity:0 start states).
-- If the request needs motion you can't do safely this way, don't fake it: tell me to use an Image block with a static picture instead (and describe what that image should show), or the built-in animated "Stat" / "Block vs flight" blocks for a count-up number or the charter payback bars.
+## Animation — CSS only, safe finished state; static image as the fallback
+- Animation is fine here, CSS only (no <script>). It won't play for viewers with reduced motion turned on, in some browsers, or in PDF/print, and the designer flags any HTML that uses it — so the un-animated (final) state must still show every word and number. Never hide content until an animation runs (no opacity:0 start states), and put the motion inside @media (prefers-reduced-motion: no-preference).
+- If the request needs motion you can't do safely this way, don't fake it: tell me to use an Image block with a static picture instead (and describe what that image should show), or the built-in animated "Stat" block for a count-up number.
 - iframe embeds (YouTube, Google Maps, Typeform, etc.) with these attributes:
   src, width, height, frameborder, allow, allowfullscreen, loading, title, referrerpolicy, class, style, id
 

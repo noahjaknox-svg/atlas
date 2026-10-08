@@ -1,4 +1,5 @@
 import type {
+  BlockLayout,
   ExperienceContentBlocks,
   ExperienceGalleryItem,
   ExperiencePageBlock,
@@ -127,36 +128,48 @@ export function createEmptyRow(
   };
 }
 
+/**
+ * Layout every newly added leaf block starts with: the standard "Normal" width, centered.
+ * Written explicitly so a block doesn't change if the render-time fallbacks or branding
+ * width presets change later. Containers and rows are left alone (their layout is
+ * resolved by resolveShellBlockLayout).
+ */
+export const NEW_BLOCK_LAYOUT: BlockLayout = {
+  widthDesktop: "normal",
+  widthMobile: "normal",
+  align: "center",
+};
+
 export function createEmptyBlock(type: ExperiencePageBlock["type"]): ExperiencePageBlock {
   switch (type) {
     case "text":
-      return { id: createBlockId(), type: "text", markdown: "" };
+      return { id: createBlockId(), type: "text", blockLayout: { ...NEW_BLOCK_LAYOUT }, markdown: "" };
     case "heading":
-      return { id: createBlockId(), type: "heading", level: 2, text: "Heading" };
+      return { id: createBlockId(), type: "heading", blockLayout: { ...NEW_BLOCK_LAYOUT }, level: 2, text: "Heading" };
     case "image":
-      return { id: createBlockId(), type: "image", url: "", alt: "", caption: "", imageSize: "fit" };
+      return { id: createBlockId(), type: "image", blockLayout: { ...NEW_BLOCK_LAYOUT }, url: "", alt: "", caption: "", imageSize: "fit" };
     case "gallery":
-      return { id: createBlockId(), type: "gallery", items: [], layout: "editorialPair" };
+      return { id: createBlockId(), type: "gallery", blockLayout: { ...NEW_BLOCK_LAYOUT }, items: [], layout: "editorialPair" };
     case "html":
-      return { id: createBlockId(), type: "html", html: "" };
+      return { id: createBlockId(), type: "html", blockLayout: { ...NEW_BLOCK_LAYOUT }, html: "" };
     case "spacer":
-      return { id: createBlockId(), type: "spacer", size: "md" };
+      return { id: createBlockId(), type: "spacer", blockLayout: { ...NEW_BLOCK_LAYOUT }, size: "md" };
     case "quote":
-      return { id: createBlockId(), type: "quote", text: "", attribution: "" };
+      return { id: createBlockId(), type: "quote", blockLayout: { ...NEW_BLOCK_LAYOUT }, text: "", attribution: "" };
     case "cta":
-      return { id: createBlockId(), type: "cta", label: "Learn more", url: "", variant: "primary" };
+      return { id: createBlockId(), type: "cta", blockLayout: { ...NEW_BLOCK_LAYOUT }, label: "Learn more", url: "", variant: "primary" };
     case "video":
-      return { id: createBlockId(), type: "video", url: "", posterUrl: "", caption: "" };
+      return { id: createBlockId(), type: "video", blockLayout: { ...NEW_BLOCK_LAYOUT }, url: "", posterUrl: "", caption: "" };
     case "stat":
-      return { id: createBlockId(), type: "stat", value: "100+", label: "Years combined experience", countUp: true };
+      return { id: createBlockId(), type: "stat", blockLayout: { ...NEW_BLOCK_LAYOUT }, value: "100+", label: "Years combined experience", countUp: true };
     case "blockVsFlight":
-      return { id: createBlockId(), type: "blockVsFlight" };
+      return { id: createBlockId(), type: "blockVsFlight", blockLayout: { ...NEW_BLOCK_LAYOUT } };
     case "row":
       return createEmptyRow(2);
     case "container":
       return createEmptyContainer(1, 1);
     default:
-      return { id: createBlockId(), type: "text", markdown: "" };
+      return { id: createBlockId(), type: "text", markdown: "", blockLayout: { ...NEW_BLOCK_LAYOUT } };
   }
 }
 
