@@ -134,6 +134,7 @@ function BlockLayoutFrame({
   inGridCell,
   shrinkWrap = false,
   designChrome = false,
+  wrapContent,
   children,
 }: {
   blockLayout?: BlockLayout;
@@ -141,13 +142,15 @@ function BlockLayoutFrame({
   inGridCell: boolean;
   shrinkWrap?: boolean;
   designChrome?: boolean;
+  /** Wraps the block's content inside its width box (e.g. the designer's selection frame + drag tab). */
+  wrapContent?: (inner: React.ReactNode) => React.ReactNode;
   children: React.ReactNode;
 }) {
   const hAlign = blockLayout?.align ?? "center";
   const vAlign = blockLayout?.verticalAlign ?? "top";
   const paddingClass = getBlockPaddingClass(blockLayout?.padding);
 
-  const innerContent = designChrome ? (
+  const chromedContent = designChrome ? (
     <div className={cn("h-full w-full", paddingClass)}>
       <div
         className={cn(
@@ -161,6 +164,7 @@ function BlockLayoutFrame({
   ) : (
     children
   );
+  const innerContent = wrapContent ? wrapContent(chromedContent) : chromedContent;
 
   return (
     <div
@@ -567,23 +571,26 @@ export function ExperienceBlockRenderer({
                   allowVerticalAlign && "flex-1"
                 )}
               >
-                <DesignBlockShell
-                  block={block}
-                  path={blockPath}
-                  selectedBlockId={selectedBlockId}
-                  onSelectBlock={onSelectBlock}
-                  onBlockContextMenu={onBlockContextMenu}
-                  fillCell={inGridCell}
+                <BlockLayoutFrame
+                  blockLayout={shellBlockLayout}
+                  layoutSettings={layoutSettings}
+                  inGridCell={inGridCell}
+                  designChrome
+                  wrapContent={(inner) => (
+                    <DesignBlockShell
+                      block={block}
+                      path={blockPath}
+                      selectedBlockId={selectedBlockId}
+                      onSelectBlock={onSelectBlock}
+                      onBlockContextMenu={onBlockContextMenu}
+                      fillCell={inGridCell}
+                    >
+                      {inner}
+                    </DesignBlockShell>
+                  )}
                 >
-                  <BlockLayoutFrame
-                    blockLayout={shellBlockLayout}
-                    layoutSettings={layoutSettings}
-                    inGridCell={inGridCell}
-                    designChrome
-                  >
-                    {gridContent}
-                  </BlockLayoutFrame>
-                </DesignBlockShell>
+                  {gridContent}
+                </BlockLayoutFrame>
                 <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
               </div>
             );
@@ -680,23 +687,26 @@ export function ExperienceBlockRenderer({
                   allowVerticalAlign && "flex-1"
                 )}
               >
-                <DesignBlockShell
-                  block={block}
-                  path={blockPath}
-                  selectedBlockId={selectedBlockId}
-                  onSelectBlock={onSelectBlock}
-                  onBlockContextMenu={onBlockContextMenu}
-                  fillCell={inGridCell}
+                <BlockLayoutFrame
+                  blockLayout={shellBlockLayout}
+                  layoutSettings={layoutSettings}
+                  inGridCell={inGridCell}
+                  designChrome
+                  wrapContent={(inner) => (
+                    <DesignBlockShell
+                      block={block}
+                      path={blockPath}
+                      selectedBlockId={selectedBlockId}
+                      onSelectBlock={onSelectBlock}
+                      onBlockContextMenu={onBlockContextMenu}
+                      fillCell={inGridCell}
+                    >
+                      {inner}
+                    </DesignBlockShell>
+                  )}
                 >
-                  <BlockLayoutFrame
-                    blockLayout={shellBlockLayout}
-                    layoutSettings={layoutSettings}
-                    inGridCell={inGridCell}
-                    designChrome
-                  >
-                    {rowGrid}
-                  </BlockLayoutFrame>
-                </DesignBlockShell>
+                  {rowGrid}
+                </BlockLayoutFrame>
                 <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, blockIndex + 1)} />
               </div>
             );
