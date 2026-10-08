@@ -29,7 +29,11 @@ test("tab switches don't reload the page from the server", async ({ page }) => {
   await expect(page.getByPlaceholder(/search types/i)).toBeVisible();
   const documentRequests: string[] = [];
   page.on("request", (r) => {
-    if (r.resourceType() === "document" || r.headers()["rsc"] === "1") documentRequests.push(r.url());
+    // Real server round-trips only. Next's own background link prefetches (next-router-prefetch) can land
+    // at any time and are not a page reload, so counting them made this check flaky.
+    const h = r.headers();
+    const isPrefetch = h["next-router-prefetch"] === "1" || h["purpose"] === "prefetch";
+    if (!isPrefetch && (r.resourceType() === "document" || h["rsc"] === "1")) documentRequests.push(r.url());
   });
   const nav = page.getByRole("navigation", { name: "Data warehouse sections" });
   for (const label of ["Tails", "Airports", "FBOs", "Aircraft types"]) {
