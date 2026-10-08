@@ -196,6 +196,7 @@ export function PortalDesignerPageCode({
       </p>
       <textarea
         ref={codeRef}
+        aria-label="Page code JSON"
         value={code}
         onChange={(e) => setCode(e.target.value)}
         spellCheck={false}

@@ -44,7 +44,8 @@ test("there is no Block vs flight button, but existing Block vs flight blocks st
 
   // The Aircraft Charter page has one; it is still listed and editable.
   await page.getByRole("navigation", { name: "Designer pages" }).getByRole("button", { name: "Aircraft Charter", exact: true }).click();
-  const existing = page.getByText(/^Block vs flight/).first();
+  // The canvas drag tab is also labelled with the block name; the Outline row is the last match.
+  const existing = page.getByText(/^Block vs flight/).last();
   await expect(existing).toBeVisible();
   await existing.click();
   await expect(page.getByLabel("Desktop width")).toBeVisible();

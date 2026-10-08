@@ -591,6 +591,19 @@
     background: rgba(201, 168, 76, 0.4);
   }
 
+  /* Designer canvas drag tab: visible on the selected block, and on the innermost hovered block. */
+  .design-shell-tab {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .design-shell:hover:not(:has(.design-shell:hover)) > .design-shell-tab,
+  .design-shell[data-selected="true"] > .design-shell-tab,
+  .design-shell-tab:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   /** Block container width from --block-width / --block-width-mobile CSS vars. */
   .block-width-responsive {
     width: var(--block-width);

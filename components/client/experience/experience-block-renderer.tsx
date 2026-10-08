@@ -7,6 +7,7 @@ import type { PortalVariableContext } from "@/lib/portal-variables";
 import { resolvePortalVariables } from "@/lib/portal-variables";
 import type { CSSProperties } from "react";
 import {
+  blockLabel,
   containerGridProps,
   getBlockPaddingClass,
   getLeafHorizontalJustifyClass,
@@ -325,23 +326,25 @@ function DesignBlockShell({
   return (
     <div
       ref={setNodeRef}
+      data-selected={isSelected ? "true" : undefined}
       className={cn(
-        "relative w-full min-w-0 pl-7",
+        "design-shell relative w-full min-w-0",
         fillCell && "flex min-h-0 flex-1 flex-col",
         isDragging && "opacity-40"
       )}
     >
+      {/* Drag tab: sits on the block's top-left corner (hover or selected) — drag it to rearrange. */}
       <button
         type="button"
         aria-label="Drag to reorder"
-        className="absolute bottom-0 left-0 top-0 z-10 flex w-6 min-h-[44px] cursor-grab items-center justify-center rounded-l-lg bg-atlas-bg/80 text-atlas-muted active:cursor-grabbing"
+        title={`Drag to move this ${blockLabel(block).toLowerCase()}`}
+        className="design-shell-tab absolute -top-[22px] left-0 z-20 flex h-[22px] cursor-grab items-center gap-1 rounded-t-md bg-atlas-accent px-2 text-[10px] font-medium leading-none text-atlas-bg active:cursor-grabbing"
         onClick={(e) => e.stopPropagation()}
         {...listeners}
         {...attributes}
       >
-        <span className="text-[10px] leading-none" aria-hidden>
-          ⋮⋮
-        </span>
+        <span aria-hidden>⋮⋮</span>
+        <span className="max-w-[9rem] truncate">{blockLabel(block)}</span>
       </button>
       <div
         role="button"
@@ -558,7 +561,11 @@ export function ExperienceBlockRenderer({
             return (
               <div
                 key={block.id}
-                className={cn(inGridCell && "flex min-h-0 w-full flex-col")}
+                className={cn(
+                  inGridCell && "flex min-h-0 w-full flex-col",
+                  // A lone block in a cell/column fills it, so Vertical align (center/bottom) has room to act.
+                  allowVerticalAlign && "flex-1"
+                )}
               >
                 <DesignBlockShell
                   block={block}
@@ -608,6 +615,8 @@ export function ExperienceBlockRenderer({
               key={block.id}
               className={cn(
                 inGridCell && "flex min-h-0 w-full flex-col",
+                  // A lone block in a cell/column fills it, so Vertical align (center/bottom) has room to act.
+                  allowVerticalAlign && "flex-1",
                 visibilityClasses(shellBlockLayout?.visibility)
               )}
             >
@@ -665,7 +674,11 @@ export function ExperienceBlockRenderer({
             return (
               <div
                 key={block.id}
-                className={cn(inGridCell && "flex min-h-0 w-full flex-col")}
+                className={cn(
+                  inGridCell && "flex min-h-0 w-full flex-col",
+                  // A lone block in a cell/column fills it, so Vertical align (center/bottom) has room to act.
+                  allowVerticalAlign && "flex-1"
+                )}
               >
                 <DesignBlockShell
                   block={block}
@@ -715,6 +728,8 @@ export function ExperienceBlockRenderer({
               key={block.id}
               className={cn(
                 inGridCell && "flex min-h-0 w-full flex-col",
+                  // A lone block in a cell/column fills it, so Vertical align (center/bottom) has room to act.
+                  allowVerticalAlign && "flex-1",
                 visibilityClasses(shellBlockLayout?.visibility)
               )}
             >

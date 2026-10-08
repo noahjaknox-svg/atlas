@@ -80,6 +80,7 @@ export function PortalDesignerInspector({
   designViewport,
   selectedBlockPath,
   usageTypes,
+  onBackToPage,
 }: {
   section: DesignerSection;
   selectedBlock: ExperiencePageBlock | null;
@@ -92,6 +93,8 @@ export function PortalDesignerInspector({
   designViewport?: PreviewViewport;
   selectedBlockPath?: BlockPath;
   usageTypes?: { id: string; name: string }[];
+  /** Deselect the block to return to the page's settings. */
+  onBackToPage?: () => void;
 }) {
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
@@ -115,56 +118,73 @@ export function PortalDesignerInspector({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-        <div>
-          <Label className="text-sm">Page name</Label>
-          <p className="mt-0.5 text-xs text-atlas-muted">
-            Used in the page list and navigation only. Add a Heading block to show a title on the page.
-          </p>
-          <Input
-            value={section.title}
-            onChange={(e) => onPatchSection({ title: e.target.value })}
-            className="mt-1 h-9 text-sm"
-          />
-        </div>
+        {!selectedBlock ? (
+          <>
+            <div>
+              <Label className="text-sm">Page name</Label>
+              <p className="mt-0.5 text-xs text-atlas-muted">
+                Used in the page list and navigation only. Add a Heading block to show a title on the page.
+              </p>
+              <Input
+                value={section.title}
+                onChange={(e) => onPatchSection({ title: e.target.value })}
+                className="mt-1 h-9 text-sm"
+              />
+            </div>
 
-        {isCustomPortalPage(section) ? (
-          <div>
-            <Label className="text-sm">URL slug</Label>
-            <Input
-              value={section.pageSlug ?? ""}
-              onChange={(e) => onPatchSection({ pageSlug: e.target.value })}
-              className="mt-1 h-9 font-mono text-sm"
-              placeholder="my-custom-page"
-            />
-          </div>
-        ) : null}
+            {isCustomPortalPage(section) ? (
+              <div>
+                <Label className="text-sm">URL slug</Label>
+                <Input
+                  value={section.pageSlug ?? ""}
+                  onChange={(e) => onPatchSection({ pageSlug: e.target.value })}
+                  className="mt-1 h-9 font-mono text-sm"
+                  placeholder="my-custom-page"
+                />
+              </div>
+            ) : null}
 
-        {usageTypes && usageTypes.length > 0 ? (
-          <div>
-            <Label className="text-sm">Usage types</Label>
-            <p className="mt-0.5 text-sm text-atlas-text">
-              {(section.usageTypeIds ?? []).length === 0
-                ? "All usage types"
-                : usageTypes
-                    .filter((ut) => section.usageTypeIds?.includes(ut.id))
-                    .map((ut) => ut.name)
-                    .join(", ") || "All usage types"}
+            {usageTypes && usageTypes.length > 0 ? (
+              <div>
+                <Label className="text-sm">Usage types</Label>
+                <p className="mt-0.5 text-sm text-atlas-text">
+                  {(section.usageTypeIds ?? []).length === 0
+                    ? "All usage types"
+                    : usageTypes
+                        .filter((ut) => section.usageTypeIds?.includes(ut.id))
+                        .map((ut) => ut.name)
+                        .join(", ") || "All usage types"}
+                </p>
+                <p className="mt-0.5 text-xs text-atlas-muted">
+                  Set in{" "}
+                  <a
+                    href={`${ROUTES.dataWarehouse.data}?tab=usage-types`}
+                    className="text-atlas-accent hover:underline"
+                  >
+                    Data Warehouse → Usage Types → Portal pages
+                  </a>
+                  .
+                </p>
+              </div>
+            ) : null}
+
+            <p className="text-sm text-atlas-muted">
+              Select a block in the preview or block list to edit its content.
             </p>
-            <p className="mt-0.5 text-xs text-atlas-muted">
-              Set in{" "}
-              <a
-                href={`${ROUTES.dataWarehouse.data}?tab=usage-types`}
-                className="text-atlas-accent hover:underline"
-              >
-                Data Warehouse → Usage Types → Portal pages
-              </a>
-              .
-            </p>
-          </div>
+          </>
         ) : null}
 
         {selectedBlock ? (
           <>
+            {onBackToPage ? (
+              <button
+                type="button"
+                onClick={onBackToPage}
+                className="text-xs text-atlas-accent hover:underline"
+              >
+                ← Page settings
+              </button>
+            ) : null}
             {blockWarnings.length > 0 ? (
               <ul className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-200">
                 {blockWarnings.map((w, i) => (
@@ -201,11 +221,7 @@ export function PortalDesignerInspector({
               selectedBlockPath={selectedBlockPath}
             />
           </>
-        ) : (
-          <p className="text-sm text-atlas-muted">
-            Select a block in the preview or block list to edit its content.
-          </p>
-        )}
+        ) : null}
       </div>
 
       {selectedBlock?.type === "html" ? (
