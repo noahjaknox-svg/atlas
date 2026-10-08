@@ -91,6 +91,18 @@ export function PortalDesignerImageCropModal({
   const cropAspect =
     aspectMode === "square" ? 1 : aspectMode === "custom" ? customAspect : undefined;
 
+  // Reopening should start where the crop was saved, not back at the centre — but only while the
+  // aspect is still the saved one (changing aspect starts a fresh crop).
+  const keepSavedCrop =
+    crop != null &&
+    crop.width > 0 &&
+    crop.height > 0 &&
+    aspectMode === deriveInitialAspectMode(cropAspectRatio) &&
+    (aspectMode !== "custom" || Math.abs((customAspect ?? 0) - (cropAspectRatio ?? 0)) < 0.02);
+  const initialArea = keepSavedCrop
+    ? { x: crop!.x * 100, y: crop!.y * 100, width: crop!.width * 100, height: crop!.height * 100 }
+    : undefined;
+
   const cropperKey =
     aspectMode === "custom"
       ? `custom-${customAspect ?? "invalid"}`
@@ -225,6 +237,7 @@ export function PortalDesignerImageCropModal({
               crop={cropPos}
               zoom={zoom}
               aspect={cropAspect}
+              initialCroppedAreaPercentages={initialArea}
               onCropChange={setCropPos}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}

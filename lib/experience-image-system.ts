@@ -153,18 +153,31 @@ export function getImageSizeClasses(size: ImageDisplaySize = "fit"): string {
   }
 }
 
-/** Uniform scale so crop region fills frame without stretching non-square sources. */
-export function cropUniformScale(crop: ImageCropRect): number {
-  if (crop.width <= 0 || crop.height <= 0) return 1;
-  return 1 / Math.max(crop.width, crop.height);
-}
-
-export function cropTransformStyle(crop?: ImageCropRect): CSSProperties | undefined {
-  if (!crop || crop.width <= 0 || crop.height <= 0) return undefined;
-  const scale = cropUniformScale(crop);
+/**
+ * Style that places the full image so exactly the saved crop rectangle fills its frame.
+ *
+ * `crop` holds the crop as fractions of the source image (x, y, width, height), and the frame's
+ * aspect ratio is the crop's own pixel aspect (cropAspectRatio), so the image only needs to be
+ * stretched to 1/w by 1/h of the frame and shifted by -x/w, -y/h of it. This is exact for any
+ * position, including vertical moves — the previous transform-origin trick was only right when
+ * the crop touched the top-left corner.
+ */
+export function cropPlacementStyle(crop?: ImageCropRect): CSSProperties | undefined {
+  if (!crop || !(crop.width > 0) || !(crop.height > 0)) return undefined;
+  const w = Math.min(1, crop.width);
+  const h = Math.min(1, crop.height);
+  // Keep the crop inside the image so a slightly out-of-range save can't expose empty space.
+  const x = Math.max(0, Math.min(crop.x, 1 - w));
+  const y = Math.max(0, Math.min(crop.y, 1 - h));
   return {
-    transform: `scale(${scale})`,
-    transformOrigin: `${crop.x * 100}% ${crop.y * 100}%`,
+    position: "absolute",
+    width: `${(100 / w).toFixed(4)}%`,
+    height: `${(100 / h).toFixed(4)}%`,
+    left: `${((-100 * x) / w).toFixed(4)}%`,
+    top: `${((-100 * y) / h).toFixed(4)}%`,
+    right: "auto",
+    bottom: "auto",
+    maxWidth: "none",
   };
 }
 

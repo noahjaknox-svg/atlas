@@ -1,24 +1,51 @@
 import { describe, expect, it } from "vitest";
 import {
   cropFrameAspectRatio,
-  cropTransformStyle,
-  cropUniformScale,
+  cropPlacementStyle,
   resolveImageDisplaySize,
 } from "./experience-image-system";
 
-describe("cropUniformScale", () => {
-  it("uses equal scale for square pixel crop on non-square source", () => {
-    // 500x500 crop on 2000x1000 image → normalized 0.25 x 0.5
-    const crop = { x: 0.1, y: 0.2, width: 0.25, height: 0.5 };
-    const scale = cropUniformScale(crop);
-    expect(scale).toBe(2); // 1 / max(0.25, 0.5)
-    const style = cropTransformStyle(crop);
-    expect(style?.transform).toBe("scale(2)");
-    expect(style?.transform).not.toContain("scale(4, 2)");
+describe("cropPlacementStyle", () => {
+  const pct = (v: unknown) => parseFloat(String(v));
+
+  it("sizes and offsets the image so the crop rectangle exactly fills the frame", () => {
+    // Crop covers x 0.1–0.4 and y 0.2–0.7 of the source.
+    const style = cropPlacementStyle({ x: 0.1, y: 0.2, width: 0.3, height: 0.5 })!;
+    expect(pct(style.width)).toBeCloseTo(100 / 0.3, 2);
+    expect(pct(style.height)).toBeCloseTo(100 / 0.5, 2);
+    expect(pct(style.left)).toBeCloseTo((-100 * 0.1) / 0.3, 2);
+    expect(pct(style.top)).toBeCloseTo((-100 * 0.2) / 0.5, 2);
   });
 
-  it("returns 1 for invalid crop", () => {
-    expect(cropUniformScale({ x: 0, y: 0, width: 0, height: 0.5 })).toBe(1);
+  it("moving the crop up or down moves the image by exactly that amount", () => {
+    const top = cropPlacementStyle({ x: 0, y: 0, width: 1, height: 0.5 })!;
+    const middle = cropPlacementStyle({ x: 0, y: 0.25, width: 1, height: 0.5 })!;
+    const bottom = cropPlacementStyle({ x: 0, y: 0.5, width: 1, height: 0.5 })!;
+    // Frame shows the top half, the middle half, then the bottom half of the image.
+    expect(pct(top.top)).toBeCloseTo(0, 4);
+    expect(pct(middle.top)).toBeCloseTo(-50, 4);
+    expect(pct(bottom.top)).toBeCloseTo(-100, 4);
+    // Each position is distinct (the old transform-origin math collapsed these).
+    expect(new Set([top.top, middle.top, bottom.top]).size).toBe(3);
+  });
+
+  it("a full-image crop is the identity placement", () => {
+    const style = cropPlacementStyle({ x: 0, y: 0, width: 1, height: 1 })!;
+    expect(pct(style.width)).toBe(100);
+    expect(pct(style.height)).toBe(100);
+    expect(pct(style.left)).toBeCloseTo(0, 4);
+    expect(pct(style.top)).toBeCloseTo(0, 4);
+  });
+
+  it("clamps an out-of-range crop so no empty space shows", () => {
+    const style = cropPlacementStyle({ x: 0.9, y: 0.9, width: 0.3, height: 0.3 })!; // would run past the edge
+    expect(pct(style.left)).toBeCloseTo((-100 * 0.7) / 0.3, 2);
+    expect(pct(style.top)).toBeCloseTo((-100 * 0.7) / 0.3, 2);
+  });
+
+  it("ignores missing or empty crops", () => {
+    expect(cropPlacementStyle(undefined)).toBeUndefined();
+    expect(cropPlacementStyle({ x: 0, y: 0, width: 0, height: 0.5 })).toBeUndefined();
   });
 });
 

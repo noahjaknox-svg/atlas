@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import {
   cropFrameAspectRatio,
-  cropTransformStyle,
+  cropPlacementStyle,
   defaultObjectPositionForSrc,
   getImageSizeClasses,
   getVariantConfig,
@@ -60,7 +60,7 @@ export function ProposalImage({
     (intrinsic ? (hasCrop ? "cover" : "contain") : config.objectFit);
   const position =
     objectPosition ?? defaultObjectPositionForSrc(src) ?? config.objectPosition;
-  const cropStyle = hasCrop ? cropTransformStyle(crop) : undefined;
+  const cropStyle = hasCrop ? cropPlacementStyle(crop) : undefined;
   const displayAspect = hasCrop ? resolveCropDisplayAspectRatio(crop, cropAspectRatio) : undefined;
   const intrinsicAspect = displayAspect != null ? cropFrameAspectRatio(displayAspect) : undefined;
   const compactImage = isCompactImageSize(imageSize);
