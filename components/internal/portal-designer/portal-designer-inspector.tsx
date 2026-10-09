@@ -804,6 +804,7 @@ function BlockEditor({
             onPatch({ cellAlign: cellAlign as "start" | "stretch" } as Partial<ExperiencePageBlock>)
           }
         />
+        {rows * cols > 1 || block.cellCardStyle ? (
         <label className="flex items-center gap-2 text-sm text-atlas-text">
           <input
             type="checkbox"
@@ -816,6 +817,7 @@ function BlockEditor({
           />
           Card behind each cell
         </label>
+        ) : null}
         <BlockLayoutControls
           blockLayout={shellBlockLayout(block)}
           layoutSettings={layoutSettings}
@@ -895,6 +897,7 @@ function BlockEditor({
             <option value="lg">Large</option>
           </select>
         </div>
+        {count > 1 || block.cellCardStyle ? (
         <label className="flex items-center gap-2 text-sm text-atlas-text">
           <input
             type="checkbox"
@@ -907,6 +910,7 @@ function BlockEditor({
           />
           Card behind each cell
         </label>
+        ) : null}
         <BlockLayoutControls
           blockLayout={shellBlockLayout(block)}
           layoutSettings={layoutSettings}
