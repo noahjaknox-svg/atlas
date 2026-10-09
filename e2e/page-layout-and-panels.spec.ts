@@ -204,3 +204,35 @@ test("cell cards on a container get an opacity control that changes the cards", 
   await page.getByLabel("Panel behind this element").uncheck();
   await expect(slider).toHaveValue("40");
 });
+
+test("'Card behind each cell' is hidden for a single-cell container, unless it is already on", async ({ page }) => {
+  const box = (cols: number, cellCardStyle?: boolean) => ({
+    id: "oc", type: "container", rows: 1, cols, gap: "md", columnWeights: Array(cols).fill(1), rowWeights: [1], cellAlign: "stretch",
+    ...(cellCardStyle ? { cellCardStyle: true } : {}), blockLayout: { widthDesktop: "full" },
+    cells: [Array.from({ length: cols }, (_, i) => [text(`o${i}`, `OC-${i}`)])],
+  });
+  const select = async (blocks: object[], label: RegExp) => {
+    await page.goto(DESIGNER);
+    await page.getByRole("button", { name: /^Page code/i }).click();
+    const code = page.getByLabel("Page code JSON");
+    const record = JSON.parse(await code.inputValue());
+    record.contentBlocks = { pageBlocks: blocks };
+    await code.fill(JSON.stringify(record));
+    await page.getByRole("button", { name: /^(Apply|Applied!)$/ }).click();
+    await page.getByRole("button", { name: /^Page code/i }).click();
+    await page.getByRole("button", { name: /^Outline/ }).click();
+    await page.getByText(label).last().click();
+    await page.getByRole("button", { name: /^Outline/ }).click();
+    await expect(page.getByLabel("Panel behind this element")).toBeVisible();
+  };
+  const cardToggle = () => page.getByLabel("Card behind each cell");
+
+  await select([box(1)], /^Container \(1×1\)/);
+  await expect(cardToggle()).toHaveCount(0); // one cell: the panel does the same job
+  await select([box(2)], /^Container \(1×2\)/);
+  await expect(cardToggle()).toBeVisible(); // several cells: a card per cell makes sense
+  await select([box(1, true)], /^Container \(1×1\)/);
+  await expect(cardToggle()).toBeChecked(); // already on: stays, so it can be turned off
+  await cardToggle().click(); // turn it off...
+  await expect(cardToggle()).toHaveCount(0); // ...and, with one cell, it goes away like any other single-cell container
+});
