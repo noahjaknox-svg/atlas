@@ -327,10 +327,13 @@ function PanelControls({
   blockLayout,
   layoutSettings,
   onPatch,
+  cellCards = false,
 }: {
   blockLayout?: BlockLayout;
   layoutSettings: PortalLayoutSettings;
   onPatch: (layout: BlockLayout) => void;
+  /** The container/row also shows a card behind each cell; its opacity is the same setting. */
+  cellCards?: boolean;
 }) {
   const defaultOpacity = layoutSettings.panelOpacity ?? DEFAULT_PANEL_OPACITY;
   const overridden = blockLayout?.panelOpacity != null;
@@ -343,23 +346,30 @@ function PanelControls({
           aria-label="Panel behind this element"
           checked={!!blockLayout?.panel}
           onChange={(e) =>
-            onPatch(e.target.checked ? { ...blockLayout, panel: true } : withoutKeys(blockLayout, "panel", "panelOpacity"))
+            onPatch(
+              e.target.checked
+                ? { ...blockLayout, panel: true }
+                : // keep the opacity if the cell cards still use it
+                  cellCards
+                  ? withoutKeys(blockLayout, "panel")
+                  : withoutKeys(blockLayout, "panel", "panelOpacity")
+            )
           }
           className="accent-atlas-accent"
         />
         Panel behind this element
       </label>
-      {blockLayout?.panel ? (
+      {blockLayout?.panel || cellCards ? (
         <div>
           <div className="flex items-center justify-between text-xs text-atlas-muted">
-            <span>Panel opacity</span>
+            <span>{cellCards ? "Panel and card opacity" : "Panel opacity"}</span>
             <span>
               {opacity}%{overridden ? "" : " (default)"}
             </span>
           </div>
           <input
             type="range"
-            aria-label="Panel opacity"
+            aria-label={cellCards ? "Panel and card opacity" : "Panel opacity"}
             min={0}
             max={100}
             step={5}
@@ -558,11 +568,14 @@ function BlockLayoutControls({
   layoutSettings,
   onPatch,
   designViewport,
+  cellCards,
 }: {
   blockLayout?: BlockLayout;
   layoutSettings: PortalLayoutSettings;
   onPatch: (layout: BlockLayout) => void;
   designViewport?: PreviewViewport;
+  /** Container/row with 'Card behind each cell' on: show the opacity control for those cards. */
+  cellCards?: boolean;
 }) {
   return (
     <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2">
@@ -598,7 +611,7 @@ function BlockLayoutControls({
           ]}
           onChange={(padding) => onPatch({ ...blockLayout, padding: padding as BlockPadding })}
         />
-        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} />
+        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} cellCards={cellCards} />
       </div>
     </div>
   );
@@ -808,6 +821,7 @@ function BlockEditor({
           layoutSettings={layoutSettings}
           designViewport={designViewport}
           onPatch={shellLayoutPatch}
+          cellCards={!!block.cellCardStyle}
         />
       </div>
     );
@@ -898,6 +912,7 @@ function BlockEditor({
           layoutSettings={layoutSettings}
           designViewport={designViewport}
           onPatch={shellLayoutPatch}
+          cellCards={!!block.cellCardStyle}
         />
       </div>
     );

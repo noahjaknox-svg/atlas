@@ -90,6 +90,12 @@ test.describe("page layout inheritance (page → container → element)", () => 
   });
 });
 
+/** The branding default panel opacity currently saved (percent). Tests read it rather than assume 100. */
+async function brandingPanelOpacity(page: Page): Promise<number> {
+  const content = await (await page.request.get("/api/portal-content")).json();
+  return content.content.layoutSettings?.panelOpacity ?? 100;
+}
+
 // The alpha of the first stop of the panel's glass gradient: 0.12 at 100% opacity, scaled down with it.
 async function panelAlpha(page: Page, marker: string) {
   const panel = page.locator("[data-element-panel]", { hasText: marker }).first();
@@ -100,8 +106,9 @@ async function panelAlpha(page: Page, marker: string) {
 
 test.describe("element panels", () => {
   test("a panel's opacity: its own value, else the branding default", async ({ page }) => {
+    const defaultPct = await brandingPanelOpacity(page);
     await renderPreview(page, [text("a", "PN-DEFAULT", { panel: true }), text("b", "PN-HALF", { panel: true, panelOpacity: 50 }), text("c", "PN-NONE", { panel: true, panelOpacity: 0 })]);
-    expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo(0.12, 2); // default 100% = standard glass
+    expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo((0.12 * defaultPct) / 100, 2); // the branding default (100% = standard glass)
     expect(await panelAlpha(page, "PN-HALF")).toBeCloseTo(0.06, 2);
     expect(await panelAlpha(page, "PN-NONE")).toBeCloseTo(0, 2);
     // No panel means no panel element at all.
@@ -152,4 +159,48 @@ test("Configuration and Setup: renamed, no Fleet showcase, has the panel opacity
   await expect(page.getByRole("heading", { name: "Element panels" })).toBeVisible();
   await expect(page.getByLabel("Default panel opacity")).toBeVisible();
   await expect(page.getByText(/fleet showcase/i)).toHaveCount(0);
+});
+
+test("cell cards on a container get an opacity control that changes the cards", async ({ page }) => {
+  const defaultPct = await brandingPanelOpacity(page);
+  const cards = (extra: object = {}) => ({
+    id: "cc", type: "container", rows: 1, cols: 2, gap: "md", columnWeights: [1, 1], rowWeights: [1], cellAlign: "stretch", cellCardStyle: true,
+    blockLayout: { widthDesktop: "full", ...extra },
+    cells: [[[text("a", "CC-ONE")], [text("b", "CC-TWO")]]],
+  });
+  const cardAlpha = async () => {
+    const card = page.locator(".portal-container-grid > .portal-v2-glass").first();
+    await expect(card).toBeVisible();
+    const bg = await card.evaluate((el) => getComputedStyle(el).backgroundImage);
+    return parseFloat(bg.match(/rgba\(255, 255, 255, ([0-9.]+)\)/)![1]!);
+  };
+
+  // Published render: the container's opacity override applies to its cell cards; no override = default.
+  await renderPreview(page, [cards({ panelOpacity: 40 })]);
+  expect(await cardAlpha()).toBeCloseTo(0.048, 2);
+  await renderPreview(page, [cards()]);
+  expect(await cardAlpha()).toBeCloseTo((0.12 * defaultPct) / 100, 2);
+
+  // Designer: the slider is there for a container with cell cards even though 'Panel' is off.
+  await page.goto(DESIGNER);
+  await page.getByRole("button", { name: /^Page code/i }).click();
+  const code = page.getByLabel("Page code JSON");
+  const record = JSON.parse(await code.inputValue());
+  record.contentBlocks = { pageBlocks: [cards()] };
+  await code.fill(JSON.stringify(record));
+  await page.getByRole("button", { name: /^(Apply|Applied!)$/ }).click();
+  await page.getByRole("button", { name: /^Page code/i }).click();
+  await page.getByRole("button", { name: /^Outline/ }).click();
+  await page.getByText(/^Container \(1×2\)/).last().click();
+  await page.getByRole("button", { name: /^Outline/ }).click();
+  await expect(page.getByLabel("Panel behind this element")).not.toBeChecked();
+  const slider = page.getByLabel("Panel and card opacity");
+  await expect(slider).toBeVisible();
+  expect(await cardAlpha()).toBeCloseTo((0.12 * defaultPct) / 100, 2);
+  await slider.fill("40");
+  await expect.poll(cardAlpha).toBeCloseTo(0.048, 2); // the cards on the canvas follow the slider
+  // Ticking then unticking Panel must not throw away the cards' opacity.
+  await page.getByLabel("Panel behind this element").check();
+  await page.getByLabel("Panel behind this element").uncheck();
+  await expect(slider).toHaveValue("40");
 });
