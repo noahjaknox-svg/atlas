@@ -159,6 +159,21 @@ export type BlockLayout = {
   /** Vertical alignment within a grid cell (when the cell is taller than the block). */
   verticalAlign?: BlockVerticalAlign;
   padding?: BlockPadding;
+  /** Show a translucent panel behind this element. Off unless set. */
+  panel?: boolean;
+  /** Panel opacity 0-100 (100 = the standard glass look). Unset = the branding default. */
+  panelOpacity?: number;
+};
+
+/**
+ * Page-level layout: the first default every element on the page inherits. Top-level elements
+ * take these widths/alignment; anything nested in a container fills its parent. An element's own
+ * layout (or its container's alignment) overrides it.
+ */
+export type PageLayout = {
+  widthDesktop?: string;
+  widthMobile?: string;
+  align?: BlockAlign;
 };
 
 type LeafBlockBase = { id: string; blockLayout?: BlockLayout };
@@ -277,6 +292,8 @@ export type ExperienceContentBlocks = {
   aircraftMarketButtonLabel?: string | null;
   /** Optional freeform block stack — when present, generic renderer is used. */
   pageBlocks?: ExperiencePageBlock[];
+  /** Layout defaults for every element on this page (see PageLayout). */
+  pageLayout?: PageLayout;
 };
 
 export type ExperienceNavLink = ExperiencePageLink;

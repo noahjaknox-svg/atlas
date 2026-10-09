@@ -65,6 +65,7 @@ export function GenericChapterV2({
             onBlockContextMenu={onBlockContextMenu}
             variableContext={variableContext}
             layoutSettings={layoutSettings}
+            pageLayout={section.contentBlocks?.pageLayout}
           />
         </ChapterStaggerItem>
       </ChapterStagger>

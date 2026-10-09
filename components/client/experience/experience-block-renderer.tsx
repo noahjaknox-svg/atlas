@@ -1,4 +1,12 @@
 "use client";
+import {
+  alignPassedDown,
+  applyInheritedLayout,
+  inheritedForNested,
+  inheritedForTopLevel,
+} from "@/lib/page-layout-inheritance";
+import type { BlockAlign, PageLayout } from "@/lib/experience-content";
+import { resolvePanelOpacity } from "@/lib/portal-layout-settings";
 
 import { useDraggable } from "@dnd-kit/core";
 import type { ExperiencePageBlock } from "@/lib/experience-content";
@@ -150,6 +158,15 @@ function BlockLayoutFrame({
   const vAlign = blockLayout?.verticalAlign ?? "top";
   const paddingClass = getBlockPaddingClass(blockLayout?.padding);
 
+  // Optional translucent panel behind the element (opacity: its own, else the branding default).
+  const body = blockLayout?.panel ? (
+    <div className={cn(experienceGlassV2, "rounded-xl p-4 sm:p-5")} data-element-panel>
+      {children}
+    </div>
+  ) : (
+    children
+  );
+
   const chromedContent = designChrome ? (
     <div className={cn("h-full w-full", paddingClass)}>
       <div
@@ -158,11 +175,11 @@ function BlockLayoutFrame({
           inGridCell ? "min-h-[80px]" : "min-h-[120px]"
         )}
       >
-        {children}
+        {body}
       </div>
     </div>
   ) : (
-    children
+    body
   );
   const innerContent = wrapContent ? wrapContent(chromedContent) : chromedContent;
 
@@ -174,6 +191,11 @@ function BlockLayoutFrame({
         getLeafVerticalJustifyClass(vAlign),
         !designChrome && paddingClass
       )}
+      style={
+        blockLayout?.panelOpacity != null
+          ? ({ ["--panel-opacity" as string]: resolvePanelOpacity(blockLayout, layoutSettings) / 100 } as CSSProperties)
+          : undefined
+      }
     >
       <div className={cn("flex w-full min-w-0", getLeafHorizontalJustifyClass(hAlign))}>
         <div
@@ -441,6 +463,8 @@ function renderContainerCells({
   onBlockContextMenu?: (e: React.MouseEvent, block: ExperiencePageBlock, path: BlockPath) => void;
   variableContext?: PortalVariableContext;
   layoutSettings?: PortalLayoutSettings;
+  pageLayout?: PageLayout;
+  inheritedAlign?: BlockAlign;
 }) {
   const { rows, cols } = resolveContainerLayout(block, layout);
   const cells: React.ReactNode[] = [];
@@ -494,6 +518,8 @@ export function ExperienceBlockRenderer({
   containerPath = [],
   variableContext,
   layoutSettings = DEFAULT_LAYOUT_SETTINGS,
+  pageLayout,
+  inheritedAlign,
 }: {
   blocks: ExperiencePageBlock[];
   selectedBlockId?: string | null;
@@ -505,14 +531,21 @@ export function ExperienceBlockRenderer({
   containerPath?: BlockPath;
   variableContext?: PortalVariableContext;
   layoutSettings?: PortalLayoutSettings;
+  /** The page's own layout defaults (top-level elements inherit them). */
+  pageLayout?: PageLayout;
+  /** Alignment handed down by the parent container (nested elements). */
+  inheritedAlign?: BlockAlign;
 }) {
   const showDesign = designMode && previewMode;
   const gridLayout = gridLayoutForDesigner(showDesign, designViewport);
   const inGridCell = isInsideGridCell(containerPath);
   const allowVerticalAlign = inGridCell && blocks.length === 1;
   const designLayoutViewport = designViewport === "mobile" ? "mobile" : "desktop";
+  // Page → container → element: top-level elements take the page's layout, nested ones fill their parent.
+  const inherited = inGridCell ? inheritedForNested(inheritedAlign) : inheritedForTopLevel(pageLayout);
 
   const childProps = {
+    pageLayout,
     selectedBlockId,
     onSelectBlock,
     previewMode,
@@ -529,6 +562,12 @@ export function ExperienceBlockRenderer({
         "flex flex-col gap-4 lg:gap-6",
         inGridCell && "min-h-0 flex-1"
       )}
+      // Branding default for panel / cell-card opacity; elements below can override it.
+      style={
+        inGridCell
+          ? undefined
+          : ({ ["--panel-opacity" as string]: resolvePanelOpacity(undefined, layoutSettings) / 100 } as CSSProperties)
+      }
     >
       {showDesign ? (
         <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, 0)} />
@@ -538,9 +577,11 @@ export function ExperienceBlockRenderer({
         const blockPath = [...containerPath, blockIndex];
 
         if (isContainerBlock(block)) {
-          const shellBlockLayout = resolveShellBlockLayout(block, {
-            nestedInGridCell: inGridCell,
-          });
+          const shellBlockLayout = applyInheritedLayout(
+            resolveShellBlockLayout(block, { nestedInGridCell: inGridCell }),
+            inherited
+          );
+          const passDownAlign = alignPassedDown(shellBlockLayout, inherited);
 
           if (
             showDesign &&
@@ -559,6 +600,7 @@ export function ExperienceBlockRenderer({
             layout: gridLayout,
             showDesign,
             ...childProps,
+            inheritedAlign: passDownAlign,
           });
 
           if (showDesign) {
@@ -633,9 +675,11 @@ export function ExperienceBlockRenderer({
         }
 
         if (isRowBlock(block)) {
-          const shellBlockLayout = resolveShellBlockLayout(block, {
-            nestedInGridCell: inGridCell,
-          });
+          const shellBlockLayout = applyInheritedLayout(
+            resolveShellBlockLayout(block, { nestedInGridCell: inGridCell }),
+            inherited
+          );
+          const passDownAlign = alignPassedDown(shellBlockLayout, inherited);
 
           if (
             showDesign &&
@@ -671,6 +715,7 @@ export function ExperienceBlockRenderer({
                     blocks={column}
                     containerPath={[...blockPath, colIndex]}
                     {...childProps}
+                    inheritedAlign={passDownAlign}
                   />
                 </div>
               ))}
@@ -748,7 +793,10 @@ export function ExperienceBlockRenderer({
           );
         }
 
-        const blockLayout = "blockLayout" in block ? block.blockLayout : undefined;
+        const blockLayout = applyInheritedLayout(
+          "blockLayout" in block ? block.blockLayout : undefined,
+          inherited
+        );
 
         if (
           showDesign &&

@@ -7,15 +7,24 @@ import { resolvePortalBranding } from "@/lib/portal-constants";
 import { RENDER_SCHEMA_VERSION, type ExperienceSectionSnapshot } from "@/lib/experience-content";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { resolveLayoutSettings, type PortalLayoutSettings } from "@/lib/portal-layout-settings";
 
 export const dynamic = "force-dynamic";
 
 function emptyPreviewPayload(
   sections: ExperienceSectionSnapshot[],
   clientSummary: string | null | undefined,
-  renderSchemaVersion: number
+  renderSchemaVersion: number,
+  layoutSettings: PortalLayoutSettings
 ): ProposalSnapshotPayload {
   return {
+    // Use the live branding layout (width presets, panel opacity…) like the published portal does.
+    branding: {
+      heroCloudImageUrl: null,
+      heroCloudVideoUrl: null,
+      logoUrl: null,
+      layoutSettings,
+    },
     version: 1,
     renderSchemaVersion,
     publishedAt: new Date().toISOString(),
@@ -111,7 +120,8 @@ export default async function MasterDesignerPreviewPage({
   const payload = emptyPreviewPayload(
     sections,
     verified.payload.hero?.clientSummary,
-    renderSchemaVersion
+    renderSchemaVersion,
+    resolveLayoutSettings(undefined, content.layoutSettings)
   );
 
   return (

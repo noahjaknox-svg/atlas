@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
+import type { PortalContentData } from "@/lib/portal-content";
 import {
   DEFAULT_LAYOUT_BREAKPOINTS,
   DEFAULT_LAYOUT_SETTINGS,
@@ -24,13 +24,13 @@ async function uploadFile(file: File): Promise<string> {
 
 export function ProposalDesignEditor({
   initialContent,
-  initialFleet,
+  onSaved,
 }: {
   initialContent: PortalContentData;
-  initialFleet: FleetShowcaseItem[];
+  /** Called with the saved content so the designer's previews pick up new branding defaults immediately. */
+  onSaved?: (content: PortalContentData) => void;
 }) {
   const [content, setContent] = useState(initialContent);
-  const [fleet, setFleet] = useState(initialFleet);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [uploadingField, setUploadingField] = useState<
@@ -44,18 +44,18 @@ export function ProposalDesignEditor({
     const res = await fetch("/api/portal-content", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, fleet }),
+      body: JSON.stringify({ content }),
     });
     const json = await res.json();
     setSaving(false);
     if (res.ok) {
       setContent(json.content);
-      setFleet(json.fleet);
-      setMessage("Saved — cloud video updates live on all prospect portals.");
+      onSaved?.(json.content);
+      setMessage("Saved. Branding updates live on prospect portals; published proposals change when republished.");
     } else {
       setMessage(json.error ?? "Save failed");
     }
-  }, [content, fleet]);
+  }, [content, onSaved]);
 
   function patchContent(patch: Partial<PortalContentData>) {
     setContent((c) => ({ ...c, ...patch }));
@@ -81,8 +81,8 @@ export function ProposalDesignEditor({
   return (
     <div className="space-y-8">
       <p className="max-w-2xl text-sm text-atlas-muted">
-        Global portal assets and fleet showcase. Page content (About, Services, Contact, and
-        chapter copy) is edited under <strong className="text-atlas-text">Pages &amp; blocks</strong>.
+        Portal-wide assets and design defaults. Page content (About, Services, Contact, and chapter
+        copy) is edited under <strong className="text-atlas-text">Pages &amp; blocks</strong>.
       </p>
 
       <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
@@ -146,82 +146,49 @@ export function ProposalDesignEditor({
         />
       </section>
 
-      <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6">
-        <h2 className="atlas-section-title">Fleet showcase</h2>
+      <section className="rounded-lg border border-atlas-border bg-atlas-surface p-6" aria-label="Element panels">
+        <h2 className="atlas-section-title">Element panels</h2>
         <p className="atlas-caption mt-1">
-          Shown on the aircraft portal page for prospects browsing your managed fleet.
+          The translucent panel behind an element (and the cards behind container cells). This is the
+          default opacity; any element can override it in the designer. 100% is the standard glass look.
         </p>
-        <div className="mt-4 space-y-3">
-          <div>
-            <Label>Section title</Label>
-            <Input
-              value={content.fleetTitle}
-              onChange={(e) => patchContent({ fleetTitle: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Section intro</Label>
-            <textarea
-              value={content.fleetBody ?? ""}
-              onChange={(e) => patchContent({ fleetBody: e.target.value || null })}
-              rows={3}
-              className="atlas-input mt-1 w-full"
-            />
-          </div>
-        </div>
-        <div className="mt-6 space-y-4">
-          {fleet.map((item, i) => (
-            <div key={item.id} className="space-y-2 rounded border border-atlas-border/60 p-3">
-              <Input
-                value={item.title}
-                onChange={(e) => {
-                  const next = [...fleet];
-                  next[i] = { ...item, title: e.target.value };
-                  setFleet(next);
-                }}
-                placeholder="Aircraft title"
-              />
-              <Input
-                value={item.imageUrl ?? ""}
-                onChange={(e) => {
-                  const next = [...fleet];
-                  next[i] = { ...item, imageUrl: e.target.value };
-                  setFleet(next);
-                }}
-                placeholder="Image URL"
-              />
+        <div className="mt-4 flex flex-wrap items-center gap-6">
+          <div className="min-w-[16rem] flex-1">
+            <div className="flex items-center justify-between text-sm">
+              <Label htmlFor="panel-opacity-default">Default panel opacity</Label>
+              <span className="text-atlas-muted">{content.layoutSettings?.panelOpacity ?? 100}%</span>
             </div>
-          ))}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() =>
-              setFleet((f) => [
-                ...f,
-                {
-                  id: `new-${Date.now()}`,
-                  sortOrder: f.length,
-                  title: "New aircraft",
-                  subtitle: null,
-                  imageUrl: "/images/fleet-jet-placeholder.svg",
-                  videoUrl: null,
-                  posterUrl: null,
-                  specs: [],
-                  active: true,
-                },
-              ])
-            }
+            <input
+              id="panel-opacity-default"
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={content.layoutSettings?.panelOpacity ?? 100}
+              onChange={(e) =>
+                patchContent({
+                  layoutSettings: {
+                    ...(content.layoutSettings ?? DEFAULT_LAYOUT_SETTINGS),
+                    panelOpacity: Number(e.target.value),
+                  },
+                })
+              }
+              className="mt-2 w-full accent-atlas-accent"
+            />
+          </div>
+          <div
+            className="portal-v2-glass flex h-20 w-48 items-center justify-center rounded-xl text-sm text-white/80"
+            style={{ ["--panel-opacity" as string]: (content.layoutSettings?.panelOpacity ?? 100) / 100 } as React.CSSProperties}
+            aria-hidden
           >
-            Add fleet card
-          </Button>
+            Preview
+          </div>
         </div>
       </section>
 
       <div className="flex items-center gap-4">
         <Button type="button" onClick={() => void save()} disabled={saving || uploadingField !== null}>
-          {saving ? "Saving…" : "Save portal content"}
+          {saving ? "Saving…" : "Save configuration"}
         </Button>
         {message ? <span className="text-sm text-atlas-muted">{message}</span> : null}
       </div>

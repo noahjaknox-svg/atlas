@@ -14,25 +14,27 @@ function findBlocks(node: unknown, out: AnyBlock[] = []): AnyBlock[] {
   return out;
 }
 
-test("a newly added block is explicitly Normal width and centered", async ({ page, context }) => {
+test("a newly added block inherits the page layout instead of saving its own", async ({ page, context }) => {
   await page.goto(DESIGNER);
   await page.getByRole("button", { name: /^Outline/ }).click();
   await page.getByRole("button", { name: "+ Text", exact: true }).click();
 
-  // The inspector shows Normal / Center for the new block...
-  await expect(page.getByLabel("Desktop width")).toHaveValue("normal");
-  await expect(page.getByLabel("Horizontal align").first()).toHaveValue("center");
+  // The inspector shows 'Inherit (…)' for width and alignment, i.e. nothing is set on the block.
+  await expect(page.getByLabel("Desktop width", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Desktop width", { exact: true }).locator("option:checked")).toHaveText(/^Inherit \(/);
+  await expect(page.getByLabel("Horizontal align").first()).toHaveValue("");
+  await expect(page.getByLabel("Horizontal align").first().locator("option:checked")).toHaveText(/^Inherit \(/);
 
-  // ...and the block itself carries that layout (not just a render-time fallback). Preview sends the
-  // unsaved designer state, so nothing is written to the master pages.
+  // ...and the block really has no layout of its own. Preview sends the unsaved designer state, so
+  // nothing is written to the master pages.
   const previewRequest = page.waitForRequest((r) => r.url().endsWith("/api/portal-content/designer-preview") && r.method() === "POST");
   const popup = context.waitForEvent("page");
   await page.getByRole("button", { name: /^preview$/i }).first().click();
   const body = JSON.parse((await previewRequest).postData() ?? "{}");
   await (await popup).close();
-  const fresh = findBlocks(body.sections).filter((b) => b.type === "text" && b.markdown === "" && b.blockLayout);
+  const fresh = findBlocks(body.sections).filter((b) => b.type === "text" && b.markdown === "");
   expect(fresh.length).toBeGreaterThan(0);
-  expect(fresh[0]!.blockLayout).toEqual({ widthDesktop: "normal", widthMobile: "normal", align: "center" });
+  expect(fresh[0]!.blockLayout).toBeUndefined();
 });
 
 test("there is no Block vs flight button, but existing Block vs flight blocks still show up", async ({ page }) => {
@@ -48,5 +50,5 @@ test("there is no Block vs flight button, but existing Block vs flight blocks st
   const existing = page.getByText(/^Block vs flight/).last();
   await expect(existing).toBeVisible();
   await existing.click();
-  await expect(page.getByLabel("Desktop width")).toBeVisible();
+  await expect(page.getByLabel("Desktop width", { exact: true })).toBeVisible();
 });
