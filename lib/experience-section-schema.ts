@@ -28,6 +28,14 @@ const blockLayoutSchema = z.object({
   align: z.enum(BLOCK_ALIGNS).optional(),
   verticalAlign: z.enum(BLOCK_VERTICAL_ALIGNS).optional(),
   padding: z.enum(BLOCK_PADDINGS).optional(),
+  panel: z.boolean().optional(),
+  panelOpacity: z.number().min(0).max(100).optional(),
+});
+
+const pageLayoutSchema = z.object({
+  widthDesktop: z.string().optional(),
+  widthMobile: z.string().optional(),
+  align: z.enum(BLOCK_ALIGNS).optional(),
 });
 
 const leafBlockFields = {
@@ -184,6 +192,7 @@ const contentBlocksSchema = z
     aircraftMarketUrl: z.string().nullable().optional(),
     aircraftMarketButtonLabel: z.string().nullable().optional(),
     pageBlocks: z.array(pageBlockSchema).optional(),
+    pageLayout: pageLayoutSchema.optional(),
   })
   .passthrough();
 

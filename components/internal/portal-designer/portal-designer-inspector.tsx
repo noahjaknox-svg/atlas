@@ -1,4 +1,13 @@
 "use client";
+import { createContext, useContext } from "react";
+import {
+  describeInheritedAlign,
+  describeInheritedWidth,
+  resolveInheritedFor,
+  type InheritedLayout,
+} from "@/lib/page-layout-inheritance";
+import { DEFAULT_PANEL_OPACITY, resolvePanelOpacity } from "@/lib/portal-layout-settings";
+import type { PageLayout } from "@/lib/experience-content";
 
 import { useRef, useState } from "react";
 import { ROUTES } from "@/lib/routes";
@@ -96,6 +105,14 @@ export function PortalDesignerInspector({
   /** Deselect the block to return to the page's settings. */
   onBackToPage?: () => void;
 }) {
+  // What the selected element inherits (page → container → element), for the "Inherit (…)" options.
+  const inheritedLayout = selectedBlock
+    ? resolveInheritedFor(
+        section.contentBlocks?.pageBlocks ?? [],
+        selectedBlockPath ?? [],
+        section.contentBlocks?.pageLayout
+      )
+    : null;
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
     : [];
@@ -168,6 +185,17 @@ export function PortalDesignerInspector({
               </div>
             ) : null}
 
+            <PageLayoutControls
+              pageLayout={section.contentBlocks?.pageLayout}
+              layoutSettings={layoutSettings}
+              onChange={(pageLayout) => {
+                const next = { ...(section.contentBlocks ?? {}) };
+                if (pageLayout && Object.keys(pageLayout).length > 0) next.pageLayout = pageLayout;
+                else delete next.pageLayout;
+                onPatchSection({ contentBlocks: next });
+              }}
+            />
+
             <p className="text-sm text-atlas-muted">
               Select a block in the preview or block list to edit its content.
             </p>
@@ -192,6 +220,7 @@ export function PortalDesignerInspector({
                 ))}
               </ul>
             ) : null}
+            <InheritedLayoutContext.Provider value={inheritedLayout}>
             <BlockEditor
               block={selectedBlock}
               onPatch={(patch) => onPatchBlock(selectedBlock.id, patch)}
@@ -220,6 +249,7 @@ export function PortalDesignerInspector({
               designViewport={designViewport}
               selectedBlockPath={selectedBlockPath}
             />
+            </InheritedLayoutContext.Provider>
           </>
         ) : null}
       </div>
@@ -254,6 +284,158 @@ export function PortalDesignerInspector({
   );
 }
 
+/** What the selected element inherits (page → container → element), for the "Inherit (…)" options. */
+const InheritedLayoutContext = createContext<{ nested: boolean; inherited: InheritedLayout } | null>(null);
+
+function hasExplicitWidth(layout: BlockLayout | undefined): boolean {
+  return !!(layout?.widthDesktop || layout?.widthMobile || layout?.width);
+}
+
+function withoutKeys<T extends object>(obj: T | undefined, ...keys: (keyof T)[]): T {
+  const next = { ...(obj ?? {}) } as T;
+  for (const k of keys) delete next[k];
+  return next;
+}
+
+function HorizontalAlignSelect({
+  blockLayout,
+  onPatch,
+}: {
+  blockLayout?: BlockLayout;
+  onPatch: (layout: BlockLayout) => void;
+}) {
+  const ctx = useContext(InheritedLayoutContext);
+  return (
+    <LayoutSelect
+      label="Horizontal align"
+      value={blockLayout?.align ?? ""}
+      inheritLabel={ctx ? `Inherit (${describeInheritedAlign(ctx.inherited)})` : undefined}
+      options={[
+        ["left", "Left"],
+        ["center", "Center"],
+        ["right", "Right"],
+      ]}
+      onChange={(align) =>
+        onPatch(align === "" ? withoutKeys(blockLayout, "align") : { ...blockLayout, align: align as BlockAlign })
+      }
+    />
+  );
+}
+
+/** Optional translucent panel behind an element. Opacity: its own, else the branding default. */
+function PanelControls({
+  blockLayout,
+  layoutSettings,
+  onPatch,
+}: {
+  blockLayout?: BlockLayout;
+  layoutSettings: PortalLayoutSettings;
+  onPatch: (layout: BlockLayout) => void;
+}) {
+  const defaultOpacity = layoutSettings.panelOpacity ?? DEFAULT_PANEL_OPACITY;
+  const overridden = blockLayout?.panelOpacity != null;
+  const opacity = resolvePanelOpacity(blockLayout, layoutSettings);
+  return (
+    <div className="space-y-1.5 border-t border-atlas-border/40 pt-2">
+      <label className="flex items-center gap-2 text-sm text-atlas-text">
+        <input
+          type="checkbox"
+          aria-label="Panel behind this element"
+          checked={!!blockLayout?.panel}
+          onChange={(e) =>
+            onPatch(e.target.checked ? { ...blockLayout, panel: true } : withoutKeys(blockLayout, "panel", "panelOpacity"))
+          }
+          className="accent-atlas-accent"
+        />
+        Panel behind this element
+      </label>
+      {blockLayout?.panel ? (
+        <div>
+          <div className="flex items-center justify-between text-xs text-atlas-muted">
+            <span>Panel opacity</span>
+            <span>
+              {opacity}%{overridden ? "" : " (default)"}
+            </span>
+          </div>
+          <input
+            type="range"
+            aria-label="Panel opacity"
+            min={0}
+            max={100}
+            step={5}
+            value={opacity}
+            onChange={(e) => onPatch({ ...blockLayout, panelOpacity: Number(e.target.value) })}
+            className="w-full accent-atlas-accent"
+          />
+          {overridden ? (
+            <button
+              type="button"
+              onClick={() => onPatch(withoutKeys(blockLayout, "panelOpacity"))}
+              className="text-xs text-atlas-accent hover:underline"
+            >
+              Use default ({defaultOpacity}%)
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The page's own layout: the first default every element on the page inherits. */
+function PageLayoutControls({
+  pageLayout,
+  layoutSettings,
+  onChange,
+}: {
+  pageLayout?: PageLayout;
+  layoutSettings: PortalLayoutSettings;
+  onChange: (next: PageLayout | undefined) => void;
+}) {
+  const presetOptions = layoutSettings.widthPresets.map((p) => [p.id, p.label] as [string, string]);
+  const defaultLabel = layoutSettings.widthPresets.find((p) => p.id === layoutSettings.defaultPresetId)?.label ?? "Normal";
+  const set = (key: keyof PageLayout, value: string) => {
+    const next: PageLayout = { ...(pageLayout ?? {}) };
+    if (value === "") delete next[key];
+    else (next as Record<string, string>)[key] = value;
+    onChange(Object.keys(next).length > 0 ? next : undefined);
+  };
+  return (
+    <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2" aria-label="Page layout" role="group">
+      <p className="text-sm font-medium text-atlas-muted">Page layout</p>
+      <p className="text-xs text-atlas-muted">
+        Width and alignment for everything on this page. Elements inside a container fill it; any
+        element can override these.
+      </p>
+      <LayoutSelect
+        label="Page desktop width"
+        value={pageLayout?.widthDesktop ?? ""}
+        inheritLabel={`Default (${defaultLabel})`}
+        options={presetOptions}
+        onChange={(v) => set("widthDesktop", v)}
+      />
+      <LayoutSelect
+        label="Page mobile width"
+        value={pageLayout?.widthMobile ?? ""}
+        inheritLabel={`Default (${defaultLabel})`}
+        options={presetOptions}
+        onChange={(v) => set("widthMobile", v)}
+      />
+      <LayoutSelect
+        label="Page horizontal align"
+        value={pageLayout?.align ?? ""}
+        inheritLabel="Default (Center)"
+        options={[
+          ["left", "Left"],
+          ["center", "Center"],
+          ["right", "Right"],
+        ]}
+        onChange={(v) => set("align", v)}
+      />
+    </div>
+  );
+}
+
 function ResponsiveWidthControls({
   blockLayout,
   layoutSettings,
@@ -268,22 +450,41 @@ function ResponsiveWidthControls({
   const presetOptions = layoutSettings.widthPresets.map(
     (preset) => [preset.id, preset.label] as [string, string]
   );
+  const ctx = useContext(InheritedLayoutContext);
+  // Nothing set on the element itself (or a legacy width) = inherit.
+  const explicit = hasExplicitWidth(blockLayout);
+  const inheritLabel = (viewport: "desktop" | "mobile") =>
+    ctx ? `Inherit (${describeInheritedWidth(ctx.inherited, ctx.nested, viewport, layoutSettings)})` : undefined;
 
   return (
     <>
       <LayoutSelect
         label="Desktop width"
-        value={resolveBlockWidthPresetId(blockLayout, "desktop", layoutSettings)}
+        value={explicit ? resolveBlockWidthPresetId(blockLayout, "desktop", layoutSettings) : ""}
+        inheritLabel={inheritLabel("desktop")}
         options={presetOptions}
         highlighted={designViewport === "desktop"}
-        onChange={(widthDesktop) => onPatch({ ...blockLayout, widthDesktop })}
+        onChange={(widthDesktop) =>
+          onPatch(
+            widthDesktop === ""
+              ? withoutKeys(blockLayout, "widthDesktop", "width")
+              : { ...withoutKeys(blockLayout, "width"), widthDesktop }
+          )
+        }
       />
       <LayoutSelect
         label="Mobile width"
-        value={resolveBlockWidthPresetId(blockLayout, "mobile", layoutSettings)}
+        value={explicit ? resolveBlockWidthPresetId(blockLayout, "mobile", layoutSettings) : ""}
+        inheritLabel={inheritLabel("mobile")}
         options={presetOptions}
         highlighted={designViewport === "mobile"}
-        onChange={(widthMobile) => onPatch({ ...blockLayout, widthMobile })}
+        onChange={(widthMobile) =>
+          onPatch(
+            widthMobile === ""
+              ? withoutKeys(blockLayout, "widthMobile", "width")
+              : { ...withoutKeys(blockLayout, "width"), widthMobile }
+          )
+        }
       />
       <LayoutSelect
         label="Show on"
@@ -322,16 +523,7 @@ function ImageLayoutControls({
           onPatch={onPatch}
           designViewport={designViewport}
         />
-        <LayoutSelect
-          label="Horizontal align"
-          value={blockLayout?.align ?? "center"}
-          options={[
-            ["left", "Left"],
-            ["center", "Center"],
-            ["right", "Right"],
-          ]}
-          onChange={(align) => onPatch({ ...blockLayout, align: align as BlockAlign })}
-        />
+        <HorizontalAlignSelect blockLayout={blockLayout} onPatch={onPatch} />
         <LayoutSelect
           label="Vertical align"
           value={blockLayout?.verticalAlign ?? "top"}
@@ -355,6 +547,7 @@ function ImageLayoutControls({
           ]}
           onChange={(padding) => onPatch({ ...blockLayout, padding: padding as BlockPadding })}
         />
+        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} />
       </div>
     </div>
   );
@@ -381,16 +574,7 @@ function BlockLayoutControls({
           onPatch={onPatch}
           designViewport={designViewport}
         />
-        <LayoutSelect
-          label="Horizontal align"
-          value={blockLayout?.align ?? "center"}
-          options={[
-            ["left", "Left"],
-            ["center", "Center"],
-            ["right", "Right"],
-          ]}
-          onChange={(align) => onPatch({ ...blockLayout, align: align as BlockAlign })}
-        />
+        <HorizontalAlignSelect blockLayout={blockLayout} onPatch={onPatch} />
         <LayoutSelect
           label="Vertical align"
           value={blockLayout?.verticalAlign ?? "top"}
@@ -414,6 +598,7 @@ function BlockLayoutControls({
           ]}
           onChange={(padding) => onPatch({ ...blockLayout, padding: padding as BlockPadding })}
         />
+        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} />
       </div>
     </div>
   );
@@ -425,12 +610,15 @@ function LayoutSelect({
   options,
   onChange,
   highlighted,
+  inheritLabel,
 }: {
   label: string;
   value: string;
   options: [string, string][];
   onChange: (value: string) => void;
   highlighted?: boolean;
+  /** When set, adds a first "Inherit (…)" option whose value is "" (clears the element's own setting). */
+  inheritLabel?: string;
 }) {
   return (
     <div className={cn(highlighted && "rounded-md ring-1 ring-atlas-accent/40")}>
@@ -441,6 +629,7 @@ function LayoutSelect({
         onChange={(e) => onChange(e.target.value)}
         className="atlas-input mt-0.5 h-7 w-full text-sm"
       >
+        {inheritLabel ? <option value="">{inheritLabel}</option> : null}
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}
@@ -482,7 +671,7 @@ function BlockEditor({
   const nestedInGridCell = (selectedBlockPath?.length ?? 0) >= 2;
 
   const shellBlockLayout = (shell: Extract<ExperiencePageBlock, { type: "container" | "row" }>) =>
-    shell.blockLayout ?? resolveShellBlockLayout(shell, { nestedInGridCell });
+    shell.blockLayout ?? resolveShellBlockLayout(shell, { nestedInGridCell: false });
 
   if (isContainerBlock(block)) {
     const { rows, cols } = resolveContainerLayout(block);
@@ -602,6 +791,18 @@ function BlockEditor({
             onPatch({ cellAlign: cellAlign as "start" | "stretch" } as Partial<ExperiencePageBlock>)
           }
         />
+        <label className="flex items-center gap-2 text-sm text-atlas-text">
+          <input
+            type="checkbox"
+            aria-label="Card behind each cell"
+            checked={!!block.cellCardStyle}
+            onChange={(e) =>
+              onPatch({ cellCardStyle: e.target.checked } as Partial<ExperiencePageBlock>)
+            }
+            className="accent-atlas-accent"
+          />
+          Card behind each cell
+        </label>
         <BlockLayoutControls
           blockLayout={shellBlockLayout(block)}
           layoutSettings={layoutSettings}
@@ -680,6 +881,18 @@ function BlockEditor({
             <option value="lg">Large</option>
           </select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-atlas-text">
+          <input
+            type="checkbox"
+            aria-label="Card behind each cell"
+            checked={!!block.cellCardStyle}
+            onChange={(e) =>
+              onPatch({ cellCardStyle: e.target.checked } as Partial<ExperiencePageBlock>)
+            }
+            className="accent-atlas-accent"
+          />
+          Card behind each cell
+        </label>
         <BlockLayoutControls
           blockLayout={shellBlockLayout(block)}
           layoutSettings={layoutSettings}

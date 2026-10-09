@@ -77,6 +77,7 @@ export function PortalDesignerPreview({
   diagnostics = [],
   designViewport,
   onBlockContextMenu,
+  onSelectPage,
   layoutSettings,
 }: {
   section: ExperienceSectionSnapshot;
@@ -96,6 +97,8 @@ export function PortalDesignerPreview({
     path: import("@/lib/portal-block-layout").BlockPath
   ) => void;
   layoutSettings?: PortalLayoutSettings;
+  /** Called when the empty page background is clicked (selects the page, i.e. its settings). */
+  onSelectPage?: () => void;
 }) {
   const resolvedPayload = payload ?? SAMPLE_PAYLOAD;
   const variableContext = buildPortalVariableContext(resolvedPayload, contactName);
@@ -103,6 +106,15 @@ export function PortalDesignerPreview({
     blocks != null
       ? { ...section, contentBlocks: { ...section.contentBlocks, pageBlocks: blocks } }
       : section;
+
+  // Clicking (or right-clicking) the empty page background selects the page; anything interactive
+  // inside (blocks, drag tabs, insertion zones, buttons) handles its own click.
+  function backgroundSelectsPage(e: React.MouseEvent) {
+    if (!onSelectPage) return;
+    const target = e.target as HTMLElement;
+    if (target.closest(".design-shell, button, a, input, select, textarea, [role='button']")) return;
+    onSelectPage();
+  }
 
   return (
     <div className="flex h-full flex-col bg-[#05070d]">
@@ -127,6 +139,9 @@ export function PortalDesignerPreview({
         >
           <div
             data-design-viewport={designViewport ?? viewport}
+            data-page-background
+            onClick={backgroundSelectsPage}
+            onContextMenu={backgroundSelectsPage}
             className={cn(
               viewport === "desktop"
                 ? "h-full min-h-0 flex-1 overflow-y-auto py-4 px-0"

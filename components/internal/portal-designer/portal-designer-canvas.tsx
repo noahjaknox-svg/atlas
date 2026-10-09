@@ -151,6 +151,8 @@ export function PortalDesignerCanvas({
   const handleBlockContextMenu = useCallback(
     (e: React.MouseEvent, block: ExperiencePageBlock, path: BlockPath) => {
       e.preventDefault();
+      // Right-click selects the element too, so its settings open alongside the menu.
+      onSelect({ blockId: block.id, path });
       setContextMenu({
         blockId: block.id,
         path,
@@ -159,7 +161,7 @@ export function PortalDesignerCanvas({
         block,
       });
     },
-    []
+    [onSelect]
   );
 
   const handleDeleteBlock = useCallback(
@@ -218,6 +220,7 @@ export function PortalDesignerCanvas({
               designMode
               designViewport={viewport}
               onBlockContextMenu={handleBlockContextMenu}
+              onSelectPage={() => onSelect(null)}
               diagnostics={diagnostics}
               blocks={blocks}
               layoutSettings={layoutSettings}

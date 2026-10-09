@@ -1,37 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyBlock, NEW_BLOCK_LAYOUT } from "@/lib/page-blocks-utils";
+import { createEmptyBlock } from "@/lib/page-blocks-utils";
 import { blockLabel } from "@/lib/portal-block-layout";
 import { PALETTE_ITEMS } from "@/components/internal/portal-designer/portal-designer-block-palette";
 import { DESIGNER_BLOCK_TYPES } from "@/components/internal/portal-designer/portal-designer-types";
-import { pageBlockSchema } from "@/lib/experience-section-schema";
+import { pageBlockSchema, proposalSectionPatchSchema } from "@/lib/experience-section-schema";
 
 const LEAF_TYPES = ["text", "heading", "image", "gallery", "html", "spacer", "quote", "cta", "video", "stat"] as const;
 
 describe("new block defaults", () => {
-  it("every new leaf block is Normal width, centered, and carries its own copy of the layout", () => {
-    expect(NEW_BLOCK_LAYOUT).toEqual({ widthDesktop: "normal", widthMobile: "normal", align: "center" });
+  it("new blocks carry no layout of their own, so they inherit the page (or fill their parent)", () => {
     for (const type of LEAF_TYPES) {
-      const block = createEmptyBlock(type) as { blockLayout?: unknown };
-      expect(block.blockLayout, type).toEqual(NEW_BLOCK_LAYOUT);
+      expect((createEmptyBlock(type) as { blockLayout?: unknown }).blockLayout, type).toBeUndefined();
     }
-    const a = createEmptyBlock("text") as { blockLayout: object };
-    const b = createEmptyBlock("text") as { blockLayout: object };
-    expect(a.blockLayout).not.toBe(b.blockLayout); // editing one must not change the other
   });
 
-  it("containers and rows are left to their own layout resolution", () => {
-    expect((createEmptyBlock("container") as { blockLayout?: unknown }).blockLayout).toBeUndefined();
+  it("new containers and rows don't force a width either", () => {
+    const container = createEmptyBlock("container") as { blockLayout?: unknown; width?: unknown };
+    expect(container.blockLayout).toBeUndefined();
+    expect(container.width).toBeUndefined();
     expect((createEmptyBlock("row") as { blockLayout?: unknown }).blockLayout).toBeUndefined();
   });
 
-  it("new blocks still validate against the page schema (layout included)", () => {
-    // Blocks that need a URL/label to be valid get one; the layout field itself must never be the reason it fails.
+  it("new blocks still validate against the page schema", () => {
+    // Blocks that need a URL/label to be valid get one; layout must never be the reason it fails.
     const filled: Record<string, object> = { image: { url: "https://x.test/a.png", alt: "x" }, video: { url: "https://x.test/v.mp4" }, cta: { url: "https://x.test" } };
     for (const type of LEAF_TYPES) {
       const block = { ...createEmptyBlock(type), ...(filled[type] ?? {}) };
       const result = pageBlockSchema.safeParse(block);
       expect(result.success, `${type}: ${JSON.stringify(result.success ? "" : result.error.issues)}`).toBe(true);
     }
+  });
+
+  it("the schema keeps the new panel and page-layout fields (it strips unknown keys)", () => {
+    const withPanel = pageBlockSchema.safeParse({ id: "t", type: "text", markdown: "x", blockLayout: { panel: true, panelOpacity: 40 } });
+    expect(withPanel.success && (withPanel.data as { blockLayout?: unknown }).blockLayout).toEqual({ panel: true, panelOpacity: 40 });
+    expect(pageBlockSchema.safeParse({ id: "t", type: "text", markdown: "x", blockLayout: { panelOpacity: 140 } }).success).toBe(false);
+    const patch = proposalSectionPatchSchema.safeParse({ id: "s1", contentBlocks: { pageLayout: { widthDesktop: "narrow", align: "left" } } });
+    expect(patch.success && (patch.data.contentBlocks as { pageLayout?: unknown })?.pageLayout).toEqual({ widthDesktop: "narrow", align: "left" });
   });
 });
 

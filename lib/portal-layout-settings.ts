@@ -23,7 +23,11 @@ export type PortalLayoutSettings = {
   widthPresets: LayoutWidthPreset[];
   defaultPresetId: LayoutWidthPresetId;
   breakpoints?: PortalLayoutBreakpoints;
+  /** Default opacity (0-100) of element panels / cell cards; an element can override it. 100 = the standard glass look. */
+  panelOpacity?: number;
 };
+
+export const DEFAULT_PANEL_OPACITY = 100;
 
 export type BlockVisibility = (typeof BLOCK_VISIBILITIES)[number];
 
@@ -57,7 +61,15 @@ export const portalLayoutSettingsSchema = z.object({
   widthPresets: z.array(layoutWidthPresetSchema).min(1),
   defaultPresetId: z.string().min(1),
   breakpoints: portalLayoutBreakpointsSchema.optional(),
+  panelOpacity: z.number().min(0).max(100).optional(),
 });
+
+export function resolvePanelOpacity(
+  blockLayout: { panelOpacity?: number } | undefined,
+  settings: PortalLayoutSettings
+): number {
+  return blockLayout?.panelOpacity ?? settings.panelOpacity ?? DEFAULT_PANEL_OPACITY;
+}
 
 export const DEFAULT_LAYOUT_SETTINGS: PortalLayoutSettings = {
   defaultPresetId: "normal",

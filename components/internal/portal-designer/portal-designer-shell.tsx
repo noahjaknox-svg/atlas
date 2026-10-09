@@ -25,7 +25,7 @@ import {
 } from "@/lib/product-terminology";
 import { ProposalDesignEditor } from "@/components/internal/proposal-design-editor";
 import { PortalPresentationForm } from "@/components/internal/workspace/portal-presentation-panel";
-import type { FleetShowcaseItem, PortalContentData } from "@/lib/portal-content";
+import type { PortalContentData } from "@/lib/portal-content";
 import { resolveLayoutSettings } from "@/lib/portal-layout-settings";
 import { PortalDesignerPageList } from "./portal-designer-page-list";
 import {
@@ -61,7 +61,6 @@ export function PortalDesignerShell({
   mode,
   initialSections,
   initialBrandingContent,
-  initialFleet,
   proposalId,
   aircraftId,
   initialHero,
@@ -75,7 +74,6 @@ export function PortalDesignerShell({
   mode: PortalDesignerMode;
   initialSections: DesignerSection[];
   initialBrandingContent?: PortalContentData;
-  initialFleet?: FleetShowcaseItem[];
   proposalId?: string;
   aircraftId?: string;
   initialHero?: PortalDesignerHeroState;
@@ -118,13 +116,12 @@ export function PortalDesignerShell({
   const [selection, setSelection] = useState<BlockSelection | null>(null);
   const [viewport, setViewport] = useState<PreviewViewport>("desktop");
 
+  // Branding defaults (widths, panel opacity…) — updated when Configuration and Setup is saved,
+  // so the page previews reflect them without a reload.
+  const [liveLayoutSettings, setLiveLayoutSettings] = useState(initialBrandingContent?.layoutSettings);
   const layoutSettings = useMemo(
-    () =>
-      resolveLayoutSettings(
-        publishedSnapshot?.branding?.layoutSettings,
-        initialBrandingContent?.layoutSettings
-      ),
-    [publishedSnapshot?.branding?.layoutSettings, initialBrandingContent?.layoutSettings]
+    () => resolveLayoutSettings(publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings),
+    [publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings]
   );
   const [previewSource, setPreviewSource] = useState<PreviewSource>("draft");
   const [brandingTab, setBrandingTab] = useState<DesignerBrandingTab>("pages");
@@ -666,13 +663,13 @@ export function PortalDesignerShell({
                 type="button"
                 onClick={() => setBrandingTab(tab)}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium capitalize",
+                  "rounded-md px-3 py-1.5 text-xs font-medium",
                   brandingTab === tab
                     ? "bg-atlas-accent/15 text-atlas-text"
                     : "text-atlas-muted hover:text-atlas-text"
                 )}
               >
-                {tab === "pages" ? "Pages & blocks" : "Global branding"}
+                {tab === "pages" ? "Pages & blocks" : "Configuration and Setup"}
               </button>
             ))}
           </nav>
@@ -750,11 +747,11 @@ export function PortalDesignerShell({
         </div>
       )}
 
-      {mode === "master" && brandingTab === "global" && initialBrandingContent && initialFleet ? (
+      {mode === "master" && brandingTab === "global" && initialBrandingContent ? (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
           <ProposalDesignEditor
             initialContent={initialBrandingContent}
-            initialFleet={initialFleet}
+            onSaved={(saved) => setLiveLayoutSettings(saved.layoutSettings)}
           />
         </div>
       ) : (

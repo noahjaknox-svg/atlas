@@ -6,7 +6,7 @@ test("page settings show for the page, and give way to the block's settings once
   await page.goto(DESIGNER);
   const pageName = page.getByText("Page name", { exact: true });
   const usageTypes = page.getByRole("link", { name: "Data Warehouse → Usage Types → Portal pages" });
-  const blockSettings = page.getByLabel("Desktop width");
+  const blockSettings = page.getByLabel("Desktop width", { exact: true });
 
   // Page selected, no block: page settings (name, usage types) are shown, block settings are not.
   await expect(pageName).toBeVisible();

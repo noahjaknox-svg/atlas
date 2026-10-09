@@ -5,7 +5,7 @@ import { requireDepartmentPageAccess } from "@/lib/require-department-page";
 import { getInternalShellProps } from "@/lib/departments";
 import { InternalShell } from "@/components/internal/internal-shell";
 import { PortalDesignerShell } from "@/components/internal/portal-designer/portal-designer-shell";
-import { getPortalContent, getFleetShowcase, getExperienceMasterTemplates } from "@/lib/portal-content";
+import { getPortalContent, getExperienceMasterTemplates } from "@/lib/portal-content";
 import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
 import type { DesignerSection } from "@/components/internal/portal-designer/portal-designer-types";
 import { prisma } from "@/lib/db";
@@ -21,9 +21,8 @@ export default async function ProposalDesignPage() {
 
   const shell = getInternalShellProps(user);
 
-  const [content, fleet, templates, usageTypes] = await Promise.all([
+  const [content, templates, usageTypes] = await Promise.all([
     getPortalContent(),
-    getFleetShowcase(),
     getExperienceMasterTemplates(),
     prisma.usageType.findMany({
       where: { active: true },
@@ -50,7 +49,6 @@ export default async function ProposalDesignPage() {
         mode="master"
         initialSections={initialSections}
         initialBrandingContent={content}
-        initialFleet={fleet}
         usageTypes={usageTypes}
       />
     </InternalShell>

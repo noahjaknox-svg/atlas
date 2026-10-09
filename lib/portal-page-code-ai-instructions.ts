@@ -44,7 +44,7 @@ DO NOT:
   "layoutVariant": null,
   "signatoryName": null,
   "signatoryTitle": null,
-  "contentBlocks": { "pageBlocks": [ /* see below */ ] }
+  "contentBlocks": { "pageLayout": { /* optional, see Layout below */ }, "pageBlocks": [ /* see below */ ] }
 }
 \`\`\`
 Omit any field you don't need to change — all fields above are optional except the object itself. A page's identity (\`id\`, \`sectionType\`, which fixed page slot this is) is controlled by the app and is not part of this record — if you include those keys they are ignored.
@@ -75,13 +75,17 @@ Other motion, such as an animated chart or diagram, goes in an \`html\` block, C
 ## Personalization variables
 Text, heading, quote, button-label and stat text can include \`{{variable}}\` placeholders that fill in per proposal: ${PORTAL_VARIABLES.map((v) => `\`{{${v.key}}}\``).join(", ")}. They are NOT filled in inside \`html\` blocks, image/gallery captions, or URLs.
 
-## Centering and width — blocks are centered by default
-Every block above (and \`row\`/\`container\`) accepts an optional \`"blockLayout"\` object:
-\`{ "widthDesktop"?: ${WIDTH_PRESETS}, "widthMobile"?: same options, "align"?: ${BLOCK_ALIGNS.map((v) => `"${v}"`).join("|")}, "verticalAlign"?: ${BLOCK_VERTICAL_ALIGNS.map((v) => `"${v}"`).join("|")}, "padding"?: ${BLOCK_PADDINGS.map((v) => `"${v}"`).join("|")} }\`
+## Layout — the page sets the default, elements inherit it
+Layout cascades **page → container → element**. Set it once on the page, then leave \`blockLayout\` off blocks that should follow it:
+- \`contentBlocks.pageLayout\` (optional): \`{ "widthDesktop"?: ${WIDTH_PRESETS}, "widthMobile"?: same options, "align"?: ${BLOCK_ALIGNS.map((v) => `"${v}"`).join("|")} }\`. Top-level blocks take these. If omitted, the portal default applies (\`normal\` = 80% of the page width, centered).
+- A block **inside** a \`row\`/\`container\` cell fills that cell by default (so widths never shrink level by level) and follows the alignment of the nearest parent that sets one, then the page.
+- Every block (and \`row\`/\`container\`) accepts an optional \`"blockLayout"\` to **override** what it inherits: \`{ "widthDesktop"?: same options, "widthMobile"?: same options, "align"?: ${BLOCK_ALIGNS.map((v) => `"${v}"`).join("|")}, "verticalAlign"?: ${BLOCK_VERTICAL_ALIGNS.map((v) => `"${v}"`).join("|")}, "padding"?: ${BLOCK_PADDINGS.map((v) => `"${v}"`).join("|")}, "panel"?: true|false, "panelOpacity"?: 0-100 }\`. Only set the fields you actually want to differ — don't repeat the page default on every block.
 
-If you omit \`blockLayout\`, a top-level block defaults to \`widthDesktop: "normal"\` (80% of the page width) and \`align: "center"\` — a centered column. Text *inside* a text block still reads left-to-right as normal; \`align\` positions the block, not the lines of text. Set \`"align": "left"\` on a block (typically with \`"widthDesktop": "full"\`) for a left-aligned editorial layout, and keep one alignment consistent down the page. Blocks nested inside \`row\`/\`container\` cells fill their cell by default.
+\`align\` positions the block, not the lines of text inside it (text still reads left-to-right). Keep one alignment consistent down the page: for a left-aligned editorial layout set \`"pageLayout": { "align": "left", "widthDesktop": "full" }\` once rather than per block.
 
-**Always set \`widthMobile\` and \`padding\` explicitly too** — don't rely on desktop-only defaults. A \`"wide"\` or \`"full"\` width block with no \`padding\` set will run edge-to-edge with text touching the screen on phones. A safe default for most top-level blocks: \`{ "align": "center", "widthDesktop": "normal", "widthMobile": "full", "padding": "sm" }\`, adjusting \`widthDesktop\` up to \`"wide"\`/\`"full"\` only for things meant to be visually prominent (a hero image, a full-bleed banner).
+**Panels:** \`"blockLayout": { "panel": true }\` puts a translucent panel behind any block (use sparingly — a stat, a quote, a callout). Its opacity is the portal's default unless you set \`"panelOpacity"\` (0-100; 100 is the standard glass look). \`"cellCardStyle": true\` on a \`row\`/\`container\` does the same for each cell and uses the same opacity.
+
+**Mobile:** set \`"widthMobile"\` and \`"padding"\` on blocks you override. A \`"wide"\` or \`"full"\` block with no \`padding\` runs edge-to-edge with text touching the screen on phones; \`{ "widthDesktop": "wide", "widthMobile": "full", "padding": "sm" }\` is a safe override for visually prominent things (a hero image, a banner).
 
 If you use \`html\`-type blocks, its HTML must follow these rules:
 - Semantic HTML only: div, p, span, h1-h3, ul, ol, li, a, img, strong, em, br, hr, table/thead/tbody/tr/th/td
