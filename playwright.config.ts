@@ -10,7 +10,8 @@ const LOCAL = /localhost/.test(process.env.E2E_BASE_URL ?? "");
 export default defineConfig({
   testDir: "./e2e",
   timeout: LOCAL ? 120_000 : 60_000,
-  workers: LOCAL ? 1 : undefined,
+  // One at a time: specs share staging data (the same aircraft type, proposal and branding), so parallel files can collide.
+  workers: 1,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   retries: 0,

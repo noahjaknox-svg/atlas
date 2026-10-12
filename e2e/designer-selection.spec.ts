@@ -50,34 +50,37 @@ test("clicking (or right-clicking) the page background selects the page", async 
   await expect(blockSettings(page)).toBeVisible();
 });
 
-test("selection is sticky: left-click picks from page settings, right-click switches, background returns", async ({ page }) => {
+test("you can click around: each left-click selects what you click, elements and background alike", async ({ page }) => {
   await loadBlocks(page, ["ST-AAA", "ST-BBB"]);
   const selected = (marker: string) => page.locator('.design-shell[data-selected="true"]', { hasText: marker });
   const block = (marker: string) => page.locator(".design-shell .portal-markdown", { hasText: marker });
   const background = page.locator("[data-page-background]");
 
-  // From the page settings, a left-click selects an element.
   await expect(pageName(page)).toBeVisible();
   await block("ST-AAA").click();
   await expect(selected("ST-AAA")).toHaveCount(1);
   await expect(blockSettings(page)).toBeVisible();
 
-  // With an element selected, left-clicking another one does NOT change the selection.
+  // Straight to another element, no trip through the background.
   await block("ST-BBB").click();
-  await expect(selected("ST-AAA")).toHaveCount(1);
-  await expect(selected("ST-BBB")).toHaveCount(0);
-
-  // Right-click selects it (and still opens the menu).
-  await block("ST-BBB").click({ button: "right" });
-  await expect(page.getByRole("menu")).toBeVisible();
   await expect(selected("ST-BBB")).toHaveCount(1);
   await expect(selected("ST-AAA")).toHaveCount(0);
 
-  // The background goes back to the page settings, where left-click picks elements again.
+  await block("ST-AAA").click();
+  await expect(selected("ST-AAA")).toHaveCount(1);
+
+  // Right-click selects too (and still opens its menu).
+  await block("ST-BBB").click({ button: "right" });
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(selected("ST-BBB")).toHaveCount(1);
+
+  // The background selects the page, and clicking an element works again right after.
   await background.click({ position: { x: 4, y: 4 } });
   await expect(pageName(page)).toBeVisible();
   await block("ST-AAA").click();
   await expect(selected("ST-AAA")).toHaveCount(1);
+  await background.click({ position: { x: 4, y: 4 } });
+  await expect(pageName(page)).toBeVisible();
 });
 
 test("left-click selects the innermost element, and 'Select parent' walks back out", async ({ page }) => {
