@@ -96,12 +96,12 @@ async function brandingPanelOpacity(page: Page): Promise<number> {
   return content.content.layoutSettings?.panelOpacity ?? 100;
 }
 
-// How opaque the panel is: the alpha of its first gradient colour (1 = fully solid, 0 = invisible).
+// How opaque the panel's dark tint is (it follows opacity squared, so mid values stay see-through): 1 = solid, 0 = invisible.
 async function panelAlpha(page: Page, marker: string) {
   const panel = page.locator("[data-element-panel]", { hasText: marker }).first();
   await expect(panel).toBeVisible();
   const bg = await panel.evaluate((el) => getComputedStyle(el).backgroundImage);
-  const m = bg.match(/rgba?\(40, 44, 53(?:, ([0-9.]+))?\)/);
+  const m = bg.match(/rgba?\(24, 30, 44(?:, ([0-9.]+))?\)/);
   return m ? (m[1] === undefined ? 1 : parseFloat(m[1])) : NaN;
 }
 
@@ -119,21 +119,27 @@ test.describe("element panels", () => {
   test("a panel's opacity: its own value, else the branding default", async ({ page }) => {
     const defaultPct = await brandingPanelOpacity(page);
     await renderPreview(page, [text("a", "PN-DEFAULT", { panel: true }), text("b", "PN-HALF", { panel: true, panelOpacity: 50 }), text("c", "PN-NONE", { panel: true, panelOpacity: 0 })]);
-    expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo(defaultPct / 100, 2); // the branding default
-    expect(await panelAlpha(page, "PN-HALF")).toBeCloseTo(0.5, 2);
+    expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo((defaultPct / 100) ** 2, 2); // the branding default
+    expect(await panelAlpha(page, "PN-HALF")).toBeCloseTo(0.25, 2);
     expect(await panelAlpha(page, "PN-NONE")).toBeCloseTo(0, 2);
     // Border and shadow fade along with the background: 0% leaves nothing behind, 50% is half.
     const none = await panelEdges(page, "PN-NONE");
     expect(none.border).toBeCloseTo(0, 2);
     expect(none.shadow).toBeCloseTo(0, 2);
     const half = await panelEdges(page, "PN-HALF");
-    expect(half.border).toBeCloseTo(0.06, 2);
+    expect(half.border).toBeCloseTo(0.08, 2);
     expect(half.shadow).toBeCloseTo(0.175, 2);
+    // The glass sheen (a light highlight across the top-left) is there at 100% and fades with the opacity.
+    const sheen = async (marker: string) => {
+      const bg = await page.locator("[data-element-panel]", { hasText: marker }).first().evaluate((el) => getComputedStyle(el).backgroundImage);
+      return parseFloat(bg.match(/rgba\(255, 255, 255, ([0-9.]+)\) 0%/)![1]!);
+    };
+    expect(await sheen("PN-HALF")).toBeCloseTo(0.07, 2); // 0.14 × 50%
     // And 100% is fully solid: nothing of the page shows through.
     await renderPreview(page, [text("s", "PN-SOLID", { panel: true, panelOpacity: 100 })]);
     expect(await panelAlpha(page, "PN-SOLID")).toBeCloseTo(1, 2);
     const solid = await panelEdges(page, "PN-SOLID");
-    expect(solid.border).toBeCloseTo(0.12, 2);
+    expect(solid.border).toBeCloseTo(0.16, 2);
     expect(solid.shadow).toBeCloseTo(0.35, 2);
     // No panel means no panel element at all.
     await renderPreview(page, [text("a", "PN-PLAIN")]);
@@ -147,7 +153,7 @@ test.describe("element panels", () => {
     try {
       expect((await set(50)).ok()).toBe(true);
       await renderPreview(page, [text("a", "PN-DEFAULT", { panel: true }), text("b", "PN-OWN", { panel: true, panelOpacity: 100 })]);
-      expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo(0.5, 2); // follows the new default (50%)
+      expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo(0.25, 2); // follows the new default (50% → tint 0.25)
       expect(await panelAlpha(page, "PN-OWN")).toBeCloseTo(1, 2); // override (100% = solid) still wins
     } finally {
       // Put the branding settings back exactly as they were.
@@ -196,15 +202,15 @@ test("cell cards on a container get an opacity control that changes the cards", 
     const card = page.locator(".portal-container-grid > .portal-element-panel").first();
     await expect(card).toBeVisible();
     const bg = await card.evaluate((el) => getComputedStyle(el).backgroundImage);
-    const m = bg.match(/rgba?\(40, 44, 53(?:, ([0-9.]+))?\)/);
+    const m = bg.match(/rgba?\(24, 30, 44(?:, ([0-9.]+))?\)/);
     return m ? (m[1] === undefined ? 1 : parseFloat(m[1])) : NaN;
   };
 
   // Published render: the container's opacity override applies to its cell cards; no override = default.
   await renderPreview(page, [cards({ panelOpacity: 40 })]);
-  expect(await cardAlpha()).toBeCloseTo(0.4, 2);
+  expect(await cardAlpha()).toBeCloseTo(0.16, 2);
   await renderPreview(page, [cards()]);
-  expect(await cardAlpha()).toBeCloseTo(defaultPct / 100, 2);
+  expect(await cardAlpha()).toBeCloseTo((defaultPct / 100) ** 2, 2);
 
   // Designer: the slider is there for a container with cell cards even though 'Panel' is off.
   await page.goto(DESIGNER);
@@ -221,9 +227,9 @@ test("cell cards on a container get an opacity control that changes the cards", 
   await expect(page.getByLabel("Panel behind this element")).not.toBeChecked();
   const slider = page.getByLabel("Panel and card opacity");
   await expect(slider).toBeVisible();
-  expect(await cardAlpha()).toBeCloseTo(defaultPct / 100, 2);
+  expect(await cardAlpha()).toBeCloseTo((defaultPct / 100) ** 2, 2);
   await slider.fill("40");
-  await expect.poll(cardAlpha).toBeCloseTo(0.4, 2); // the cards on the canvas follow the slider
+  await expect.poll(cardAlpha).toBeCloseTo(0.16, 2); // the cards on the canvas follow the slider
   // Ticking then unticking Panel must not throw away the cards' opacity.
   await page.getByLabel("Panel behind this element").check();
   await page.getByLabel("Panel behind this element").uncheck();

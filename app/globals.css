@@ -125,21 +125,30 @@
 
   /*
    * Element panels and container cell cards (the designer's "panel" / "card" with an opacity setting).
-   * --panel-opacity is 0-1: 1 is a fully solid panel, 0 is invisible (background, border and shadow
-   * all fade together). The three tones are the old glass look composited over the page colour.
+   * --panel-opacity is 0-1: 1 is fully solid, 0 invisible. Glass look = a light sheen across the top-left
+   * edge over a dark navy tint. The tint falls off faster than linearly (opacity squared), so mid values
+   * stay see-through and glassy while 100% is solid; the sheen, rim and shadows fade linearly with it.
    */
   .portal-element-panel {
+    --po: var(--panel-opacity, 0.75);
     @apply rounded-2xl;
-    background: linear-gradient(
-      145deg,
-      rgb(40 44 53 / var(--panel-opacity, 0.75)) 0%,
-      rgb(23 27 37 / var(--panel-opacity, 0.75)) 42%,
-      rgb(11 15 26 / var(--panel-opacity, 0.75)) 100%
-    );
-    border: 1px solid rgb(255 255 255 / calc(0.12 * var(--panel-opacity, 0.75)));
+    background:
+      linear-gradient(
+        145deg,
+        rgb(255 255 255 / calc(0.14 * var(--po))) 0%,
+        rgb(255 255 255 / calc(0.05 * var(--po))) 38%,
+        rgb(255 255 255 / 0) 100%
+      ),
+      linear-gradient(
+        145deg,
+        rgb(24 30 44 / calc(var(--po) * var(--po))) 0%,
+        rgb(11 15 26 / calc(var(--po) * var(--po))) 100%
+      );
+    border: 1px solid rgb(255 255 255 / calc(0.16 * var(--po)));
     box-shadow:
-      0 8px 32px rgb(0 0 0 / calc(0.35 * var(--panel-opacity, 0.75))),
-      inset 0 1px 0 rgb(255 255 255 / calc(0.08 * var(--panel-opacity, 0.75)));
+      0 8px 32px rgb(0 0 0 / calc(0.35 * var(--po))),
+      inset 0 1px 0 rgb(255 255 255 / calc(0.18 * var(--po))),
+      inset 0 -1px 0 rgb(0 0 0 / calc(0.25 * var(--po)));
   }
 
   .portal-v2-liquid-glass {
