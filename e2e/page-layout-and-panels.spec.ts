@@ -104,6 +104,16 @@ async function panelAlpha(page: Page, marker: string) {
   return parseFloat(bg.match(/rgba\(255, 255, 255, ([0-9.]+)\)/)![1]!);
 }
 
+/** Border and drop-shadow alphas of a panel — they must fade with the opacity too, or 0% still shows a rim. */
+async function panelEdges(page: Page, marker: string) {
+  const panel = page.locator("[data-element-panel]", { hasText: marker }).first();
+  return panel.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const alpha = (c: string) => { const m = c.match(/rgba?\([^)]*?,\s*([0-9.]+)\)/); return m ? parseFloat(m[1]!) : 1; };
+    return { border: alpha(cs.borderTopColor), shadow: alpha(cs.boxShadow) };
+  });
+}
+
 test.describe("element panels", () => {
   test("a panel's opacity: its own value, else the branding default", async ({ page }) => {
     const defaultPct = await brandingPanelOpacity(page);
@@ -111,6 +121,13 @@ test.describe("element panels", () => {
     expect(await panelAlpha(page, "PN-DEFAULT")).toBeCloseTo((0.12 * defaultPct) / 100, 2); // the branding default (100% = standard glass)
     expect(await panelAlpha(page, "PN-HALF")).toBeCloseTo(0.06, 2);
     expect(await panelAlpha(page, "PN-NONE")).toBeCloseTo(0, 2);
+    // Border and shadow fade along with the background: 0% leaves nothing behind, 50% is half.
+    const none = await panelEdges(page, "PN-NONE");
+    expect(none.border).toBeCloseTo(0, 2);
+    expect(none.shadow).toBeCloseTo(0, 2);
+    const half = await panelEdges(page, "PN-HALF");
+    expect(half.border).toBeCloseTo(0.06, 2);
+    expect(half.shadow).toBeCloseTo(0.175, 2);
     // No panel means no panel element at all.
     await renderPreview(page, [text("a", "PN-PLAIN")]);
     await expect(page.locator("[data-element-panel]")).toHaveCount(0);

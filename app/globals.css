@@ -117,10 +117,11 @@
       rgba(255, 255, 255, calc(0.05 * var(--panel-opacity, 1))) 42%,
       rgba(11, 15, 26, calc(0.42 * var(--panel-opacity, 1))) 100%
     );
-    border: 1px solid var(--portal-glass-border);
+    /* Border and shadows fade with --panel-opacity too, so 0% is genuinely invisible. */
+    border: 1px solid rgba(255, 255, 255, calc(0.12 * var(--panel-opacity, 1)));
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      0 8px 32px rgba(0, 0, 0, calc(0.35 * var(--panel-opacity, 1))),
+      inset 0 1px 0 rgba(255, 255, 255, calc(0.08 * var(--panel-opacity, 1)));
   }
 
   .portal-v2-liquid-glass {
