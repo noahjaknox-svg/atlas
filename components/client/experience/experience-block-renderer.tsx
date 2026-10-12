@@ -389,14 +389,12 @@ function DesignBlockShell({
       <div
         role="button"
         tabIndex={0}
-        // Left-click only picks an element from the page settings (nothing selected). Once something is
-        // selected, left-click leaves the selection alone; right-click (below) selects, and the
-        // background returns to the page settings.
+        // Left-click always selects what you click: the innermost element under the cursor (the click
+        // would otherwise bubble up through every container around it and the outermost one would win).
+        // Right-click selects too (below), and the page background selects the page.
         onClick={(e) => {
-          // The innermost element under the cursor claims the click (otherwise it bubbles up through
-          // every container around it and the outermost one wins).
           e.stopPropagation();
-          if (!selectedBlockId) onSelectBlock?.(block.id);
+          onSelectBlock?.(block.id);
         }}
         onContextMenu={(e) => {
           e.preventDefault();
