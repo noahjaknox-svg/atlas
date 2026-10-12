@@ -25,6 +25,7 @@ export function GenericChapterV2({
   designViewport,
   onBlockContextMenu,
   layoutSettings,
+  showGuides,
 }: {
   section: ExperienceSectionSnapshot;
   variableContext?: PortalVariableContext;
@@ -39,6 +40,8 @@ export function GenericChapterV2({
     path: BlockPath
   ) => void;
   layoutSettings?: PortalLayoutSettings;
+  /** Designer only: show the dashed layout guides (default on). */
+  showGuides?: boolean;
 }) {
   const blocks = section.contentBlocks?.pageBlocks ?? [];
   const resolvedDesignViewport = designViewport ?? "desktop";
@@ -66,6 +69,7 @@ export function GenericChapterV2({
             variableContext={variableContext}
             layoutSettings={layoutSettings}
             pageLayout={section.contentBlocks?.pageLayout}
+            showGuides={showGuides}
           />
         </ChapterStaggerItem>
       </ChapterStagger>
