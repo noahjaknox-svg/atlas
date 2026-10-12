@@ -382,7 +382,12 @@ function DesignBlockShell({
       <div
         role="button"
         tabIndex={0}
-        onClick={() => onSelectBlock?.(block.id)}
+        // Left-click only picks an element from the page settings (nothing selected). Once something is
+        // selected, left-click leaves the selection alone; right-click (below) selects, and the
+        // background returns to the page settings.
+        onClick={() => {
+          if (!selectedBlockId) onSelectBlock?.(block.id);
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
