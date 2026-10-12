@@ -385,7 +385,10 @@ function DesignBlockShell({
         // Left-click only picks an element from the page settings (nothing selected). Once something is
         // selected, left-click leaves the selection alone; right-click (below) selects, and the
         // background returns to the page settings.
-        onClick={() => {
+        onClick={(e) => {
+          // The innermost element under the cursor claims the click (otherwise it bubbles up through
+          // every container around it and the outermost one wins).
+          e.stopPropagation();
           if (!selectedBlockId) onSelectBlock?.(block.id);
         }}
         onContextMenu={(e) => {

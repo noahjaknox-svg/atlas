@@ -6,6 +6,7 @@ import {
   describeInheritedWidth,
   inheritedForNested,
   inheritedForTopLevel,
+  parentOf,
   resolveInheritedFor,
 } from "@/lib/page-layout-inheritance";
 import { DEFAULT_LAYOUT_SETTINGS, DEFAULT_PANEL_OPACITY, blockWidthStyleVars, resolvePanelOpacity } from "@/lib/portal-layout-settings";
@@ -97,5 +98,24 @@ describe("panel opacity default", () => {
   it("is kept when branding settings are parsed", () => {
     expect(parsePortalLayoutSettings({ ...DEFAULT_LAYOUT_SETTINGS, panelOpacity: 55 }).panelOpacity).toBe(55);
     expect(parsePortalLayoutSettings({ ...DEFAULT_LAYOUT_SETTINGS, panelOpacity: 500 })).toEqual(DEFAULT_LAYOUT_SETTINGS); // invalid → defaults
+  });
+});
+
+describe("parentOf (Select parent)", () => {
+  const blocks: ExperiencePageBlock[] = [
+    text("top"),
+    {
+      id: "box", type: "container", rows: 1, cols: 2, gap: "md", columnWeights: [1, 1], rowWeights: [1],
+      cells: [[[text("in-cell")], [{ id: "row", type: "row", preset: "equal-2", gap: "md", columns: [[text("deep")], []] } as ExperiencePageBlock]]],
+    } as ExperiencePageBlock,
+  ];
+  it("a top-level block has no parent", () => {
+    expect(parentOf(blocks, [0])).toBeNull();
+    expect(parentOf(blocks, [1])).toBeNull();
+  });
+  it("finds the container around an element in a cell, and the row around one in a column", () => {
+    expect(parentOf(blocks, [1, 0, 0, 0])).toMatchObject({ path: [1], block: { id: "box" } });
+    expect(parentOf(blocks, [1, 0, 1, 0, 0, 0])).toMatchObject({ path: [1, 0, 1, 0], block: { id: "row" } });
+    expect(parentOf(blocks, [1, 0, 1, 0])).toMatchObject({ path: [1], block: { id: "box" } }); // the row's own parent
   });
 });

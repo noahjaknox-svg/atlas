@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext } from "react";
 import {
+  parentOf,
   describeInheritedAlign,
   describeInheritedWidth,
   resolveInheritedFor,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/portal-layout-settings";
 import { diagnosticsForBlock, type BlockDiagnostic } from "@/lib/portal-block-diagnostics";
 import {
+  blockLabel,
   isContainerBlock,
   isRowBlock,
   resolveContainerLayout,
@@ -90,6 +92,7 @@ export function PortalDesignerInspector({
   selectedBlockPath,
   usageTypes,
   onBackToPage,
+  onSelectParent,
 }: {
   section: DesignerSection;
   selectedBlock: ExperiencePageBlock | null;
@@ -104,6 +107,8 @@ export function PortalDesignerInspector({
   usageTypes?: { id: string; name: string }[];
   /** Deselect the block to return to the page's settings. */
   onBackToPage?: () => void;
+  /** Select the container around the current element. */
+  onSelectParent?: (sel: { blockId: string; path: BlockPath }) => void;
 }) {
   // What the selected element inherits (page → container → element), for the "Inherit (…)" options.
   const inheritedLayout = selectedBlock
@@ -113,6 +118,7 @@ export function PortalDesignerInspector({
         section.contentBlocks?.pageLayout
       )
     : null;
+  const parent = selectedBlock ? parentOf(section.contentBlocks?.pageBlocks ?? [], selectedBlockPath ?? []) : null;
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
     : [];
@@ -204,15 +210,26 @@ export function PortalDesignerInspector({
 
         {selectedBlock ? (
           <>
-            {onBackToPage ? (
-              <button
-                type="button"
-                onClick={onBackToPage}
-                className="text-xs text-atlas-accent hover:underline"
-              >
-                ← Page settings
-              </button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {onBackToPage ? (
+                <button
+                  type="button"
+                  onClick={onBackToPage}
+                  className="text-xs text-atlas-accent hover:underline"
+                >
+                  ← Page settings
+                </button>
+              ) : null}
+              {parent && onSelectParent ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectParent({ blockId: parent.block.id, path: parent.path })}
+                  className="text-xs text-atlas-accent hover:underline"
+                >
+                  ↑ Select {blockLabel(parent.block).toLowerCase()}
+                </button>
+              ) : null}
+            </div>
             {blockWarnings.length > 0 ? (
               <ul className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-200">
                 {blockWarnings.map((w, i) => (
