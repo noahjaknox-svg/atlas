@@ -79,3 +79,48 @@ test("selection is sticky: left-click picks from page settings, right-click swit
   await block("ST-AAA").click();
   await expect(selected("ST-AAA")).toHaveCount(1);
 });
+
+test("left-click selects the innermost element, and 'Select parent' walks back out", async ({ page }) => {
+  await page.goto(DESIGNER);
+  await page.getByRole("button", { name: /^Page code/i }).click();
+  const code = page.getByLabel("Page code JSON");
+  const record = JSON.parse(await code.inputValue());
+  const nested = {
+    id: "outer", type: "container", rows: 1, cols: 2, gap: "md", columnWeights: [1, 1], rowWeights: [1], cellAlign: "stretch", blockLayout: { widthDesktop: "full" },
+    cells: [[
+      [{ id: "inner", type: "container", rows: 1, cols: 1, gap: "md", columnWeights: [1], rowWeights: [1], cellAlign: "stretch", cells: [[[{ id: "leaf", type: "text", markdown: "NS-LEAF" }]]] }],
+      [{ id: "other", type: "text", markdown: "NS-OTHER" }],
+    ]],
+  };
+  record.contentBlocks = { pageBlocks: [nested] };
+  await code.fill(JSON.stringify(record));
+  await page.getByRole("button", { name: /^(Apply|Applied!)$/ }).click();
+  await page.getByRole("button", { name: /^Page code/i }).click();
+
+  const leafShell = page.locator('.design-shell[data-selected="true"]', { has: page.locator(".portal-markdown", { hasText: "NS-LEAF" }) });
+  const selectedShells = page.locator('.design-shell[data-selected="true"]');
+  const parentLink = page.getByRole("button", { name: /^↑ Select/ });
+
+  // From the page settings a left-click on an element two containers deep selects THAT element.
+  await page.locator(".design-shell .portal-markdown", { hasText: "NS-LEAF" }).click();
+  await expect(selectedShells).toHaveCount(1);
+  await expect(leafShell.locator(".portal-container-grid")).toHaveCount(0); // the text itself, not a container around it
+  await expect(page.getByText("Markdown text")).toBeVisible();
+
+  // The same for a plain element in the neighbouring cell.
+  await page.getByRole("button", { name: "← Page settings" }).click();
+  await page.locator(".design-shell .portal-markdown", { hasText: "NS-OTHER" }).click();
+  await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(1);
+  await expect(page.locator('.design-shell[data-selected="true"] .portal-container-grid')).toHaveCount(0);
+
+  // 'Select parent' walks out one level at a time: leaf → inner container → outer container → none.
+  await page.getByRole("button", { name: "← Page settings" }).click();
+  await page.locator(".design-shell .portal-markdown", { hasText: "NS-LEAF" }).click();
+  await expect(parentLink).toHaveText(/↑ Select container/);
+  await parentLink.click();
+  await expect(page.getByLabel("Cell stretch")).toBeVisible(); // a container's settings
+  await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(0); // the inner one, not the outer
+  await parentLink.click();
+  await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(1); // the outer container holds both cells
+  await expect(parentLink).toHaveCount(0); // top level: nothing above it
+});

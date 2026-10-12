@@ -107,3 +107,32 @@ export function describeInheritedAlign(inherited: InheritedLayout): string {
   const a = inherited.align ?? "center";
   return a.charAt(0).toUpperCase() + a.slice(1);
 }
+
+/**
+ * The block that contains the one at `path` (a container or row), with its own path; null for a top-level
+ * block. Used for "Select parent" in the designer.
+ */
+export function parentOf(
+  blocks: ExperiencePageBlock[],
+  path: BlockPath
+): { block: ExperiencePageBlock; path: BlockPath } | null {
+  if (path.length <= 1) return null;
+  let list = blocks;
+  let i = 0;
+  let parent: { block: ExperiencePageBlock; path: BlockPath } | null = null;
+  while (i < path.length - 1) {
+    const block = list[path[i]!];
+    if (!block) return null;
+    parent = { block, path: path.slice(0, i + 1) };
+    if (isContainerBlock(block)) {
+      list = block.cells[path[i + 1]!]?.[path[i + 2]!] ?? [];
+      i += 3;
+    } else if (isRowBlock(block)) {
+      list = block.columns[path[i + 1]!] ?? [];
+      i += 2;
+    } else {
+      break;
+    }
+  }
+  return parent;
+}

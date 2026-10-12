@@ -885,6 +885,7 @@ export function PortalDesignerShell({
               selectedBlockPath={selection?.path}
               usageTypes={usageTypes}
               onBackToPage={() => setSelection(null)}
+              onSelectParent={setSelection}
             />
             <div className="border-t border-atlas-border">
               <button
