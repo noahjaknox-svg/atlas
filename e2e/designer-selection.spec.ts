@@ -118,7 +118,7 @@ test("left-click selects the innermost element, and 'Select parent' walks back o
   await page.locator(".design-shell .portal-markdown", { hasText: "NS-LEAF" }).click();
   await expect(parentLink).toHaveText(/↑ Select container/);
   await parentLink.click();
-  await expect(page.getByLabel("Cell stretch")).toBeVisible(); // a container's settings
+  await expect(page.getByLabel("Gap between cells")).toBeVisible(); // a container's settings
   await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(0); // the inner one, not the outer
   await parentLink.click();
   await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(1); // the outer container holds both cells

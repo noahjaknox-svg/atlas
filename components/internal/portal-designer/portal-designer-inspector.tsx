@@ -409,6 +409,93 @@ function PanelControls({
   );
 }
 
+const SPACE_OPTIONS_X: [string, string][] = [
+  ["stretch", "Equal columns (use the widths above)"],
+  ["start", "Pack to the left"],
+  ["center", "Pack to the center"],
+  ["end", "Pack to the right"],
+  ["between", "Spread: first and last touch the edges"],
+  ["around", "Spread: half-gaps at the edges"],
+  ["evenly", "Spread: even gaps everywhere"],
+];
+const SPACE_OPTIONS_Y: [string, string][] = [
+  ["stretch", "Fill the height (use the heights above)"],
+  ["start", "Pack to the top"],
+  ["center", "Pack to the middle"],
+  ["end", "Pack to the bottom"],
+  ["between", "Spread: first and last touch top and bottom"],
+  ["around", "Spread: half-gaps at the top and bottom"],
+  ["evenly", "Spread: even gaps everywhere"],
+];
+
+/** Every way a container's cells can be spaced: gap, packing/spreading per axis, cell alignment and height. */
+function ContainerSpacingControls({
+  block,
+  onPatch,
+}: {
+  block: Extract<ExperiencePageBlock, { type: "container" }>;
+  onPatch: (patch: Partial<ExperiencePageBlock>) => void;
+}) {
+  const set = (key: string, value: string, defaultValue?: string) =>
+    onPatch({ [key]: value === defaultValue ? undefined : value } as Partial<ExperiencePageBlock>);
+  return (
+    <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2" role="group" aria-label="Cell spacing">
+      <p className="text-sm font-medium text-atlas-muted">Cell spacing</p>
+      <LayoutSelect
+        label="Gap between cells"
+        value={block.gap ?? "md"}
+        options={[
+          ["none", "None"],
+          ["sm", "Small"],
+          ["md", "Medium"],
+          ["lg", "Large"],
+          ["xl", "Extra large"],
+        ]}
+        onChange={(v) => onPatch({ gap: v } as Partial<ExperiencePageBlock>)}
+      />
+      <LayoutSelect
+        label="Horizontal spacing"
+        value={block.spaceColumns ?? "stretch"}
+        options={SPACE_OPTIONS_X}
+        onChange={(v) => set("spaceColumns", v, "stretch")}
+      />
+      <LayoutSelect
+        label="Vertical spacing"
+        value={block.spaceRows ?? "stretch"}
+        options={SPACE_OPTIONS_Y}
+        onChange={(v) => set("spaceRows", v, "stretch")}
+      />
+      <LayoutSelect
+        label="Align cells within their row"
+        value={block.alignCells ?? "stretch"}
+        options={[
+          ["stretch", "Stretch to equal height"],
+          ["start", "Top"],
+          ["center", "Middle"],
+          ["end", "Bottom"],
+        ]}
+        onChange={(v) => set("alignCells", v, "stretch")}
+      />
+      <LayoutSelect
+        label="Container height"
+        value={block.minHeight ?? "auto"}
+        options={[
+          ["auto", "Fit content"],
+          ["sm", "Small (240px)"],
+          ["md", "Medium (400px)"],
+          ["lg", "Large (560px)"],
+          ["screen", "Tall (80% of the screen)"],
+        ]}
+        onChange={(v) => set("minHeight", v, "auto")}
+      />
+      <p className="text-xs text-atlas-muted">
+        Vertical spacing shows when the container is taller than its content: set a height here, or
+        place it beside taller content.
+      </p>
+    </div>
+  );
+}
+
 /** The page's own layout: the first default every element on the page inherits. */
 function PageLayoutControls({
   pageLayout,
@@ -750,7 +837,7 @@ function BlockEditor({
             </select>
           </div>
         </div>
-        {cols >= 2 ? (
+        {cols >= 2 && (block.spaceColumns ?? "stretch") === "stretch" ? (
           <div className="space-y-2">
             <Label className="text-sm">Column widths (relative weights)</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -774,7 +861,7 @@ function BlockEditor({
             </div>
           </div>
         ) : null}
-        {rows >= 2 ? (
+        {rows >= 2 && (block.spaceRows ?? "stretch") === "stretch" ? (
           <div className="space-y-2">
             <Label className="text-sm">Row heights (relative weights)</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -798,29 +885,7 @@ function BlockEditor({
             </div>
           </div>
         ) : null}
-        <div>
-          <Label className="text-sm">Gap</Label>
-          <select
-            value={block.gap ?? "md"}
-            onChange={(e) => onPatch({ gap: e.target.value as RowGap } as Partial<ExperiencePageBlock>)}
-            className="atlas-input mt-1 h-8 w-full text-sm"
-          >
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-          </select>
-        </div>
-        <LayoutSelect
-          label="Cell stretch"
-          value={block.cellAlign ?? "stretch"}
-          options={[
-            ["start", "Top align cells"],
-            ["stretch", "Stretch cells to fill"],
-          ]}
-          onChange={(cellAlign) =>
-            onPatch({ cellAlign: cellAlign as "start" | "stretch" } as Partial<ExperiencePageBlock>)
-          }
-        />
+        <ContainerSpacingControls block={block} onPatch={onPatch} />
         {rows * cols > 1 || block.cellCardStyle ? (
         <label className="flex items-center gap-2 text-sm text-atlas-text">
           <input

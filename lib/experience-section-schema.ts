@@ -13,6 +13,10 @@ import {
   ROW_DISPLAYS,
   ROW_GAPS,
   ROW_PRESETS,
+  CONTAINER_GAPS,
+  SPACE_DISTRIBUTIONS,
+  ALIGN_CELLS,
+  CONTAINER_MIN_HEIGHTS,
 } from "./experience-block-enums";
 
 const galleryItemSchema = z.object({
@@ -155,7 +159,11 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       type: z.literal("container"),
       rows: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
       cols: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-      gap: z.enum(ROW_GAPS).optional(),
+      gap: z.enum(CONTAINER_GAPS).optional(),
+      spaceColumns: z.enum(SPACE_DISTRIBUTIONS).optional(),
+      spaceRows: z.enum(SPACE_DISTRIBUTIONS).optional(),
+      alignCells: z.enum(ALIGN_CELLS).optional(),
+      minHeight: z.enum(CONTAINER_MIN_HEIGHTS).optional(),
       columnWeights: z.array(z.number().positive()).optional(),
       rowWeights: z.array(z.number().positive()).optional(),
       width: z.enum(BLOCK_WIDTHS).optional(),

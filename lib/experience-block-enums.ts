@@ -19,6 +19,15 @@ export const ROW_GAPS = ["sm", "md", "lg"] as const;
 export const ROW_DISPLAYS = ["columns", "rows"] as const;
 export const CONTAINER_CELL_ALIGNS = ["start", "stretch"] as const;
 
+/** Container spacing (all optional; absent = the container's original equal-weights layout). */
+export const CONTAINER_GAPS = ["none", "sm", "md", "lg", "xl"] as const;
+/** How a container's columns (or rows) are distributed along their axis. "stretch" = equal tracks sized by the weights. */
+export const SPACE_DISTRIBUTIONS = ["stretch", "start", "center", "end", "between", "around", "evenly"] as const;
+/** Where each cell sits within its row track. */
+export const ALIGN_CELLS = ["stretch", "start", "center", "end"] as const;
+/** Minimum height of a container — gives vertical spacing room to act. */
+export const CONTAINER_MIN_HEIGHTS = ["auto", "sm", "md", "lg", "screen"] as const;
+
 export const IMAGE_DISPLAY_SIZES = ["icon", "small", "fit", "large"] as const;
 export const CTA_VARIANTS = ["primary", "secondary"] as const;
 export const EXPERIENCE_GALLERY_LAYOUTS = [

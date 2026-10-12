@@ -143,6 +143,7 @@ function BlockLayoutFrame({
   shrinkWrap = false,
   designChrome = false,
   guides = true,
+  fillHeight = false,
   wrapContent,
   children,
 }: {
@@ -151,6 +152,8 @@ function BlockLayoutFrame({
   inGridCell: boolean;
   shrinkWrap?: boolean;
   designChrome?: boolean;
+  /** Stretch the block to the full height of its cell (so its content can be packed/spread vertically). */
+  fillHeight?: boolean;
   /** Show the designer's dashed layout guides (off = the block looks as it will when published). */
   guides?: boolean;
   /** Wraps the block's content inside its width box (e.g. the designer's selection frame + drag tab). */
@@ -204,10 +207,11 @@ function BlockLayoutFrame({
           : undefined
       }
     >
-      <div className={cn("flex w-full min-w-0", getLeafHorizontalJustifyClass(hAlign))}>
+      <div className={cn("flex w-full min-w-0", fillHeight && "min-h-0 flex-1", getLeafHorizontalJustifyClass(hAlign))}>
         <div
           className={cn(
             "min-w-0",
+            fillHeight && "h-full",
             shrinkWrap ? "w-auto max-w-full" : BLOCK_WIDTH_RESPONSIVE_CLASS,
             designChrome && guides && "ring-1 ring-white/10"
           )}
@@ -340,6 +344,7 @@ function DesignBlockShell({
   children,
   className,
   fillCell,
+  fillHeight,
 }: {
   block: ExperiencePageBlock;
   path: BlockPath;
@@ -349,6 +354,7 @@ function DesignBlockShell({
   children: React.ReactNode;
   className?: string;
   fillCell?: boolean;
+  fillHeight?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: block.id,
@@ -363,6 +369,7 @@ function DesignBlockShell({
       className={cn(
         "design-shell relative w-full min-w-0",
         fillCell && "flex min-h-0 flex-1 flex-col",
+        fillHeight && "h-full",
         isDragging && "opacity-40"
       )}
     >
@@ -405,6 +412,7 @@ function DesignBlockShell({
         className={cn(
           "w-full cursor-pointer rounded-lg text-left transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-atlas-accent",
           fillCell && "flex min-h-0 flex-1 flex-col",
+          fillHeight && "h-full",
           isSelected
             ? "ring-2 ring-atlas-accent ring-offset-2 ring-offset-[#0B0F1A]"
             : "hover:ring-1 hover:ring-white/20",
@@ -484,7 +492,8 @@ function renderContainerCells({
 }) {
   const { rows, cols } = resolveContainerLayout(block, layout);
   const cells: React.ReactNode[] = [];
-  const stretchCells = layout !== "stacked";
+  // Cells fill their row track only in "stretch" (equal heights); top/middle/bottom let them keep their own height.
+  const stretchCells = layout !== "stacked" && (block.alignCells ?? "stretch") === "stretch";
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -602,6 +611,8 @@ export function ExperienceBlockRenderer({
             inherited
           );
           const passDownAlign = alignPassedDown(shellBlockLayout, inherited);
+          // A container packing/spreading its rows needs the full height of the cell it sits in.
+          const fillHeight = inGridCell && !!block.spaceRows && block.spaceRows !== "stretch";
 
           if (
             showDesign &&
@@ -639,6 +650,7 @@ export function ExperienceBlockRenderer({
                   inGridCell={inGridCell}
                   designChrome
                   guides={showGuides}
+                  fillHeight={fillHeight}
                   wrapContent={(inner) => (
                     <DesignBlockShell
                       block={block}
@@ -647,6 +659,7 @@ export function ExperienceBlockRenderer({
                       onSelectBlock={onSelectBlock}
                       onBlockContextMenu={onBlockContextMenu}
                       fillCell={inGridCell}
+                      fillHeight={fillHeight}
                     >
                       {inner}
                     </DesignBlockShell>
@@ -665,6 +678,7 @@ export function ExperienceBlockRenderer({
               selectedBlockId={selectedBlockId}
               onSelectBlock={onSelectBlock}
               previewMode={previewMode}
+              className={fillHeight ? "h-full" : undefined}
             >
               {gridContent}
             </BlockShell>
@@ -675,6 +689,7 @@ export function ExperienceBlockRenderer({
               blockLayout={shellBlockLayout}
               layoutSettings={layoutSettings}
               inGridCell={inGridCell}
+              fillHeight={fillHeight}
             >
               {shell}
             </BlockLayoutFrame>

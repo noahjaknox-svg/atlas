@@ -1,13 +1,17 @@
 import type {
+  AlignCells,
   BlockAlign,
   BlockLayout,
   BlockPadding,
   BlockVerticalAlign,
   BlockWidth,
+  ContainerGap,
+  ContainerMinHeight,
   ExperiencePageBlock,
   GridDimension,
   RowGap,
   RowPreset,
+  SpaceDistribution,
 } from "./experience-content";
 import { isCompactImageSize, resolveImageDisplaySize } from "./experience-image-system";
 import { cn } from "./utils";
@@ -108,8 +112,50 @@ export function getRowGridClassesFromWeights(
   return `portal-row-grid grid grid-cols-1 ${gapClass}`;
 }
 
-function gapClassFor(gap: RowGap): string {
-  return gap === "sm" ? "gap-3" : gap === "lg" ? "gap-8" : "gap-5";
+function gapClassFor(gap: RowGap | ContainerGap): string {
+  switch (gap) {
+    case "none":
+      return "gap-0";
+    case "sm":
+      return "gap-3";
+    case "lg":
+      return "gap-8";
+    case "xl":
+      return "gap-12";
+    default:
+      return "gap-5";
+  }
+}
+
+/** CSS justify-content / align-content keyword for a spacing choice ("stretch" = sized by weights, no keyword). */
+const DISTRIBUTION_CSS: Record<SpaceDistribution, string | undefined> = {
+  stretch: undefined,
+  start: "start",
+  center: "center",
+  end: "end",
+  between: "space-between",
+  around: "space-around",
+  evenly: "space-evenly",
+};
+
+const ALIGN_CELLS_CLASS: Record<AlignCells, string> = {
+  stretch: "items-stretch",
+  start: "items-start",
+  center: "items-center",
+  end: "items-end",
+};
+
+const MIN_HEIGHT_CSS: Record<ContainerMinHeight, string | undefined> = {
+  auto: undefined,
+  sm: "240px",
+  md: "400px",
+  lg: "560px",
+  screen: "80vh",
+};
+
+/** Tracks that aren't stretched by weights are content-sized so they can be packed or spread. */
+function contentTracks(count: number): string {
+  return Array.from({ length: Math.max(1, count) }, () => "auto").join(" ");
 }
 
 function normalizeGridWeights(weights: number[] | undefined, count: number): number[] {
@@ -135,17 +181,34 @@ export function resolveContainerLayout(
   gridClass: string;
   colTemplate?: string;
   rowTemplate?: string;
+  justifyContent?: string;
+  alignContent?: string;
+  minHeight?: string;
+  rowsStretch: boolean;
 } {
   const rows = Math.max(1, Math.min(4, block.rows)) as GridDimension;
   const cols = Math.max(1, Math.min(4, block.cols)) as GridDimension;
   const gapClass = gapClassFor(block.gap ?? "md");
   const colWeights = normalizeGridWeights(block.columnWeights, cols);
   const rowWeights = normalizeGridWeights(block.rowWeights, rows);
-  const colTemplate = cols > 1 ? getGridTemplate(colWeights, cols) : "1fr";
-  const rowTemplate = rows > 1 ? getGridTemplate(rowWeights, rows) : "1fr";
+  const spaceColumns = block.spaceColumns ?? "stretch";
+  const spaceRows = block.spaceRows ?? "stretch";
+  const colTemplate =
+    spaceColumns !== "stretch"
+      ? contentTracks(cols)
+      : cols > 1
+        ? getGridTemplate(colWeights, cols)
+        : "1fr";
+  const rowTemplate =
+    spaceRows !== "stretch"
+      ? contentTracks(rows)
+      : rows > 1
+        ? getGridTemplate(rowWeights, rows)
+        : "1fr";
 
-  const alignItems = "items-stretch";
-  const gridClass = `portal-container-grid grid w-full ${gapClass} ${alignItems}`;
+  const alignItems = ALIGN_CELLS_CLASS[block.alignCells ?? "stretch"];
+  // h-full: a container that fills its column/cell has spare height for vertical spacing to use.
+  const gridClass = `portal-container-grid grid w-full h-full ${gapClass} ${alignItems}`;
 
   return {
     rows,
@@ -153,6 +216,10 @@ export function resolveContainerLayout(
     gridClass,
     colTemplate,
     rowTemplate,
+    justifyContent: DISTRIBUTION_CSS[spaceColumns],
+    alignContent: DISTRIBUTION_CSS[spaceRows],
+    minHeight: MIN_HEIGHT_CSS[block.minHeight ?? "auto"],
+    rowsStretch: spaceRows === "stretch",
   };
 }
 
@@ -188,17 +255,24 @@ export function containerGridProps(
   const colTemplate = resolved.colTemplate ?? "1fr";
   const rowTemplate = resolved.rowTemplate ?? "1fr";
   const rows = resolved.rows;
+  // The designer sizes rows to their content, except when rows are meant to fill a taller container.
+  const fillsHeight = resolved.rowsStretch && !!resolved.minHeight;
   const rowTemplateForStyle =
-    options?.contentSizedRows ? contentSizedRowTemplate(rows) : rowTemplate;
+    options?.contentSizedRows && !fillsHeight ? contentSizedRowTemplate(rows) : rowTemplate;
 
-  let className = resolved.gridClass;
+  const className = resolved.gridClass;
   // Keep items-stretch with content-sized rows so cells in the same row share height
   // (required for vertical block alignment within a cell).
+
+  const style: Record<string, string> = gridTemplateStyle(layout, colTemplate, rowTemplateForStyle);
+  if (resolved.justifyContent) style.justifyContent = resolved.justifyContent;
+  if (resolved.alignContent) style.alignContent = resolved.alignContent;
+  if (resolved.minHeight) style.minHeight = resolved.minHeight;
 
   return {
     className,
     "data-layout": layout,
-    style: gridTemplateStyle(layout, colTemplate, rowTemplateForStyle),
+    style,
   };
 }
 
