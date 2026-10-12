@@ -262,3 +262,59 @@ describe("portal-block-layout", () => {
     expect((inner as { blockLayout?: unknown }).blockLayout).toEqual(layout);
   });
 });
+
+describe("container cell spacing", () => {
+  const box = (extra: object = {}) =>
+    ({ id: "c", type: "container", rows: 2, cols: 3, columnWeights: [1, 2, 1], rowWeights: [1, 1], cells: [[[], [], []], [[], [], []]], ...extra }) as Extract<ExperiencePageBlock, { type: "container" }>;
+
+  it("with nothing set it is exactly the original equal/weighted layout", () => {
+    const p = containerGridProps(box(), "responsive");
+    expect(p.style.gridTemplateColumns).toBe("1fr 2fr 1fr");
+    expect(p.style.justifyContent).toBeUndefined();
+    expect(p.style.alignContent).toBeUndefined();
+    expect(p.style.minHeight).toBeUndefined();
+    expect(p.className).toContain("items-stretch");
+    expect(p.className).toContain("gap-5");
+  });
+
+  it("maps every distribution to a CSS keyword and makes those tracks content-sized", () => {
+    const cases: Array<[string, string]> = [["start", "start"], ["center", "center"], ["end", "end"], ["between", "space-between"], ["around", "space-around"], ["evenly", "space-evenly"]];
+    for (const [value, css] of cases) {
+      const x = containerGridProps(box({ spaceColumns: value }), "responsive");
+      expect(x.style.justifyContent, value).toBe(css);
+      expect(x.style.gridTemplateColumns, value).toBe("auto auto auto"); // weights only apply to 'stretch'
+      const y = containerGridProps(box({ spaceRows: value }), "responsive");
+      expect(y.style.alignContent, value).toBe(css);
+      expect(y.style["--portal-row-template"], value).toBe("auto auto");
+    }
+    // stretch keeps the weighted tracks and sets no keyword
+    const stretch = containerGridProps(box({ spaceColumns: "stretch", spaceRows: "stretch" }), "responsive");
+    expect(stretch.style.justifyContent).toBeUndefined();
+    expect(stretch.style.alignContent).toBeUndefined();
+  });
+
+  it("covers gaps, cell alignment and minimum heights", () => {
+    expect(containerGridProps(box({ gap: "none" }), "responsive").className).toContain("gap-0");
+    expect(containerGridProps(box({ gap: "xl" }), "responsive").className).toContain("gap-12");
+    for (const [v, cls] of [["start", "items-start"], ["center", "items-center"], ["end", "items-end"], ["stretch", "items-stretch"]]) {
+      expect(containerGridProps(box({ alignCells: v }), "responsive").className).toContain(cls);
+    }
+    for (const [v, css] of [["sm", "240px"], ["md", "400px"], ["lg", "560px"], ["screen", "80vh"]]) {
+      expect(containerGridProps(box({ minHeight: v }), "responsive").style.minHeight).toBe(css);
+    }
+    expect(containerGridProps(box({ minHeight: "auto" }), "responsive").style.minHeight).toBeUndefined();
+  });
+
+  it("the designer sizes rows to content, unless the rows are meant to fill a taller container", () => {
+    expect(containerGridProps(box(), "horizontal", { contentSizedRows: true }).style.gridTemplateRows).toBe("auto auto");
+    expect(containerGridProps(box({ minHeight: "lg" }), "horizontal", { contentSizedRows: true }).style.gridTemplateRows).toBe("1fr 1fr");
+  });
+
+  it("the schema accepts the spacing fields and rejects unknown values", async () => {
+    const { pageBlockSchema } = await import("@/lib/experience-section-schema");
+    const ok = pageBlockSchema.safeParse(box({ gap: "xl", spaceColumns: "between", spaceRows: "evenly", alignCells: "end", minHeight: "screen" }));
+    expect(ok.success).toBe(true);
+    expect(pageBlockSchema.safeParse(box({ spaceRows: "sideways" })).success).toBe(false);
+    expect(pageBlockSchema.safeParse(box({ gap: "huge" })).success).toBe(false);
+  });
+});

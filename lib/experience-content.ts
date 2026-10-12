@@ -12,6 +12,10 @@ import type {
   IMAGE_DISPLAY_SIZES,
   ROW_DISPLAYS,
   ROW_GAPS,
+  CONTAINER_GAPS,
+  SPACE_DISTRIBUTIONS,
+  ALIGN_CELLS,
+  CONTAINER_MIN_HEIGHTS,
   ROW_PRESETS,
 } from "./experience-block-enums";
 
@@ -140,6 +144,10 @@ export type BlockVerticalAlign = (typeof BLOCK_VERTICAL_ALIGNS)[number];
 export type BlockPadding = (typeof BLOCK_PADDINGS)[number];
 export type RowPreset = (typeof ROW_PRESETS)[number];
 export type RowGap = (typeof ROW_GAPS)[number];
+export type ContainerGap = (typeof CONTAINER_GAPS)[number];
+export type SpaceDistribution = (typeof SPACE_DISTRIBUTIONS)[number];
+export type AlignCells = (typeof ALIGN_CELLS)[number];
+export type ContainerMinHeight = (typeof CONTAINER_MIN_HEIGHTS)[number];
 
 export type RowDisplay = (typeof ROW_DISPLAYS)[number];
 
@@ -250,7 +258,15 @@ export type ExperiencePageBlock =
       type: "container";
       rows: GridDimension;
       cols: GridDimension;
-      gap?: RowGap;
+      gap?: ContainerGap;
+      /** How the columns are spread across the width: equal (default, sized by columnWeights) or packed/spread. */
+      spaceColumns?: SpaceDistribution;
+      /** How the rows are spread down the height (needs the container to be taller than its content). */
+      spaceRows?: SpaceDistribution;
+      /** Where each cell sits within its row: stretch (equal heights, default), top, middle, bottom. */
+      alignCells?: AlignCells;
+      /** Minimum height, so vertical spacing has room (e.g. spread rows top-to-bottom). */
+      minHeight?: ContainerMinHeight;
       columnWeights?: number[];
       rowWeights?: number[];
       /** @deprecated use blockLayout width presets */

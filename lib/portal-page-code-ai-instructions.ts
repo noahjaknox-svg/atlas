@@ -2,7 +2,10 @@ import {
   BLOCK_ALIGNS,
   BLOCK_PADDINGS,
   BLOCK_VERTICAL_ALIGNS,
-  CONTAINER_CELL_ALIGNS,
+  CONTAINER_GAPS,
+  SPACE_DISTRIBUTIONS,
+  ALIGN_CELLS,
+  CONTAINER_MIN_HEIGHTS,
   CTA_VARIANTS,
   EXPERIENCE_GALLERY_LAYOUTS,
   IMAGE_DISPLAY_SIZES,
@@ -63,7 +66,13 @@ An ordered array of blocks. Every block requires an \`id\` (placeholders are fin
 - \`{ "id": "...", "type": "video", "url": "...", "posterUrl"?: "...", "caption"?: "..." }\`
 - \`{ "id": "...", "type": "stat", "value": "100+", "label": "Years combined experience", "countUp"?: true|false }\` — one big highlighted figure with a small caption. **Animated:** when \`countUp\` is on (default) the first number in \`value\` counts up once scrolled into view (e.g. "100+", "$2.4M", "15%")
 - \`{ "id": "...", "type": "row", "preset": ${ROW_PRESETS.map((v) => `"${v}"`).join("|")}, "gap"?: ${ROW_GAPS.map((v) => `"${v}"`).join("|")}, "display"?: ${ROW_DISPLAYS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1,1], "cellCardStyle"?: true|false, "columns": [ [ /* blocks */ ], [ /* blocks */ ] ] }\` — side-by-side (or stacked) columns, each column is itself an array of blocks. **\`preset\` caps at 3 columns** (\`equal-3\`) — \`equal-2\`/\`wide-narrow\`/\`narrow-wide\` are all 2 columns. For 4+ columns (or a true grid), use \`container\` instead.
-- \`{ "id": "...", "type": "container", "rows": 1-4, "cols": 1-4, "gap"?: ${ROW_GAPS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1], "rowWeights"?: [1], "cellAlign"?: ${CONTAINER_CELL_ALIGNS.map((v) => `"${v}"`).join("|")}, "cellCardStyle"?: true|false, "cells": [ [ [ /* blocks */ ] ] ] }\` — a grid up to 4×4; \`cells\` is rows → columns → array of blocks in that cell
+- \`{ "id": "...", "type": "container", "rows": 1-4, "cols": 1-4, "gap"?: ${CONTAINER_GAPS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1], "rowWeights"?: [1], "spaceColumns"?: ${SPACE_DISTRIBUTIONS.map((v) => `"${v}"`).join("|")}, "spaceRows"?: same options, "alignCells"?: ${ALIGN_CELLS.map((v) => `"${v}"`).join("|")}, "minHeight"?: ${CONTAINER_MIN_HEIGHTS.map((v) => `"${v}"`).join("|")}, "cellCardStyle"?: true|false, "cells": [ [ [ /* blocks */ ] ] ] }\` — a grid up to 4×4; \`cells\` is rows → columns → array of blocks in that cell
+
+**Cell spacing on a \`container\`** (everything is optional; omit it all for equal cells):
+- \`gap\`: space between cells (\`none\` … \`xl\`).
+- \`spaceColumns\` / \`spaceRows\`: how the columns (left-right) / rows (top-bottom) are distributed. \`stretch\` (default) = equal tracks sized by \`columnWeights\`/\`rowWeights\` (e.g. three sections in equal thirds). \`start\`/\`center\`/\`end\` pack the cells to the left/top, middle, or right/bottom. \`between\` spreads them as far apart as possible (first and last touch the edges, e.g. top, middle, bottom); \`around\` leaves half-gaps at the edges; \`evenly\` makes every gap equal. Weights only apply to \`stretch\`.
+- \`alignCells\`: where each cell sits inside its row: \`stretch\` (default, equal heights — use with \`cellCardStyle\`), \`start\` (top), \`center\` (middle), \`end\` (bottom).
+- \`minHeight\`: \`auto\` (fit content, default) or \`sm\`/\`md\`/\`lg\`/\`screen\` (240px / 400px / 560px / 80% of the screen). Vertical spacing only shows when the container is taller than its content, so give it a \`minHeight\` (or put it beside taller content) when you use \`spaceRows\`.
 
 **\`cellCardStyle\`** (on \`row\`/\`container\`, default \`false\`): set \`true\` to give every column/cell a subtle card treatment (translucent background, rounded corners, padding) — use this for a grid of distinct items (feature cards, service tiles, a 3-up comparison). Leave it \`false\`/omitted for a plain editorial split (e.g. text on one side, an image on the other) that shouldn't look boxed.
 
