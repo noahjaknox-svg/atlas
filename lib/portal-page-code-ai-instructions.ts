@@ -83,7 +83,7 @@ Layout cascades **page → container → element**. Set it once on the page, the
 
 \`align\` positions the block, not the lines of text inside it (text still reads left-to-right). Keep one alignment consistent down the page: for a left-aligned editorial layout set \`"pageLayout": { "align": "left", "widthDesktop": "full" }\` once rather than per block.
 
-**Panels:** \`"blockLayout": { "panel": true }\` puts a translucent panel behind any block (use sparingly — a stat, a quote, a callout). Its opacity is the portal's default unless you set \`"panelOpacity"\` (0-100; 100 is the standard glass look). \`"cellCardStyle": true\` on a \`row\`/\`container\` does the same for each cell and uses the same opacity.
+**Panels:** \`"blockLayout": { "panel": true }\` puts a translucent panel behind any block (use sparingly — a stat, a quote, a callout). Its opacity is the portal's default unless you set \`"panelOpacity"\` (0-100; 100 is fully solid, 0 is invisible). \`"cellCardStyle": true\` on a \`row\`/\`container\` does the same for each cell and uses the same opacity.
 
 **Mobile:** set \`"widthMobile"\` and \`"padding"\` on blocks you override. A \`"wide"\` or \`"full"\` block with no \`padding\` runs edge-to-edge with text touching the screen on phones; \`{ "widthDesktop": "wide", "widthMobile": "full", "padding": "sm" }\` is a safe override for visually prominent things (a hero image, a banner).
 

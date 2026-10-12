@@ -3,6 +3,9 @@ import { cn } from "@/lib/utils";
 /** Liquid-glass panel for v2 experience slides (transform-safe — no backdrop-filter). */
 export const experienceGlassV2 = "portal-v2-glass";
 
+/** Opacity-controlled panel / cell card for block pages: 100% is solid, 0% invisible (see globals.css). */
+export const experiencePanel = "portal-element-panel";
+
 /** Floating chapter nav — liquid glass pill (outside deck transform; blur OK). */
 export const experienceNavPillV2 = "portal-v2-liquid-glass";
 
