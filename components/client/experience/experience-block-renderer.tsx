@@ -142,6 +142,7 @@ function BlockLayoutFrame({
   inGridCell,
   shrinkWrap = false,
   designChrome = false,
+  guides = true,
   wrapContent,
   children,
 }: {
@@ -150,6 +151,8 @@ function BlockLayoutFrame({
   inGridCell: boolean;
   shrinkWrap?: boolean;
   designChrome?: boolean;
+  /** Show the designer's dashed layout guides (off = the block looks as it will when published). */
+  guides?: boolean;
   /** Wraps the block's content inside its width box (e.g. the designer's selection frame + drag tab). */
   wrapContent?: (inner: React.ReactNode) => React.ReactNode;
   children: React.ReactNode;
@@ -169,14 +172,18 @@ function BlockLayoutFrame({
 
   const chromedContent = designChrome ? (
     <div className={cn("h-full w-full", paddingClass)}>
-      <div
-        className={cn(
-          "h-full w-full rounded-md border border-dashed border-white/25 bg-white/[0.04]",
-          inGridCell ? "min-h-[80px]" : "min-h-[120px]"
-        )}
-      >
-        {body}
-      </div>
+      {guides ? (
+        <div
+          className={cn(
+            "h-full w-full rounded-md border border-dashed border-white/25 bg-white/[0.04]",
+            inGridCell ? "min-h-[80px]" : "min-h-[120px]"
+          )}
+        >
+          {body}
+        </div>
+      ) : (
+        body
+      )}
     </div>
   ) : (
     body
@@ -202,7 +209,7 @@ function BlockLayoutFrame({
           className={cn(
             "min-w-0",
             shrinkWrap ? "w-auto max-w-full" : BLOCK_WIDTH_RESPONSIVE_CLASS,
-            designChrome && "ring-1 ring-white/10"
+            designChrome && guides && "ring-1 ring-white/10"
           )}
           style={blockWidthStyleVars(blockLayout, layoutSettings)}
         >
@@ -465,6 +472,7 @@ function renderContainerCells({
   layoutSettings?: PortalLayoutSettings;
   pageLayout?: PageLayout;
   inheritedAlign?: BlockAlign;
+  showGuides?: boolean;
 }) {
   const { rows, cols } = resolveContainerLayout(block, layout);
   const cells: React.ReactNode[] = [];
@@ -520,6 +528,7 @@ export function ExperienceBlockRenderer({
   layoutSettings = DEFAULT_LAYOUT_SETTINGS,
   pageLayout,
   inheritedAlign,
+  showGuides = true,
 }: {
   blocks: ExperiencePageBlock[];
   selectedBlockId?: string | null;
@@ -535,6 +544,8 @@ export function ExperienceBlockRenderer({
   pageLayout?: PageLayout;
   /** Alignment handed down by the parent container (nested elements). */
   inheritedAlign?: BlockAlign;
+  /** Designer only: show the dashed layout guides around blocks. */
+  showGuides?: boolean;
 }) {
   const showDesign = designMode && previewMode;
   const gridLayout = gridLayoutForDesigner(showDesign, designViewport);
@@ -546,6 +557,7 @@ export function ExperienceBlockRenderer({
 
   const childProps = {
     pageLayout,
+    showGuides,
     selectedBlockId,
     onSelectBlock,
     previewMode,
@@ -618,6 +630,7 @@ export function ExperienceBlockRenderer({
                   layoutSettings={layoutSettings}
                   inGridCell={inGridCell}
                   designChrome
+                  guides={showGuides}
                   wrapContent={(inner) => (
                     <DesignBlockShell
                       block={block}
@@ -737,6 +750,7 @@ export function ExperienceBlockRenderer({
                   layoutSettings={layoutSettings}
                   inGridCell={inGridCell}
                   designChrome
+                  guides={showGuides}
                   wrapContent={(inner) => (
                     <DesignBlockShell
                       block={block}

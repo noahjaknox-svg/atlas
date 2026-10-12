@@ -78,6 +78,7 @@ export function PortalDesignerPreview({
   designViewport,
   onBlockContextMenu,
   onSelectPage,
+  showGuides,
   layoutSettings,
 }: {
   section: ExperienceSectionSnapshot;
@@ -99,6 +100,8 @@ export function PortalDesignerPreview({
   layoutSettings?: PortalLayoutSettings;
   /** Called when the empty page background is clicked (selects the page, i.e. its settings). */
   onSelectPage?: () => void;
+  /** Show the dashed layout guides (default on); off previews the page as published. */
+  showGuides?: boolean;
 }) {
   const resolvedPayload = payload ?? SAMPLE_PAYLOAD;
   const variableContext = buildPortalVariableContext(resolvedPayload, contactName);
@@ -159,6 +162,7 @@ export function PortalDesignerPreview({
               designViewport={designViewport ?? viewport}
               onBlockContextMenu={onBlockContextMenu}
               layoutSettings={layoutSettings}
+              showGuides={showGuides}
             />
           </div>
         </div>

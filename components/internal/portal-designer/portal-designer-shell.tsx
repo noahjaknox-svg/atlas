@@ -228,8 +228,42 @@ export function PortalDesignerShell({
     return activeSection;
   }, [mode, previewSource, publishedSnapshot, activeSection]);
 
+  // Dashed layout guides in the canvas. Remembered between visits (best effort).
+  const [showGuides, setShowGuides] = useState(true);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("atlas.designer.showGuides") === "off") setShowGuides(false);
+    } catch {
+      /* storage unavailable: default on */
+    }
+  }, []);
+  function toggleGuides() {
+    setShowGuides((on) => {
+      const next = !on;
+      try {
+        window.localStorage.setItem("atlas.designer.showGuides", next ? "on" : "off");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
   const previewToolbarRight = (
     <>
+      <button
+        type="button"
+        aria-pressed={showGuides}
+        onClick={toggleGuides}
+        title="Dashed outlines around blocks. Turn off to see the page as it will be published."
+        className={cn(
+          "rounded px-2 py-1 text-xs",
+          showGuides ? "bg-atlas-accent/15 text-atlas-text" : "text-atlas-muted hover:text-atlas-text"
+        )}
+      >
+        {showGuides ? "Guides: on" : "Guides: off"}
+      </button>
+      <span className="text-atlas-border">|</span>
       {(["desktop", "mobile"] as const).map((v) => (
         <button
           key={v}
@@ -806,6 +840,7 @@ export function PortalDesignerShell({
                   diagnostics={diagnostics}
                   toolbarRight={previewToolbarRight}
                   layoutSettings={layoutSettings}
+                  showGuides={showGuides}
                 />
               ) : (
                 <div className="flex h-full min-h-0 flex-col">

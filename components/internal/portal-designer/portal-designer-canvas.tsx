@@ -53,6 +53,7 @@ export function PortalDesignerCanvas({
   selectedBlockId,
   selection,
   onSelect,
+  showGuides,
   onBlocksChange,
   diagnostics = [],
   toolbarRight,
@@ -65,6 +66,7 @@ export function PortalDesignerCanvas({
   selectedBlockId?: string | null;
   selection: BlockSelection | null;
   onSelect: (sel: BlockSelection | null) => void;
+  showGuides?: boolean;
   onBlocksChange: (blocks: ExperiencePageBlock[]) => void;
   diagnostics?: BlockDiagnostic[];
   toolbarRight?: ReactNode;
@@ -221,6 +223,7 @@ export function PortalDesignerCanvas({
               designViewport={viewport}
               onBlockContextMenu={handleBlockContextMenu}
               onSelectPage={() => onSelect(null)}
+              showGuides={showGuides}
               diagnostics={diagnostics}
               blocks={blocks}
               layoutSettings={layoutSettings}
