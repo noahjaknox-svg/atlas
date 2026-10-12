@@ -23,11 +23,12 @@ export type PortalLayoutSettings = {
   widthPresets: LayoutWidthPreset[];
   defaultPresetId: LayoutWidthPresetId;
   breakpoints?: PortalLayoutBreakpoints;
-  /** Default opacity (0-100) of element panels / cell cards; an element can override it. 100 = the standard glass look. */
+  /** Default opacity (0-100) of element panels / cell cards; an element can override it. 100 = solid, 0 = invisible. */
   panelOpacity?: number;
 };
 
-export const DEFAULT_PANEL_OPACITY = 100;
+/** Unset = 75%: close to the translucent glass look block pages had before panels were adjustable. */
+export const DEFAULT_PANEL_OPACITY = 75;
 
 export type BlockVisibility = (typeof BLOCK_VISIBILITIES)[number];
 

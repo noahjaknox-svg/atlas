@@ -8,7 +8,7 @@ import {
   inheritedForTopLevel,
   resolveInheritedFor,
 } from "@/lib/page-layout-inheritance";
-import { DEFAULT_LAYOUT_SETTINGS, blockWidthStyleVars, resolvePanelOpacity } from "@/lib/portal-layout-settings";
+import { DEFAULT_LAYOUT_SETTINGS, DEFAULT_PANEL_OPACITY, blockWidthStyleVars, resolvePanelOpacity } from "@/lib/portal-layout-settings";
 import { parsePortalLayoutSettings } from "@/lib/portal-layout-settings";
 
 const text = (id: string, blockLayout?: object): ExperiencePageBlock => ({ id, type: "text", markdown: id, ...(blockLayout ? { blockLayout } : {}) }) as ExperiencePageBlock;
@@ -90,7 +90,8 @@ describe("panel opacity default", () => {
   it("falls back from the element, to the branding default, to 100", () => {
     expect(resolvePanelOpacity({ panelOpacity: 40 }, DEFAULT_LAYOUT_SETTINGS)).toBe(40);
     expect(resolvePanelOpacity(undefined, { ...DEFAULT_LAYOUT_SETTINGS, panelOpacity: 60 })).toBe(60);
-    expect(resolvePanelOpacity(undefined, DEFAULT_LAYOUT_SETTINGS)).toBe(100);
+    expect(resolvePanelOpacity(undefined, DEFAULT_LAYOUT_SETTINGS)).toBe(DEFAULT_PANEL_OPACITY);
+    expect(DEFAULT_PANEL_OPACITY).toBeLessThan(100); // the unset default is translucent; 100 is reserved for fully solid
     expect(resolvePanelOpacity({ panelOpacity: 0 }, { ...DEFAULT_LAYOUT_SETTINGS, panelOpacity: 60 })).toBe(0); // 0 is a real value
   });
   it("is kept when branding settings are parsed", () => {

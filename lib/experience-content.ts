@@ -161,7 +161,7 @@ export type BlockLayout = {
   padding?: BlockPadding;
   /** Show a translucent panel behind this element. Off unless set. */
   panel?: boolean;
-  /** Panel opacity 0-100 (100 = the standard glass look). Unset = the branding default. */
+  /** Panel opacity 0-100 (100 = fully solid, 0 = invisible). Unset = the branding default. */
   panelOpacity?: number;
 };
 

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { PortalContentData } from "@/lib/portal-content";
 import {
+  DEFAULT_PANEL_OPACITY,
   DEFAULT_LAYOUT_BREAKPOINTS,
   DEFAULT_LAYOUT_SETTINGS,
   type LayoutWidthPreset,
@@ -150,13 +151,13 @@ export function ProposalDesignEditor({
         <h2 className="atlas-section-title">Element panels</h2>
         <p className="atlas-caption mt-1">
           The translucent panel behind an element (and the cards behind container cells). This is the
-          default opacity; any element can override it in the designer. 100% is the standard glass look.
+          default opacity; any element can override it in the designer. 100% is fully solid, 0% is invisible.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-6">
           <div className="min-w-[16rem] flex-1">
             <div className="flex items-center justify-between text-sm">
               <Label htmlFor="panel-opacity-default">Default panel opacity</Label>
-              <span className="text-atlas-muted">{content.layoutSettings?.panelOpacity ?? 100}%</span>
+              <span className="text-atlas-muted">{content.layoutSettings?.panelOpacity ?? DEFAULT_PANEL_OPACITY}%</span>
             </div>
             <input
               id="panel-opacity-default"
@@ -164,7 +165,7 @@ export function ProposalDesignEditor({
               min={0}
               max={100}
               step={5}
-              value={content.layoutSettings?.panelOpacity ?? 100}
+              value={content.layoutSettings?.panelOpacity ?? DEFAULT_PANEL_OPACITY}
               onChange={(e) =>
                 patchContent({
                   layoutSettings: {
@@ -177,8 +178,8 @@ export function ProposalDesignEditor({
             />
           </div>
           <div
-            className="portal-v2-glass flex h-20 w-48 items-center justify-center rounded-xl text-sm text-white/80"
-            style={{ ["--panel-opacity" as string]: (content.layoutSettings?.panelOpacity ?? 100) / 100 } as React.CSSProperties}
+            className="portal-element-panel flex h-20 w-48 items-center justify-center rounded-xl text-sm text-white/80"
+            style={{ ["--panel-opacity" as string]: (content.layoutSettings?.panelOpacity ?? DEFAULT_PANEL_OPACITY) / 100 } as React.CSSProperties}
             aria-hidden
           >
             Preview

@@ -48,7 +48,7 @@ import { PullQuote } from "./pull-quote";
 import { StatBlock } from "./stat-block";
 import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
 import { cn } from "@/lib/utils";
-import { experienceGlassV2 } from "./v2/experience-tokens";
+import { experiencePanel } from "./v2/experience-tokens";
 import {
   PortalDesignerInsertionZone,
   insertionZoneId,
@@ -163,7 +163,7 @@ function BlockLayoutFrame({
 
   // Optional translucent panel behind the element (opacity: its own, else the branding default).
   const body = blockLayout?.panel ? (
-    <div className={cn(experienceGlassV2, "rounded-xl p-4 sm:p-5")} data-element-panel>
+    <div className={cn(experiencePanel, "rounded-xl p-4 sm:p-5")} data-element-panel>
       {children}
     </div>
   ) : (
@@ -488,7 +488,7 @@ function renderContainerCells({
           className={cn(
             "flex min-w-0 flex-col gap-4",
             stretchCells ? "h-full min-h-0" : "min-h-0",
-            block.cellCardStyle && [experienceGlassV2, "p-4 sm:p-5"]
+            block.cellCardStyle && [experiencePanel, "p-4 sm:p-5"]
           )}
         >
           {showDesign && cellBlocks.length === 0 ? (
@@ -712,7 +712,7 @@ export function ExperienceBlockRenderer({
           const rowColumnClass = cn(
             "flex min-w-0 flex-col gap-4",
             stretchRowCells ? "h-full min-h-0" : "min-h-0",
-            block.cellCardStyle && [experienceGlassV2, "p-4 sm:p-5"]
+            block.cellCardStyle && [experiencePanel, "p-4 sm:p-5"]
           );
           const rowGrid = (
             <div {...gridProps} style={gridProps.style as CSSProperties}>
