@@ -289,6 +289,8 @@ function renderLeafContent(block: ExperiencePageBlock, designMode = false): Reac
           href={block.url}
           target="_blank"
           rel="noopener noreferrer"
+          // In the designer a click selects the button; it must not also open the link.
+          onClick={designMode ? (e) => e.preventDefault() : undefined}
           className={cn(
             "inline-flex items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium transition-colors",
             variant === "primary"

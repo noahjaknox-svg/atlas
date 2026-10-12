@@ -57,6 +57,18 @@ type DesignerState = {
   hero: PortalDesignerHeroState;
 };
 
+/** Keyboard shortcuts must not fire while the user is typing in, or operating, a form control. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  return (
+    el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    el.tagName === "SELECT" ||
+    el.isContentEditable
+  );
+}
+
 export function PortalDesignerShell({
   mode,
   initialSections,
@@ -207,7 +219,8 @@ export function PortalDesignerShell({
     () =>
       sections.filter(
         (s) =>
-          DESIGNER_PAGE_TYPES.includes(s.sectionType as (typeof DESIGNER_PAGE_TYPES)[number]) &&
+          (DESIGNER_PAGE_TYPES.includes(s.sectionType as (typeof DESIGNER_PAGE_TYPES)[number]) ||
+            isCustomPortalPage(s)) &&
           !s.visible
       ).length,
     [sections]
@@ -386,25 +399,23 @@ export function PortalDesignerShell({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setSelection(null);
       if (e.key === "Delete" && selection && !e.metaKey && !e.ctrlKey) {
-        const target = e.target as HTMLElement | null;
-        if (
-          target &&
-          (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable)
-        ) {
-          return;
-        }
+        if (isTypingTarget(e.target)) return;
         e.preventDefault();
         setActiveBlocks(removeBlockById(activeBlocks, selection.blockId));
         setSelection(null);
         return;
       }
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "z" && e.shiftKey) {
+      const key = e.key.toLowerCase();
+      // Inside a text field Cmd/Ctrl+Z belongs to the field's own undo, not the block history.
+      if (isTypingTarget(e.target)) return;
+      if (key === "z" && e.shiftKey) {
         e.preventDefault();
         handleRedo();
-      } else if (e.key === "z") {
+      } else if (key === "y") {
+        e.preventDefault();
+        handleRedo();
+      } else if (key === "z") {
         e.preventDefault();
         handleUndo();
       }
@@ -413,7 +424,7 @@ export function PortalDesignerShell({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeBlocks, selection, setActiveBlocks, handleUndo, handleRedo]);
 
-  async function saveDraft() {
+  async function saveDraft(): Promise<boolean> {
     setSaving(true);
     setMessage(null);
     setError(null);
@@ -438,6 +449,7 @@ export function PortalDesignerShell({
           history.reset(state);
         }
         setMessage("Master template saved. New proposals will use these defaults.");
+        return true;
       } else if (proposalId) {
         const res = await fetch(`/api/proposals/${proposalId}/sections`, {
           method: "PATCH",
@@ -476,9 +488,12 @@ export function PortalDesignerShell({
         setBaseline(JSON.stringify(state));
         history.reset(state);
         setMessage("Draft saved.");
+        return true;
       }
+      return false;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -489,7 +504,8 @@ export function PortalDesignerShell({
     setPublishing(true);
     setError(null);
     try {
-      if (dirty) await saveDraft();
+      // Publishing a stale snapshot after a failed save would silently drop the user's edits.
+      if (dirty && !(await saveDraft())) return;
       const republish = publishStatus === "published" || publishStatus === "unpublishedChanges";
       const res = await fetch(`/api/proposals/${proposalId}/publish`, {
         method: "POST",
@@ -524,17 +540,26 @@ export function PortalDesignerShell({
       return;
     }
     const resetSection = json.sections?.[0];
-    if (resetSection) {
-      setSections((prev) =>
-        prev.map((s) =>
-          sectionKey(s) === activeSectionId
-            ? sectionsWithPageBlocks([resetSection as DesignerSection])[0]!
-            : s
-        )
-      );
-      setSelection(null);
-      setMessage("Page reset from master.");
+    if (!resetSection) {
+      setMessage("Nothing to reset: this page has no master template.");
+      return;
     }
+    const resetKey = sectionKey(activeSection);
+    const replaced = sectionsWithPageBlocks([resetSection as DesignerSection])[0]!;
+    const nextSections = sections.map((s) => (sectionKey(s) === resetKey ? replaced : s));
+    // The reset is already saved on the server: fold it into the baseline so it doesn't read as an
+    // unsaved change, and restart undo history from here rather than undoing across the server write.
+    try {
+      const base = JSON.parse(baseline) as { sections: DesignerSection[]; hero: unknown };
+      base.sections = base.sections.map((s) => (sectionKey(s) === resetKey ? replaced : s));
+      setBaseline(JSON.stringify(base));
+    } catch {
+      /* keep the existing baseline */
+    }
+    setSections(nextSections);
+    history.reset({ sections: nextSections, hero });
+    setSelection(null);
+    setMessage("Page reset from master.");
   }
 
   async function openPreviewTab() {
@@ -645,13 +670,21 @@ export function PortalDesignerShell({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Delete failed");
     }
-    setSections((prev) => {
-      const next = prev.filter((s) => s.id !== sectionId);
-      if (activeSectionId === sectionId && next[0]) {
-        setActiveSectionId(sectionKey(next[0]));
+    const next = sections.filter((s) => s.id !== sectionId);
+    if (activeSectionId === sectionId && next[0]) setActiveSectionId(sectionKey(next[0]));
+    if (proposalId) {
+      // The page is gone server-side: forget it in the baseline and the undo history, so Undo can't
+      // bring back a page whose id no longer exists.
+      try {
+        const base = JSON.parse(baseline) as { sections: DesignerSection[]; hero: unknown };
+        base.sections = base.sections.filter((s) => s.id !== sectionId);
+        setBaseline(JSON.stringify(base));
+      } catch {
+        /* keep the existing baseline */
       }
-      return next;
-    });
+      history.reset({ sections: next, hero });
+    }
+    setSections(next);
     setSelection(null);
     setMessage("Page deleted.");
   }

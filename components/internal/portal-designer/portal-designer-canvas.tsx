@@ -19,6 +19,7 @@ import {
   duplicateBlockById,
   findBlockById,
   insertBlockAt,
+  moveBlockToPath,
   reorderBlocksInContainer,
   type BlockPath,
 } from "@/lib/portal-block-layout";
@@ -113,20 +114,15 @@ export function PortalDesignerCanvas({
           return;
         }
 
-        const from = findBlockById(blocks, String(active.id));
-        if (from) {
-          let next = removeBlockById(blocks, from.block.id);
-          const adjustedPath = adjustPathAfterRemoval(from.path, insertTarget.path);
-          let insertIndex = insertTarget.index;
-          if (
-            pathsEqual(from.path.slice(0, -1), insertTarget.path) &&
-            from.path[from.path.length - 1]! < insertTarget.index
-          ) {
-            insertIndex -= 1;
-          }
-          next = insertBlockAt(next, adjustedPath, from.block, insertIndex);
-          onBlocksChange(next);
-          onSelect({ blockId: from.block.id, path: [...adjustedPath, insertIndex] });
+        const moved = moveBlockToPath(
+          blocks,
+          String(active.id),
+          insertTarget.path,
+          insertTarget.index
+        );
+        if (moved) {
+          onBlocksChange(moved.blocks);
+          onSelect({ blockId: String(active.id), path: [...moved.path, moved.index] });
         }
         return;
       }
@@ -251,18 +247,4 @@ export function PortalDesignerCanvas({
       />
     </>
   );
-}
-
-function pathsEqual(a: BlockPath, b: BlockPath): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
-function adjustPathAfterRemoval(removedPath: BlockPath, targetPath: BlockPath): BlockPath {
-  if (removedPath.length === 0) return targetPath;
-  const result = [...targetPath];
-  for (let i = 0; i < Math.min(removedPath.length - 1, result.length); i++) {
-    if (removedPath[i] !== result[i]) return result;
-    if (removedPath[i]! < result[i]!) result[i]! -= 1;
-  }
-  return result;
 }

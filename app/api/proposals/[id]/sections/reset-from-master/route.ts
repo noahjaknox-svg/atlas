@@ -3,7 +3,11 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api";
 import { prisma } from "@/lib/db";
 import { getExperienceMasterTemplates } from "@/lib/portal-content";
 
-/** Intentionally reset proposal section(s) from global master templates. */
+/**
+ * Intentionally reset proposal section(s) from global master templates. Resets page content only —
+ * the page's title, visibility and position in the deck are the proposal's own and are kept.
+ * Custom pages have no master template and are skipped.
+ */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -38,10 +42,7 @@ export async function POST(
       const result = await prisma.proposalSection.update({
         where: { id: section.id },
         data: {
-          title: master.title,
           bodyCopy: master.bodyCopy,
-          visible: master.visible,
-          sortOrder: master.sortOrder,
           imageUrl: master.imageUrl,
           videoUrl: master.videoUrl,
           posterUrl: master.posterUrl,

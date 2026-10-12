@@ -27,6 +27,7 @@ import {
   getBlocksAtPath,
   isContainerBlock,
   isRowBlock,
+  moveBlockToPath,
   reorderBlocksInContainer,
   type BlockPath,
 } from "@/lib/portal-block-layout";
@@ -321,10 +322,8 @@ export function PortalDesignerBlockTree({
     if (!activeLocated) return;
 
     if (overData?.isColumn && overData.path) {
-      const removed = removeBlockById(blocks, activeData.blockId);
-      const targetCol = overData.path;
-      const next = insertBlockAt(removed, targetCol, activeLocated.block);
-      onBlocksChange(next);
+      const moved = moveBlockToPath(blocks, activeData.blockId, overData.path);
+      if (moved) onBlocksChange(moved.blocks);
       return;
     }
 
@@ -344,9 +343,9 @@ export function PortalDesignerBlockTree({
           );
         }
       } else {
-        const removed = removeBlockById(blocks, activeData.blockId);
         const overIndex = overLocated.path[overLocated.path.length - 1]!;
-        onBlocksChange(insertBlockAt(removed, overContainer, activeLocated.block, overIndex));
+        const moved = moveBlockToPath(blocks, activeData.blockId, overContainer, overIndex);
+        if (moved) onBlocksChange(moved.blocks);
       }
     }
   }

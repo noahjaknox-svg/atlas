@@ -613,6 +613,50 @@ export function insertBlockAt(
   return next;
 }
 
+/**
+ * Moves a block to `targetPath` (a container path, `[]` for the top level) at `index`
+ * (end when omitted). The target is expressed against the tree *before* the move, so
+ * removing the block can shift it — this corrects for that. Returns null when the move
+ * is impossible (unknown block, or dropping a container into itself), so callers leave
+ * the page untouched instead of losing the block.
+ */
+export function moveBlockToPath(
+  blocks: ExperiencePageBlock[],
+  blockId: string,
+  targetPath: BlockPath,
+  index?: number
+): { blocks: ExperiencePageBlock[]; path: BlockPath; index: number } | null {
+  const located = findBlockById(blocks, blockId);
+  if (!located) return null;
+
+  const parent = located.path.slice(0, -1);
+  const from = located.path[located.path.length - 1]!;
+  const target = [...targetPath];
+  let at = index;
+
+  const underParent =
+    target.length >= parent.length && parent.every((value, i) => value === target[i]);
+  if (underParent) {
+    if (target.length === parent.length) {
+      if (at !== undefined && at > from) at -= 1;
+    } else {
+      const slot = target[parent.length]!;
+      if (slot === from) return null;
+      if (slot > from) target[parent.length] = slot - 1;
+    }
+  }
+
+  const removed = removeBlockById(blocks, blockId);
+  const container = getContainerAtPath(removed, target);
+  if (!container) return null;
+  const finalIndex = Math.min(at ?? container.length, container.length);
+  return {
+    blocks: insertBlockAt(removed, target, located.block, finalIndex),
+    path: target,
+    index: finalIndex,
+  };
+}
+
 export function reorderBlocksInContainer(
   blocks: ExperiencePageBlock[],
   containerPath: BlockPath,

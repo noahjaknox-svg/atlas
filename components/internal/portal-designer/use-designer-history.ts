@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 const MAX_HISTORY = 50;
 
@@ -8,14 +8,8 @@ export function useDesignerHistory<T>(initial: T) {
   const historyRef = useRef<T[]>([initial]);
   const indexRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipPushRef = useRef(false);
 
   const push = useCallback((next: T, immediate = false) => {
-    if (skipPushRef.current) {
-      skipPushRef.current = false;
-      return;
-    }
-
     const doPush = () => {
       const current = historyRef.current[indexRef.current];
       if (JSON.stringify(current) === JSON.stringify(next)) return;
@@ -46,14 +40,12 @@ export function useDesignerHistory<T>(initial: T) {
   const undo = useCallback((): T | null => {
     if (indexRef.current <= 0) return null;
     indexRef.current -= 1;
-    skipPushRef.current = true;
     return historyRef.current[indexRef.current] ?? null;
   }, []);
 
   const redo = useCallback((): T | null => {
     if (indexRef.current >= historyRef.current.length - 1) return null;
     indexRef.current += 1;
-    skipPushRef.current = true;
     return historyRef.current[indexRef.current] ?? null;
   }, []);
 
@@ -74,5 +66,9 @@ export function useDesignerHistory<T>(initial: T) {
     };
   }, []);
 
-  return { push, undo, redo, canUndo, canRedo, reset };
+  // Stable identity: consumers list this in effect deps, and a fresh object each render re-ran them.
+  return useMemo(
+    () => ({ push, undo, redo, canUndo, canRedo, reset }),
+    [push, undo, redo, canUndo, canRedo, reset]
+  );
 }
