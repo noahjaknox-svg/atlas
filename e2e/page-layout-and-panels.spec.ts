@@ -132,7 +132,7 @@ test.describe("element panels", () => {
     // The glass sheen (a light highlight across the top-left) is there at 100% and fades with the opacity.
     const sheen = async (marker: string) => {
       const bg = await page.locator("[data-element-panel]", { hasText: marker }).first().evaluate((el) => getComputedStyle(el).backgroundImage);
-      return parseFloat(bg.match(/rgba\(255, 255, 255, ([0-9.]+)\) 0%/)![1]!);
+      return parseFloat(bg.match(/rgba\(255, 255, 255, ([0-9.]+)\) (?:0%|0px)/)![1]!);
     };
     expect(await sheen("PN-HALF")).toBeCloseTo(0.07, 2); // 0.14 × 50%
     // And 100% is fully solid: nothing of the page shows through.
