@@ -361,6 +361,16 @@ export function UsageTypeWorkbench() {
                     checked={draft.config.showRevenueSection}
                     onChange={(v) => patch({ config: { ...draft.config, showRevenueSection: v } })}
                   />
+                  <SwitchRow
+                    label="Membership club model"
+                    hint="Uses the Silverleaf-style membership club pro forma (members, dues, fleet scaling) instead of the aircraft-ownership pro forma. Leave off for every normal usage type."
+                    checked={draft.config.proformaModel === "club"}
+                    onChange={(v) =>
+                      patch({
+                        config: { ...draft.config, proformaModel: v ? "club" : undefined },
+                      })
+                    }
+                  />
                 </div>
               ) : null}
 

@@ -25,6 +25,7 @@ import { resolvePortalBranding } from "@/lib/portal-constants";
 import { resolveLayoutSettings } from "@/lib/portal-layout-settings";
 import { PortalShell } from "@/components/client/experience/portal-shell";
 import { ExperiencePageContent } from "@/components/client/experience/experience-page-content";
+import { sanitizeSnapshotForClient } from "@/lib/club-client-view";
 
 export const dynamic = "force-dynamic";
 
@@ -156,7 +157,8 @@ export default async function ExperiencePageRoute({
       page === "pro-forma" ? { mode: "all" as const } : { mode: "none" as const };
     const preview = await loadDraftPreview(slug, resolveScope);
     if (!preview) redirect(`/${slug}`);
-    payload = preview.payload;
+    // Match what the client would see (PrismJet club data is stripped unless that page is visible).
+    payload = sanitizeSnapshotForClient(preview.payload);
     branding = preview.branding;
     contactName = preview.contactName;
     clientDisplayName = preview.clientDisplayName;

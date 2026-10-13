@@ -154,6 +154,8 @@ export function createEmptyBlock(type: ExperiencePageBlock["type"]): ExperienceP
       return { id: createBlockId(), type: "video", url: "", posterUrl: "", caption: "" };
     case "stat":
       return { id: createBlockId(), type: "stat", value: "100+", label: "Years combined experience", countUp: true };
+    case "clubEconomics":
+      return { id: createBlockId(), type: "clubEconomics", view: "program-stats" };
     case "blockVsFlight":
       return { id: createBlockId(), type: "blockVsFlight" };
     case "row":

@@ -42,6 +42,7 @@ const KNOWN_BLOCK_TYPES = new Set([
   "cta",
   "video",
   "stat",
+  "clubEconomics",
   "blockVsFlight",
   "row",
   "container",

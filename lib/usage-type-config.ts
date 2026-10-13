@@ -24,7 +24,16 @@ export type UsageTypeConfig = {
   /** Show the Revenue section on the client portal (math unaffected). */
   showRevenueSection: boolean;
   lines: Record<string, UsageTypeLineSetting>;
+  /**
+   * Opt-in pro forma model for this usage type. "club" = the membership-club model
+   * (lib/club-proforma.ts). Absent for every aircraft-ownership usage type.
+   */
+  proformaModel?: "club";
 };
+
+export function isClubUsageTypeConfig(config: UsageTypeConfig | null | undefined): boolean {
+  return config?.proformaModel === "club";
+}
 
 export { CUSTOM_FIXED_WILDCARD };
 
@@ -115,6 +124,7 @@ export function parseUsageTypeConfig(raw: unknown): UsageTypeConfig {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return config;
   const obj = raw as Record<string, unknown>;
   if (typeof obj.showRevenueSection === "boolean") config.showRevenueSection = obj.showRevenueSection;
+  if (obj.proformaModel === "club") config.proformaModel = "club";
   const lines = obj.lines;
   if (lines && typeof lines === "object" && !Array.isArray(lines)) {
     for (const [key, value] of Object.entries(lines as Record<string, unknown>)) {

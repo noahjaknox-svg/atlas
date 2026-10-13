@@ -48,6 +48,8 @@ import { ProposalImage } from "./proposal-image";
 import { PullQuote } from "./pull-quote";
 import { StatBlock } from "./stat-block";
 import { BlockVsFlightAnimation } from "./block-vs-flight-animation";
+import { ClubEconomicsBlock } from "./club/club-economics-block";
+import type { ClubClientView } from "@/lib/club-client-view";
 import { cn } from "@/lib/utils";
 import { experiencePanel } from "./v2/experience-tokens";
 import {
@@ -225,7 +227,11 @@ function BlockLayoutFrame({
   );
 }
 
-function renderLeafContent(block: ExperiencePageBlock, designMode = false): React.ReactNode {
+function renderLeafContent(
+  block: ExperiencePageBlock,
+  designMode = false,
+  club?: ClubClientView | null
+): React.ReactNode {
   switch (block.type) {
     case "heading": {
       const Tag = block.level === 1 ? "h1" : block.level === 2 ? "h2" : "h3";
@@ -325,6 +331,8 @@ function renderLeafContent(block: ExperiencePageBlock, designMode = false): Reac
       );
     case "stat":
       return <StatBlock value={block.value} label={block.label} countUp={block.countUp !== false} />;
+    case "clubEconomics":
+      return <ClubEconomicsBlock view={block.view} club={club} designer={designMode} />;
     case "blockVsFlight":
       return (
         <BlockVsFlightAnimation
@@ -848,7 +856,11 @@ export function ExperienceBlockRenderer({
           return null;
         }
 
-        const leafContent = renderLeafContent(block, showDesign ? designMode : false);
+        const leafContent = renderLeafContent(
+          block,
+          showDesign ? designMode : false,
+          variableContext?.club
+        );
 
         const shell = showDesign ? (
           <DesignBlockShell

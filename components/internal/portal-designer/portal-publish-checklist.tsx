@@ -17,6 +17,7 @@ export function PortalPublishChecklist({
   hiddenPageCount,
   diagnostics,
   proFormaVisible,
+  prismjetPageVisible,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,6 +28,8 @@ export function PortalPublishChecklist({
   hiddenPageCount: number;
   diagnostics: BlockDiagnostic[];
   proFormaVisible: boolean;
+  /** Silverleaf proposals only: whether the PrismJet economics page is visible. Undefined for every other proposal. */
+  prismjetPageVisible?: boolean;
 }) {
   if (!open) return null;
 
@@ -35,6 +38,7 @@ export function PortalPublishChecklist({
     publishStatus === "neverPublished" ||
     publishStatus === "unpublishedChanges" ||
     hiddenPageCount > 0 ||
+    prismjetPageVisible === true ||
     diagnostics.length > 0;
 
   return (
@@ -86,6 +90,16 @@ export function PortalPublishChecklist({
             />
           ) : (
             <ChecklistItem status="ok" label="No content warnings on active page" />
+          )}
+          {prismjetPageVisible === undefined ? null : (
+            <ChecklistItem
+              status={prismjetPageVisible ? "warn" : "ok"}
+              label={
+                prismjetPageVisible
+                  ? "PrismJet economics page is visible. Hide it before sharing with Silverleaf."
+                  : "PrismJet economics page is hidden"
+              }
+            />
           )}
           <ChecklistItem
             status={proFormaVisible ? "info" : "ok"}

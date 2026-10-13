@@ -8,6 +8,7 @@ import type {
   BLOCK_WIDTHS,
   CONTAINER_CELL_ALIGNS,
   CTA_VARIANTS,
+  CLUB_ECONOMICS_VIEWS,
   EXPERIENCE_GALLERY_LAYOUTS,
   IMAGE_DISPLAY_SIZES,
   ROW_DISPLAYS,
@@ -155,6 +156,7 @@ export type GridDimension = 1 | 2 | 3 | 4;
 
 export type ContainerCellAlign = (typeof CONTAINER_CELL_ALIGNS)[number];
 export type CtaVariant = (typeof CTA_VARIANTS)[number];
+export type ClubEconomicsView = (typeof CLUB_ECONOMICS_VIEWS)[number];
 
 export type BlockLayout = {
   /** @deprecated use widthDesktop / widthMobile preset ids */
@@ -233,6 +235,9 @@ export type ExperiencePageBlock =
   /** Animated "block time vs flight time" charter payback bars. Hours default to the
    * proposal's primary aircraft; set them to pin fixed numbers. Animated — reduced-motion
    * viewers see the final bars. */
+  /** Data-bound Silverleaf club view (structures, scaling, member cost, cash timeline, pro forma).
+   * Renders from the proposal's club model; renders nothing on other proposals. */
+  | (LeafBlockBase & { type: "clubEconomics"; view: ClubEconomicsView })
   | (LeafBlockBase & {
       type: "blockVsFlight";
       blockHours?: number | null;

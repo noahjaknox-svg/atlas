@@ -4,6 +4,7 @@ import type { ExperiencePageBlock, ExperienceSectionSnapshot } from "@/lib/exper
 import type { BlockDiagnostic } from "@/lib/portal-block-diagnostics";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { buildPortalVariableContext } from "@/lib/portal-variables";
+import type { ClubSnapshot } from "@/lib/club-model-store";
 import { GenericChapterV2 } from "@/components/client/experience/v2/layouts/generic-chapter-v2";
 import { PortalLayoutBreakpointStyles } from "@/components/client/experience/portal-layout-breakpoint-styles";
 import { cn } from "@/lib/utils";
@@ -80,7 +81,10 @@ export function PortalDesignerPreview({
   onSelectPage,
   showGuides,
   layoutSettings,
+  clubModel,
 }: {
+  /** Live draft club model (Silverleaf proposals) so club blocks show real figures while designing. */
+  clubModel?: ClubSnapshot | null;
   section: ExperienceSectionSnapshot;
   viewport: PreviewViewport;
   payload?: ProposalSnapshotPayload | null;
@@ -103,8 +107,9 @@ export function PortalDesignerPreview({
   /** Show the dashed layout guides (default on); off previews the page as published. */
   showGuides?: boolean;
 }) {
-  const resolvedPayload = payload ?? SAMPLE_PAYLOAD;
-  const variableContext = buildPortalVariableContext(resolvedPayload, contactName);
+  const basePayload = payload ?? SAMPLE_PAYLOAD;
+  const resolvedPayload = clubModel ? { ...basePayload, clubModel } : basePayload;
+  const variableContext = buildPortalVariableContext(resolvedPayload, contactName, { designer: true });
   const previewSection =
     blocks != null
       ? { ...section, contentBlocks: { ...section.contentBlocks, pageBlocks: blocks } }

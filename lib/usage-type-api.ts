@@ -8,6 +8,7 @@ const configSchema = z.object({
   version: z.literal(1).optional(),
   showRevenueSection: z.boolean().optional(),
   lines: z.record(z.string(), lineSettingSchema).optional(),
+  proformaModel: z.literal("club").optional(),
 });
 
 /** Body for POST/PATCH /api/data/usage-types. Every field optional on PATCH. */
