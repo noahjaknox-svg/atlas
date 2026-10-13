@@ -79,13 +79,13 @@ test.describe("page layout inheritance (page → container → element)", () => 
     // Add a block: it inherits the page's Narrow / Left.
     await page.getByRole("button", { name: /^Outline/ }).click();
     await page.getByRole("button", { name: "+ Text", exact: true }).click();
-    await expect(page.getByLabel("Desktop width").locator("option:checked")).toHaveText("Inherit (Narrow)");
+    await expect(page.getByLabel("Desktop width", { exact: true }).locator("option:checked")).toHaveText("Inherit (Narrow)");
     await expect(page.getByLabel("Horizontal align").first().locator("option:checked")).toHaveText("Inherit (Left)");
     // Overriding then choosing Inherit again clears the override.
-    await page.getByLabel("Desktop width").selectOption({ label: "Wide" });
-    await expect(page.getByLabel("Desktop width")).toHaveValue("wide");
-    await page.getByLabel("Desktop width").selectOption({ label: "Inherit (Narrow)" });
-    await expect(page.getByLabel("Desktop width")).toHaveValue("");
+    await page.getByLabel("Desktop width", { exact: true }).selectOption({ label: "Wide" });
+    await expect(page.getByLabel("Desktop width", { exact: true })).toHaveValue("wide");
+    await page.getByLabel("Desktop width", { exact: true }).selectOption({ label: "Inherit (Narrow)" });
+    await expect(page.getByLabel("Desktop width", { exact: true })).toHaveValue("");
     // Nothing was saved: leave without saving.
   });
 });

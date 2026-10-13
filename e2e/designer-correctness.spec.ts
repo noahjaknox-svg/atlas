@@ -126,7 +126,7 @@ test("cleanup: no 'Edit' in the block menu, built-in page names are read-only, i
   // An image block shows the same Layout group as other blocks, plus Crop image.
   // (dispatched: the remote image never loads, so it never counts as "stable" for a real click)
   await page.locator(".design-shell img").first().dispatchEvent("click");
-  await expect(page.getByText("Layout", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("group", { name: "Size & position" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crop image" })).toBeVisible();
   await expect(page.getByText("Responsive layout")).toHaveCount(0);
 });

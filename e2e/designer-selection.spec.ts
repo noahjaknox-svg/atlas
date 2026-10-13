@@ -102,7 +102,9 @@ test("left-click selects the innermost element, and 'Select parent' walks back o
 
   const leafShell = page.locator('.design-shell[data-selected="true"]', { has: page.locator(".portal-markdown", { hasText: "NS-LEAF" }) });
   const selectedShells = page.locator('.design-shell[data-selected="true"]');
-  const parentLink = page.getByRole("button", { name: /^↑ Select/ });
+  const crumbs = page.getByRole("navigation", { name: "Selection" });
+  const parentLink = crumbs.getByRole("button").last(); // the nearest ancestor (the last crumb before the element)
+  const backToPage = crumbs.getByRole("button", { name: "Page settings" });
 
   // From the page settings a left-click on an element two containers deep selects THAT element.
   await page.locator(".design-shell .portal-markdown", { hasText: "NS-LEAF" }).click();
@@ -111,19 +113,19 @@ test("left-click selects the innermost element, and 'Select parent' walks back o
   await expect(page.getByText("Markdown text")).toBeVisible();
 
   // The same for a plain element in the neighbouring cell.
-  await page.getByRole("button", { name: "← Page settings" }).click();
+  await backToPage.click();
   await page.locator(".design-shell .portal-markdown", { hasText: "NS-OTHER" }).click();
   await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(1);
   await expect(page.locator('.design-shell[data-selected="true"] .portal-container-grid')).toHaveCount(0);
 
   // 'Select parent' walks out one level at a time: leaf → inner container → outer container → none.
-  await page.getByRole("button", { name: "← Page settings" }).click();
+  await backToPage.click();
   await page.locator(".design-shell .portal-markdown", { hasText: "NS-LEAF" }).click();
-  await expect(parentLink).toHaveText(/↑ Select container/);
+  await expect(parentLink).toHaveText(/^Container/);
   await parentLink.click();
   await expect(page.getByLabel("Gap between cells")).toBeVisible(); // a container's settings
   await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(0); // the inner one, not the outer
   await parentLink.click();
   await expect(page.locator('.design-shell[data-selected="true"] .portal-markdown', { hasText: "NS-OTHER" })).toHaveCount(1); // the outer container holds both cells
-  await expect(parentLink).toHaveCount(0); // top level: nothing above it
+  await expect(crumbs.getByRole("button")).toHaveCount(1); // top level: only "Page settings" above it
 });

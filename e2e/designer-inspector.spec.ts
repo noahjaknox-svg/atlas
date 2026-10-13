@@ -20,8 +20,8 @@ test("page settings show for the page, and give way to the block's settings once
   await expect(pageName).toHaveCount(0);
   await expect(usageTypes).toHaveCount(0);
 
-  // "← Page settings" returns to the page.
-  await page.getByRole("button", { name: "← Page settings" }).click();
+  // The "Page settings" crumb returns to the page.
+  await page.getByRole("navigation", { name: "Selection" }).getByRole("button", { name: "Page settings" }).click();
   await expect(pageName).toBeVisible();
   await expect(blockSettings).toHaveCount(0);
 

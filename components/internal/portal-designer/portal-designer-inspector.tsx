@@ -10,7 +10,7 @@ import {
 import { DEFAULT_PANEL_OPACITY, resolvePanelOpacity } from "@/lib/portal-layout-settings";
 import type { PageLayout } from "@/lib/experience-content";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ROUTES } from "@/lib/routes";
 import { Copy, Check } from "lucide-react";
 import type {
@@ -44,7 +44,7 @@ import { MediaUploadField } from "@/components/internal/media-upload-field";
 import { GalleryEditor } from "@/components/internal/gallery-editor";
 import { MarkdownToolbar } from "./markdown-toolbar";
 import { isCustomPortalPage } from "@/lib/experience-page-slug";
-import { resolveImageDisplaySize } from "@/lib/experience-image-system";
+import { isCompactImageSize, resolveImageDisplaySize } from "@/lib/experience-image-system";
 import { PortalDesignerImageCropModal } from "./portal-designer-image-crop-modal";
 import type { DesignerSection, PreviewViewport } from "./portal-designer-types";
 import { PORTAL_HTML_AI_INSTRUCTIONS } from "@/lib/portal-html-ai-instructions";
@@ -113,7 +113,18 @@ export function PortalDesignerInspector({
         section.contentBlocks?.pageLayout
       )
     : null;
-  const parent = selectedBlock ? parentOf(section.contentBlocks?.pageBlocks ?? [], selectedBlockPath ?? []) : null;
+  // Everything above the selection, outermost first: the crumbs between "Page settings" and the element.
+  const ancestors: { block: ExperiencePageBlock; path: BlockPath }[] = [];
+  if (selectedBlock) {
+    const all = section.contentBlocks?.pageBlocks ?? [];
+    let cursor: BlockPath = selectedBlockPath ?? [];
+    for (let guard = 0; guard < 12; guard++) {
+      const up = parentOf(all, cursor);
+      if (!up) break;
+      ancestors.unshift(up);
+      cursor = up.path;
+    }
+  }
   const blockWarnings = selectedBlock
     ? diagnosticsForBlock(diagnostics, selectedBlock.id)
     : [];
@@ -209,26 +220,35 @@ export function PortalDesignerInspector({
 
         {selectedBlock ? (
           <>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <nav aria-label="Selection" className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
               {onBackToPage ? (
-                <button
-                  type="button"
-                  onClick={onBackToPage}
-                  className="text-xs text-atlas-accent hover:underline"
-                >
-                  ← Page settings
+                <button type="button" onClick={onBackToPage} className="text-atlas-accent hover:underline">
+                  Page settings
                 </button>
-              ) : null}
-              {parent && onSelectParent ? (
-                <button
-                  type="button"
-                  onClick={() => onSelectParent({ blockId: parent.block.id, path: parent.path })}
-                  className="text-xs text-atlas-accent hover:underline"
-                >
-                  ↑ Select {blockLabel(parent.block).toLowerCase()}
-                </button>
-              ) : null}
-            </div>
+              ) : (
+                <span className="text-atlas-muted">Page</span>
+              )}
+              {ancestors.map((a) => (
+                <span key={a.block.id} className="flex items-center gap-1.5">
+                  <span aria-hidden className="text-atlas-muted">›</span>
+                  {onSelectParent ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectParent({ blockId: a.block.id, path: a.path })}
+                      className="text-atlas-accent hover:underline"
+                    >
+                      {blockLabel(a.block)}
+                    </button>
+                  ) : (
+                    <span className="text-atlas-muted">{blockLabel(a.block)}</span>
+                  )}
+                </span>
+              ))}
+              <span aria-hidden className="text-atlas-muted">›</span>
+              <span aria-current="location" className="font-medium text-atlas-text">
+                {blockLabel(selectedBlock)}
+              </span>
+            </nav>
             {blockWarnings.length > 0 ? (
               <ul className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-sm text-amber-200">
                 {blockWarnings.map((w, i) => (
@@ -588,18 +608,6 @@ function ResponsiveWidthControls({
           )
         }
       />
-      <LayoutSelect
-        label="Show on"
-        value={blockLayout?.visibility ?? "both"}
-        options={[
-          ["both", "Both"],
-          ["desktop", "Desktop only"],
-          ["mobile", "Mobile only"],
-        ]}
-        onChange={(visibility) =>
-          onPatch({ ...blockLayout, visibility: visibility as BlockVisibility })
-        }
-      />
     </>
   );
 }
@@ -610,6 +618,9 @@ function BlockLayoutControls({
   onPatch,
   designViewport,
   cellCards,
+  hidePanel,
+  widthNote,
+  verticalNote,
 }: {
   blockLayout?: BlockLayout;
   layoutSettings: PortalLayoutSettings;
@@ -617,17 +628,23 @@ function BlockLayoutControls({
   designViewport?: PreviewViewport;
   /** Container/row with 'Card behind each cell' on: show the opacity control for those cards. */
   cellCards?: boolean;
+  /** Elements with nothing to put a panel behind (e.g. a spacer). */
+  hidePanel?: boolean;
+  /** Explains when the width presets don't apply to this element. */
+  widthNote?: string;
+  /** Explains when vertical align only takes effect in some layouts. */
+  verticalNote?: string;
 }) {
   return (
-    <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2">
-      <p className="text-sm font-medium text-atlas-muted">Layout</p>
-      <div className="grid grid-cols-1 gap-2">
+    <div className="space-y-2">
+      <InspectorSection title="Size & position">
         <ResponsiveWidthControls
           blockLayout={blockLayout}
           layoutSettings={layoutSettings}
           onPatch={onPatch}
           designViewport={designViewport}
         />
+        {widthNote ? <p className="text-xs text-atlas-muted">{widthNote}</p> : null}
         <HorizontalAlignSelect blockLayout={blockLayout} onPatch={onPatch} />
         <LayoutSelect
           label="Vertical align"
@@ -641,6 +658,9 @@ function BlockLayoutControls({
             onPatch({ ...blockLayout, verticalAlign: verticalAlign as BlockVerticalAlign })
           }
         />
+        {verticalNote ? <p className="text-xs text-atlas-muted">{verticalNote}</p> : null}
+      </InspectorSection>
+      <InspectorSection title="Spacing & visibility">
         <LayoutSelect
           label="Padding"
           value={blockLayout?.padding ?? "none"}
@@ -652,8 +672,79 @@ function BlockLayoutControls({
           ]}
           onChange={(padding) => onPatch({ ...blockLayout, padding: padding as BlockPadding })}
         />
-        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} cellCards={cellCards} />
-      </div>
+        <LayoutSelect
+          label="Show on"
+          value={blockLayout?.visibility ?? "both"}
+          options={[
+            ["both", "Both"],
+            ["desktop", "Desktop only"],
+            ["mobile", "Mobile only"],
+          ]}
+          onChange={(visibility) =>
+            onPatch({ ...blockLayout, visibility: visibility as BlockVisibility })
+          }
+        />
+      </InspectorSection>
+      {hidePanel ? null : (
+        <InspectorSection title="Panel">
+          <PanelControls
+            blockLayout={blockLayout}
+            layoutSettings={layoutSettings}
+            onPatch={onPatch}
+            cellCards={cellCards}
+          />
+        </InspectorSection>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A titled, collapsible group of settings. Open/closed is remembered per title, so the inspector
+ * keeps the sections you use open and the ones you don't tucked away across selections.
+ */
+function InspectorSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const storageKey = `atlas.designer.section.${title}`;
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved != null) setOpen(saved === "1");
+    } catch {
+      /* storage unavailable: keep the default */
+    }
+  }, [storageKey]);
+  function toggle() {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+  return (
+    <div className="rounded border border-atlas-border/60 bg-atlas-bg/30" role="group" aria-label={title}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-2 py-1.5 text-left text-sm font-medium text-atlas-muted hover:text-atlas-text"
+      >
+        <span>{title}</span>
+        <span aria-hidden className="text-xs">{open ? "−" : "+"}</span>
+      </button>
+      {open ? <div className="grid grid-cols-1 gap-2 px-2 pb-2">{children}</div> : null}
     </div>
   );
 }
@@ -676,7 +767,19 @@ function LayoutSelect({
 }) {
   return (
     <div className={cn(highlighted && "rounded-md ring-1 ring-atlas-accent/40")}>
-      <Label className="text-sm">{label}</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm">{label}</Label>
+        {inheritLabel && value !== "" ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="text-xs text-atlas-accent hover:underline"
+            aria-label={`Reset ${label} to inherited`}
+          >
+            Reset
+          </button>
+        ) : null}
+      </div>
       <select
         aria-label={label}
         value={value}
@@ -693,6 +796,9 @@ function LayoutSelect({
     </div>
   );
 }
+
+const LEAF_VERTICAL_NOTE = "Takes effect when this is the only element in its container cell.";
+const CONTAINER_VERTICAL_NOTE = "Takes effect when this container sits beside taller content.";
 
 function BlockEditor({
   block,
@@ -837,6 +943,7 @@ function BlockEditor({
           designViewport={designViewport}
           onPatch={shellLayoutPatch}
           cellCards={!!block.cellCardStyle}
+          verticalNote={CONTAINER_VERTICAL_NOTE}
         />
       </div>
     );
@@ -868,6 +975,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -903,6 +1011,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -930,6 +1039,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -960,6 +1070,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1002,6 +1113,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1035,6 +1147,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1075,6 +1188,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1109,6 +1223,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1136,6 +1251,7 @@ function BlockEditor({
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1157,10 +1273,13 @@ function BlockEditor({
             </select>
           </div>
           <BlockLayoutControls
+            hidePanel
+            widthNote="A spacer is only vertical space, so width presets don't change it."
             blockLayout={block.blockLayout}
             layoutSettings={layoutSettings}
             designViewport={designViewport}
             onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );
@@ -1233,10 +1352,16 @@ function ImageBlockEditor({
         />
       </div>
       <BlockLayoutControls
+        widthNote={
+          isCompactImageSize(imageSize)
+            ? "Icon and small images size themselves; width presets apply to Fit and Large."
+            : undefined
+        }
         blockLayout={block.blockLayout}
         layoutSettings={layoutSettings}
         designViewport={designViewport}
         onPatch={layoutPatch}
+        verticalNote={LEAF_VERTICAL_NOTE}
       />
       <PortalDesignerImageCropModal
         open={cropOpen}
