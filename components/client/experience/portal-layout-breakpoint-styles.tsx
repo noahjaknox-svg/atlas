@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect } from "react";
 import {
   breakpointStyleContent,
   DEFAULT_LAYOUT_SETTINGS,
@@ -9,25 +6,17 @@ import {
   type PortalLayoutSettings,
 } from "@/lib/portal-layout-settings";
 
-const STYLE_ID = "portal-layout-breakpoints";
-
+/**
+ * Branding-configurable layout breakpoints (when widths switch to their mobile value, when grids stack,
+ * where "Show on" flips). Rendered as a <style> in the markup — not injected after hydration — so the
+ * first paint already uses the configured values. The CSS is built from numbers only.
+ */
 export function PortalLayoutBreakpointStyles({
   layoutSettings,
 }: {
   layoutSettings?: PortalLayoutSettings | null;
 }) {
-  useEffect(() => {
-    const settings = parsePortalLayoutSettings(layoutSettings ?? DEFAULT_LAYOUT_SETTINGS);
-    const css = breakpointStyleContent(resolveLayoutBreakpoints(settings));
-
-    let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement("style");
-      el.id = STYLE_ID;
-      document.head.appendChild(el);
-    }
-    el.textContent = css;
-  }, [layoutSettings]);
-
-  return null;
+  const settings = parsePortalLayoutSettings(layoutSettings ?? DEFAULT_LAYOUT_SETTINGS);
+  const css = breakpointStyleContent(resolveLayoutBreakpoints(settings));
+  return <style data-portal-layout-breakpoints dangerouslySetInnerHTML={{ __html: css }} />;
 }

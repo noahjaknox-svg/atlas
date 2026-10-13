@@ -131,11 +131,17 @@ export function PortalDesignerShell({
   // Branding defaults (widths, panel opacity…) — updated when Configuration and Setup is saved,
   // so the page previews reflect them without a reload.
   const [liveLayoutSettings, setLiveLayoutSettings] = useState(initialBrandingContent?.layoutSettings);
-  const layoutSettings = useMemo(
-    () => resolveLayoutSettings(publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings),
-    [publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings]
-  );
   const [previewSource, setPreviewSource] = useState<PreviewSource>("draft");
+  // The draft canvas shows what the live Configuration and Setup defaults produce (so saving them is
+  // visible straight away, like the Preview tab); the Published view shows what clients actually see —
+  // the settings frozen into the published snapshot.
+  const layoutSettings = useMemo(
+    () =>
+      previewSource === "published"
+        ? resolveLayoutSettings(publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings)
+        : resolveLayoutSettings(liveLayoutSettings, publishedSnapshot?.branding?.layoutSettings),
+    [previewSource, publishedSnapshot?.branding?.layoutSettings, liveLayoutSettings]
+  );
   const [brandingTab, setBrandingTab] = useState<DesignerBrandingTab>("pages");
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);

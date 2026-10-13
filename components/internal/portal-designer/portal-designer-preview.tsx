@@ -134,7 +134,9 @@ export function PortalDesignerPreview({
       >
         <div
           className={cn(
-            "overflow-hidden rounded-lg border border-white/10 bg-[#0B0F1A] shadow-2xl transition-[width]",
+            // `dark` + text-white mirror the real portal shell, so theme-aware text (headings, buttons)
+            // renders as clients see it whatever theme the designer user has chosen.
+            "dark overflow-hidden rounded-lg border border-white/10 bg-[#0B0F1A] text-white shadow-2xl transition-[width]",
             viewport === "desktop"
               ? "flex h-full min-h-0 w-full max-w-none flex-col"
               : "w-[390px] max-w-full"

@@ -143,16 +143,13 @@ export function breakpointStyleContent(breakpoints: PortalLayoutBreakpoints): st
   }
 }
 
-.portal-layout-show-desktop {
-  display: none !important;
-}
-.portal-layout-show-mobile {
-  display: block !important;
+/* Visibility only ever HIDES: forcing display:block would break flex wrappers inside grid cells. */
+@media (max-width: ${desktopMax}px) {
+  .portal-layout-show-desktop {
+    display: none !important;
+  }
 }
 @media (min-width: ${desktopMin}px) {
-  .portal-layout-show-desktop {
-    display: block !important;
-  }
   .portal-layout-show-mobile {
     display: none !important;
   }
@@ -229,7 +226,7 @@ export function blockWidthStyleVars(
 export function visibilityClasses(visibility: BlockVisibility = "both"): string {
   switch (visibility) {
     case "desktop":
-      return "hidden portal-layout-show-desktop";
+      return "portal-layout-show-desktop";
     case "mobile":
       return "portal-layout-show-mobile";
     case "both":

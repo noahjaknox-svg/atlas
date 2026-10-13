@@ -174,7 +174,7 @@ function BlockLayoutFrame({
   );
 
   const chromedContent = designChrome ? (
-    <div className={cn("h-full w-full", paddingClass)}>
+    <div className="h-full w-full">
       {guides ? (
         <div
           className={cn(
@@ -199,7 +199,7 @@ function BlockLayoutFrame({
         "flex w-full min-w-0 flex-col",
         inGridCell && "min-h-0 flex-1",
         getLeafVerticalJustifyClass(vAlign),
-        !designChrome && paddingClass
+        paddingClass
       )}
       style={
         blockLayout?.panelOpacity != null
@@ -524,7 +524,7 @@ function renderContainerCells({
     }
   }
 
-  const gridProps = containerGridProps(block, layout, { contentSizedRows: showDesign });
+  const gridProps = containerGridProps(block, layout);
   return (
     <div {...gridProps} style={gridProps.style as CSSProperties}>
       {cells}
@@ -588,7 +588,7 @@ export function ExperienceBlockRenderer({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 lg:gap-6",
+        "relative flex flex-col gap-4 lg:gap-6",
         inGridCell && "min-h-0 flex-1"
       )}
       // Branding default for panel / cell-card opacity; elements below can override it.
@@ -599,7 +599,7 @@ export function ExperienceBlockRenderer({
       }
     >
       {showDesign ? (
-        <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, 0)} />
+        <PortalDesignerInsertionZone zoneId={insertionZoneId(containerPath, 0)} leading />
       ) : null}
       {blocks.map((rawBlock, blockIndex) => {
         const block = resolveBlock(rawBlock, variableContext);

@@ -88,7 +88,7 @@ describe("blockWidthStyleVars", () => {
 describe("visibilityClasses", () => {
   it("maps visibility to injected layout classes", () => {
     expect(visibilityClasses("both")).toBe("");
-    expect(visibilityClasses("desktop")).toBe("hidden portal-layout-show-desktop");
+    expect(visibilityClasses("desktop")).toBe("portal-layout-show-desktop");
     expect(visibilityClasses("mobile")).toBe("portal-layout-show-mobile");
   });
 });

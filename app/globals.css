@@ -524,34 +524,13 @@
     grid-template-columns: var(--portal-row-template);
   }
 
-  @media (min-width: 1024px) {
-    .portal-row-grid[data-row-layout="responsive"] {
-      grid-template-columns: var(--portal-row-template);
-    }
-  }
-
   .portal-container-grid[data-layout="horizontal"] {
     grid-template-columns: var(--portal-col-template);
     grid-template-rows: var(--portal-row-template);
   }
 
-  @media (min-width: 1024px) {
-    .portal-container-grid[data-layout="responsive"] {
-      grid-template-columns: var(--portal-col-template);
-      grid-template-rows: var(--portal-row-template);
-    }
-  }
-
-  @media (max-width: 1023px) {
-    .portal-container-grid[data-layout="responsive"] {
-      grid-template-columns: 1fr !important;
-      grid-template-rows: auto !important;
-    }
-
-    .portal-row-grid[data-row-layout="responsive"] {
-      grid-template-columns: 1fr !important;
-    }
-  }
+  /* Responsive stacking / width switching is generated from the configured breakpoints: see
+     breakpointStyleContent() in lib/portal-layout-settings.ts. */
 }
 
 @layer utilities {
@@ -636,12 +615,6 @@
   .block-width-responsive {
     width: var(--block-width);
     max-width: 100%;
-  }
-
-  @media (max-width: 767px) {
-    .block-width-responsive {
-      width: var(--block-width-mobile);
-    }
   }
 
   /* Designer preview toggle overrides browser breakpoint. */
