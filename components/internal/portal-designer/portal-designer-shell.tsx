@@ -12,6 +12,8 @@ import {
 import { findBlockById } from "@/lib/portal-block-layout";
 import { collectBlockDiagnostics } from "@/lib/portal-block-diagnostics";
 import { buildPortalVariableContext } from "@/lib/portal-variables";
+import type { ClubSnapshot } from "@/lib/club-model-store";
+import { CLUB_PRISMJET_PAGE_SLUG } from "@/lib/club-client-view";
 import type { ExperiencePageBlock } from "@/lib/experience-content";
 import {
   PORTAL_PUBLISH_STATUS_LABELS,
@@ -78,6 +80,7 @@ export function PortalDesignerShell({
   initialHero,
   portalSlug,
   publishedSnapshot,
+  draftClubModel,
   publishStatus,
   lastPublishedAt,
   onPublished,
@@ -91,6 +94,8 @@ export function PortalDesignerShell({
   initialHero?: PortalDesignerHeroState;
   portalSlug?: string | null;
   publishedSnapshot?: ProposalSnapshotPayload | null;
+  /** Draft club model for Silverleaf proposals (null/undefined for every other proposal). */
+  draftClubModel?: ClubSnapshot | null;
   publishStatus?: PortalPublishStatus;
   lastPublishedAt?: string | null;
   onPublished?: () => void;
@@ -199,9 +204,13 @@ export function PortalDesignerShell({
   const variableContext = useMemo(
     () =>
       publishedSnapshot
-        ? buildPortalVariableContext(publishedSnapshot)
+        ? buildPortalVariableContext(
+            draftClubModel ? { ...publishedSnapshot, clubModel: draftClubModel } : publishedSnapshot,
+            undefined,
+            { designer: true }
+          )
         : undefined,
-    [publishedSnapshot]
+    [publishedSnapshot, draftClubModel]
   );
 
   const diagnostics = useMemo(
@@ -233,6 +242,9 @@ export function PortalDesignerShell({
   );
 
   const proFormaVisible = sections.some((s) => s.sectionType === "pro_forma" && s.visible);
+  // Silverleaf only: undefined when this proposal has no PrismJet economics page.
+  const prismjetPage = sections.find((s) => s.pageSlug === CLUB_PRISMJET_PAGE_SLUG);
+  const prismjetPageVisible = prismjetPage ? prismjetPage.visible : undefined;
 
   const previewSection = useMemo(() => {
     if (mode === "proposal" && previewSource === "published" && publishedSnapshot) {
@@ -872,6 +884,7 @@ export function PortalDesignerShell({
                   blocks={activeBlocks}
                   viewport={viewport}
                   payload={publishedSnapshot ?? undefined}
+                  clubModel={draftClubModel}
                   selectedBlockId={selection?.blockId}
                   selection={selection}
                   onSelect={setSelection}
@@ -891,6 +904,7 @@ export function PortalDesignerShell({
                       section={previewSection}
                       viewport={viewport}
                       payload={publishedSnapshot ?? undefined}
+                      clubModel={draftClubModel}
                       previewMode={false}
                       layoutSettings={layoutSettings}
                     />
@@ -980,6 +994,7 @@ export function PortalDesignerShell({
         hiddenPageCount={hiddenPageCount}
         diagnostics={diagnostics}
         proFormaVisible={proFormaVisible}
+        prismjetPageVisible={prismjetPageVisible}
       />
     </div>
   );

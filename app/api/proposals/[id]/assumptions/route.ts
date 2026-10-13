@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { resolveUsageTypeAssumptions } from "@/lib/resolve-aircraft-defaults";
 import type { AssumptionSourceType, DataConfidence } from "@prisma/client";
 import { applyUsageTypeVisibility } from "@/lib/usage-type-page-visibility";
+import { ensureClubModelInputs } from "@/lib/club-model-server";
 
 export async function GET(
   _request: Request,
@@ -119,6 +120,8 @@ export async function POST(
         });
       }
       await applyUsageTypeVisibility(proposalId, usageTypeName);
+      // Membership-club usage types (Silverleaf) get club inputs; a no-op for every other type.
+      await ensureClubModelInputs(proposalId, usageTypeName);
     }
 
     return jsonOk(results);

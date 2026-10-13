@@ -11,6 +11,7 @@ import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
 import { computePortalPublishStatus } from "@/lib/portal-publish-status";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
 import { getPortalContent } from "@/lib/portal-content";
+import { CLUB_INPUTS_KEY, CLUB_MODEL_CATEGORY, buildClubSnapshot, parseClubInputs } from "@/lib/club-model-store";
 import type { DesignerSection } from "@/components/internal/portal-designer/portal-designer-types";
 import type { ExperienceContentBlocks } from "@/lib/experience-content";
 import { ROUTES } from "@/lib/routes";
@@ -79,6 +80,19 @@ export default async function ProposalPortalDesignPage({
     select: { id: true, name: true },
   });
 
+  // Silverleaf proposals: the live draft club model, so club blocks show real figures while designing.
+  const clubRow = await prisma.proposalAssumption.findUnique({
+    where: {
+      proposalId_category_assumptionName: {
+        proposalId: proposal.id,
+        category: CLUB_MODEL_CATEGORY,
+        assumptionName: CLUB_INPUTS_KEY,
+      },
+    },
+    select: { value: true },
+  });
+  const draftClubModel = clubRow ? buildClubSnapshot(parseClubInputs(clubRow.value)) : null;
+
   const lastSnapshot = proposal.snapshots[0];
   const publishedSnapshot = lastSnapshot
     ? (lastSnapshot.snapshotJson as unknown as ProposalSnapshotPayload)
@@ -106,6 +120,14 @@ export default async function ProposalPortalDesignPage({
           >
             ← Back to Proposal Workspace
           </Link>
+          {draftClubModel ? (
+            <Link
+              href={ROUTES.aircraftManagement.proposalClubView(id)}
+              className="ml-4 text-xs text-atlas-accent hover:underline"
+            >
+              Club model
+            </Link>
+          ) : null}
         </div>
         <div className="min-h-0 flex-1">
           <PortalDesignerShell
@@ -116,6 +138,7 @@ export default async function ProposalPortalDesignPage({
             aircraftId={primaryAircraft?.id}
             portalSlug={proposal.clientPortal?.slug ?? null}
             publishedSnapshot={publishedSnapshot}
+            draftClubModel={draftClubModel}
             publishStatus={publishStatus}
             lastPublishedAt={lastSnapshot?.publishedAt?.toISOString() ?? null}
             usageTypes={usageTypes}

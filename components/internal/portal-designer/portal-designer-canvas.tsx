@@ -37,6 +37,7 @@ import {
 } from "./portal-designer-block-palette";
 import { parseInsertionZoneId } from "./portal-designer-insertion-zone";
 import { PortalDesignerPreview } from "./portal-designer-preview";
+import type { ClubSnapshot } from "@/lib/club-model-store";
 import type { BlockSelection } from "./portal-designer-block-tree";
 import type { BlockDiagnostic } from "@/lib/portal-block-diagnostics";
 import type { PreviewViewport } from "./portal-designer-types";
@@ -51,6 +52,7 @@ export function PortalDesignerCanvas({
   blocks,
   viewport,
   payload,
+  clubModel,
   selectedBlockId,
   selection,
   onSelect,
@@ -64,6 +66,7 @@ export function PortalDesignerCanvas({
   blocks: ExperiencePageBlock[];
   viewport: PreviewViewport;
   payload?: ProposalSnapshotPayload | null;
+  clubModel?: ClubSnapshot | null;
   selectedBlockId?: string | null;
   selection: BlockSelection | null;
   onSelect: (sel: BlockSelection | null) => void;
@@ -209,6 +212,7 @@ export function PortalDesignerCanvas({
               section={section}
               viewport={viewport}
               payload={payload}
+              clubModel={clubModel}
               selectedBlockId={selectedBlockId}
               onSelectBlock={(blockId) => {
                 const located = findBlockById(blocks, blockId);

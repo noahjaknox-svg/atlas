@@ -30,6 +30,16 @@ export const CONTAINER_MIN_HEIGHTS = ["auto", "sm", "md", "lg", "screen", "fill"
 
 export const IMAGE_DISPLAY_SIZES = ["icon", "small", "fit", "large"] as const;
 export const CTA_VARIANTS = ["primary", "secondary"] as const;
+/** Views of the membership-club economics block (Silverleaf proposals only). */
+export const CLUB_ECONOMICS_VIEWS = [
+  "program-stats",
+  "structures",
+  "scaling",
+  "member-cost",
+  "cash-timeline",
+  "pro-forma",
+  "prismjet",
+] as const;
 export const EXPERIENCE_GALLERY_LAYOUTS = [
   "single",
   "leadership",

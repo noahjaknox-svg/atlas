@@ -14,6 +14,13 @@ import type { AircraftSnapshotEntry } from "./portal-aircraft-types";
 import { buildAircraftSnapshotList } from "./snapshot-aircraft";
 import { validateSnapshotPayload } from "./snapshot-validation";
 import { computeWorkspaceProFormaForClient } from "./workspace-proforma-client";
+import {
+  CLUB_MODEL_CATEGORY,
+  buildClubSnapshot,
+  findClubInputsRow,
+  parseClubInputs,
+  type ClubSnapshot,
+} from "./club-model-store";
 
 export interface ProposalSnapshotPayload {
   version: number;
@@ -100,6 +107,12 @@ export interface ProposalSnapshotPayload {
   aircraftList?: AircraftSnapshotEntry[];
   /** Proposal primary aircraft — default for portal pro forma when no aircraft param. */
   primaryAircraftInstanceId?: string | null;
+  /**
+   * Membership-club model (Silverleaf). Present only when the proposal has club inputs.
+   * `result.prismjet` is server-only: the client serializer strips it unless the
+   * PrismJet economics page is visible in `sections`.
+   */
+  clubModel?: ClubSnapshot;
 }
 
 export type BuildSnapshotPayloadOptions = {
@@ -181,6 +194,7 @@ export async function buildSnapshotPayload(
   const clientAssumptions: ProposalSnapshotPayload["assumptions"] = {};
   for (const a of proposal.assumptions) {
     if (!a.visibleToClient) continue;
+    if (a.category === CLUB_MODEL_CATEGORY) continue;
     clientAssumptions[a.assumptionName] = {
       value: a.value,
       unit: a.unit,
@@ -190,6 +204,8 @@ export async function buildSnapshotPayload(
       category: a.category,
     };
   }
+
+  const clubInputsRow = findClubInputsRow(proposal.assumptions);
 
   const master = proposal.aircraftInstance?.aircraftType;
   const portalBranding = await getPortalContent();
@@ -280,6 +296,9 @@ export async function buildSnapshotPayload(
     },
     aircraftList: aircraftList.length > 0 ? aircraftList : undefined,
     primaryAircraftInstanceId: proposal.aircraftInstanceId,
+    clubModel: clubInputsRow
+      ? buildClubSnapshot(parseClubInputs(clubInputsRow.value))
+      : undefined,
   };
   });
 }

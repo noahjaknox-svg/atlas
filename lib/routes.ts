@@ -10,6 +10,7 @@ export const ROUTES = {
         : `/aircraft-management/proposals/${id}`,
     proposalNew: "/aircraft-management/proposals/new",
     proposalDesignView: (id: string) => `/aircraft-management/proposals/${id}/design`,
+    proposalClubView: (id: string) => `/aircraft-management/proposals/${id}/club`,
     proposalProForma: (id: string, aircraftId?: string) =>
       aircraftId
         ? `/aircraft-management/proposals/${id}/pro-forma?aircraft=${aircraftId}`

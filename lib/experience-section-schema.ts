@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sanitizeExperiencePageLinks } from "./experience-content";
 import {
+  CLUB_ECONOMICS_VIEWS,
   BLOCK_ALIGNS,
   BLOCK_PADDINGS,
   BLOCK_VERTICAL_ALIGNS,
@@ -136,6 +137,11 @@ const pageBlockSchema: PageBlockZod = z.lazy(() =>
       value: z.string(),
       label: z.string(),
       countUp: z.boolean().optional(),
+    }),
+    z.object({
+      ...leafBlockFields,
+      type: z.literal("clubEconomics"),
+      view: z.enum(CLUB_ECONOMICS_VIEWS),
     }),
     z.object({
       ...leafBlockFields,

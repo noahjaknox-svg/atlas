@@ -13,6 +13,7 @@ import type { PageLayout } from "@/lib/experience-content";
 import { useEffect, useRef, useState } from "react";
 import { ROUTES } from "@/lib/routes";
 import { Copy, Check } from "lucide-react";
+import { CLUB_ECONOMICS_VIEWS } from "@/lib/experience-block-enums";
 import type {
   BlockAlign,
   BlockLayout,
@@ -1191,6 +1192,39 @@ function BlockEditor({
             designViewport={designViewport}
             onPatch={layoutPatch}
         verticalNote={LEAF_VERTICAL_NOTE}
+          />
+        </div>
+      );
+    case "clubEconomics":
+      return (
+        <div className="space-y-3">
+          <AnimationNotice kind="block" />
+          <p className="text-xs leading-relaxed text-atlas-muted">
+            Live Silverleaf club figures from this proposal&apos;s club model. Interactive views
+            let the viewer adjust members, hours and structure. Shows nothing on other proposals.
+          </p>
+          <div>
+            <Label className="text-sm">View</Label>
+            <select
+              value={block.view}
+              onChange={(e) =>
+                onPatch({ view: e.target.value } as Partial<ExperiencePageBlock>)
+              }
+              className="atlas-input mt-1 h-8 w-full text-sm"
+            >
+              {CLUB_ECONOMICS_VIEWS.map((v) => (
+                <option key={v} value={v}>
+                  {v.replace(/-/g, " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <BlockLayoutControls
+            blockLayout={block.blockLayout}
+            layoutSettings={layoutSettings}
+            designViewport={designViewport}
+            onPatch={layoutPatch}
+            verticalNote={LEAF_VERTICAL_NOTE}
           />
         </div>
       );

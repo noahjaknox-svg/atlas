@@ -8,6 +8,7 @@ import {
   resolveSnapshotFleetShowcase,
 } from "@/lib/portal-publish-status";
 import type { ProposalSnapshotPayload } from "@/lib/snapshot";
+import { sanitizeSnapshotForClient } from "@/lib/club-client-view";
 
 export async function requirePortalSession(slug: string): Promise<PortalSession> {
   const session = await getPortalSession();
@@ -49,7 +50,7 @@ export async function loadActivePortal(slug: string) {
 
   const snapshot = portal.proposal.snapshots[0];
   const payload = snapshot
-    ? (snapshot.snapshotJson as unknown as ProposalSnapshotPayload)
+    ? sanitizeSnapshotForClient(snapshot.snapshotJson as unknown as ProposalSnapshotPayload)
     : null;
 
   const [content, liveFleet] = await Promise.all([getPortalContent(), getFleetShowcase()]);

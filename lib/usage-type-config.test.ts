@@ -152,3 +152,26 @@ describe("resolveSectionUsageTypeIds", () => {
     expect(resolveSectionUsageTypeIds({ sectionType: "custom", pageSlug: "only-here" }, bySlug)).toEqual([]);
   });
 });
+
+describe("membership club model flag", () => {
+  it("is off by default and for every existing config shape", async () => {
+    const { isClubUsageTypeConfig } = await import("@/lib/usage-type-config");
+    expect(parseUsageTypeConfig(null).proformaModel).toBeUndefined();
+    expect(parseUsageTypeConfig({ showRevenueSection: false, lines: {} }).proformaModel).toBeUndefined();
+    expect(isClubUsageTypeConfig(parseUsageTypeConfig({}))).toBe(false);
+    expect(isClubUsageTypeConfig(null)).toBe(false);
+  });
+
+  it("only accepts the exact 'club' value", async () => {
+    const { isClubUsageTypeConfig } = await import("@/lib/usage-type-config");
+    expect(isClubUsageTypeConfig(parseUsageTypeConfig({ proformaModel: "club" }))).toBe(true);
+    expect(parseUsageTypeConfig({ proformaModel: "other" }).proformaModel).toBeUndefined();
+    expect(parseUsageTypeConfig({ proformaModel: true }).proformaModel).toBeUndefined();
+  });
+
+  it("survives the API schema round trip", async () => {
+    const { usageTypeBodySchema } = await import("@/lib/usage-type-api");
+    const body = usageTypeBodySchema.parse({ config: { proformaModel: "club" } });
+    expect(parseUsageTypeConfig(body.config).proformaModel).toBe("club");
+  });
+});

@@ -647,6 +647,8 @@ export function blockLabel(block: ExperiencePageBlock): string {
       return "Video";
     case "stat":
       return "Stat";
+    case "clubEconomics":
+      return "Club economics";
     case "blockVsFlight":
       return "Block vs flight time";
     case "row":
