@@ -48,7 +48,6 @@ export function createEmptyContainer(
     gap: "md",
     columnWeights: equalWeights(c),
     rowWeights: equalWeights(r),
-    cellAlign: "start",
     cells: Array.from({ length: r }, () => Array.from({ length: c }, () => [])),
   };
 }
@@ -72,7 +71,6 @@ export function migrateRowToContainer(
       gap: row.gap,
       columnWeights: [1],
       rowWeights: equalWeights(rows),
-      cellAlign: "start",
       ...carried,
       cells: row.columns.slice(0, rows).map((col) => [col]),
     };
@@ -86,7 +84,6 @@ export function migrateRowToContainer(
     gap: row.gap,
     columnWeights: row.columnWeights ?? equalWeights(cols),
     rowWeights: [1],
-    cellAlign: "start",
     ...carried,
     cells: [row.columns.slice(0, cols).map((col) => col)],
   };
@@ -285,23 +282,6 @@ export function convertBlockType(
   const template = createEmptyBlock(newType);
   if (template.type === "row" || template.type === "container") return block;
   return { ...template, id: block.id } as ExperiencePageBlock;
-}
-
-/** @deprecated Use updateRowColumns */
-export function updateRowPreset(
-  blocks: ExperiencePageBlock[],
-  rowId: string,
-  preset: import("./experience-content").RowPreset
-): ExperiencePageBlock[] {
-  const count =
-    preset === "equal-3" ? 3 : preset === "wide-narrow" || preset === "narrow-wide" ? 2 : 2;
-  const weights =
-    preset === "wide-narrow"
-      ? [2, 1]
-      : preset === "narrow-wide"
-        ? [1, 2]
-        : equalWeights(count);
-  return updateRowColumns(blocks, rowId, count as RowColumnCount, weights);
 }
 
 export function updateContainerGrid(

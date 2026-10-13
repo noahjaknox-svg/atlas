@@ -148,7 +148,7 @@ export function PortalDesignerImageCropModal({
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
       <div className="flex w-full max-w-2xl flex-col rounded-lg border border-atlas-border bg-atlas-surface">
         <div className="border-b border-atlas-border px-4 py-3">
-          <p className="text-sm font-medium text-atlas-text">Edit Image</p>
+          <p className="text-sm font-medium text-atlas-text">Crop image</p>
           <p className="text-xs text-atlas-muted">Crop is CSS-only in preview; source file is unchanged.</p>
         </div>
         <div className="space-y-2 border-b border-atlas-border px-4 py-2">

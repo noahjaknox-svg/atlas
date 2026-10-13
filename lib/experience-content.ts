@@ -274,6 +274,7 @@ export type ExperiencePageBlock =
       /** @deprecated use blockLayout.align */
       align?: BlockAlign;
       blockLayout?: BlockLayout;
+      /** @deprecated Ignored. Kept so pages saved before `alignCells` still validate; use `alignCells`. */
       cellAlign?: ContainerCellAlign;
       /** Give each cell a subtle card treatment (background, rounded corners, padding)
        * so a grid of distinct items reads as a grid instead of stacked prose. Off by default. */

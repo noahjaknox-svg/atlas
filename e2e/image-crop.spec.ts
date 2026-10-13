@@ -53,7 +53,7 @@ test("a saved crop shows exactly the chosen part of the image when moved up and 
   }
 });
 
-test("reopening Edit Image starts at the saved crop, so applying without changes keeps it", async ({ page }) => {
+test("reopening Crop image starts at the saved crop, so applying without changes keeps it", async ({ page }) => {
   await page.goto("/aircraft-management/proposal-design");
   await page.getByRole("button", { name: /^Page code/i }).click();
   const code = page.getByLabel("Page code JSON");
@@ -69,7 +69,7 @@ test("reopening Edit Image starts at the saved crop, so applying without changes
   await page.getByRole("button", { name: /^Outline/ }).click();
   await page.getByText("Image", { exact: true }).last().click();
   await page.getByRole("button", { name: /^Outline/ }).click(); // collapse it; it overlaps the inspector's buttons
-  await page.getByRole("button", { name: "Edit Image" }).click();
+  await page.getByRole("button", { name: "Crop image" }).click();
   await expect(page.locator(".reactEasyCrop_Image")).toBeVisible();
   await page.waitForTimeout(800); // let the cropper position itself and report its area
   await page.getByRole("button", { name: "Apply", exact: true }).last().click();

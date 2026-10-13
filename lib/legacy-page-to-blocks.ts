@@ -103,7 +103,6 @@ function makeBuilders(newId: () => string) {
         gap: "md",
         columnWeights: opts.columnWeights ?? Array.from({ length: c }, () => 1),
         rowWeights: Array.from({ length: r }, () => 1),
-        cellAlign: "start",
         ...(opts.card ? { cellCardStyle: true } : {}),
         blockLayout: opts.layout ?? { widthDesktop: "full", widthMobile: "full" },
         cells: rows,

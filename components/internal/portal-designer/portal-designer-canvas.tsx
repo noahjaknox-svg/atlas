@@ -237,10 +237,6 @@ export function PortalDesignerCanvas({
       <PortalDesignerBlockContextMenu
         menu={contextMenu}
         onClose={() => setContextMenu(null)}
-        onEdit={(blockId) => {
-          const located = findBlockById(blocks, blockId);
-          if (located) onSelect({ blockId, path: located.path });
-        }}
         onDelete={handleDeleteBlock}
         onDuplicate={handleDuplicateBlock}
         onChangeType={handleChangeBlockType}

@@ -103,3 +103,30 @@ test("clicking a button block in the designer selects it instead of opening its 
   await page.waitForTimeout(300);
   expect(popups).toEqual([]);
 });
+
+test("cleanup: no 'Edit' in the block menu, built-in page names are read-only, image blocks use the shared Layout group", async ({ page }) => {
+  await loadPageBlocks(
+    page,
+    [text("a", "CLN-TEXT"), { id: "i", type: "image", url: "https://example.com/a.jpg", alt: "x" }],
+    "CLN-TEXT"
+  );
+  // Page settings (nothing selected): a built-in page's name is fixed.
+  await expect(page.getByLabel("Page name")).toHaveCount(0); // no label association: use the text
+  const nameInput = page.locator("input[readonly]").first();
+  await expect(nameInput).toBeVisible();
+
+  // Right-click menu: Duplicate / Change type / Delete — and no redundant Edit (right-click already selects).
+  await marker(page, "CLN-TEXT").click({ button: "right" });
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem", { name: "Duplicate" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Edit", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // An image block shows the same Layout group as other blocks, plus Crop image.
+  // (dispatched: the remote image never loads, so it never counts as "stable" for a real click)
+  await page.locator(".design-shell img").first().dispatchEvent("click");
+  await expect(page.getByText("Layout", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crop image" })).toBeVisible();
+  await expect(page.getByText("Responsive layout")).toHaveCount(0);
+});

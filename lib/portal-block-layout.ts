@@ -34,10 +34,6 @@ export function isGridBlock(
   return block.type === "row" || block.type === "container";
 }
 
-export function isLeafBlock(block: ExperiencePageBlock): boolean {
-  return !isGridBlock(block);
-}
-
 export type RowColumnCount = GridDimension;
 
 export type RowColumnLayout = "responsive" | "horizontal" | "stacked";
@@ -317,32 +313,6 @@ export function getRowGridClasses(preset: RowPreset, gap: RowGap = "md"): string
   return getRowGridClassesFromWeights(count, weights, gap);
 }
 
-export function getBlockWidthClass(width: BlockWidth = "auto"): string {
-  switch (width) {
-    case "narrow":
-      return "max-w-prose";
-    case "medium":
-      return "max-w-2xl";
-    case "full":
-      return "w-full max-w-none";
-    case "auto":
-    default:
-      return "max-w-3xl";
-  }
-}
-
-export function getBlockAlignClass(align: BlockAlign = "left"): string {
-  switch (align) {
-    case "center":
-      return "mx-auto text-center";
-    case "right":
-      return "ml-auto text-right";
-    case "left":
-    default:
-      return "";
-  }
-}
-
 export function getLeafHorizontalJustifyClass(align: BlockAlign = "left"): string {
   switch (align) {
     case "center":
@@ -367,32 +337,6 @@ export function getLeafVerticalJustifyClass(align: BlockVerticalAlign = "top"): 
   }
 }
 
-/** @deprecated Block horizontal align positions the box only; use markdown HTML for text alignment. */
-export function getLeafTextAlignClass(align: BlockAlign = "left"): string {
-  switch (align) {
-    case "center":
-      return "text-center";
-    case "right":
-      return "text-right";
-    case "left":
-    default:
-      return "text-left";
-  }
-}
-
-export function getLeafWidthClass(width: BlockWidth = "auto", fullWidth = false): string {
-  if (fullWidth || width === "full") return "w-full max-w-none";
-  switch (width) {
-    case "narrow":
-      return "w-full max-w-prose";
-    case "medium":
-      return "w-full max-w-2xl";
-    case "auto":
-    default:
-      return "w-full max-w-3xl";
-  }
-}
-
 /** Leaf blocks sized to content (small images, buttons) so horizontal align can center them in a cell. */
 export function isShrinkWrapLeafBlock(block: ExperiencePageBlock): boolean {
   if (block.type === "cta" || block.type === "spacer") return true;
@@ -400,11 +344,6 @@ export function isShrinkWrapLeafBlock(block: ExperiencePageBlock): boolean {
     return isCompactImageSize(resolveImageDisplaySize(block));
   }
   return false;
-}
-
-export function getLeafInnerWidthClass(width: BlockWidth = "auto", shrinkWrap = false): string {
-  if (shrinkWrap) return "w-auto max-w-full";
-  return getLeafWidthClass(width);
 }
 
 export function getBlockPaddingClass(padding: BlockPadding = "none"): string {
@@ -419,17 +358,6 @@ export function getBlockPaddingClass(padding: BlockPadding = "none"): string {
     default:
       return "";
   }
-}
-
-export function getLeafLayoutClasses(blockLayout?: BlockLayout): string {
-  if (!blockLayout) return "";
-  return [
-    getBlockWidthClass(blockLayout.width),
-    getBlockAlignClass(blockLayout.align),
-    getBlockPaddingClass(blockLayout.padding),
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
 /** Walk all blocks depth-first, including grid cells. */
@@ -693,7 +621,7 @@ export function blockLabel(block: ExperiencePageBlock): string {
     case "gallery":
       return "Gallery";
     case "html":
-      return "Custom HTML";
+      return "HTML";
     case "spacer":
       return "Spacer";
     case "quote":

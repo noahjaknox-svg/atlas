@@ -20,8 +20,6 @@ import type {
   BlockVerticalAlign,
   ExperiencePageBlock,
   ImageDisplaySize,
-  RowDisplay,
-  RowGap,
 } from "@/lib/experience-content";
 import {
   resolveBlockWidthPresetId,
@@ -33,13 +31,10 @@ import { diagnosticsForBlock, type BlockDiagnostic } from "@/lib/portal-block-di
 import {
   blockLabel,
   isContainerBlock,
-  isRowBlock,
   resolveContainerLayout,
-  resolveRowLayout,
   type BlockPath,
-  type RowColumnCount,
 } from "@/lib/portal-block-layout";
-import { htmlHasAnimation, updateContainerGrid, updateRowColumns } from "@/lib/page-blocks-utils";
+import { htmlHasAnimation, updateContainerGrid } from "@/lib/page-blocks-utils";
 import type { GridDimension } from "@/lib/experience-content";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -146,12 +141,16 @@ export function PortalDesignerInspector({
             <div>
               <Label className="text-sm">Page name</Label>
               <p className="mt-0.5 text-xs text-atlas-muted">
-                Used in the page list and navigation only. Add a Heading block to show a title on the page.
+                {isCustomPortalPage(section)
+                  ? "Used in the page list and navigation only. Add a Heading block to show a title on the page."
+                  : "Built-in pages keep a fixed name in the navigation. Add a Heading block to show a title on the page."}
               </p>
               <Input
                 value={section.title}
                 onChange={(e) => onPatchSection({ title: e.target.value })}
-                className="mt-1 h-9 text-sm"
+                readOnly={!isCustomPortalPage(section)}
+                aria-readonly={!isCustomPortalPage(section)}
+                className="mt-1 h-9 text-sm read-only:opacity-70"
               />
             </div>
 
@@ -241,16 +240,6 @@ export function PortalDesignerInspector({
             <BlockEditor
               block={selectedBlock}
               onPatch={(patch) => onPatchBlock(selectedBlock.id, patch)}
-              onPatchRowColumns={
-                onPatchBlocks && isRowBlock(selectedBlock)
-                  ? (columnCount, weights) => {
-                      const blocks = section.contentBlocks?.pageBlocks ?? [];
-                      onPatchBlocks(
-                        updateRowColumns(blocks, selectedBlock.id, columnCount, weights)
-                      );
-                    }
-                  : undefined
-              }
               onPatchContainerGrid={
                 onPatchBlocks && isContainerBlock(selectedBlock)
                   ? (rows, cols, options) => {
@@ -264,7 +253,6 @@ export function PortalDesignerInspector({
               proposalId={proposalId}
               layoutSettings={layoutSettings}
               designViewport={designViewport}
-              selectedBlockPath={selectedBlockPath}
             />
             </InheritedLayoutContext.Provider>
           </>
@@ -616,57 +604,6 @@ function ResponsiveWidthControls({
   );
 }
 
-function ImageLayoutControls({
-  blockLayout,
-  layoutSettings,
-  onPatch,
-  designViewport,
-}: {
-  blockLayout?: BlockLayout;
-  layoutSettings: PortalLayoutSettings;
-  onPatch: (layout: BlockLayout) => void;
-  designViewport?: PreviewViewport;
-}) {
-  return (
-    <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2">
-      <p className="text-sm font-medium text-atlas-muted">Layout</p>
-      <div className="grid grid-cols-1 gap-2">
-        <ResponsiveWidthControls
-          blockLayout={blockLayout}
-          layoutSettings={layoutSettings}
-          onPatch={onPatch}
-          designViewport={designViewport}
-        />
-        <HorizontalAlignSelect blockLayout={blockLayout} onPatch={onPatch} />
-        <LayoutSelect
-          label="Vertical align"
-          value={blockLayout?.verticalAlign ?? "top"}
-          options={[
-            ["top", "Top"],
-            ["center", "Center"],
-            ["bottom", "Bottom"],
-          ]}
-          onChange={(verticalAlign) =>
-            onPatch({ ...blockLayout, verticalAlign: verticalAlign as BlockVerticalAlign })
-          }
-        />
-        <LayoutSelect
-          label="Padding"
-          value={blockLayout?.padding ?? "none"}
-          options={[
-            ["none", "None"],
-            ["sm", "Small"],
-            ["md", "Medium"],
-            ["lg", "Large"],
-          ]}
-          onChange={(padding) => onPatch({ ...blockLayout, padding: padding as BlockPadding })}
-        />
-        <PanelControls blockLayout={blockLayout} layoutSettings={layoutSettings} onPatch={onPatch} />
-      </div>
-    </div>
-  );
-}
-
 function BlockLayoutControls({
   blockLayout,
   layoutSettings,
@@ -683,7 +620,7 @@ function BlockLayoutControls({
 }) {
   return (
     <div className="space-y-2 rounded border border-atlas-border/60 bg-atlas-bg/30 p-2">
-      <p className="text-sm font-medium text-atlas-muted">Responsive layout</p>
+      <p className="text-sm font-medium text-atlas-muted">Layout</p>
       <div className="grid grid-cols-1 gap-2">
         <ResponsiveWidthControls
           blockLayout={blockLayout}
@@ -760,16 +697,13 @@ function LayoutSelect({
 function BlockEditor({
   block,
   onPatch,
-  onPatchRowColumns,
   onPatchContainerGrid,
   proposalId,
   layoutSettings,
   designViewport,
-  selectedBlockPath,
 }: {
   block: ExperiencePageBlock;
   onPatch: (patch: Partial<ExperiencePageBlock>) => void;
-  onPatchRowColumns?: (columnCount: RowColumnCount, weights?: number[]) => void;
   onPatchContainerGrid?: (
     rows: GridDimension,
     cols: GridDimension,
@@ -778,14 +712,11 @@ function BlockEditor({
   proposalId?: string;
   layoutSettings: PortalLayoutSettings;
   designViewport?: PreviewViewport;
-  selectedBlockPath?: BlockPath;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const shellLayoutPatch = (blockLayout: BlockLayout) =>
     onPatch({ blockLayout } as Partial<ExperiencePageBlock>);
-
-  const nestedInGridCell = (selectedBlockPath?.length ?? 0) >= 2;
 
   const shellBlockLayout = (shell: Extract<ExperiencePageBlock, { type: "container" | "row" }>) =>
     shell.blockLayout ?? resolveShellBlockLayout(shell, { nestedInGridCell: false });
@@ -887,99 +818,6 @@ function BlockEditor({
         ) : null}
         <ContainerSpacingControls block={block} onPatch={onPatch} />
         {rows * cols > 1 || block.cellCardStyle ? (
-        <label className="flex items-center gap-2 text-sm text-atlas-text">
-          <input
-            type="checkbox"
-            aria-label="Card behind each cell"
-            checked={!!block.cellCardStyle}
-            onChange={(e) =>
-              onPatch({ cellCardStyle: e.target.checked } as Partial<ExperiencePageBlock>)
-            }
-            className="accent-atlas-accent"
-          />
-          Card behind each cell
-        </label>
-        ) : null}
-        <BlockLayoutControls
-          blockLayout={shellBlockLayout(block)}
-          layoutSettings={layoutSettings}
-          designViewport={designViewport}
-          onPatch={shellLayoutPatch}
-          cellCards={!!block.cellCardStyle}
-        />
-      </div>
-    );
-  }
-
-  if (isRowBlock(block)) {
-    const { count, weights } = resolveRowLayout(block);
-    return (
-      <div className="space-y-3">
-        <div>
-          <Label className="text-sm">Layout direction</Label>
-          <select
-            value={block.display ?? "columns"}
-            onChange={(e) =>
-              onPatch({ display: e.target.value as RowDisplay } as Partial<ExperiencePageBlock>)
-            }
-            className="atlas-input mt-1 h-8 w-full text-sm"
-          >
-            <option value="columns">Columns (side by side)</option>
-            <option value="rows">Rows (stacked)</option>
-          </select>
-        </div>
-        <div>
-          <Label className="text-sm">Column count</Label>
-          <select
-            value={count}
-            onChange={(e) =>
-              onPatchRowColumns?.(parseInt(e.target.value, 10) as RowColumnCount)
-            }
-            className="atlas-input mt-1 h-8 w-full text-sm"
-          >
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-            <option value={4}>4</option>
-          </select>
-        </div>
-        {count >= 2 ? (
-          <div className="space-y-2">
-            <Label className="text-sm">Column widths (relative weights)</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {weights.map((weight, index) => (
-                <div key={`col-weight-${index}`}>
-                  <Label className="text-xs text-atlas-muted">Col {index + 1}</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={weight}
-                    onChange={(e) => {
-                      const next = [...weights];
-                      next[index] = Math.max(1, parseInt(e.target.value, 10) || 1);
-                      onPatchRowColumns?.(count, next);
-                    }}
-                    className="mt-0.5 h-8 text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <div>
-          <Label className="text-sm">Gap</Label>
-          <select
-            value={block.gap ?? "md"}
-            onChange={(e) => onPatch({ gap: e.target.value as RowGap } as Partial<ExperiencePageBlock>)}
-            className="atlas-input mt-1 h-8 w-full text-sm"
-          >
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-          </select>
-        </div>
-        {count > 1 || block.cellCardStyle ? (
         <label className="flex items-center gap-2 text-sm text-atlas-text">
           <input
             type="checkbox"
@@ -1278,7 +1116,7 @@ function BlockEditor({
       return (
         <div className="space-y-3">
           <div>
-            <Label className="text-sm">Custom HTML</Label>
+            <Label className="text-sm">HTML</Label>
             <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
               Use for custom layout, CSS, or iframe embeds (YouTube, maps, forms). Scripts are
               removed. HTML can affect mobile layout and performance — test on both desktop and
@@ -1375,7 +1213,7 @@ function ImageBlockEditor({
       </div>
       {block.url ? (
         <Button type="button" variant="secondary" size="sm" className="w-full" onClick={() => setCropOpen(true)}>
-          Edit Image
+          Crop image
         </Button>
       ) : null}
       <div>
@@ -1394,7 +1232,7 @@ function ImageBlockEditor({
           className="mt-1 h-8 text-sm"
         />
       </div>
-      <ImageLayoutControls
+      <BlockLayoutControls
         blockLayout={block.blockLayout}
         layoutSettings={layoutSettings}
         designViewport={designViewport}

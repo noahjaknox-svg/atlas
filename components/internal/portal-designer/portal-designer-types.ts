@@ -31,7 +31,7 @@ export const DESIGNER_BLOCK_TYPES = [
   { type: "cta" as const, label: "Button" },
   { type: "video" as const, label: "Video" },
   { type: "stat" as const, label: "Stat" },
-  { type: "html" as const, label: "Custom HTML" },
+  { type: "html" as const, label: "HTML" },
   { type: "spacer" as const, label: "Spacer" },
 ];
 

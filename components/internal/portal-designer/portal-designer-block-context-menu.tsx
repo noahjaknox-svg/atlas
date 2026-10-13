@@ -19,14 +19,12 @@ const LEAF_BLOCK_TYPES = DESIGNER_BLOCK_TYPES.filter((item) => item.type !== "co
 export function PortalDesignerBlockContextMenu({
   menu,
   onClose,
-  onEdit,
   onDelete,
   onDuplicate,
   onChangeType,
 }: {
   menu: BlockContextMenuState;
   onClose: () => void;
-  onEdit?: (blockId: string) => void;
   onDelete: (blockId: string) => void;
   onDuplicate: (blockId: string) => void;
   onChangeType: (blockId: string, newType: ExperiencePageBlock["type"]) => void;
@@ -66,17 +64,6 @@ export function PortalDesignerBlockContextMenu({
       style={{ left: menu.x, top: menu.y }}
       role="menu"
     >
-      <button
-        type="button"
-        role="menuitem"
-        className="block w-full px-3 py-1.5 text-left text-xs text-atlas-text hover:bg-atlas-accent/10"
-        onClick={() => {
-          onEdit?.(menu.blockId);
-          onClose();
-        }}
-      >
-        Edit
-      </button>
       <button
         type="button"
         role="menuitem"
