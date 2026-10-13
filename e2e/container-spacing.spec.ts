@@ -220,7 +220,8 @@ test("the inspector offers every spacing option and applies them to the canvas",
   expect((await options("Horizontal spacing")).length).toBe(7);
   expect((await options("Vertical spacing")).length).toBe(7);
   expect(await options("Align cells within their row")).toEqual(["Stretch to equal height", "Top", "Middle", "Bottom"]);
-  expect((await options("Container height")).length).toBe(5);
+  expect((await options("Container height")).length).toBe(6);
+  expect(await options("Container height")).toContain("Fill the available space");
 
   // The row heights editor only applies when the rows fill the height ("Fill the height").
   await expect(page.getByText("Row heights (relative weights)")).toBeVisible();
@@ -259,4 +260,68 @@ test("designer canvas: a container beside taller content packs to the bottom too
   // The designer adds a small drop zone under the last block in a cell, so allow for it (failure was ~500px).
   expect(outer.y + outer.height - (marker.y + marker.height)).toBeLessThan(80);
   await page.evaluate(() => window.localStorage.removeItem("atlas.designer.showGuides"));
+});
+
+// ---------- "Fill the available space": nested containers stretch to the cell around them ----------
+const tallText = () =>
+  text("tall", Array.from({ length: 12 }, () => "Aircraft ownership should be transparent and predictable.").join("\n\n"));
+/** outer 2-col container: [middle > inner > text] beside tall text. `innerExtra` is applied to the innermost container. */
+const nestedBesideTall = (innerExtra: object) => {
+  const inner = { ...container(1, 1, [[[text("leaf", "FILL-LEAF")]]], innerExtra), id: "inner", blockLayout: undefined };
+  const middle = { ...container(1, 1, [[[inner]]]), id: "middle", blockLayout: undefined };
+  return container(2, 1, [[[middle], [tallText()]]]);
+};
+async function gridHeights(page: Page) {
+  const grids = page.locator("[data-page-background] .portal-container-grid, .portal-container-grid");
+  const boxes = await grids.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  return { outer: boxes[0]!, middle: boxes[1]!, inner: boxes[2]! };
+}
+
+test.describe("fill the available space", () => {
+  test("published: the innermost container stretches to the full height beside taller content", async ({ page }) => {
+    await renderPreview(page, [nestedBesideTall({ minHeight: "fill" })]);
+    const h = await gridHeights(page);
+    expect(h.outer).toBeGreaterThan(300);
+    expect(h.middle).toBeGreaterThan(h.outer - 8); // the container around it stretched too
+    expect(h.inner).toBeGreaterThan(h.outer - 8);
+  });
+
+  test("published: without it the nested container stays content-height (control)", async ({ page }) => {
+    await renderPreview(page, [nestedBesideTall({})]);
+    const h = await gridHeights(page);
+    expect(h.outer).toBeGreaterThan(300);
+    expect(h.inner).toBeLessThan(h.outer / 2);
+  });
+
+  test("published: fill + vertical spacing spreads the rows over the whole height", async ({ page }) => {
+    const inner = { ...container(1, 2, [[[text("a", "FILL-A")], [text("b", "FILL-B")]]], { minHeight: "fill", spaceRows: "between" }), id: "inner", blockLayout: undefined };
+    // 1 col x 2 rows
+    inner.rows = 2; inner.cols = 1; inner.columnWeights = [1]; inner.rowWeights = [1, 1];
+    inner.cells = [[[text("a", "FILL-A")]], [[text("b", "FILL-B")]]];
+    const middle = { ...container(1, 1, [[[inner]]]), id: "middle", blockLayout: undefined };
+    await renderPreview(page, [container(2, 1, [[[middle], [tallText()]]])]);
+    const grids = page.locator(".portal-container-grid");
+    const outer = (await grids.first().boundingBox())!;
+    const a = (await page.getByText("FILL-A", { exact: true }).boundingBox())!;
+    const b = (await page.getByText("FILL-B", { exact: true }).boundingBox())!;
+    expect(a.y - outer.y).toBeLessThan(40); // first row at the top
+    expect(outer.y + outer.height - (b.y + b.height)).toBeLessThan(40); // last row at the bottom
+  });
+
+  test("designer canvas: same behaviour while editing, and the inspector offers it", async ({ page }) => {
+    await page.goto(DESIGNER);
+    await page.getByRole("button", { name: /^Page code/i }).click();
+    const code = page.getByLabel("Page code JSON");
+    const record = JSON.parse(await code.inputValue());
+    record.contentBlocks = { pageBlocks: [nestedBesideTall({ minHeight: "fill" })] };
+    await code.fill(JSON.stringify(record));
+    await page.getByRole("button", { name: /^(Apply|Applied!)$/ }).click();
+    await page.getByRole("button", { name: /^Page code/i }).click();
+    await page.getByRole("button", { name: /^Guides:/ }).click(); // guides off: measure the real layout
+    await expect(page.locator("[data-page-background] .portal-container-grid").first()).toBeVisible();
+    const h = await gridHeights(page);
+    expect(h.outer).toBeGreaterThan(300);
+    expect(h.inner).toBeGreaterThan(h.outer - 40);
+    await page.evaluate(() => window.localStorage.removeItem("atlas.designer.showGuides"));
+  });
 });

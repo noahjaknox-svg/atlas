@@ -17,6 +17,7 @@ import type { CSSProperties } from "react";
 import {
   blockLabel,
   containerGridProps,
+  containerWantsFill,
   getBlockPaddingClass,
   getLeafHorizontalJustifyClass,
   getLeafVerticalJustifyClass,
@@ -611,8 +612,9 @@ export function ExperienceBlockRenderer({
             inherited
           );
           const passDownAlign = alignPassedDown(shellBlockLayout, inherited);
-          // A container packing/spreading its rows needs the full height of the cell it sits in.
-          const fillHeight = inGridCell && !!block.spaceRows && block.spaceRows !== "stretch";
+          // A container that fills, packs or spreads needs the full height of the cell it sits in
+          // (and so does every container around one that does).
+          const fillHeight = inGridCell && containerWantsFill(block);
 
           if (
             showDesign &&

@@ -26,7 +26,7 @@ export const SPACE_DISTRIBUTIONS = ["stretch", "start", "center", "end", "betwee
 /** Where each cell sits within its row track. */
 export const ALIGN_CELLS = ["stretch", "start", "center", "end"] as const;
 /** Minimum height of a container — gives vertical spacing room to act. */
-export const CONTAINER_MIN_HEIGHTS = ["auto", "sm", "md", "lg", "screen"] as const;
+export const CONTAINER_MIN_HEIGHTS = ["auto", "sm", "md", "lg", "screen", "fill"] as const;
 
 export const IMAGE_DISPLAY_SIZES = ["icon", "small", "fit", "large"] as const;
 export const CTA_VARIANTS = ["primary", "secondary"] as const;

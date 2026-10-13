@@ -22,6 +22,19 @@ export function isRowBlock(block: ExperiencePageBlock): block is Extract<Experie
   return block.type === "row";
 }
 
+/**
+ * Whether a container should stretch to the full height of the cell it sits in. That is wanted when it
+ * asks for it ("Fill the available space"), when it packs/spreads its own rows (they need spare height),
+ * or when a container inside one of its cells does — the fill has to pass through every level, or a
+ * nested container can never grow past the content-height container around it.
+ */
+export function containerWantsFill(block: ExperiencePageBlock): boolean {
+  if (!isContainerBlock(block)) return false;
+  if (block.minHeight === "fill") return true;
+  if (block.spaceRows && block.spaceRows !== "stretch") return true;
+  return block.cells.some((row) => row.some((cell) => cell.some(containerWantsFill)));
+}
+
 export function isContainerBlock(
   block: ExperiencePageBlock
 ): block is Extract<ExperiencePageBlock, { type: "container" }> {
@@ -147,6 +160,8 @@ const MIN_HEIGHT_CSS: Record<ContainerMinHeight, string | undefined> = {
   md: "400px",
   lg: "560px",
   screen: "80vh",
+  // Not a size: the container takes the height of the cell it sits in (see containerWantsFill).
+  fill: undefined,
 };
 
 /** Tracks that aren't stretched by weights are content-sized so they can be packed or spread. */

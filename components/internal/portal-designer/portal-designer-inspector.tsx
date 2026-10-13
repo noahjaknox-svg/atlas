@@ -493,12 +493,14 @@ function ContainerSpacingControls({
           ["md", "Medium (400px)"],
           ["lg", "Large (560px)"],
           ["screen", "Tall (80% of the screen)"],
+          ["fill", "Fill the available space"],
         ]}
         onChange={(v) => set("minHeight", v, "auto")}
       />
       <p className="text-xs text-atlas-muted">
-        Vertical spacing shows when the container is taller than its content: set a height here, or
-        place it beside taller content.
+        Vertical spacing shows when the container is taller than its content. "Fill the available
+        space" stretches it to the height of the cell it sits in (for example beside taller content);
+        containers around it stretch too.
       </p>
     </div>
   );

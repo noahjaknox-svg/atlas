@@ -59,7 +59,9 @@ test.describe.serial("usage type configuration", () => {
     await openType(page);
     await page.getByRole("button", { name: "Portal pages" }).click();
     const list = page.getByRole("list", { name: "Portal pages" });
-    const first = list.getByRole("checkbox").first();
+    // A brand-new type only applies to pages that apply to every type; pages already restricted to
+    // specific types (staging data changes as the warehouse is configured) don't include it.
+    const first = list.getByRole("checkbox", { checked: true }).first();
     await expect(first).toBeChecked();
     const label = await first.getAttribute("aria-label");
 
