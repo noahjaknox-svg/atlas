@@ -31,6 +31,7 @@ export const DESIGNER_BLOCK_TYPES = [
   { type: "cta" as const, label: "Button" },
   { type: "video" as const, label: "Video" },
   { type: "stat" as const, label: "Stat" },
+  { type: "clubEconomics" as const, label: "Club economics" },
   { type: "html" as const, label: "HTML" },
   { type: "spacer" as const, label: "Spacer" },
 ];
@@ -54,6 +55,42 @@ export function isDesignerPageType(value: string): value is DesignerPageType {
 }
 
 export type DesignerBrandingTab = "pages" | "global";
+
+/**
+ * Stable key for a page in the designer's lists and selection.
+ *
+ * Proposal pages have database ids. Master templates have none, and several custom pages
+ * share the section type "custom_page", so keying by type would make them indistinguishable
+ * (they couldn't be selected, and an edit would hit all of them). Custom pages fall back to
+ * their web address, which is unique among them.
+ */
+export function designerSectionKey(
+  section: Pick<DesignerSection, "id" | "sectionType" | "pageSlug">
+): string {
+  if (section.id) return section.id;
+  if (section.sectionType === "custom_page") return `custom_page:${section.pageSlug ?? ""}`;
+  return section.sectionType;
+}
+
+/**
+ * Give master custom pages a stable id derived from their web address. Used wherever master
+ * templates enter the designer (page load, and after a save, since the server returns them
+ * without ids). Pages that already have an id keep it. The ids are designer-only: they are
+ * stripped again before a save.
+ */
+export function withMasterSectionIds(sections: DesignerSection[]): DesignerSection[] {
+  return sections.map((s) =>
+    s.sectionType === "custom_page" && !s.id ? { ...s, id: designerSectionKey(s) } : s
+  );
+}
+
+/** Master templates carry no ids in storage; drop the designer-only ones before saving. */
+export function withoutDesignerIds(sections: DesignerSection[]): Omit<DesignerSection, "id">[] {
+  return sections.map((s) => {
+    const { id: _id, ...rest } = s;
+    return rest;
+  });
+}
 
 export function cloneDesignerSections(sections: DesignerSection[]): DesignerSection[] {
   return JSON.parse(JSON.stringify(sections)) as DesignerSection[];

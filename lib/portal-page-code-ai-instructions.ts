@@ -6,6 +6,7 @@ import {
   SPACE_DISTRIBUTIONS,
   ALIGN_CELLS,
   CONTAINER_MIN_HEIGHTS,
+  CLUB_ECONOMICS_VIEWS,
   CTA_VARIANTS,
   EXPERIENCE_GALLERY_LAYOUTS,
   IMAGE_DISPLAY_SIZES,
@@ -15,6 +16,7 @@ import {
 } from "./experience-block-enums";
 import { DEFAULT_LAYOUT_SETTINGS } from "./portal-layout-settings";
 import { PORTAL_VARIABLES } from "./portal-variables";
+import { CLUB_VARIABLE_KEYS } from "./club-variables";
 
 const WIDTH_PRESETS = DEFAULT_LAYOUT_SETTINGS.widthPresets.map((p) => `"${p.id}"`).join("|");
 
@@ -65,6 +67,7 @@ An ordered array of blocks. Every block requires an \`id\` (placeholders are fin
 - \`{ "id": "...", "type": "cta", "label": "...", "url": "...", "variant"?: ${CTA_VARIANTS.map((v) => `"${v}"`).join("|")} }\`
 - \`{ "id": "...", "type": "video", "url": "...", "posterUrl"?: "...", "caption"?: "..." }\`
 - \`{ "id": "...", "type": "stat", "value": "100+", "label": "Years combined experience", "countUp"?: true|false }\` — one big highlighted figure with a small caption. **Animated:** when \`countUp\` is on (default) the first number in \`value\` counts up once scrolled into view (e.g. "100+", "$2.4M", "15%")
+- \`{ "id": "...", "type": "clubEconomics", "view": ${CLUB_ECONOMICS_VIEWS.map((v) => `"${v}"`).join("|")} }\` — **live, interactive membership-club figures** (Silverleaf-style proposals only). It is data-bound: it reads the proposal's club model, so it shows real numbers that the viewer can adjust (sliders, structure and fleet-size toggles, charts) and it renders nothing on proposals without a club model. Choose by \`view\`: \`program-stats\` (initiation, dues, rate, included hours), \`member-cost\` (a cost calculator with an hours gauge and overage), \`structures\` (licensing / joint venture / owner-financed comparison), \`scaling\` (revenue-to-net breakdown by fleet size), \`cash-timeline\` (month-by-month cumulative cash chart), \`pro-forma\` (the full adjustable pro forma: sliders plus cash, club economics and structure) and \`prismjet\` (operator economics: it appears only while its page is visible, so put it on a page you intend to hide before sharing). Use this block instead of hand-building these figures in \`html\` (HTML cannot run scripts or read the proposal's numbers). It already follows the portal's card style, so don't wrap it in a panel; give it the same width as its neighbours, e.g. \`"blockLayout": { "widthDesktop": "wide", "widthMobile": "normal" }\`.
 - \`{ "id": "...", "type": "row", "preset": ${ROW_PRESETS.map((v) => `"${v}"`).join("|")}, "gap"?: ${ROW_GAPS.map((v) => `"${v}"`).join("|")}, "display"?: ${ROW_DISPLAYS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1,1], "cellCardStyle"?: true|false, "columns": [ [ /* blocks */ ], [ /* blocks */ ] ] }\` — side-by-side (or stacked) columns, each column is itself an array of blocks. **\`preset\` caps at 3 columns** (\`equal-3\`) — \`equal-2\`/\`wide-narrow\`/\`narrow-wide\` are all 2 columns. For 4+ columns (or a true grid), use \`container\` instead.
 - \`{ "id": "...", "type": "container", "rows": 1-4, "cols": 1-4, "gap"?: ${CONTAINER_GAPS.map((v) => `"${v}"`).join("|")}, "columnWeights"?: [1], "rowWeights"?: [1], "spaceColumns"?: ${SPACE_DISTRIBUTIONS.map((v) => `"${v}"`).join("|")}, "spaceRows"?: same options, "alignCells"?: ${ALIGN_CELLS.map((v) => `"${v}"`).join("|")}, "minHeight"?: ${CONTAINER_MIN_HEIGHTS.map((v) => `"${v}"`).join("|")}, "cellCardStyle"?: true|false, "cells": [ [ [ /* blocks */ ] ] ] }\` — a grid up to 4×4; \`cells\` is rows → columns → array of blocks in that cell
 
@@ -82,7 +85,7 @@ The only built-in animated block is \`stat\` (the number counts up once scrolled
 Other motion, such as an animated chart or diagram, goes in an \`html\` block, CSS only (no \`<script>\`, it is stripped). It must stay readable without the animation: the un-animated (final) state shows every word and number — never hide content behind an \`opacity:0\` start state — and put the motion inside \`@media (prefers-reduced-motion: no-preference)\` so reduced-motion viewers, older browsers and PDF/print get the finished state. The designer flags HTML that animates. **If you can't build the motion safely that way, use an \`image\` block with a static picture instead** (set \`"url": ""\` if no image URL was provided so the user can upload one, and write a descriptive \`alt\`), and tell the user in the \`alt\` text what the static image should show.
 
 ## Personalization variables
-Text, heading, quote, button-label and stat text can include \`{{variable}}\` placeholders that fill in per proposal: ${PORTAL_VARIABLES.map((v) => `\`{{${v.key}}}\``).join(", ")}. They are NOT filled in inside \`html\` blocks, image/gallery captions, or URLs.
+Text, heading, quote, button-label and stat text can include \`{{variable}}\` placeholders that fill in per proposal: ${PORTAL_VARIABLES.map((v) => `\`{{${v.key}}}\``).join(", ")}. They are NOT filled in inside \`html\` blocks, image/gallery captions, or URLs. On membership-club proposals these figures are also available in text, heading, quote and stat text: ${CLUB_VARIABLE_KEYS.map((k) => `\`{{${k}}}\``).join(", ")} (they stay blank on other proposals, so use them only on club pages).
 
 ## Layout — the page sets the default, elements inherit it
 Layout cascades **page → container → element**. Set it once on the page, then leave \`blockLayout\` off blocks that should follow it:

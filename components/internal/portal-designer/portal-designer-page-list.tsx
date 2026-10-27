@@ -25,7 +25,7 @@ import { isCustomPortalPage, sectionNavSlug } from "@/lib/experience-page-slug";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { UsageTypeSelector } from "@/components/internal/usage-type-selector";
-import { DESIGNER_PAGE_TYPES, type DesignerSection } from "./portal-designer-types";
+import { DESIGNER_PAGE_TYPES, designerSectionKey, type DesignerSection } from "./portal-designer-types";
 import { PortalDesignerAddPageModal } from "./portal-designer-add-page-modal";
 
 function SortablePageRow({
@@ -48,7 +48,7 @@ function SortablePageRow({
   /** Reordering a filtered list would only send a subset of pages, so it's off then. */
   dragDisabled?: boolean;
 }) {
-  const id = section.id ?? section.sectionType;
+  const id = designerSectionKey(section);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled: dragDisabled,
@@ -177,7 +177,7 @@ export function PortalDesignerPageList({
       );
   }, [sections, selectedUsageTypeId, visibilityFilter]);
 
-  const sortableIds = ordered.map((s) => s.id ?? s.sectionType);
+  const sortableIds = ordered.map((s) => designerSectionKey(s));
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -240,7 +240,7 @@ export function PortalDesignerPageList({
         <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
           <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Designer pages">
             {ordered.map((section) => {
-              const sectionId = section.id ?? section.sectionType;
+              const sectionId = designerSectionKey(section);
               const label =
                 isCustomPortalPage(section)
                   ? section.title
