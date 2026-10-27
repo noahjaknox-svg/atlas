@@ -7,7 +7,7 @@ import { InternalShell } from "@/components/internal/internal-shell";
 import { PortalDesignerShell } from "@/components/internal/portal-designer/portal-designer-shell";
 import { getPortalContent, getExperienceMasterTemplates } from "@/lib/portal-content";
 import { PROSPECT_PORTAL_DESIGNER } from "@/lib/product-terminology";
-import type { DesignerSection } from "@/components/internal/portal-designer/portal-designer-types";
+import { withMasterSectionIds, type DesignerSection } from "@/components/internal/portal-designer/portal-designer-types";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -31,7 +31,7 @@ export default async function ProposalDesignPage() {
     }),
   ]);
 
-  const initialSections: DesignerSection[] = templates.map((t) => ({
+  const initialSections: DesignerSection[] = withMasterSectionIds(templates.map((t) => ({
     ...t,
     videoUrl: t.videoUrl ?? null,
     posterUrl: t.posterUrl ?? null,
@@ -41,7 +41,7 @@ export default async function ProposalDesignPage() {
     signatoryName: t.signatoryName ?? null,
     signatoryTitle: t.signatoryTitle ?? null,
     contentBlocks: t.contentBlocks ?? null,
-  }));
+  })));
 
   return (
     <InternalShell {...shell} workspace>

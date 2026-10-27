@@ -45,7 +45,10 @@ import { useDesignerHistory } from "./use-designer-history";
 import {
   cloneDesignerSections,
   DESIGNER_PAGE_TYPES,
+  designerSectionKey,
   sectionsWithPageBlocks,
+  withMasterSectionIds,
+  withoutDesignerIds,
   type DesignerBrandingTab,
   type DesignerSection,
   type PortalDesignerHeroState,
@@ -126,8 +129,7 @@ export function PortalDesignerShell({
   const history = useDesignerHistory<DesignerState>(initialState);
   const skipHistoryPush = useRef(false);
 
-  const initialActiveId =
-    initialSections[0]?.id ?? initialSections[0]?.sectionType ?? "welcome";
+  const initialActiveId = initialSections[0] ? designerSectionKey(initialSections[0]) : "welcome";
 
   const [activeSectionId, setActiveSectionId] = useState(initialActiveId);
   const [selection, setSelection] = useState<BlockSelection | null>(null);
@@ -169,7 +171,7 @@ export function PortalDesignerShell({
     return new Set(
       stored
         .filter((s) => s.contentBlocks?.pageBlocks == null)
-        .map((s) => s.id ?? s.sectionType)
+        .map((s) => designerSectionKey(s))
     );
   }, [baseline]);
 
@@ -183,12 +185,12 @@ export function PortalDesignerShell({
 
   const activeSection = useMemo(
     () =>
-      sections.find((s) => (s.id ?? s.sectionType) === activeSectionId) ?? sections[0]!,
+      sections.find((s) => designerSectionKey(s) === activeSectionId) ?? sections[0]!,
     [sections, activeSectionId]
   );
 
   function sectionKey(section: DesignerSection): string {
-    return section.id ?? section.sectionType;
+    return designerSectionKey(section);
   }
 
   const activeBlocks = useMemo(
@@ -448,16 +450,26 @@ export function PortalDesignerShell({
     setError(null);
     try {
       if (mode === "master") {
+        // Master templates are stored without ids; the designer-only ones are stripped here.
+        const activeSlug =
+          activeSection.sectionType === "custom_page" ? activeSection.pageSlug : null;
         const res = await fetch("/api/portal-content", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ experienceTemplates: sections }),
+          body: JSON.stringify({ experienceTemplates: withoutDesignerIds(sections) }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Save failed");
         if (json.content?.experienceTemplates) {
-          const next = sectionsWithPageBlocks(json.content.experienceTemplates);
+          const next = withMasterSectionIds(
+            sectionsWithPageBlocks(json.content.experienceTemplates)
+          );
           setSections(next);
+          if (activeSlug != null) {
+            // The server returns pages without ids; keep the same page selected.
+            const same = next.find((s) => s.sectionType === "custom_page" && s.pageSlug === activeSlug);
+            if (same) setActiveSectionId(designerSectionKey(same));
+          }
           const state = { sections: next, hero };
           setBaseline(JSON.stringify(state));
           history.reset(state);
