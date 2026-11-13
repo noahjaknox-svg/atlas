@@ -27,12 +27,25 @@ export async function publishProposal(
   }
 
   if (proposal.clientPortal) {
+    // Draft portals (created for staff preview) have a placeholder hash and no
+    // stored PIN — mint a real one on first publish so staff can see/share it.
+    let newPin = "";
+    if (!proposal.clientPortal.pinCiphertext) {
+      newPin = generatePin();
+      await prisma.clientPortal.update({
+        where: { proposalId },
+        data: {
+          pinHash: await hashPin(newPin),
+          pinCiphertext: encryptPinForStorage(newPin),
+        },
+      });
+    }
     const republished = await republishProposal(proposalId, publishedById, {
       reactivate: true,
     });
     return {
       slug: republished.slug,
-      pin: "",
+      pin: newPin,
       portalId: proposal.clientPortal.id,
       snapshotId: republished.snapshotId,
       publishedAt: republished.publishedAt,
