@@ -147,6 +147,16 @@ export function WorkspaceProposalFooter({
             <span className="shrink-0 rounded border border-atlas-border bg-atlas-bg px-2 py-1 font-mono text-[10px] text-atlas-accent">
               {portalPin}
             </span>
+          ) : portalActive ? (
+            <button
+              type="button"
+              title="This portal has no stored access code (it can't be recovered). Generate a new one."
+              disabled={publishLoading}
+              className="shrink-0 rounded border border-atlas-accent/50 px-2 py-1 text-[10px] text-atlas-accent hover:bg-atlas-accent/10 disabled:opacity-40"
+              onClick={onRegeneratePin}
+            >
+              No access code — generate
+            </button>
           ) : null}
 
           <button
